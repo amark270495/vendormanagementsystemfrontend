@@ -192,7 +192,7 @@
             saveUserDashboardPreferences: (authenticatedUsername, preferences) => api.call('saveUserDashboardPreferences', 'POST', { authenticatedUsername, preferences }),
             processJobPosting: (formData, authenticatedUsername) => api.call('processJobPosting', 'POST', { formData, authenticatedUsername }),
             // Home Page Data
-            getHomePageData: () => api.call('getHomePageData', 'GET'),
+            getHomePageData: (authenticatedUsername) => api.call('getHomePageData', 'GET', null, { authenticatedUsername }), // Added authenticatedUsername param
             // Reports
             getReportData: (sheetKey, startDate, endDate, authenticatedUsername) => api.call('getReportData', 'GET', null, { sheetKey, startDate, endDate, authenticatedUsername }),
             generateAndSendJobReport: (sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername) => api.call('generateAndSendJobReport', 'POST', { sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername }),
@@ -245,11 +245,11 @@
             if (!isOpen) return null;
             const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-xl', '2xl': 'max-w-2xl', '4xl': 'max-w-4xl' };
             return (
-                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose} aria-modal="true" role="dialog">
                     <div className={`bg-white rounded-lg shadow-xl w-full ${sizeClasses[size]} max-h-[90vh] flex flex-col`} onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center p-4 border-b">
                             <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
-                            <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100" aria-label="Close modal">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
                         </div>
@@ -299,7 +299,8 @@
                     setMessage(data.message);
                     setTimeout(() => { onClose(); setMessage(''); setEmail(''); }, 3000);
                 } catch (err) {
-                    setMessage("If your account exists, a password reset email has been sent.");
+                    setMessage("If your account exists, a password reset email has been sent."); // Generic message for security
+                    setError(''); // Clear any previous error
                 } finally { setLoading(false); }
             };
             return (
@@ -313,7 +314,7 @@
                             <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" id="reset-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                         </div>
                         <div className="flex items-center justify-end">
-                            <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded" type="submit" disabled={loading}>
+                            <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded flex items-center justify-center" type="submit" disabled={loading}>
                                 {loading ? <Spinner size="5" /> : 'Send Reset Email'}
                             </button>
                         </div>
@@ -598,31 +599,35 @@
                             {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
                             {!loading && !error && (
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-sm text-left text-gray-500">
-                                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                                            <tr>
-                                                <th scope="col" className="px-6 py-3">Display Name</th>
-                                                <th scope="col" className="px-6 py-3">Username</th>
-                                                <th scope="col" className="px-6 py-3">Role</th>
-                                                <th scope="col" className="px-6 py-3">Backend Role</th>
-                                                <th scope="col" className="px-6 py-3">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {users.map((u) => (
-                                                <tr key={u.username} className="bg-white border-b hover:bg-gray-50">
-                                                    <td className="px-6 py-4 font-medium text-gray-900">{u.displayName}</td>
-                                                    <td className="px-6 py-4">{u.username}</td>
-                                                    <td className="px-6 py-4">{u.userRole}</td>
-                                                    <td className="px-6 py-4">{u.backendOfficeRole}</td>
-                                                    <td className="px-6 py-4 flex space-x-2">
-                                                        <button onClick={() => handleEditClick(u)} className="text-indigo-600 hover:text-indigo-900"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
-                                                        <button onClick={() => handleDeleteClick(u)} className="text-red-600 hover:text-red-900"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
-                                                    </td>
+                                    {users.length > 0 ? (
+                                        <table className="w-full text-sm text-left text-gray-500">
+                                            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                                <tr>
+                                                    <th scope="col" className="px-6 py-3">Display Name</th>
+                                                    <th scope="col" className="px-6 py-3">Username</th>
+                                                    <th scope="col" className="px-6 py-3">Role</th>
+                                                    <th scope="col" className="px-6 py-3">Backend Role</th>
+                                                    <th scope="col" className="px-6 py-3">Actions</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                {users.map((u) => (
+                                                    <tr key={u.username} className="bg-white border-b hover:bg-gray-50">
+                                                        <td className="px-6 py-4 font-medium text-gray-900">{u.displayName}</td>
+                                                        <td className="px-6 py-4">{u.username}</td>
+                                                        <td className="px-6 py-4">{u.userRole}</td>
+                                                        <td className="px-6 py-4">{u.backendOfficeRole}</td>
+                                                        <td className="px-6 py-4 flex space-x-2">
+                                                            <button onClick={() => handleEditClick(u)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded-full hover:bg-gray-100" aria-label={`Edit user ${u.displayName}`}><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+                                                            <button onClick={() => handleDeleteClick(u)} className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-gray-100" aria-label={`Delete user ${u.displayName}`}><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <p className="text-center text-gray-500 p-4">No users found.</p>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -635,6 +640,7 @@
         
         // --- NEW: Home Page ---
         const HomePage = () => {
+            const { user } = useAuth(); // Get user from AuthContext
             const [data, setData] = useState({});
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState('');
@@ -643,7 +649,8 @@
                 const fetchData = async () => {
                     setLoading(true);
                     try {
-                        const result = await api.getHomePageData();
+                        // Pass authenticatedUsername to getHomePageData
+                        const result = await api.getHomePageData(user.userIdentifier);
                         if (result.success) setData(result.data);
                         else setError(result.message);
                     } catch (err) {
@@ -653,7 +660,7 @@
                     }
                 };
                 fetchData();
-            }, []);
+            }, [user.userIdentifier]); // Depend on user.userIdentifier
 
             return (
                 <div className="space-y-6">
@@ -661,22 +668,26 @@
                     {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
                     {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
                     {!loading && !error && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {Object.entries(data).map(([assignee, jobs]) => (
-                                <div key={assignee} className="bg-white p-6 rounded-lg shadow-md border">
-                                    <h2 className="text-xl font-semibold text-indigo-700 mb-4 border-b pb-2">{assignee}</h2>
-                                    <div className="space-y-3 max-h-80 overflow-y-auto">
-                                        {jobs.map(job => (
-                                            <div key={job.postingId} className="p-3 bg-slate-50 rounded-md">
-                                                <p className="font-bold text-gray-800">{job.jobTitle}</p>
-                                                <p className="text-sm text-gray-600">{job.clientName}</p>
-                                                <p className={`text-sm font-medium ${getDeadlineClass(job.deadline)}`}>Deadline: {formatDate(job.deadline)}</p>
-                                            </div>
-                                        ))}
+                        Object.keys(data).length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {Object.entries(data).map(([assignee, jobs]) => (
+                                    <div key={assignee} className="bg-white p-6 rounded-lg shadow-md border">
+                                        <h2 className="text-xl font-semibold text-indigo-700 mb-4 border-b pb-2">{assignee}</h2>
+                                        <div className="space-y-3 max-h-80 overflow-y-auto">
+                                            {jobs.map(job => (
+                                                <div key={job.postingId} className="p-3 bg-slate-50 rounded-md">
+                                                    <p className="font-bold text-gray-800">{job.jobTitle}</p>
+                                                    <p className="text-sm text-gray-600">{job.clientName}</p>
+                                                    <p className={`text-sm font-medium ${getDeadlineClass(job.deadline)}`}>Deadline: {formatDate(job.deadline)}</p>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-center text-gray-500 p-4">No open job postings found.</p>
+                        )
                     )}
                 </div>
             );
@@ -795,14 +806,16 @@
             const [isEmailModalOpen, setEmailModalOpen] = useState(false);
 
             // Check for Reports access
-            const canViewReports = user.userRole.includes('Admin') || 
-                                   user.backendOfficeRole.includes('Recruitment Manager');
+            const canViewReports = user?.userRole?.includes('Admin') || 
+                                   user?.backendOfficeRole?.includes('Recruitment Manager') ||
+                                   user?.backendOfficeRole?.includes('Data Viewer') || // Added Data Viewer
+                                   user?.backendOfficeRole?.includes('Data Entry & Viewer'); // Added Data Entry & Viewer
 
             // Check for Email Reports access
-            const canEmailReports = user.userRole.includes('Admin') ||
-                                    user.backendOfficeRole.includes('Data Entry') ||
-                                    user.backendOfficeRole.includes('Data Entry & Viewer') ||
-                                    user.backendOfficeRole.includes('Recruitment Manager');
+            const canEmailReports = user?.userRole?.includes('Admin') ||
+                                    user?.backendOfficeRole?.includes('Data Entry') ||
+                                    user?.backendOfficeRole?.includes('Data Entry & Viewer') ||
+                                    user?.backendOfficeRole?.includes('Recruitment Manager');
 
             useEffect(() => {
                 if (!canViewReports) {
@@ -814,7 +827,7 @@
                 if (!reportData && !loading) { // Only generate if not already loaded or loading
                     generateReport();
                 }
-            }, [canViewReports]); // Depend on canViewReports to trigger initial fetch
+            }, [canViewReports, reportData, loading]); // Depend on canViewReports to trigger initial fetch
 
             const handleFilterChange = (e) => {
                 setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -830,7 +843,7 @@
                 try {
                     const result = await api.getReportData(filters.sheetKey, filters.startDate, filters.endDate, user.userIdentifier);
                     if (result.success) {
-                        setReportData(result);
+                        setReportData(result.jsonBody); // Access jsonBody from the response
                     } else {
                         setError(result.message);
                     }
@@ -875,7 +888,7 @@
                         </div>
                         <div className="flex items-center space-x-2">
                             <button onClick={generateReport} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700" disabled={loading || !canViewReports}>
-                                {loading ? 'Generating...' : 'Generate Report'}
+                                {loading ? <Spinner size="5" /> : 'Generate Report'}
                             </button>
                              <button onClick={() => setEmailModalOpen(true)} className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600" disabled={!reportData || !canEmailReports}>
                                 Email Report
@@ -884,7 +897,7 @@
                     </div>
                     {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
                     {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
-                    {reportData && canViewReports && (
+                    {reportData && canViewReports ? (
                         <div className="space-y-8">
                             {/* Summary Cards */}
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-center">
@@ -910,6 +923,8 @@
                                 </div>
                             </div>
                         </div>
+                    ) : (
+                        !loading && !error && <p className="text-center text-gray-500 p-4">Select filters and click "Generate Report" to view data.</p>
                     )}
                 </div>
                 <EmailReportModal 
@@ -1047,9 +1062,9 @@
             const [columnFilters, setColumnFilters] = useState({});
             
             // Determine if the user can edit the dashboard
-            const canEditDashboard = user.userRole.includes('Admin') ||
-                                     user.backendOfficeRole.includes('Data Viewer') ||
-                                     user.backendOfficeRole.includes('Data Entry & Viewer');
+            const canEditDashboard = user?.userRole?.includes('Admin') ||
+                                     user?.backendOfficeRole?.includes('Data Entry') || // Added Data Entry
+                                     user?.backendOfficeRole?.includes('Data Entry & Viewer');
 
             const userPrefs = useMemo(() => {
                 const safeParse = (jsonString, defaultValue = []) => {
@@ -1172,7 +1187,10 @@
                     });
                     return { rowKey: postingId, changes: backendChanges };
                 });
-                if (updates.length === 0) return;
+                if (updates.length === 0) {
+                    setError("No changes to save.");
+                    return;
+                }
                 setLoading(true);
                 try {
                     await api.updateJobPosting(updates, user.userIdentifier);
@@ -1182,7 +1200,12 @@
                 finally { setLoading(false); }
             };
             const handleAction = async (actionType, job) => {
-                if (!canEditDashboard) { // Prevent actions if not authorized
+                // Permissions for these actions: Admin, Data Entry, Data Entry & Viewer
+                const isAuthorizedForActions = user?.userRole?.includes('Admin') ||
+                                               user?.backendOfficeRole?.includes('Data Entry') ||
+                                               user?.backendOfficeRole?.includes('Data Entry & Viewer');
+
+                if (!isAuthorizedForActions) { 
                     setError("You do not have permission to perform this action on job postings.");
                     setModalState({ type: null, job: null });
                     return;
@@ -1286,6 +1309,7 @@
                 setLoading(true);
                 try {
                     await api.saveUserDashboardPreferences(user.userIdentifier, { columnOrder: newPrefs.order, columnVisibility: newPrefs.visibility });
+                    // Update the user preferences in the auth context
                     updatePreferences({ columnOrder: JSON.stringify(newPrefs.order), columnVisibility: JSON.stringify(newPrefs.visibility) });
                 } catch(err) { setError(`Failed to save column settings: ${err.message}`); } 
                 finally { setLoading(false); setColumnModalOpen(false); }
@@ -1317,56 +1341,61 @@
                     {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
                     {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
                     {!loading && !error && (
-                        <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-y-auto relative" style={{ maxHeight: '70vh' }}>
-                            <table className="w-full text-sm text-left text-gray-500 table-layout">
-                                <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
-                                    <tr>
-                                        {displayHeader.map(h => {
-                                            const isSkillColumn = h === 'Required Skill Set'; const isTitleColumn = h === 'Posting Title';
-                                            let style = { minWidth: '140px' };
-                                            if (isSkillColumn) style = { width: '300px' }; else if (isTitleColumn) style = { width: '200px' };
-                                            return (
-                                                <th key={h} scope="col" className="p-0" style={style}>
-                                                    <Dropdown width="64" trigger={<div className="header-menu-trigger font-bold"><span>{h} {sortConfig.key === h ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}</span></div>}>
-                                                        <HeaderMenu header={h} sortConfig={sortConfig} onSort={(dir) => handleSort(h, dir)} filterConfig={columnFilters[h]} onFilterChange={handleColumnFilterChange}/>
-                                                    </Dropdown>
-                                                </th>
-                                            );
-                                        })}
-                                        <th scope="col" className="px-4 py-3" style={{width: '80px'}}>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredAndSortedData.map((row, rowIndex) => (
-                                        <tr key={row[0] || rowIndex} className="bg-white border-b hover:bg-gray-50">
-                                            {row.map((cell, cellIndex) => {
-                                                const headerName = displayHeader[cellIndex]; 
-                                                // Only allow editing if canEditDashboard is true AND the column is editable
-                                                const isEditable = canEditDashboard && EDITABLE_COLUMNS.includes(headerName); 
-                                                const isDate = DATE_COLUMNS.includes(headerName);
-                                                const postingId = row[displayHeader.indexOf('Posting ID')]; const isModified = unsavedChanges[postingId] && unsavedChanges[postingId][headerName] !== undefined;
-                                                const deadlineClass = headerName === 'Deadline' ? getDeadlineClass(cell) : '';
+                        filteredAndSortedData.length > 0 ? (
+                            <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-y-auto relative" style={{ maxHeight: '70vh' }}>
+                                <table className="w-full text-sm text-left text-gray-500 table-layout">
+                                    <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
+                                        <tr>
+                                            {displayHeader.map(h => {
+                                                const isSkillColumn = h === 'Required Skill Set'; const isTitleColumn = h === 'Posting Title';
+                                                let style = { minWidth: '140px' };
+                                                if (isSkillColumn) style = { width: '300px' }; else if (isTitleColumn) style = { width: '200px' };
                                                 return (
-                                                    <td key={cellIndex} className={`px-4 py-3 ${isModified ? 'modified-cell' : ''} ${deadlineClass}`} contentEditable={isEditable} suppressContentEditableWarning={true}
-                                                        onFocus={e => { if (!isEditable) return; if (e.target.innerText === 'Need To Update') e.target.innerText = ''; }}
-                                                        onBlur={e => { if (!isEditable) return; let currentValue = e.target.innerText.trim(); if (currentValue === '') { currentValue = 'Need To Update'; e.target.innerText = 'Need To Update'; } handleCellEdit(rowIndex, cellIndex, currentValue); }}>
-                                                        {isDate ? formatDate(cell) : cell}
-                                                    </td>
+                                                    <th key={h} scope="col" className="p-0" style={style}>
+                                                        <Dropdown width="64" trigger={<div className="header-menu-trigger font-bold"><span>{h} {sortConfig.key === h ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}</span></div>}>
+                                                            <HeaderMenu header={h} sortConfig={sortConfig} onSort={(dir) => handleSort(h, dir)} filterConfig={columnFilters[h]} onFilterChange={handleColumnFilterChange}/>
+                                                        </Dropdown>
+                                                    </th>
                                                 );
                                             })}
-                                            {/* Action menu is only available if canEditDashboard is true */}
-                                            <td className="px-4 py-3">
-                                                {canEditDashboard ? (
-                                                    <ActionMenu job={row} onAction={(type, job) => setModalState({type, job: jobToObject(job)})} />
-                                                ) : (
-                                                    <button className="text-gray-400 p-1 rounded-full cursor-not-allowed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
-                                                )}
-                                            </td>
+                                            <th scope="col" className="px-4 py-3" style={{width: '80px'}}>Action</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {filteredAndSortedData.map((row, rowIndex) => (
+                                            <tr key={row[0] || rowIndex} className="bg-white border-b hover:bg-gray-50">
+                                                {row.map((cell, cellIndex) => {
+                                                    const headerName = displayHeader[cellIndex]; 
+                                                    // Only allow editing if canEditDashboard is true AND the column is editable
+                                                    const isEditable = canEditDashboard && EDITABLE_COLUMNS.includes(headerName); 
+                                                    const isDate = DATE_COLUMNS.includes(headerName);
+                                                    const postingId = row[displayHeader.indexOf('Posting ID')]; 
+                                                    const isModified = unsavedChanges[postingId] && unsavedChanges[postingId][headerName] !== undefined;
+                                                    const deadlineClass = headerName === 'Deadline' ? getDeadlineClass(cell) : '';
+                                                    return (
+                                                        <td key={cellIndex} className={`px-4 py-3 ${isModified ? 'modified-cell' : ''} ${deadlineClass}`} contentEditable={isEditable} suppressContentEditableWarning={true}
+                                                            onFocus={e => { if (!isEditable) return; if (e.target.innerText === 'Need To Update') e.target.innerText = ''; }}
+                                                            onBlur={e => { if (!isEditable) return; let currentValue = e.target.innerText.trim(); if (currentValue === '') { currentValue = 'Need To Update'; e.target.innerText = 'Need To Update'; } handleCellEdit(rowIndex, cellIndex, currentValue); }}>
+                                                            {isDate ? formatDate(cell) : cell}
+                                                        </td>
+                                                    );
+                                                })}
+                                                {/* Action menu is only available if canEditDashboard is true */}
+                                                <td className="px-4 py-3">
+                                                    {canEditDashboard ? (
+                                                        <ActionMenu job={row} onAction={(type, job) => setModalState({type, job: jobToObject(job)})} />
+                                                    ) : (
+                                                        <button className="text-gray-400 p-1 rounded-full cursor-not-allowed" aria-label="No actions available"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            !loading && !error && <p className="text-center text-gray-500 p-4">No job postings found matching your filters.</p>
+                        )
                     )}
                     <ConfirmationModal isOpen={['close', 'archive', 'delete'].includes(modalState.type)} onClose={() => setModalState({type: null, job: null})} onConfirm={() => handleAction(modalState.type, modalState.job)} title={`Confirm ${modalState.type}`} message={`Are you sure you want to ${modalState.type} the job "${modalState.job?.['Posting Title']}"?`} confirmText={modalState.type}/>
                     <ViewDetailsModal isOpen={modalState.type === 'details'} onClose={() => setModalState({type: null, job: null})} job={modalState.job}/>
@@ -1412,7 +1441,7 @@
             );
         };
         const ActionMenu = ({ job, onAction }) => (
-            <Dropdown trigger={<button className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>}>
+            <Dropdown trigger={<button className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100" aria-label="Job actions menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>}>
                 <a href="#" onClick={(e) => {e.preventDefault(); onAction('details', job)}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">View Details</a>
                 <a href="#" onClick={(e) => {e.preventDefault(); onAction('close', job)}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Close Job</a>
                 <a href="#" onClick={(e) => {e.preventDefault(); onAction('archive', job)}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Archive Job</a>
@@ -1557,7 +1586,7 @@
                                                         ${selectedRecipient?.username === u.username ? 'bg-indigo-100 text-indigo-800 font-semibold' : 'hover:bg-gray-100 text-gray-700'}`}
                                         >
                                             <p className="font-medium">{u.displayName}</p>
-                                            <p className="text-xs text-gray-500 break-all">{u.userIdentifier}</p> {/* Display full user ID */}
+                                            <p className="text-xs text-gray-500 break-all">ID: {u.userIdentifier}</p> {/* Display full user ID */}
                                         </button>
                                     </li>
                                 ))}
@@ -1673,8 +1702,8 @@
                                         <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'new_posting'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'new_posting' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>New Posting</a>
                                     )}
                                     
-                                    {/* Reports are accessible by Recruitment Manager, Admin */}
-                                    {(isRecruitmentManager || isAdmin) && (
+                                    {/* Reports are accessible by Recruitment Manager, Admin, Data Viewer, Data Entry & Viewer */}
+                                    {(isRecruitmentManager || isAdmin || isDataViewer) && (
                                         <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'reports'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'reports' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Reports</a>
                                     )}
 
@@ -1689,7 +1718,7 @@
                                 <Dropdown 
                                     width="80"
                                     trigger={
-                                        <button className="relative text-gray-500 hover:text-gray-700">
+                                        <button className="relative text-gray-500 hover:text-gray-700" aria-label="Notifications">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                                             {notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
                                         </button>
@@ -1711,7 +1740,7 @@
                                 </Dropdown>
 
                                 <Dropdown trigger={
-                                    <button className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <button className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" aria-label="User menu">
                                         <span className="sr-only">Open user menu</span>
                                         <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-gray-600"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
                                     </button>
@@ -1741,7 +1770,7 @@
                 // Access control for other pages
                 const isAdmin = user?.userRole?.includes('Admin');
                 const isDataEntry = user?.backendOfficeRole?.includes('Data Entry') || user?.backendOfficeRole?.includes('Data Entry & Viewer');
-                const isDataViewer = user?.backendOfficeRole?.includes('Data Viewer') || user?.backendOfficeRole?.includes('Data Entry & Viewer') || user?.backendOfficeRole?.includes('Recruitment Manager') || user?.backendOfficeRole?.includes('Recruitment Team');
+                const isDataViewer = user?.backendOfficeRole?.includes('Data Viewer') || user?.backendOfficeRole?.includes('Data Entry') || user?.backendOfficeRole?.includes('Data Entry & Viewer') || user?.backendOfficeRole?.includes('Recruitment Manager') || user?.backendOfficeRole?.includes('Recruitment Team'); // Data Entry can also view dashboards
                 const isRecruitmentManager = user?.backendOfficeRole?.includes('Recruitment Manager');
 
                 switch(currentPage.type) {
@@ -1752,7 +1781,7 @@
                         if (isDataEntry || isAdmin) return <JobPostingFormPage onFormSubmit={() => setCurrentPage({type: 'dashboard', key: 'taprootVMSDisplay'})} />;
                         return <div className="text-center text-red-500 p-8">Permission Denied: You do not have permission to add new postings.</div>;
                     case 'reports': 
-                        if (isRecruitmentManager || isAdmin) return <ReportsPage />;
+                        if (isRecruitmentManager || isAdmin || isDataViewer) return <ReportsPage />; // Data Viewer can also view reports
                         return <div className="text-center text-red-500 p-8">Permission Denied: You do not have access to reports.</div>;
                     case 'admin': 
                         if (isAdmin) return <AdminPage />;
