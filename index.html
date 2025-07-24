@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -107,27 +106,13 @@
         // --- Configuration & Utilities -----------------------------------------------------
         const API_BASE_URL = '/api'; // Assumes proxy or same-domain deployment
         
-        // Expanded dashboard configs to match all backend function keys
+        // Updated DASHBOARD_CONFIGS to display only the specified dashboards
         const DASHBOARD_CONFIGS = {
             'ecaltVMSDisplay': { title: 'Eclat VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'All' },
             'taprootVMSDisplay': { title: 'Taproot VMS', companyName: 'Taproot Solutions INC', postingFrom: 'All' },
             'michiganDisplay': { title: 'Michigan VMS', companyName: 'Taproot Solutions INC', postingFrom: 'State Of Michigan' },
             'EclatTexasDisplay': { title: 'Eclat Texas VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'State Of Texas' },
             'TaprootTexasDisplay': { title: 'Taproot Texas VMS', companyName: 'Taproot Solutions INC', postingFrom: 'State Of Texas' },
-            'taprootNewJerseyDisplay': { title: 'Taproot NJ VMS', companyName: 'Taproot Solutions INC', postingFrom: 'State Of New Jersey' },
-            'taprootNorthCarolinaDisplay': { title: 'Taproot NC VMS', companyName: 'Taproot Solutions INC', postingFrom: 'North Carolina' },
-            'taprootGeorgiaDisplay': { title: 'Taproot GA VMS', companyName: 'Taproot Solutions INC', postingFrom: 'Georgia' },
-            'taprootIowaDisplay': { title: 'Taproot IA VMS', companyName: 'Taproot Solutions INC', postingFrom: 'Iowa' },
-            'taprootConnecticutDisplay': { title: 'Taproot CT VMS', companyName: 'Taproot Solutions INC', postingFrom: 'Connecticut' },
-            'taprootVirginiaDisplay': { title: 'Taproot VA VMS', companyName: 'Taproot Solutions INC', postingFrom: 'Virginia' },
-            'taprootIndianaDisplay': { title: 'Taproot IN VMS', companyName: 'Taproot Solutions INC', postingFrom: 'Indiana' },
-            'eclatNewJerseyDisplay': { title: 'Eclat NJ VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'State Of New Jersey' },
-            'eclatNorthCarolinaDisplay': { title: 'Eclat NC VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'North Carolina' },
-            'eclatGeorgiaDisplay': { title: 'Eclat GA VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'Georgia' },
-            'eclatIowaDisplay': { title: 'Eclat IA VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'Iowa' },
-            'eclatConnecticutDisplay': { title: 'Eclat CT VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'Connecticut' },
-            'eclatVirginiaDisplay': { title: 'Eclat VA VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'Virginia' },
-            'eclatIndianaDisplay': { title: 'Eclat IN VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'Indiana' },
         };
 
         const EDITABLE_COLUMNS = ['Working By', '# Submitted', 'Remarks', '1st Candidate Name', '2nd Candidate Name', '3rd Candidate Name'];
@@ -663,6 +648,13 @@
             const [error, setError] = useState('');
             const [success, setSuccess] = useState('');
 
+            // Predefined options for 'Posting From'
+            const postingFromOptions = [
+                'State Of Texas', 'State Of Michigan', 'State of North Carolina', 
+                'State Of New Jersey', 'State Of Georgia', 'State Of Iowa', 
+                'State Of Connecticut', 'State Of Virginia', 'State Of Indiana'
+            ];
+
             const formFields = [
                 { name: 'Posting ID', type: 'text', required: true },
                 { name: 'Posting Title', type: 'text', required: true },
@@ -672,7 +664,8 @@
                 { name: 'Max C2C Rate', type: 'text', required: true },
                 { name: 'Client Name', type: 'text', required: true },
                 { name: 'Company Name', type: 'select', required: true, options: ['Eclat Solutions LLC', 'Taproot Solutions INC'] },
-                { name: 'Posting From', type: 'text', required: true },
+                { name: 'Posting From', type: 'select', required: true, options: postingFromOptions }, // Changed to select with predefined options
+                { name: 'Work Location', type: 'text', required: true }, // NEW: Work Location field
                 { name: 'Work Position Type', type: 'text', required: true },
                 { name: 'Required Skill Set', type: 'textarea', required: true },
                 { name: 'Any Required Certificates', type: 'textarea' },
@@ -995,21 +988,37 @@
                 const headerRenames = { 'Last Submission Date': 'Deadline', 'No. of Resumes Submitted': '# Submitted' };
                 const originalHeaderMap = header.reduce((acc, h, i) => ({ ...acc, [h]: i }), {});
                 let transformedHeader = header.map(h => headerRenames[h] || h);
+
                 const clientIndex = originalHeaderMap['Client Name'];
                 const postingFromIndex = originalHeaderMap['Posting From'];
+                const workLocationIndex = originalHeaderMap['Work Location']; // NEW: Get Work Location Index
+
                 const clientInfoIndex = transformedHeader.indexOf('Client Name');
-                if (clientIndex !== undefined && postingFromIndex !== undefined && clientInfoIndex !== -1) {
+
+                // Merge Client Name, Posting From, and Work Location into "Client Info"
+                if (clientIndex !== undefined && postingFromIndex !== undefined && workLocationIndex !== undefined && clientInfoIndex !== -1) {
                     transformedHeader[clientInfoIndex] = 'Client Info';
-                    transformedHeader = transformedHeader.filter(h => h !== 'Posting From');
+                    transformedHeader = transformedHeader.filter(h => h !== 'Posting From' && h !== 'Work Location'); // Remove original columns
                 }
+                
                 transformedHeader = transformedHeader.filter(h => h !== 'Company Name');
+
                 const transformedRows = rows.map(row => {
                     const newRow = [];
                     transformedHeader.forEach(newHeaderName => {
                         if (newHeaderName === 'Client Info') {
                             const client = row[clientIndex] || '';
-                            const location = row[postingFromIndex] || '';
-                            newRow.push((client && location && location !== 'All') ? `${client} / ${location}` : (client || location));
+                            const postingFrom = row[postingFromIndex] || '';
+                            const workLocation = row[workLocationIndex] || ''; // NEW: Get Work Location
+
+                            let clientInfo = client;
+                            if (postingFrom && postingFrom !== 'All' && postingFrom !== 'Need To Update') {
+                                clientInfo += ` / ${postingFrom}`;
+                            }
+                            if (workLocation && workLocation !== 'Need To Update') {
+                                clientInfo += ` (${workLocation})`;
+                            }
+                            newRow.push(clientInfo);
                         } else {
                             const originalHeaderName = Object.keys(headerRenames).find(key => headerRenames[key] === newHeaderName) || newHeaderName;
                             const originalIndex = originalHeaderMap[originalHeaderName];
@@ -1318,6 +1327,184 @@
             </Modal>
         );
 
+        // --- NEW: Messages Page Component ---
+        const MessagesPage = () => {
+            const { user } = useAuth();
+            const [users, setUsers] = useState([]);
+            const [selectedRecipient, setSelectedRecipient] = useState(null);
+            const [messages, setMessages] = useState([]);
+            const [newMessage, setNewMessage] = useState('');
+            const [loadingUsers, setLoadingUsers] = useState(true);
+            const [loadingMessages, setLoadingMessages] = useState(false);
+            const [error, setError] = useState('');
+            const messagesEndRef = useRef(null); // Ref for scrolling to the bottom of messages
+
+            // Fetch all users for recipient selection
+            useEffect(() => {
+                const fetchUsers = async () => {
+                    setLoadingUsers(true);
+                    try {
+                        const result = await api.getUsers(user.userIdentifier);
+                        if (result.success) {
+                            // Filter out the current user from the list of recipients
+                            setUsers(result.users.filter(u => u.username !== user.userIdentifier));
+                        } else {
+                            setError(result.message);
+                        }
+                    } catch (err) {
+                        setError(`Failed to fetch users: ${err.message}`);
+                    } finally {
+                        setLoadingUsers(false);
+                    }
+                };
+                fetchUsers();
+            }, [user.userIdentifier]);
+
+            // Fetch messages for the selected recipient
+            useEffect(() => {
+                let messagePollingInterval;
+                const fetchMessages = async () => {
+                    if (!selectedRecipient) {
+                        setMessages([]);
+                        return;
+                    }
+                    setLoadingMessages(true);
+                    setError('');
+                    try {
+                        const result = await api.getMessages(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
+                        if (result.success) {
+                            setMessages(result.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
+                        } else {
+                            setError(result.message);
+                        }
+                    } catch (err) {
+                        setError(`Failed to fetch messages: ${err.message}`);
+                    } finally {
+                        setLoadingMessages(false);
+                    }
+                };
+
+                fetchMessages(); // Initial fetch
+                messagePollingInterval = setInterval(fetchMessages, 5000); // Poll every 5 seconds
+
+                return () => clearInterval(messagePollingInterval); // Cleanup on unmount or recipient change
+            }, [selectedRecipient, user.userIdentifier]);
+
+            // Scroll to the bottom of the messages whenever messages update
+            useEffect(() => {
+                if (messagesEndRef.current) {
+                    messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+                }
+            }, [messages]);
+
+            const handleSendMessage = async (e) => {
+                e.preventDefault();
+                if (!newMessage.trim() || !selectedRecipient) return;
+
+                const messageToSend = newMessage.trim();
+                setNewMessage(''); // Clear input immediately
+
+                try {
+                    // Optimistically add message to UI
+                    const tempMessage = {
+                        sender: user.userIdentifier,
+                        recipient: selectedRecipient.username,
+                        messageContent: messageToSend,
+                        timestamp: new Date().toISOString(),
+                        id: Date.now() // Temporary ID
+                    };
+                    setMessages(prev => [...prev, tempMessage]);
+
+                    const result = await api.saveMessage(user.userIdentifier, selectedRecipient.username, messageToSend, user.userIdentifier);
+                    if (!result.success) {
+                        setError(result.message);
+                        // Optional: Revert optimistic update if save fails
+                        setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+                    }
+                } catch (err) {
+                    setError(`Failed to send message: ${err.message}`);
+                    // Optional: Revert optimistic update if send fails
+                    setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+                }
+            };
+
+            return (
+                <div className="space-y-6">
+                    <h1 className="text-3xl font-bold text-gray-800">Internal Messaging</h1>
+                    <div className="flex flex-col md:flex-row bg-white rounded-lg shadow-lg h-[70vh]">
+                        {/* User List Sidebar */}
+                        <div className="w-full md:w-1/4 border-r border-gray-200 p-4 overflow-y-auto">
+                            <h2 className="text-lg font-semibold text-gray-700 mb-4">Users</h2>
+                            {loadingUsers && <Spinner size="6" />}
+                            {error && <div className="text-red-500 text-sm">{error}</div>}
+                            {!loadingUsers && users.length === 0 && <p className="text-gray-500 text-sm">No other users found.</p>}
+                            <ul className="space-y-2">
+                                {users.map(u => (
+                                    <li key={u.username}>
+                                        <button 
+                                            onClick={() => setSelectedRecipient(u)}
+                                            className={`w-full text-left p-3 rounded-md transition-colors duration-200 
+                                                        ${selectedRecipient?.username === u.username ? 'bg-indigo-100 text-indigo-800 font-semibold' : 'hover:bg-gray-100 text-gray-700'}`}
+                                        >
+                                            <p className="font-medium">{u.displayName}</p>
+                                            <p className="text-xs text-gray-500 break-all">{u.userIdentifier}</p> {/* Display full user ID */}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        {/* Chat Window */}
+                        <div className="flex-1 flex flex-col">
+                            {selectedRecipient ? (
+                                <>
+                                    <div className="p-4 border-b border-gray-200 bg-gray-50">
+                                        <h2 className="text-lg font-semibold text-gray-800">Chat with {selectedRecipient.displayName}</h2>
+                                        <p className="text-sm text-gray-500 break-all">ID: {selectedRecipient.userIdentifier}</p>
+                                    </div>
+                                    <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-gray-50">
+                                        {loadingMessages && <div className="flex justify-center"><Spinner size="6" /></div>}
+                                        {messages.length === 0 && !loadingMessages && <p className="text-gray-500 text-center">No messages yet. Start a conversation!</p>}
+                                        {messages.map((msg, index) => (
+                                            <div key={msg.id || index} className={`flex ${msg.sender === user.userIdentifier ? 'justify-end' : 'justify-start'}`}>
+                                                <div className={`max-w-xs p-3 rounded-lg shadow-md ${msg.sender === user.userIdentifier ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-800'}`}>
+                                                    <p className="text-xs font-semibold mb-1">{msg.sender === user.userIdentifier ? 'You' : selectedRecipient.displayName}</p>
+                                                    <p>{msg.messageContent}</p>
+                                                    <p className="text-right text-xs mt-1 opacity-75">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <div ref={messagesEndRef} /> {/* Scroll to this element */}
+                                    </div>
+                                    <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 bg-white flex items-center space-x-2">
+                                        <input 
+                                            type="text" 
+                                            value={newMessage} 
+                                            onChange={(e) => setNewMessage(e.target.value)} 
+                                            placeholder="Type your message..." 
+                                            className="flex-1 border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            disabled={loadingMessages}
+                                        />
+                                        <button 
+                                            type="submit" 
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md disabled:bg-gray-400"
+                                            disabled={!newMessage.trim() || loadingMessages}
+                                        >
+                                            Send
+                                        </button>
+                                    </form>
+                                </>
+                            ) : (
+                                <div className="flex-1 flex items-center justify-center text-gray-500">
+                                    Select a user to start a conversation.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         // --- Main App Structure (Enhanced) ---------------------------------------------------
         const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
             const isAdmin = !!user?.userRole?.includes('Admin');
@@ -1363,6 +1550,7 @@
                                     </Dropdown>
                                      <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'new_posting'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'new_posting' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>New Posting</a>
                                     <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'reports'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'reports' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Reports</a>
+                                    <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'messages'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'messages' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Messages</a> {/* NEW: Messages Link */}
                                     {isAdmin && <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'admin'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'admin' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Admin</a>}
                                 </nav>
                             </div>
@@ -1421,6 +1609,7 @@
                     case 'new_posting': return <JobPostingFormPage onFormSubmit={() => setCurrentPage({type: 'dashboard', key: 'taprootVMSDisplay'})} />;
                     case 'reports': return <ReportsPage />;
                     case 'admin': return <AdminPage />;
+                    case 'messages': return <MessagesPage />; {/* NEW: Messages Page Route */}
                     default: return <HomePage />;
                 }
             };
