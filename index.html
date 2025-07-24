@@ -10,7 +10,7 @@
     
     <!-- React and Babel for JSX transpilation -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- Chart.js for reports -->
@@ -98,6 +98,17 @@
         // ===================================================================================
         // VMS Dashboard - React Application - FULLY INTEGRATED
         // ===================================================================================
+
+        // Global error handler for uncaught exceptions
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error("Global uncaught error:", { message, source, lineno, colno, error });
+            // Display a user-friendly message on the page
+            const rootElement = document.getElementById('root');
+            if (rootElement) {
+                rootElement.innerHTML = '<div style="text-align: center; color: red; padding: 20px; font-family: \'Inter\', sans-serif;">An unexpected error occurred. Please refresh the page or contact support. Details might be in the browser console.</div>';
+            }
+            return true; // Prevent default error handling (e.g., browser's console message)
+        };
 
         const { useState, useEffect, createContext, useContext, useReducer, useMemo, useCallback, useRef } = React;
         const { createRoot } = ReactDOM;
@@ -1341,22 +1352,22 @@
                         <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
                     </div>
                     <div className="bg-white p-4 rounded-lg shadow-sm border flex flex-wrap items-center justify-between gap-4">
-                        <div className="flex items-center space-x-2">
-                            <input type="text" placeholder="Global Search..." value={generalFilter} onChange={e => setGeneralFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md w-64"/>
+                        <div className="flex flex-wrap items-center gap-4">
+                            <select name="sheetKey" value={filters.sheetKey} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-md" disabled={!canViewReports}>
+                                {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
+                                    <option key={key} value={key}>{config.title}</option>
+                                ))}
+                            </select>
+                            <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-md" disabled={!canViewReports}/>
+                            <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-md" disabled={!canViewReports}/>
                         </div>
                         <div className="flex items-center space-x-2">
-                            <button onClick={loadData} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">Refresh</button>
-                            <button onClick={handleSaveChanges} disabled={Object.keys(unsavedChanges).length === 0 || !canEditDashboard} className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:bg-gray-400">Save Changes</button>
-                            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md">
-                                <option value="">All Statuses</option>
-                                <option value="Open">Open</option>
-                                <option value="Closed">Closed</option>
-                            </select>
-                            <Dropdown trigger={<button className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">Options</button>}>
-                                <a href="#" onClick={(e) => {e.preventDefault(); setColumnModalOpen(true)}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Column Settings</a>
-                                <a href="#" onClick={downloadCsv} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Download CSV</a>
-                                <a href="#" onClick={downloadPdf} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Download PDF</a>
-                            </Dropdown>
+                            <button onClick={generateReport} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700" disabled={loading || !canViewReports}>
+                                {loading ? <Spinner size="5" /> : 'Generate Report'}
+                            </button>
+                             <button onClick={() => setEmailModalOpen(true)} className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600" disabled={!reportData || !canEmailReports}>
+                                Email Report
+                            </button>
                         </div>
                     </div>
                     {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
@@ -1831,8 +1842,17 @@
             return <MainApp />;
         };
 
-        const root = createRoot(document.getElementById('root'));
-        root.render(<AuthProvider><App /></AuthProvider>);
+        try {
+            const root = createRoot(document.getElementById('root'));
+            root.render(<AuthProvider><App /></AuthProvider>);
+        } catch (e) {
+            console.error("Error rendering React app:", e);
+            // Fallback UI to display if React app fails to render
+            const rootElement = document.getElementById('root');
+            if (rootElement) {
+                rootElement.innerHTML = '<div style="text-align: center; color: red; padding: 20px; font-family: \'Inter\', sans-serif;">Failed to load application. Please check the console for more details.</div>';
+            }
+        }
 
     </script>
 </body>
