@@ -416,32 +416,77 @@
             );
         };
 
-        // --- User Management Modals (No Changes) ---
+        // --- User Management Modals ---
         const UserFormModal = ({ isOpen, onClose, onSave, userToEdit }) => {
-            const [formData, setFormData] = useState({ displayName: '', username: '', password: '', userRole: 'User', backendOfficeRole: 'Recruiter' });
+            // Define available user roles and backend office roles
+            const userRoles = ['Admin', 'Standard User']; // 'Standard User' replaces generic 'User'
+            const backendOfficeRoles = [
+                'Admin', 
+                'Data Entry', 
+                'Data Viewer', 
+                'Data Entry & Viewer', 
+                'Recruitment Manager', 
+                'Recruitment Team'
+            ];
+
+            const [formData, setFormData] = useState({ 
+                displayName: '', 
+                username: '', 
+                password: '', 
+                userRole: 'Standard User', // Default to Standard User
+                backendOfficeRole: 'Recruitment Team' // Default to a basic role
+            });
             const [error, setError] = useState('');
             const [loading, setLoading] = useState(false);
+
             useEffect(() => {
-                if (userToEdit) setFormData({ displayName: userToEdit.displayName || '', username: userToEdit.username || '', password: '', userRole: userToEdit.userRole || 'User', backendOfficeRole: userToEdit.backendOfficeRole || 'Recruiter' });
-                else setFormData({ displayName: '', username: '', password: '', userRole: 'User', backendOfficeRole: 'Recruiter' });
+                if (userToEdit) {
+                    setFormData({ 
+                        displayName: userToEdit.displayName || '', 
+                        username: userToEdit.username || '', 
+                        password: '', // Password is not pre-filled for security
+                        userRole: userToEdit.userRole || 'Standard User', 
+                        backendOfficeRole: userToEdit.backendOfficeRole || 'Recruitment Team' 
+                    });
+                } else {
+                    setFormData({ 
+                        displayName: '', 
+                        username: '', 
+                        password: '', 
+                        userRole: 'Standard User', 
+                        backendOfficeRole: 'Recruitment Team' 
+                    });
+                }
                 setError('');
             }, [userToEdit, isOpen]);
+
             const handleChange = (e) => {
                 const { id, value } = e.target;
                 setFormData(prev => ({ ...prev, [id]: value }));
             };
+
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 setError('');
-                if (!formData.displayName || !formData.username || (!userToEdit && !formData.password)) { setError("Please fill in all required fields (Display Name, Username, and Password for new users)."); return; }
-                if (!userToEdit && formData.password.length < 6) { setError("Password must be at least 6 characters long."); return; }
+                if (!formData.displayName || !formData.username || (!userToEdit && !formData.password)) { 
+                    setError("Please fill in all required fields (Display Name, Username, and Password for new users)."); 
+                    return; 
+                }
+                if (!userToEdit && formData.password.length < 6) { 
+                    setError("Password must be at least 6 characters long."); 
+                    return; 
+                }
                 setLoading(true);
                 try {
                     await onSave(formData);
                     onClose();
-                } catch (err) { setError(`Failed to save user: ${err.message}`); } 
-                finally { setLoading(false); }
+                } catch (err) { 
+                    setError(`Failed to save user: ${err.message}`); 
+                } finally { 
+                    setLoading(false); 
+                }
             };
+
             return (
                 <Modal isOpen={isOpen} onClose={onClose} title={userToEdit ? "Edit User" : "Add New User"} size="lg">
                     {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
@@ -464,16 +509,13 @@
                         <div>
                             <label htmlFor="userRole" className="block text-sm font-medium text-gray-700">User Role</label>
                             <select id="userRole" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" value={formData.userRole} onChange={handleChange} required>
-                                <option value="User">User</option>
-                                <option value="Admin">Admin</option>
+                                {userRoles.map(role => <option key={role} value={role}>{role}</option>)}
                             </select>
                         </div>
                         <div>
                             <label htmlFor="backendOfficeRole" className="block text-sm font-medium text-gray-700">Backend Office Role</label>
                             <select id="backendOfficeRole" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" value={formData.backendOfficeRole} onChange={handleChange} required>
-                                <option value="Recruiter">Recruiter</option>
-                                <option value="Manager">Manager</option>
-                                <option value="Admin">Admin</option>
+                                {backendOfficeRoles.map(role => <option key={role} value={role}>{role}</option>)}
                             </select>
                         </div>
                         <div className="flex justify-end space-x-2">
@@ -678,6 +720,18 @@
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 setError(''); setSuccess(''); setLoading(true);
+
+                // Check for Data Entry or Admin role for submitting new postings
+                const canAddPosting = user.userRole.includes('Admin') || 
+                                     user.backendOfficeRole.includes('Data Entry') ||
+                                     user.backendOfficeRole.includes('Data Entry & Viewer');
+
+                if (!canAddPosting) {
+                    setError("You do not have permission to add new job postings.");
+                    setLoading(false);
+                    return;
+                }
+
                 try {
                     const result = await api.processJobPosting(formData, user.userIdentifier);
                     if (result.success) {
@@ -740,12 +794,39 @@
             });
             const [isEmailModalOpen, setEmailModalOpen] = useState(false);
 
+            // Check for Reports access
+            const canViewReports = user.userRole.includes('Admin') || 
+                                   user.backendOfficeRole.includes('Recruitment Manager');
+
+            // Check for Email Reports access
+            const canEmailReports = user.userRole.includes('Admin') ||
+                                    user.backendOfficeRole.includes('Data Entry') ||
+                                    user.backendOfficeRole.includes('Data Entry & Viewer') ||
+                                    user.backendOfficeRole.includes('Recruitment Manager');
+
+            useEffect(() => {
+                if (!canViewReports) {
+                    setError("You do not have permission to view reports.");
+                    setLoading(false);
+                    return;
+                }
+                // Initial report generation if allowed
+                if (!reportData && !loading) { // Only generate if not already loaded or loading
+                    generateReport();
+                }
+            }, [canViewReports]); // Depend on canViewReports to trigger initial fetch
+
             const handleFilterChange = (e) => {
                 setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
             };
 
             const generateReport = async () => {
                 setLoading(true); setError(''); setReportData(null);
+                if (!canViewReports) {
+                    setError("You do not have permission to generate reports.");
+                    setLoading(false);
+                    return;
+                }
                 try {
                     const result = await api.getReportData(filters.sheetKey, filters.startDate, filters.endDate, user.userIdentifier);
                     if (result.success) {
@@ -759,7 +840,7 @@
                     setLoading(false);
                 }
             };
-
+            
             const chartOptions = {
                 responsive: true,
                 plugins: { legend: { position: 'top' }, title: { display: true, text: 'Chart' } }
@@ -784,26 +865,26 @@
                     <h1 className="text-3xl font-bold text-gray-800">Reports</h1>
                     <div className="bg-white p-4 rounded-lg shadow-sm border flex flex-wrap items-center justify-between gap-4">
                         <div className="flex flex-wrap items-center gap-4">
-                            <select name="sheetKey" value={filters.sheetKey} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-md">
+                            <select name="sheetKey" value={filters.sheetKey} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-md" disabled={!canViewReports}>
                                 {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
                                     <option key={key} value={key}>{config.title}</option>
                                 ))}
                             </select>
-                            <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-md"/>
-                            <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-md"/>
+                            <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-md" disabled={!canViewReports}/>
+                            <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-md" disabled={!canViewReports}/>
                         </div>
                         <div className="flex items-center space-x-2">
-                            <button onClick={generateReport} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700" disabled={loading}>
+                            <button onClick={generateReport} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700" disabled={loading || !canViewReports}>
                                 {loading ? 'Generating...' : 'Generate Report'}
                             </button>
-                             <button onClick={() => setEmailModalOpen(true)} className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600" disabled={!reportData}>
+                             <button onClick={() => setEmailModalOpen(true)} className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600" disabled={!reportData || !canEmailReports}>
                                 Email Report
                             </button>
                         </div>
                     </div>
                     {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
                     {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
-                    {reportData && (
+                    {reportData && canViewReports && (
                         <div className="space-y-8">
                             {/* Summary Cards */}
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-center">
@@ -964,6 +1045,12 @@
             const [modalState, setModalState] = useState({ type: null, job: null });
             const [isColumnModalOpen, setColumnModalOpen] = useState(false);
             const [columnFilters, setColumnFilters] = useState({});
+            
+            // Determine if the user can edit the dashboard
+            const canEditDashboard = user.userRole.includes('Admin') ||
+                                     user.backendOfficeRole.includes('Data Viewer') ||
+                                     user.backendOfficeRole.includes('Data Entry & Viewer');
+
             const userPrefs = useMemo(() => {
                 const safeParse = (jsonString, defaultValue = []) => {
                     if (typeof jsonString === 'string') { try { const parsed = JSON.parse(jsonString); return Array.isArray(parsed) ? parsed : defaultValue; } catch (e) { return defaultValue; } }
@@ -1060,11 +1147,19 @@
             }, [transformedData, userPrefs]);
             const handleSort = (key, direction) => setSortConfig({ key, direction });
             const handleCellEdit = (rowIndex, cellIndex, value) => {
+                if (!canEditDashboard) { // Prevent editing if not authorized
+                    setError("You do not have permission to edit dashboard data.");
+                    return;
+                }
                 const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
                 const headerName = displayHeader[cellIndex];
                 setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: value } }));
             };
             const handleSaveChanges = async () => {
+                if (!canEditDashboard) { // Prevent saving if not authorized
+                    setError("You do not have permission to save dashboard changes.");
+                    return;
+                }
                 const headerToBackendKeyMap = { 'Working By': 'workingBy', '# Submitted': 'noOfResumesSubmitted', 'Remarks': 'remarks', '1st Candidate Name': 'candidateName1', '2nd Candidate Name': 'candidateName2', '3rd Candidate Name': 'candidateName3' };
                 const updates = Object.entries(unsavedChanges).map(([postingId, changes]) => {
                     const backendChanges = {};
@@ -1087,6 +1182,11 @@
                 finally { setLoading(false); }
             };
             const handleAction = async (actionType, job) => {
+                if (!canEditDashboard) { // Prevent actions if not authorized
+                    setError("You do not have permission to perform this action on job postings.");
+                    setModalState({ type: null, job: null });
+                    return;
+                }
                 setLoading(true);
                 const postingId = job['Posting ID'];
                 try {
@@ -1201,7 +1301,7 @@
                         </div>
                         <div className="flex items-center space-x-2">
                             <button onClick={loadData} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">Refresh</button>
-                            <button onClick={handleSaveChanges} disabled={Object.keys(unsavedChanges).length === 0} className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:bg-gray-400">Save Changes</button>
+                            <button onClick={handleSaveChanges} disabled={Object.keys(unsavedChanges).length === 0 || !canEditDashboard} className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:bg-gray-400">Save Changes</button>
                             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md">
                                 <option value="">All Statuses</option>
                                 <option value="Open">Open</option>
@@ -1240,7 +1340,10 @@
                                     {filteredAndSortedData.map((row, rowIndex) => (
                                         <tr key={row[0] || rowIndex} className="bg-white border-b hover:bg-gray-50">
                                             {row.map((cell, cellIndex) => {
-                                                const headerName = displayHeader[cellIndex]; const isEditable = EDITABLE_COLUMNS.includes(headerName); const isDate = DATE_COLUMNS.includes(headerName);
+                                                const headerName = displayHeader[cellIndex]; 
+                                                // Only allow editing if canEditDashboard is true AND the column is editable
+                                                const isEditable = canEditDashboard && EDITABLE_COLUMNS.includes(headerName); 
+                                                const isDate = DATE_COLUMNS.includes(headerName);
                                                 const postingId = row[displayHeader.indexOf('Posting ID')]; const isModified = unsavedChanges[postingId] && unsavedChanges[postingId][headerName] !== undefined;
                                                 const deadlineClass = headerName === 'Deadline' ? getDeadlineClass(cell) : '';
                                                 return (
@@ -1251,7 +1354,14 @@
                                                     </td>
                                                 );
                                             })}
-                                            <td className="px-4 py-3"><ActionMenu job={row} onAction={(type, job) => setModalState({type, job: jobToObject(job)})} /></td>
+                                            {/* Action menu is only available if canEditDashboard is true */}
+                                            <td className="px-4 py-3">
+                                                {canEditDashboard ? (
+                                                    <ActionMenu job={row} onAction={(type, job) => setModalState({type, job: jobToObject(job)})} />
+                                                ) : (
+                                                    <button className="text-gray-400 p-1 rounded-full cursor-not-allowed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -1507,7 +1617,11 @@
 
         // --- Main App Structure (Enhanced) ---------------------------------------------------
         const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
-            const isAdmin = !!user?.userRole?.includes('Admin');
+            const isAdmin = user?.userRole?.includes('Admin');
+            const isDataEntry = user?.backendOfficeRole?.includes('Data Entry') || user?.backendOfficeRole?.includes('Data Entry & Viewer');
+            const isDataViewer = user?.backendOfficeRole?.includes('Data Viewer') || user?.backendOfficeRole?.includes('Data Entry & Viewer') || user?.backendOfficeRole?.includes('Recruitment Manager') || user?.backendOfficeRole?.includes('Recruitment Team');
+            const isRecruitmentManager = user?.backendOfficeRole?.includes('Recruitment Manager');
+
             const [notifications, setNotifications] = useState([]);
             const [error, setError] = useState('');
 
@@ -1542,15 +1656,32 @@
                             <div className="flex items-center space-x-8">
                                 <h1 className="text-2xl font-bold text-indigo-600">VMS Portal</h1>
                                 <nav className="hidden md:flex space-x-1">
+                                    {/* Home is accessible by all */}
                                     <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'home'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'home' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Home</a>
-                                    <Dropdown trigger={<button className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'dashboard' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Dashboards</button>}>
-                                        {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
-                                            <a href="#" key={key} onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'dashboard', key})}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{config.title}</a>
-                                        ))}
-                                    </Dropdown>
-                                     <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'new_posting'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'new_posting' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>New Posting</a>
-                                    <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'reports'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'reports' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Reports</a>
-                                    <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'messages'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'messages' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Messages</a> {/* NEW: Messages Link */}
+                                    
+                                    {/* Dashboards are accessible by Data Viewer, Recruitment Manager, Recruitment Team, Admin */}
+                                    {(isDataViewer || isAdmin) && (
+                                        <Dropdown trigger={<button className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'dashboard' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Dashboards</button>}>
+                                            {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
+                                                <a href="#" key={key} onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'dashboard', key})}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{config.title}</a>
+                                            ))}
+                                        </Dropdown>
+                                    )}
+
+                                    {/* New Posting is accessible by Data Entry, Data Entry & Viewer, Admin */}
+                                    {(isDataEntry || isAdmin) && (
+                                        <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'new_posting'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'new_posting' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>New Posting</a>
+                                    )}
+                                    
+                                    {/* Reports are accessible by Recruitment Manager, Admin */}
+                                    {(isRecruitmentManager || isAdmin) && (
+                                        <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'reports'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'reports' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Reports</a>
+                                    )}
+
+                                    {/* Messages are accessible by all authenticated users */}
+                                    <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'messages'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'messages' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Messages</a>
+                                    
+                                    {/* Admin is accessible only by Admin */}
                                     {isAdmin && <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'admin'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'admin' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Admin</a>}
                                 </nav>
                             </div>
@@ -1603,13 +1734,29 @@
             const { user, logout } = useAuth();
             
             const renderPage = () => {
+                // All users have home access
+                if (currentPage.type === 'home') return <HomePage />;
+                if (currentPage.type === 'messages') return <MessagesPage />;
+
+                // Access control for other pages
+                const isAdmin = user?.userRole?.includes('Admin');
+                const isDataEntry = user?.backendOfficeRole?.includes('Data Entry') || user?.backendOfficeRole?.includes('Data Entry & Viewer');
+                const isDataViewer = user?.backendOfficeRole?.includes('Data Viewer') || user?.backendOfficeRole?.includes('Data Entry & Viewer') || user?.backendOfficeRole?.includes('Recruitment Manager') || user?.backendOfficeRole?.includes('Recruitment Team');
+                const isRecruitmentManager = user?.backendOfficeRole?.includes('Recruitment Manager');
+
                 switch(currentPage.type) {
-                    case 'home': return <HomePage />;
-                    case 'dashboard': return <DashboardPage sheetKey={currentPage.key} />;
-                    case 'new_posting': return <JobPostingFormPage onFormSubmit={() => setCurrentPage({type: 'dashboard', key: 'taprootVMSDisplay'})} />;
-                    case 'reports': return <ReportsPage />;
-                    case 'admin': return <AdminPage />;
-                    case 'messages': return <MessagesPage />; {/* NEW: Messages Page Route */}
+                    case 'dashboard': 
+                        if (isDataViewer || isAdmin) return <DashboardPage sheetKey={currentPage.key} />;
+                        return <div className="text-center text-red-500 p-8">Permission Denied: You do not have access to dashboards.</div>;
+                    case 'new_posting': 
+                        if (isDataEntry || isAdmin) return <JobPostingFormPage onFormSubmit={() => setCurrentPage({type: 'dashboard', key: 'taprootVMSDisplay'})} />;
+                        return <div className="text-center text-red-500 p-8">Permission Denied: You do not have permission to add new postings.</div>;
+                    case 'reports': 
+                        if (isRecruitmentManager || isAdmin) return <ReportsPage />;
+                        return <div className="text-center text-red-500 p-8">Permission Denied: You do not have access to reports.</div>;
+                    case 'admin': 
+                        if (isAdmin) return <AdminPage />;
+                        return <div className="text-center text-red-500 p-8">Permission Denied: You do not have administrative access.</div>;
                     default: return <HomePage />;
                 }
             };
