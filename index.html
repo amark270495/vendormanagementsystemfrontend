@@ -419,12 +419,12 @@
         // --- User Management Modals ---
         const UserFormModal = ({ isOpen, onClose, onSave, userToEdit }) => {
             // Define available user roles and backend office roles
-            const userRoles = ['Admin', 'Standard User']; // 'Standard User' replaces generic 'User'
+            const userRoles = ['Admin', 'Standard User', 'Data Entry', 'Data Viewer', 'Data Entry & Viewer', ]; // 'Standard User' replaces generic 'User'
             const backendOfficeRoles = [
-                'Admin', 
-                'Data Entry', 
-                'Data Viewer', 
-                'Data Entry & Viewer', 
+                'Operations Admin', 
+                'Operations Manager', 
+                'Development Manager', 
+                'Development Executive', 
                 'Recruitment Manager', 
                 'Recruitment Team'
             ];
