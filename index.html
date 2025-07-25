@@ -852,12 +852,19 @@
                     setLoading(false);
                     return;
                 }
+                // Safeguard: Ensure user.userIdentifier is available before making the call
+                if (!user?.userIdentifier) {
+                    setError("User identifier is missing. Please log in again.");
+                    setLoading(false);
+                    console.error("Attempted to generate report without user.userIdentifier."); // Log for debugging
+                    return;
+                }
+
+                console.log("Attempting to fetch report data with user.userIdentifier:", user.userIdentifier); // Added logging
                 try {
                     const result = await api.getReportData(filters.sheetKey, filters.startDate, filters.endDate, user.userIdentifier);
                     if (result.success) {
-                        // MODIFICATION START: Reverted to use `result.jsonBody`
                         setReportData(result.jsonBody); 
-                        // MODIFICATION END
                     } else {
                         setError(result.message);
                     }
