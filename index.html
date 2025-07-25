@@ -855,8 +855,8 @@
                 try {
                     const result = await api.getReportData(filters.sheetKey, filters.startDate, filters.endDate, user.userIdentifier);
                     if (result.success) {
-                        // MODIFICATION START: Changed to use `result` directly instead of `result.jsonBody`
-                        setReportData(result); 
+                        // MODIFICATION START: Reverted to use `result.jsonBody`
+                        setReportData(result.jsonBody); 
                         // MODIFICATION END
                     } else {
                         setError(result.message);
