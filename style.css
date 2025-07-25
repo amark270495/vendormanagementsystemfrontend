@@ -60,3 +60,23 @@ button:disabled {
 .header-menu-trigger:hover {
     background-color: #f1f5f9; /* slate-100 */
 }
+
+/* --- High Visibility Dashboard Text & Row Styling --- */
+
+/* Sets a light background for all data rows for better visual separation. */
+.table-layout > tbody > tr {
+    background-color: #f9fafb; /* Corresponds to Tailwind's 'gray-50' */
+}
+
+/* A slightly darker background for rows on hover. */
+.table-layout > tbody > tr:hover {
+    background-color: #f3f4f6; /* Corresponds to Tailwind's 'gray-100' */
+}
+
+/* Applies new text styles to all data cells in the table. */
+.table-layout td {
+    color: #111827;           /* Tailwind's 'gray-900' for excellent contrast. */
+    font-size: 0.9rem;         /* Slightly larger font for readability. */
+    font-weight: 500;          /* Medium weight for bolder text. */
+    vertical-align: middle;    /* Ensures text aligns nicely in the taller rows. */
+}
