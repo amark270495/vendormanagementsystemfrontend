@@ -1351,25 +1351,7 @@
                     <div className="bg-white p-4 rounded-lg shadow-sm border">
                         <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
                     </div>
-                    <div className="bg-white p-4 rounded-lg shadow-sm border flex flex-wrap items-center justify-between gap-4">
-                        <div className="flex flex-wrap items-center gap-4">
-                            <select name="sheetKey" value={filters.sheetKey} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-md" disabled={!canViewReports}>
-                                {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
-                                    <option key={key} value={key}>{config.title}</option>
-                                ))}
-                            </select>
-                            <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-md" disabled={!canViewReports}/>
-                            <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-md" disabled={!canViewReports}/>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <button onClick={generateReport} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700" disabled={loading || !canViewReports}>
-                                {loading ? <Spinner size="5" /> : 'Generate Report'}
-                            </button>
-                             <button onClick={() => setEmailModalOpen(true)} className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600" disabled={!reportData || !canEmailReports}>
-                                Email Report
-                            </button>
-                        </div>
-                    </div>
+                    {/* Removed the duplicated filter and report generation UI from here */}
                     {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
                     {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
                     {!loading && !error && (
