@@ -1128,7 +1128,7 @@
             }, [sheetKey, user.userIdentifier]);
             useEffect(() => { loadData(); }, [loadData]);
             const transformedData = useMemo(() => {
-                const { header, rows } = rawData;
+                let { header, rows } = rawData;
                 if (!header || header.length === 0) return { header: [], rows: [] };
                 const headerRenames = { 'Last Submission Date': 'Deadline', 'No. of Resumes Submitted': '# Submitted' };
                 const originalHeaderMap = header.reduce((acc, h, i) => ({ ...acc, [h]: i }), {});
@@ -1713,8 +1713,11 @@
         const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
             const isAdmin = user?.userRole?.includes('Admin');
             const isDataEntry = user?.backendOfficeRole?.includes('Data Entry') || user?.backendOfficeRole?.includes('Data Entry & Viewer');
-            const isDataViewer = user?.backendOfficeRole?.includes('Data Viewer') || user?.backendOfficeRole?.includes('Data Entry') || user?.backendOfficeRole?.includes('Data Entry & Viewer') || user?.backendOfficeRole?.includes('Recruitment Manager') || user?.backendOfficeRole?.includes('Recruitment Team'); // Data Entry can also view dashboards
-            const isRecruitmentManager = user?.backendOfficeRole?.includes('Recruitment Manager');
+            // FIX: Refined canAccessReportsNav to align with backend and ReportsPage permissions
+            const canAccessReportsNav = isAdmin || 
+                                        user?.backendOfficeRole?.includes('Recruitment Manager') ||
+                                        user?.backendOfficeRole?.includes('Data Entry & Viewer') ||
+                                        user?.backendOfficeRole?.includes('Data Viewer');
 
             const [notifications, setNotifications] = useState([]);
             const [error, setError] = useState('');
@@ -1754,7 +1757,8 @@
                                     <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'home'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'home' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Home</a>
                                     
                                     {/* Dashboards are accessible by Data Viewer, Recruitment Manager, Recruitment Team, Admin */}
-                                    {(isDataViewer || isAdmin) && (
+                                    {/* The original isDataViewer in TopNav was too broad for dashboards, so using a more specific check here */}
+                                    {(user?.userRole?.includes('Admin') || user?.backendOfficeRole?.includes('Data Viewer') || user?.backendOfficeRole?.includes('Data Entry') || user?.backendOfficeRole?.includes('Data Entry & Viewer') || user?.backendOfficeRole?.includes('Recruitment Manager') || user?.backendOfficeRole?.includes('Recruitment Team')) && (
                                         <Dropdown trigger={<button className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'dashboard' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Dashboards</button>}>
                                             {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
                                                 <a href="#" key={key} onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'dashboard', key})}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{config.title}</a>
@@ -1768,7 +1772,7 @@
                                     )}
                                     
                                     {/* Reports are accessible by Recruitment Manager, Admin, Data Viewer, Data Entry & Viewer */}
-                                    {(isRecruitmentManager || isAdmin || isDataViewer) && (
+                                    {canAccessReportsNav && ( // FIX: Using the new canAccessReportsNav variable
                                         <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'reports'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'reports' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Reports</a>
                                     )}
 
@@ -1847,7 +1851,8 @@
                         if (isDataEntry || isAdmin) return <JobPostingFormPage onFormSubmit={() => setCurrentPage({type: 'dashboard', key: 'taprootVMSDisplay'})} />;
                         return <div className="text-center text-red-500 p-8">Permission Denied: You do not have permission to add new postings.</div>;
                     case 'reports': 
-                        if (isRecruitmentManager || isAdmin || isDataViewer) return <ReportsPage />; // Data Viewer can also view reports
+                        // FIX: Ensure this matches backend and TopNav's canAccessReportsNav
+                        if (isAdmin || isRecruitmentManager || user?.backendOfficeRole?.includes('Data Viewer') || user?.backendOfficeRole?.includes('Data Entry & Viewer')) return <ReportsPage />;
                         return <div className="text-center text-red-500 p-8">Permission Denied: You do not have access to reports.</div>;
                     case 'admin': 
                         if (isAdmin) return <AdminPage />;
