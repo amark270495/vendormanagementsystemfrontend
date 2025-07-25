@@ -1,62 +1,67 @@
 /* Custom styles to complement Tailwind */
 body {
-    font-family: 'Inter', sans-serif;
-    background-color: #f8fafc; /* slate-50 */
-    overflow-x: hidden; /* Prevent horizontal scrolling on the body */
+    [cite_start]font-family: 'Inter', sans-serif; [cite: 504]
+    background-color: #f8fafc; [cite_start]/* slate-50 */ [cite: 504, 505]
+    overflow-x: hidden; [cite_start]/* Prevent horizontal scrolling on the body */ [cite: 505]
 }
 /* Custom scrollbar for better aesthetics */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    [cite_start]width: 8px; [cite: 505]
+    [cite_start]height: 8px; [cite: 506]
 }
 ::-webkit-scrollbar-track {
-    background: #f1f5f9; /* slate-100 */
+    background: #f1f5f9; [cite_start]/* slate-100 */ [cite: 506]
 }
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e1; /* slate-300 */
-    border-radius: 10px;
+    background: #cbd5e1; [cite_start]/* slate-300 */ [cite: 507]
+    [cite_start]border-radius: 10px; [cite: 507]
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8; /* slate-400 */
+    background: #94a3b8; [cite_start]/* slate-400 */ [cite: 508]
 }
 /* Style for disabled buttons */
 button:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
+    [cite_start]cursor: not-allowed; [cite: 508]
+    [cite_start]opacity: 0.6; [cite: 508]
 }
 [contenteditable="true"].modified-cell {
-    background-color: #fef9c3; /* yellow-100 */
+    background-color: #fef9c3; [cite_start]/* yellow-100 */ [cite: 509]
 }
 .sortable-header {
-    cursor: pointer;
-    user-select: none;
+    [cite_start]cursor: pointer; [cite: 509]
+    [cite_start]user-select: none; [cite: 509]
 }
 .table-layout {
-    table-layout: fixed;
-    width: 100%;
+    [cite_start]table-layout: fixed; [cite: 510]
+    [cite_start]width: 100%; [cite: 510]
 }
 .table-layout th, .table-layout td {
-    border-right: 1px solid #e5e7eb;
-    white-space: normal;
-    word-break: break-word;
-    vertical-align: top;
+    [cite_start]border-right: 1px solid #e5e7eb; [cite: 510]
+    [cite_start]white-space: normal; [cite: 511]
+    [cite_start]word-break: break-word; [cite: 511]
+    [cite_start]vertical-align: top; [cite: 511]
 }
 .table-layout th:last-child, .table-layout td:last-child {
-    border-right: none;
+    [cite_start]border-right: none; [cite: 511, 512]
 }
 .column-list-item.dragging {
-    opacity: 0.5;
-    background: #e0e7ff;
+    [cite_start]opacity: 0.5; [cite: 512]
+    [cite_start]background: #e0e7ff; [cite: 512]
 }
 .header-menu-trigger {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    height: 100%;
-    cursor: pointer;
-    padding: 0.75rem 1rem; /* Replicate th padding */
+    [cite_start]display: flex; [cite: 512]
+    [cite_start]align-items: center; [cite: 512]
+    [cite_start]justify-content: space-between; [cite: 512]
+    [cite_start]width: 100%; [cite: 513]
+    [cite_start]height: 100%; [cite: 513]
+    [cite_start]cursor: pointer; [cite: 513]
+    padding: 0.75rem 1rem; [cite_start]/* Replicate th padding */ [cite: 513]
 }
 .header-menu-trigger:hover {
-    background-color: #f1f5f9; /* slate-100 */
+    background-color: #f1f5f9; [cite_start]/* slate-100 */ [cite: 513, 514]
+}
+
+/* --- High Visibility Dashboard Text --- */
+.table-layout td {
+    color: #111827; /* Tailwind CSS 'gray-900' for excellent contrast */
 }
