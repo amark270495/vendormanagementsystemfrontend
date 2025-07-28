@@ -55,7 +55,6 @@ const getDeadlineClass = (dateString) => {
     if (!dateString || dateString === 'Need To Update') return '';
     const deadline = new Date(dateString);
     const today = new Date();
-    // FIX: Create a new Date object for 'sevenDaysFromNow' to avoid modifying 'today'.
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(today.getDate() + 7);
 
@@ -1495,10 +1494,24 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
     }, [fetchNotifications, user?.userIdentifier]);
 
     const handleMarkAsRead = async () => {
+        // Guard against running if there are no notifications.
+        if (notifications.length === 0) return;
+
+        // Keep a copy of the current notifications to revert in case of an error.
+        const originalNotifications = [...notifications];
+        
+        // Optimistically update the UI by clearing notifications immediately.
+        setNotifications([]);
+
         try {
-            await api.markNotificationsAsRead(notifications.map(n => n.id), user.userIdentifier);
-            fetchNotifications();
-        } catch (err) { console.error('Failed to mark as read'); }
+            // Call the API to mark notifications as read on the backend.
+            await api.markNotificationsAsRead(originalNotifications.map(n => n.id), user.userIdentifier);
+            // If successful, the UI is already updated. The next scheduled fetch will confirm the state.
+        } catch (err) {
+            // If the API call fails, log the error and revert the UI to its previous state.
+            console.error('Failed to mark as read');
+            setNotifications(originalNotifications);
+        }
     };
 
     const navLinkClasses = (type) => `px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === type ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`;
@@ -1534,7 +1547,7 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
                             <div className="p-2">
                                 <div className="flex justify-between items-center mb-2 px-2">
                                     <h4 className="font-semibold text-gray-800">Notifications</h4>
-                                    <button onClick={handleMarkAsRead} className="text-xs text-indigo-600 hover:underline">Mark all as read</button>
+                                    <button onClick={handleMarkAsRead} className="text-xs text-indigo-600 hover:underline" disabled={notifications.length === 0}>Mark all as read</button>
                                 </div>
                                 <div className="max-h-80 overflow-y-auto">
                                     {notifications.length > 0 ? notifications.map(n => (
