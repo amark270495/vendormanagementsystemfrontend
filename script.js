@@ -108,7 +108,7 @@ const api = {
     // Home Page Data
     getHomePageData: (authenticatedUsername) => api.call('getHomePageData', 'GET', null, { authenticatedUsername }), // Added authenticatedUsername param
     // Reports
-    getReportData: (sheetKey, startDate, endDate, authenticatedUsername) => api.call('getReportData', 'GET', null, { sheetKey, startDate, endDate, authenticatedUsername }),
+    getReportData: (params) => api.call('getReportData', 'GET', null, params),
     generateAndSendJobReport: (sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername) => api.call('generateAndSendJobReport', 'POST', { sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername }),
     // Notifications
     getNotifications: (authenticatedUsername) => api.call('getNotifications', 'GET', null, { authenticatedUsername }),
@@ -118,41 +118,122 @@ const api = {
     saveMessage: (sender, recipient, messageContent, authenticatedUsername) => api.call('saveMessage', 'POST', { sender, recipient, messageContent, authenticatedUsername }),
 };
 
-// --- Authentication Context (No Changes) -----------------------------------------------
+// --- Authentication Context (Updated for Auto-Logout and Single Session) -------------------------------------
 const AuthContext = createContext();
+
+/**
+ * Reducer for authentication state. It is now a pure function that only manages state
+ * based on dispatched actions. Side effects like session storage are handled in the provider.
+ */
 const authReducer = (state, action) => {
     switch (action.type) {
-        case 'LOGIN': return { ...state, isAuthenticated: true, user: action.payload, isFirstLogin: action.payload.isFirstLogin };
-        case 'LOGOUT': return { ...state, isAuthenticated: false, user: null, isFirstLogin: false };
-        case 'PASSWORD_CHANGED': return { ...state, isFirstLogin: false };
-        case 'PREFERENCES_UPDATED': 
-            const newUser = { ...state.user, dashboardPreferences: action.payload };
-            localStorage.setItem('vms_user', JSON.stringify(newUser));
-            return { ...state, user: newUser };
-        default: return state;
+        case 'LOGIN':
+            return { ...state, isAuthenticated: true, user: action.payload, isFirstLogin: action.payload.isFirstLogin };
+        case 'LOGOUT':
+            return { ...state, isAuthenticated: false, user: null, isFirstLogin: false };
+        case 'PASSWORD_CHANGED':
+            return { ...state, user: action.payload, isFirstLogin: false };
+        case 'PREFERENCES_UPDATED':
+            return { ...state, user: action.payload };
+        default:
+            return state;
     }
 };
+
+/**
+ * Provides authentication state and functions to the application.
+ * - Uses sessionStorage to automatically log out the user when the browser/tab is closed.
+ * - Uses localStorage and the 'storage' event to ensure only one tab is active at a time.
+ */
 const AuthProvider = ({ children }) => {
-    const [state, dispatch] = useReducer(authReducer, { isAuthenticated: false, user: null, isFirstLogin: false });
+    const [state, dispatch] = useReducer(authReducer, {
+        isAuthenticated: false,
+        user: null,
+        isFirstLogin: false
+    });
+
+    // A unique ID for each tab to distinguish them.
+    const tabId = useRef(crypto.randomUUID());
+
+    // This effect runs once on component mount to set up the initial state and listeners.
     useEffect(() => {
+        // 1. Check for a user session in sessionStorage on initial load.
         try {
-            const savedUser = localStorage.getItem('vms_user');
-            if (savedUser) dispatch({ type: 'LOGIN', payload: JSON.parse(savedUser) });
-        } catch (error) { localStorage.removeItem('vms_user'); }
-    }, []);
-    const login = (userData) => { localStorage.setItem('vms_user', JSON.stringify(userData)); dispatch({ type: 'LOGIN', payload: userData }); };
-    const logout = () => { localStorage.removeItem('vms_user'); dispatch({ type: 'LOGOUT' }); };
+            const savedUser = sessionStorage.getItem('vms_user');
+            if (savedUser) {
+                const user = JSON.parse(savedUser);
+                dispatch({ type: 'LOGIN', payload: user });
+                // Announce that this tab is the active one.
+                localStorage.setItem('vms_active_tab', tabId.current);
+            }
+        } catch (error) {
+            // If there's an error (e.g., corrupted data), clear storage.
+            sessionStorage.removeItem('vms_user');
+            localStorage.removeItem('vms_active_tab');
+        }
+
+        // 2. Listen for 'storage' events fired by other tabs.
+        const handleStorageChange = (event) => {
+            // If 'vms_active_tab' changes and it's not this tab, it means another tab logged in.
+            if (event.key === 'vms_active_tab' && event.newValue !== tabId.current) {
+                console.log('Another tab has become active. Logging out this tab.');
+                logout(false); // Pass false to prevent this tab from broadcasting a logout message.
+            }
+            // If 'vms_logout_all' is set, it means another tab initiated a logout.
+            if (event.key === 'vms_logout_all') {
+                 console.log('Logout signal received from another tab. Logging out this tab.');
+                 logout(false);
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+
+        // Cleanup the event listener when the component unmounts.
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+        };
+    }, []); // Empty dependency array means this runs only once.
+
+    const login = (userData) => {
+        // Store user data in sessionStorage. It will be cleared when the browser closes.
+        sessionStorage.setItem('vms_user', JSON.stringify(userData));
+        // Announce this tab as the active one, which logs out other tabs.
+        localStorage.setItem('vms_active_tab', tabId.current);
+        // Update the application's state.
+        dispatch({ type: 'LOGIN', payload: userData });
+    };
+
+    const logout = (broadcast = true) => {
+        // Clear the user session for this tab.
+        sessionStorage.removeItem('vms_user');
+        // If this tab is the one initiating the logout, notify other tabs.
+        if (broadcast) {
+            localStorage.removeItem('vms_active_tab');
+            // Set a temporary item to trigger the 'storage' event in other tabs.
+            localStorage.setItem('vms_logout_all', Date.now());
+            localStorage.removeItem('vms_logout_all'); // Clean up the temporary item.
+        }
+        // Update the application's state to logged-out.
+        dispatch({ type: 'LOGOUT' });
+    };
+
     const passwordChanged = () => {
         const updatedUser = { ...state.user, isFirstLogin: false };
-        localStorage.setItem('vms_user', JSON.stringify(updatedUser));
-        dispatch({ type: 'PASSWORD_CHANGED' });
+        sessionStorage.setItem('vms_user', JSON.stringify(updatedUser));
+        dispatch({ type: 'PASSWORD_CHANGED', payload: updatedUser });
     };
+
     const updatePreferences = (preferences) => {
-        dispatch({ type: 'PREFERENCES_UPDATED', payload: preferences });
+        const updatedUser = { ...state.user, dashboardPreferences: preferences };
+        sessionStorage.setItem('vms_user', JSON.stringify(updatedUser));
+        dispatch({ type: 'PREFERENCES_UPDATED', payload: updatedUser });
     };
+
     return <AuthContext.Provider value={{ ...state, login, logout, passwordChanged, updatePreferences }}>{children}</AuthContext.Provider>;
 };
+
 const useAuth = () => useContext(AuthContext);
+
 
 // --- Reusable UI Components (No Changes) --------------------------------------------------------
 const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
@@ -759,13 +840,31 @@ const ReportsPage = () => {
         if (!user?.userIdentifier) {
             setError("User identifier is missing. Please log in again.");
             setLoading(false);
-            console.error("Attempted to generate report without user.userIdentifier."); // Log for debugging
+            console.error("Attempted to generate report without user.userIdentifier.");
             return;
         }
 
-        console.log("Attempting to fetch report data with user.userIdentifier:", user.userIdentifier); // Added logging
+        const sheetKey = filters.sheetKey;
+        const config = DASHBOARD_CONFIGS[sheetKey];
+
+        if (!config) {
+            setError(`Invalid dashboard configuration for key: ${sheetKey}`);
+            setLoading(false);
+            return;
+        }
+
+        const reportParams = {
+            sheetKey,
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            authenticatedUsername: user.userIdentifier,
+            companyName: config.companyName,
+            postingFrom: config.postingFrom
+        };
+
+        console.log("Attempting to fetch report data with params:", reportParams);
         try {
-            const result = await api.getReportData(filters.sheetKey, filters.startDate, filters.endDate, user.userIdentifier);
+            const result = await api.getReportData(reportParams);
             if (result.success) {
                 setReportData(result); 
             } else {
