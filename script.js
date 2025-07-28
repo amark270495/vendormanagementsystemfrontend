@@ -54,6 +54,8 @@ const formatDate = (isoString) => {
 const getDeadlineClass = (dateString) => {
     if (!dateString || dateString === 'Need To Update') return '';
     const deadline = new Date(dateString);
+    if (isNaN(deadline.getTime())) return ''; // Return empty if the date is invalid
+
     const today = new Date();
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(today.getDate() + 7);
@@ -1085,7 +1087,8 @@ const DashboardPage = ({ sheetKey }) => {
 
     const handleCellEdit = (rowIndex, cellIndex, value) => {
         if (!canEditDashboard) return setError("You do not have permission to edit data.");
-        const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
+        const originalRow = filteredAndSortedData[rowIndex];
+        const postingId = originalRow[displayHeader.indexOf('Posting ID')];
         const headerName = displayHeader[cellIndex];
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: value } }));
     };
@@ -1130,7 +1133,7 @@ const DashboardPage = ({ sheetKey }) => {
     const handleColumnFilterChange = (header, config) => {
         setColumnFilters(prev => {
             const newFilters = { ...prev };
-            if (config) newFilters[header] = config;
+            if (config && config.value1) newFilters[header] = config;
             else delete newFilters[header];
             return newFilters;
         });
@@ -1138,19 +1141,88 @@ const DashboardPage = ({ sheetKey }) => {
 
     const filteredAndSortedData = useMemo(() => {
         let data = [...displayData];
-        // Filtering logic here...
-        if (sortConfig.key) {
-            const sortIndex = displayHeader.indexOf(sortConfig.key);
-            data.sort((a, b) => {
-                const valA = a[sortIndex];
-                const valB = b[sortIndex];
-                if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
-                if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
-                return 0;
+        
+        // General text filter
+        if (generalFilter) {
+            const lowercasedFilter = generalFilter.toLowerCase();
+            data = data.filter(row => row.some(cell => String(cell).toLowerCase().includes(lowercasedFilter)));
+        }
+
+        // Status filter
+        const statusIndex = displayHeader.indexOf('Status');
+        if (statusFilter && statusIndex !== -1) {
+            data = data.filter(row => row[statusIndex] === statusFilter);
+        }
+
+        // Column-specific filters
+        if (Object.keys(columnFilters).length > 0) {
+            data = data.filter(row => {
+                return Object.entries(columnFilters).every(([header, config]) => {
+                    const cellIndex = displayHeader.indexOf(header);
+                    if (cellIndex === -1) return true;
+                    const cellValue = row[cellIndex];
+                    const { type, value1, value2 } = config;
+
+                    if (DATE_COLUMNS.includes(header)) {
+                        const cellDate = new Date(cellValue).getTime();
+                        const filterDate1 = new Date(value1).getTime();
+                        const filterDate2 = value2 ? new Date(value2).getTime() : null;
+                        if (isNaN(cellDate) || isNaN(filterDate1)) return false;
+
+                        switch (type) {
+                            case 'equals': return cellDate === filterDate1;
+                            case 'above': return cellDate > filterDate1;
+                            case 'below': return cellDate < filterDate1;
+                            case 'between': return cellDate >= filterDate1 && cellDate <= filterDate2;
+                            default: return String(cellValue).toLowerCase().includes(String(value1).toLowerCase());
+                        }
+                    } else if (NUMBER_COLUMNS.includes(header)) {
+                        const cellNum = parseFloat(cellValue);
+                        const filterNum1 = parseFloat(value1);
+                        const filterNum2 = value2 ? parseFloat(value2) : null;
+                        if (isNaN(cellNum) || isNaN(filterNum1)) return false;
+
+                        switch (type) {
+                            case 'equals': return cellNum === filterNum1;
+                            case 'above': return cellNum > filterNum1;
+                            case 'below': return cellNum < filterNum1;
+                            case 'between': return cellNum >= filterNum1 && cellNum <= filterNum2;
+                            default: return String(cellValue).toLowerCase().includes(String(value1).toLowerCase());
+                        }
+                    } else { // String filters
+                        const lowerCell = String(cellValue).toLowerCase();
+                        const lowerVal1 = String(value1).toLowerCase();
+                        switch (type) {
+                            case 'contains': return lowerCell.includes(lowerVal1);
+                            case 'equals': return lowerCell === lowerVal1;
+                            case 'not_contains': return !lowerCell.includes(lowerVal1);
+                            default: return true;
+                        }
+                    }
+                });
             });
         }
+
+        // Sorting
+        if (sortConfig.key) {
+            const sortIndex = displayHeader.indexOf(sortConfig.key);
+            if (sortIndex !== -1) {
+                data.sort((a, b) => {
+                    const valA = a[sortIndex];
+                    const valB = b[sortIndex];
+                    
+                    let comparison = 0;
+                    if (valA === null || valA === undefined) comparison = 1;
+                    else if (valB === null || valB === undefined) comparison = -1;
+                    else if (valA < valB) comparison = -1;
+                    else if (valA > valB) comparison = 1;
+
+                    return sortConfig.direction === 'ascending' ? comparison : -comparison;
+                });
+            }
+        }
         return data;
-    }, [displayData, sortConfig, generalFilter, statusFilter, displayHeader, columnFilters]);
+    }, [displayData, displayHeader, sortConfig, generalFilter, statusFilter, columnFilters]);
 
     const downloadCsv = () => {
         const csvContent = [displayHeader.join(','), ...filteredAndSortedData.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
@@ -1231,12 +1303,12 @@ const DashboardPage = ({ sheetKey }) => {
                             </thead>
                             <tbody>
                                 {filteredAndSortedData.map((row, rowIndex) => (
-                                    <tr key={row[0] || rowIndex} className="bg-white border-b hover:bg-gray-50">
+                                    <tr key={row[displayHeader.indexOf('Posting ID')] || rowIndex} className="bg-white border-b hover:bg-gray-50">
                                         {row.map((cell, cellIndex) => {
                                             const headerName = displayHeader[cellIndex];
                                             const postingId = row[displayHeader.indexOf('Posting ID')];
                                             return (
-                                                <td key={cellIndex} 
+                                                <td key={`${postingId}-${headerName}`} 
                                                     className={`px-4 py-3 text-center align-middle ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'modified-cell' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`} 
                                                     contentEditable={canEditDashboard && EDITABLE_COLUMNS.includes(headerName)} 
                                                     suppressContentEditableWarning={true}
@@ -1494,21 +1566,12 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
     }, [fetchNotifications, user?.userIdentifier]);
 
     const handleMarkAsRead = async () => {
-        // Guard against running if there are no notifications.
         if (notifications.length === 0) return;
-
-        // Keep a copy of the current notifications to revert in case of an error.
         const originalNotifications = [...notifications];
-        
-        // Optimistically update the UI by clearing notifications immediately.
         setNotifications([]);
-
         try {
-            // Call the API to mark notifications as read on the backend.
             await api.markNotificationsAsRead(originalNotifications.map(n => n.id), user.userIdentifier);
-            // If successful, the UI is already updated. The next scheduled fetch will confirm the state.
         } catch (err) {
-            // If the API call fails, log the error and revert the UI to its previous state.
             console.error('Failed to mark as read');
             setNotifications(originalNotifications);
         }
