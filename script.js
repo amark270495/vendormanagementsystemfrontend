@@ -48,21 +48,35 @@ const formatDate = (isoString) => {
 
 /**
  * Determines the CSS class for a deadline based on its proximity to the current date.
+ * Handles MM/DD/YY and MM/DD/YYYY formats.
  * @param {string} dateString - The deadline date string.
  * @returns {string} Tailwind CSS classes for color and font weight.
  */
 const getDeadlineClass = (dateString) => {
     if (!dateString || dateString === 'Need To Update') return '';
     
-    // Handle MM/DD/YYYY format by converting to YYYY-MM-DD which is reliably parsed
     let parsableDateString = dateString;
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
-        const parts = dateString.split('/');
-        parsableDateString = `${parts[2]}-${parts[0]}-${parts[1]}`;
+    // Regex to match MM/DD/YY or MM/DD/YYYY
+    const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/;
+    const match = dateString.match(dateRegex);
+
+    if (match) {
+        const month = match[1];
+        const day = match[2];
+        let year = parseInt(match[3], 10);
+        // If the year is 2 digits, assume it's in the 21st century.
+        if (year < 100) {
+            year += 2000;
+        }
+        // Format as YYYY-MM-DD for reliable parsing by new Date()
+        parsableDateString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
 
     const deadline = new Date(parsableDateString);
-    if (isNaN(deadline.getTime())) return ''; // Return empty if the date is invalid
+    if (isNaN(deadline.getTime())) {
+        console.warn("Invalid date format for deadline:", dateString);
+        return ''; // Return empty if the date is invalid
+    }
 
     const today = new Date();
     const sevenDaysFromNow = new Date();
@@ -267,8 +281,22 @@ const Dropdown = ({ trigger, children, width = '48' }) => {
         <div className="relative" ref={node}>
             <div onClick={() => setIsOpen(!isOpen)}>{trigger}</div>
             {isOpen && (
-                <div className={`absolute right-0 mt-2 w-${width} bg-white rounded-md shadow-lg z-20 py-1`} onClick={() => setIsOpen(false)}>
-                    {children}
+                <div className={`absolute right-0 mt-2 w-${width} bg-white rounded-md shadow-lg z-20 py-1`} onClick={(e) => { 
+                    // This onClick handler on the dropdown panel itself can cause it to close.
+                    // We only want it to close if a child element doesn't handle the click.
+                }}>
+                    {React.Children.map(children, child => 
+                        React.cloneElement(child, { onClick: (e) => {
+                            // If the child has its own onClick, let it run, then close.
+                            if (child.props.onClick) {
+                                child.props.onClick(e);
+                            }
+                            // We let the notification button's stopPropagation handle itself.
+                            if (!e.isPropagationStopped()) {
+                                setIsOpen(false);
+                            }
+                        }})
+                    )}
                 </div>
             )}
         </div>
@@ -1610,27 +1638,29 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
                         </nav>
                     </div>
                     <div className="flex items-center space-x-4">
-                        <Dropdown width="80" trigger={
-                            <button className="relative text-gray-500 hover:text-gray-700" aria-label="Notifications">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                                {notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
-                            </button>
-                        }>
-                            <div className="p-2">
-                                <div className="flex justify-between items-center mb-2 px-2">
-                                    <h4 className="font-semibold text-gray-800">Notifications</h4>
-                                    <button onClick={(e) => handleMarkAsRead(e)} className="text-xs text-indigo-600 hover:underline" disabled={notifications.length === 0}>Mark all as read</button>
+                         <div className="relative">
+                            <Dropdown trigger={
+                                <button className="relative text-gray-500 hover:text-gray-700" aria-label="Notifications">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                                    {notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
+                                </button>
+                            }>
+                                <div className="p-2 w-80">
+                                    <div className="flex justify-between items-center mb-2 px-2">
+                                        <h4 className="font-semibold text-gray-800">Notifications</h4>
+                                        <button onClick={handleMarkAsRead} className="text-xs text-indigo-600 hover:underline" disabled={notifications.length === 0}>Mark all as read</button>
+                                    </div>
+                                    <div className="max-h-80 overflow-y-auto">
+                                        {notifications.length > 0 ? notifications.map(n => (
+                                            <div key={n.id} className="p-2 border-b hover:bg-slate-50">
+                                                <p className="text-sm text-gray-700">{n.message}</p>
+                                                <p className="text-xs text-gray-400">{new Date(n.timestamp).toLocaleString()}</p>
+                                            </div>
+                                        )) : <p className="text-sm text-gray-500 p-4 text-center">No new notifications.</p>}
+                                    </div>
                                 </div>
-                                <div className="max-h-80 overflow-y-auto">
-                                    {notifications.length > 0 ? notifications.map(n => (
-                                        <div key={n.id} className="p-2 border-b hover:bg-slate-50">
-                                            <p className="text-sm text-gray-700">{n.message}</p>
-                                            <p className="text-xs text-gray-400">{new Date(n.timestamp).toLocaleString()}</p>
-                                        </div>
-                                    )) : <p className="text-sm text-gray-500 p-4 text-center">No new notifications.</p>}
-                                </div>
-                            </div>
-                        </Dropdown>
+                            </Dropdown>
+                        </div>
 
                         <Dropdown trigger={
                             <button className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" aria-label="User menu">
