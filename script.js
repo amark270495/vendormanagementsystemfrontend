@@ -117,7 +117,7 @@ const api = {
     saveMessage: (sender, recipient, messageContent, authenticatedUsername) => api.call('saveMessage', 'POST', { sender, recipient, messageContent, authenticatedUsername }),
 };
 
-// --- Authentication Context -----------------------------------------------
+// --- Authentication Context (Auto-logout Implemented) ---------------------
 const AuthContext = createContext();
 const authReducer = (state, action) => {
     switch (action.type) {
@@ -126,7 +126,7 @@ const authReducer = (state, action) => {
         case 'PASSWORD_CHANGED': return { ...state, isFirstLogin: false };
         case 'PREFERENCES_UPDATED': 
             const newUser = { ...state.user, dashboardPreferences: action.payload };
-            localStorage.setItem('vms_user', JSON.stringify(newUser));
+            sessionStorage.setItem('vms_user', JSON.stringify(newUser)); // Use sessionStorage
             return { ...state, user: newUser };
         default: return state;
     }
@@ -135,15 +135,15 @@ const AuthProvider = ({ children }) => {
     const [state, dispatch] = useReducer(authReducer, { isAuthenticated: false, user: null, isFirstLogin: false });
     useEffect(() => {
         try {
-            const savedUser = localStorage.getItem('vms_user');
+            const savedUser = sessionStorage.getItem('vms_user'); // Use sessionStorage
             if (savedUser) dispatch({ type: 'LOGIN', payload: JSON.parse(savedUser) });
-        } catch (error) { localStorage.removeItem('vms_user'); }
+        } catch (error) { sessionStorage.removeItem('vms_user'); } // Use sessionStorage
     }, []);
-    const login = (userData) => { localStorage.setItem('vms_user', JSON.stringify(userData)); dispatch({ type: 'LOGIN', payload: userData }); };
-    const logout = () => { localStorage.removeItem('vms_user'); dispatch({ type: 'LOGOUT' }); };
+    const login = (userData) => { sessionStorage.setItem('vms_user', JSON.stringify(userData)); dispatch({ type: 'LOGIN', payload: userData }); }; // Use sessionStorage
+    const logout = () => { sessionStorage.removeItem('vms_user'); dispatch({ type: 'LOGOUT' }); }; // Use sessionStorage
     const passwordChanged = () => {
         const updatedUser = { ...state.user, isFirstLogin: false };
-        localStorage.setItem('vms_user', JSON.stringify(updatedUser));
+        sessionStorage.setItem('vms_user', JSON.stringify(updatedUser)); // Use sessionStorage
         dispatch({ type: 'PASSWORD_CHANGED' });
     };
     const updatePreferences = (preferences) => {
