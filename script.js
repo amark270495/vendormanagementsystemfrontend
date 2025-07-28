@@ -1,5 +1,5 @@
 // ===================================================================================
-// VMS Dashboard - React Application - FULLY INTEGRATED (Patched v3)
+// VMS Dashboard - React Application - FULLY INTEGRATED (Patched v4)
 // ===================================================================================
 
 // Global error handler for uncaught exceptions
@@ -19,7 +19,9 @@ const { createRoot } = ReactDOM;
 // This is the critical fix for the report page crash.
 // We must manually register the components Chart.js needs to function with react-chartjs-2.
 const { Chart: ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } = window.Chart;
-const { Bar, Pie, Doughnut } = ReactChartjs2;
+
+// The line that caused the error was moved into the ReportsPage component
+// to ensure ReactChartjs2 is defined before being used.
 
 ChartJS.register(
   ArcElement,
@@ -557,6 +559,10 @@ const ReportsPage = ({ sheetKey }) => {
         endDate: ''
     });
     const [isEmailModalOpen, setEmailModalOpen] = useState(false);
+
+    // FIX: Destructure chart components here, inside the component body,
+    // to ensure the ReactChartjs2 global variable is defined.
+    const { Bar, Pie, Doughnut } = ReactChartjs2;
 
     useEffect(() => {
         setFilters(prev => ({ ...prev, sheetKey: sheetKey || 'taprootVMSDisplay' }));
