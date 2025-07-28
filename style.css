@@ -24,6 +24,7 @@ button:disabled {
     cursor: not-allowed;
     opacity: 0.6;
 }
+/* Style for table cells that have been modified but not saved */
 [contenteditable="true"].modified-cell {
     background-color: #fef9c3; /* yellow-100 */
 }
@@ -31,6 +32,7 @@ button:disabled {
     cursor: pointer;
     user-select: none;
 }
+/* Fixed table layout to prevent column widths from changing with content */
 .table-layout {
     table-layout: fixed;
     width: 100%;
@@ -44,10 +46,12 @@ button:disabled {
 .table-layout th:last-child, .table-layout td:last-child {
     border-right: none;
 }
+/* Style for column list items when being dragged */
 .column-list-item.dragging {
     opacity: 0.5;
     background: #e0e7ff;
 }
+/* Style for the trigger element of the header dropdown menu */
 .header-menu-trigger {
     display: flex;
     align-items: center;
