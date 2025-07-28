@@ -1,17 +1,21 @@
+// Global error handler to catch unhandled exceptions and display a user-friendly message.
 window.onerror = function(message, source, lineno, colno, error) {
     console.error("Global uncaught error:", { message, source, lineno, colno, error });
     const rootElement = document.getElementById('root');
     if (rootElement) {
         rootElement.innerHTML = `<div style="text-align: center; color: red; padding: 20px; font-family: 'Inter', sans-serif;">An unexpected error occurred. Please refresh the page or contact support.</div>`;
     }
-    return true;
+    return true; // Prevents the default browser error handling.
 };
 
+// Destructuring React hooks and ReactDOM for easier use.
 const { useState, useEffect, createContext, useContext, useReducer, useMemo, useCallback, useRef } = React;
 const { createRoot } = ReactDOM;
 
+// Base URL for all API calls.
 const API_BASE_URL = '/api';
 
+// Configuration for different dashboards.
 const DASHBOARD_CONFIGS = {
     'ecaltVMSDisplay': { title: 'Eclat VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'All' },
     'taprootVMSDisplay': { title: 'Taproot VMS', companyName: 'Taproot Solutions INC', postingFrom: 'All' },
@@ -20,10 +24,18 @@ const DASHBOARD_CONFIGS = {
     'TaprootTexasDisplay': { title: 'Taproot Texas VMS', companyName: 'Taproot Solutions INC', postingFrom: 'State Of Texas' },
 };
 
+// Columns that are editable in the dashboard.
 const EDITABLE_COLUMNS = ['Working By', '# Submitted', 'Remarks', '1st Candidate Name', '2nd Candidate Name', '3rd Candidate Name'];
+// Columns that should be treated as dates.
 const DATE_COLUMNS = ['Posting Date', 'Deadline'];
+// Columns that should be treated as numbers.
 const NUMBER_COLUMNS = ['# Submitted', 'Max Submissions'];
 
+/**
+ * Formats an ISO date string to a more readable MM/DD/YYYY format.
+ * @param {string} isoString - The date string to format.
+ * @returns {string} The formatted date or the original string if invalid.
+ */
 const formatDate = (isoString) => {
     if (!isoString || isoString === 'Need To Update') return isoString;
     try {
@@ -34,19 +46,31 @@ const formatDate = (isoString) => {
     }
 };
 
+/**
+ * Determines the CSS class for a deadline based on its proximity to the current date.
+ * @param {string} dateString - The deadline date string.
+ * @returns {string} Tailwind CSS classes for color and font weight.
+ */
 const getDeadlineClass = (dateString) => {
     if (!dateString || dateString === 'Need To Update') return '';
     const deadline = new Date(dateString);
     const today = new Date();
-    const sevenDaysFromNow = new Date(today.setDate(today.getDate() + 7));
+    // FIX: Create a new Date object for 'sevenDaysFromNow' to avoid modifying 'today'.
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(today.getDate() + 7);
+
+    // Set hours to 0 for accurate date-only comparison.
     deadline.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
-    sevenDaysFromNow.setHours(0,0,0,0);
-    if (deadline < today) return 'text-red-600 font-bold';
-    if (deadline <= sevenDaysFromNow) return 'text-orange-500 font-semibold';
-    return 'text-green-600';
+    sevenDaysFromNow.setHours(0, 0, 0, 0);
+
+    if (deadline < today) return 'text-red-600 font-bold'; // Past deadline
+    if (deadline <= sevenDaysFromNow) return 'text-orange-500 font-semibold'; // Deadline within 7 days
+    return 'text-green-600'; // Deadline more than 7 days away
 };
 
+
+// Centralized API handling object.
 const api = {
     async call(endpoint, method = 'GET', body = null, params = {}) {
         const url = new URL(`${API_BASE_URL}/${endpoint}`, window.location.origin);
@@ -96,8 +120,10 @@ const api = {
     saveMessage: (sender, recipient, messageContent, authenticatedUsername) => api.call('saveMessage', 'POST', { sender, recipient, messageContent, authenticatedUsername }),
 };
 
+// React Context for authentication state.
 const AuthContext = createContext();
 
+// Reducer for managing authentication state.
 const authReducer = (state, action) => {
     switch (action.type) {
         case 'LOGIN': return { ...state, isAuthenticated: true, user: action.payload, isFirstLogin: action.payload.isFirstLogin };
@@ -108,6 +134,7 @@ const authReducer = (state, action) => {
     }
 };
 
+// AuthProvider component to wrap the application and provide auth context.
 const AuthProvider = ({ children }) => {
     const [state, dispatch] = useReducer(authReducer, { isAuthenticated: false, user: null, isFirstLogin: false });
     const tabId = useRef(crypto.randomUUID());
@@ -165,8 +192,10 @@ const AuthProvider = ({ children }) => {
     return <AuthContext.Provider value={{ ...state, login, logout, passwordChanged, updatePreferences }}>{children}</AuthContext.Provider>;
 };
 
+// Custom hook to use the authentication context.
 const useAuth = () => useContext(AuthContext);
 
+// Custom hook to determine user permissions based on roles.
 const usePermissions = () => {
     const { user } = useAuth();
     return useMemo(() => {
@@ -192,6 +221,7 @@ const usePermissions = () => {
     }, [user]);
 };
 
+// Reusable Modal component.
 const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
     if (!isOpen) return null;
     const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-xl', '2xl': 'max-w-2xl', '4xl': 'max-w-4xl' };
@@ -210,8 +240,10 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
     );
 };
 
+// Reusable Spinner component for loading states.
 const Spinner = ({ size = '8' }) => <div className={`animate-spin rounded-full h-${size} w-${size} border-b-2 border-indigo-600`}></div>;
 
+// Reusable Dropdown component.
 const Dropdown = ({ trigger, children, width = '48' }) => {
     const [isOpen, setIsOpen] = useState(false);
     const node = useRef();
@@ -234,6 +266,7 @@ const Dropdown = ({ trigger, children, width = '48' }) => {
     );
 };
 
+// Forgot Password Modal component.
 const ForgotPasswordModal = ({ isOpen, onClose }) => {
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
@@ -271,6 +304,7 @@ const ForgotPasswordModal = ({ isOpen, onClose }) => {
     );
 };
 
+// Login Page component.
 const LoginPage = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -318,6 +352,7 @@ const LoginPage = () => {
     );
 };
 
+// Change Password Page for first-time login.
 const ChangePasswordPage = () => {
     const { user, passwordChanged, logout } = useAuth();
     const [newPassword, setNewPassword] = useState('');
@@ -367,6 +402,7 @@ const ChangePasswordPage = () => {
     );
 };
 
+// User Form Modal for adding/editing users.
 const UserFormModal = ({ isOpen, onClose, onSave, userToEdit }) => {
     const userRoles = ['Admin', 'Standard User', 'Data Entry', 'Data Viewer', 'Data Entry & Viewer'];
     const backendOfficeRoles = ['Operations Admin', 'Operations Manager', 'Development Manager', 'Development Executive', 'Recruitment Manager', 'Recruitment Team'];
@@ -451,6 +487,7 @@ const UserFormModal = ({ isOpen, onClose, onSave, userToEdit }) => {
     );
 };
 
+// Delete User confirmation modal.
 const DeleteUserModal = ({ isOpen, onClose, onConfirm, userToDelete }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -476,6 +513,7 @@ const DeleteUserModal = ({ isOpen, onClose, onConfirm, userToDelete }) => {
     );
 };
 
+// Admin Page for user management.
 const AdminPage = () => {
     const { user } = useAuth();
     const [users, setUsers] = useState([]);
@@ -569,6 +607,7 @@ const AdminPage = () => {
     );
 };
 
+// Home Page component showing open jobs summary.
 const HomePage = () => {
     const { user } = useAuth();
     const [data, setData] = useState({});
@@ -622,6 +661,7 @@ const HomePage = () => {
     );
 };
 
+// Job Posting Form Page for adding new jobs.
 const JobPostingFormPage = ({ onFormSubmit }) => {
     const { user } = useAuth();
     const { canAddPosting } = usePermissions();
@@ -703,6 +743,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
     );
 };
 
+// Wrapper for Chart.js to use it within React.
 const ChartComponent = ({ type, data, options }) => {
     const canvasRef = useRef(null);
     const chartRef = useRef(null);
@@ -729,6 +770,7 @@ const ChartComponent = ({ type, data, options }) => {
     return <canvas ref={canvasRef}></canvas>;
 };
 
+// Reports Page component with charts and data visualization.
 const ReportsPage = () => {
     const { user } = useAuth();
     const { canViewReports, canEmailReports } = usePermissions();
@@ -831,6 +873,7 @@ const ReportsPage = () => {
     );
 };
 
+// Email Report Modal component.
 const EmailReportModal = ({ isOpen, onClose, sheetKey }) => {
     const { user } = useAuth();
     const [toEmails, setToEmails] = useState('');
@@ -904,6 +947,7 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey }) => {
     );
 };
 
+// Header Menu component for table columns (sorting/filtering).
 const HeaderMenu = ({ header, onSort, filterConfig, onFilterChange }) => {
     const [filterType, setFilterType] = useState(filterConfig?.type || 'contains');
     const [value1, setValue1] = useState(filterConfig?.value1 || '');
@@ -943,6 +987,7 @@ const HeaderMenu = ({ header, onSort, filterConfig, onFilterChange }) => {
     );
 };
 
+// Main Dashboard Page component.
 const DashboardPage = ({ sheetKey }) => {
     const { user, updatePreferences } = useAuth();
     const { canEditDashboard } = usePermissions();
@@ -1223,6 +1268,7 @@ const DashboardPage = ({ sheetKey }) => {
     );
 };
 
+// Column Settings Modal for reordering and hiding columns.
 const ColumnSettingsModal = ({ isOpen, onClose, allHeaders, userPrefs, onSave }) => {
     const [order, setOrder] = useState([]); 
     const [visibility, setVisibility] = useState({}); 
@@ -1272,8 +1318,9 @@ const ColumnSettingsModal = ({ isOpen, onClose, allHeaders, userPrefs, onSave })
     );
 };
 
+// Action Menu for each job row in the dashboard.
 const ActionMenu = ({ job, onAction }) => (
-    <Dropdown trigger={<button className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100" aria-label="Job actions"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>}>
+    <Dropdown trigger={<button className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100" aria-label="Job actions"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>}>
         <a href="#" onClick={(e) => {e.preventDefault(); onAction('details', job)}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">View Details</a>
         <a href="#" onClick={(e) => {e.preventDefault(); onAction('close', job)}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Close Job</a>
         <a href="#" onClick={(e) => {e.preventDefault(); onAction('archive', job)}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Archive Job</a>
@@ -1281,6 +1328,7 @@ const ActionMenu = ({ job, onAction }) => (
     </Dropdown>
 );
 
+// Confirmation Modal for actions like delete, close, archive.
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText }) => {
     const buttonClasses = { delete: 'bg-red-600 hover:bg-red-700', archive: 'bg-yellow-500 hover:bg-yellow-600', close: 'bg-blue-500 hover:bg-blue-600' };
     return (
@@ -1294,12 +1342,14 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
     );
 };
 
+// View Details Modal to show all information about a job.
 const ViewDetailsModal = ({ isOpen, onClose, job }) => (
     <Modal isOpen={isOpen} onClose={onClose} title="Job Details" size="lg">
         {job && <div className="space-y-4">{Object.entries(job).map(([key, value]) => (<div key={key}><h4 className="text-sm font-medium text-gray-500">{key}</h4><p className="text-gray-800">{String(DATE_COLUMNS.includes(key) ? formatDate(value) : value)}</p></div>))}</div>}
     </Modal>
 );
 
+// Internal Messaging Page component.
 const MessagesPage = () => {
     const { user } = useAuth();
     const [users, setUsers] = useState([]);
@@ -1425,6 +1475,7 @@ const MessagesPage = () => {
     );
 };
 
+// Top Navigation bar component.
 const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
     const { isAdmin, canViewDashboards, canAddPosting, canViewReports } = usePermissions();
     const [notifications, setNotifications] = useState([]);
@@ -1514,6 +1565,7 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
     );
 };
 
+// Main application layout component that renders the current page.
 const MainApp = () => {
     const [currentPage, setCurrentPage] = useState({type: 'home'});
     const { user, logout } = useAuth();
@@ -1540,6 +1592,7 @@ const MainApp = () => {
     );
 };
 
+// Root App component that handles routing between Login, Change Password, and Main App.
 const App = () => {
     const { isAuthenticated, isFirstLogin } = useAuth();
     if (!isAuthenticated) return <LoginPage />;
@@ -1547,6 +1600,7 @@ const App = () => {
     return <MainApp />;
 };
 
+// Entry point for the React application.
 try {
     const root = createRoot(document.getElementById('root'));
     root.render(<AuthProvider><App /></AuthProvider>);
