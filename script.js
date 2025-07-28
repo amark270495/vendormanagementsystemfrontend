@@ -1,26 +1,18 @@
-// ===================================================================================
-// VMS Dashboard - React Application - FULLY INTEGRATED
-// ===================================================================================
-
-// Global error handler for uncaught exceptions
 window.onerror = function(message, source, lineno, colno, error) {
     console.error("Global uncaught error:", { message, source, lineno, colno, error });
-    // Display a user-friendly message on the page
     const rootElement = document.getElementById('root');
     if (rootElement) {
-        rootElement.innerHTML = '<div style="text-align: center; color: red; padding: 20px; font-family: \'Inter\', sans-serif;">An unexpected error occurred. Please refresh the page or contact support. Details might be in the browser console.</div>';
+        rootElement.innerHTML = `<div style="text-align: center; color: red; padding: 20px; font-family: 'Inter', sans-serif;">An unexpected error occurred. Please refresh the page or contact support.</div>`;
     }
-    return true; // Prevent default error handling (e.g., browser's console message)
+    return true;
 };
 
 const { useState, useEffect, createContext, useContext, useReducer, useMemo, useCallback, useRef } = React;
 const { createRoot } = ReactDOM;
 const { Bar, Pie, Doughnut } = ReactChartjs2;
 
-// --- Configuration & Utilities -----------------------------------------------------
-const API_BASE_URL = '/api'; // Assumes proxy or same-domain deployment
+const API_BASE_URL = '/api';
 
-// Updated DASHBOARD_CONFIGS to display only the specified dashboards
 const DASHBOARD_CONFIGS = {
     'ecaltVMSDisplay': { title: 'Eclat VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'All' },
     'taprootVMSDisplay': { title: 'Taproot VMS', companyName: 'Taproot Solutions INC', postingFrom: 'All' },
@@ -37,8 +29,7 @@ const formatDate = (isoString) => {
     if (!isoString || isoString === 'Need To Update') return isoString;
     try {
         const date = new Date(isoString);
-        if (isNaN(date.getTime())) return isoString;
-        return date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        return isNaN(date.getTime()) ? isoString : date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
     } catch (e) {
         return isoString;
     }
@@ -48,8 +39,7 @@ const getDeadlineClass = (dateString) => {
     if (!dateString || dateString === 'Need To Update') return '';
     const deadline = new Date(dateString);
     const today = new Date();
-    const sevenDaysFromNow = new Date();
-    sevenDaysFromNow.setDate(today.getDate() + 7);
+    const sevenDaysFromNow = new Date(today.setDate(today.getDate() + 7));
     deadline.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
     sevenDaysFromNow.setHours(0,0,0,0);
@@ -58,24 +48,20 @@ const getDeadlineClass = (dateString) => {
     return 'text-green-600';
 };
 
-// --- Fully Integrated API Helper ------------------------------------------------
 const api = {
-    call: async (endpoint, method = 'GET', body = null, params = {}) => {
+    async call(endpoint, method = 'GET', body = null, params = {}) {
         const url = new URL(`${API_BASE_URL}/${endpoint}`, window.location.origin);
-        // For GET requests, append params to URL
-        if (method === 'GET' && Object.keys(params).length > 0) {
-             Object.keys(params).forEach(key => {
-                if(params[key] !== null && params[key] !== undefined) {
-                    url.searchParams.append(key, params[key])
-                }
+        if (method === 'GET') {
+            Object.entries(params).forEach(([key, value]) => {
+                if (value !== null && value !== undefined) url.searchParams.append(key, value);
             });
         }
         
         const options = { 
             method, 
-            headers: { 'Content-Type': 'application/json' } 
+            headers: { 'Content-Type': 'application/json' },
+            ...(body && { body: JSON.stringify(body) })
         };
-        if (body) options.body = JSON.stringify(body);
 
         try {
             const response = await fetch(url, options);
@@ -83,137 +69,85 @@ const api = {
                 const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred.' }));
                 throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
             }
-            return await response.json();
+            return response.json();
         } catch (error) {
             console.error(`API call to ${endpoint} failed:`, error);
             throw error;
         }
     },
-    // Authentication
     authenticateUser: (username, password) => api.call('authenticateUser', 'POST', { username, password }),
     changePassword: (targetUsername, newPassword, authenticatedUsername) => api.call('changePassword', 'POST', { targetUsername, newPassword, authenticatedUsername }),
     requestPasswordReset: (username) => api.call('requestPasswordReset', 'POST', { username }),
-    // User Management
     getUsers: (authenticatedUsername) => api.call('getUsers', 'GET', null, { authenticatedUsername }),
     addUser: (userData, authenticatedUsername) => api.call('addUser', 'POST', { ...userData, authenticatedUsername }),
     updateUser: (originalUsername, userData, authenticatedUsername) => api.call('updateUser', 'POST', { originalUsername, userData, authenticatedUsername }),
     deleteUser: (usernameToDelete, authenticatedUsername) => api.call('deleteUser', 'POST', { usernameToDelete, authenticatedUsername }),
-    // Dashboard & Job Data
     getDashboardData: (sheetKey, authenticatedUsername) => api.call('getDashboardData', 'GET', null, { sheetKey, authenticatedUsername }),
     updateJobPosting: (updates, authenticatedUsername) => api.call('updateJobPosting', 'POST', { updates, authenticatedUsername }),
     updateJobStatus: (postingIds, newStatus, authenticatedUsername) => api.call('updateJobStatus', 'POST', { postingIds, newStatus, authenticatedUsername }),
     archiveOrDeleteJob: (postingIds, actionType, authenticatedUsername) => api.call('archiveOrDeleteJob', 'POST', { postingIds, actionType, authenticatedUsername }),
     saveUserDashboardPreferences: (authenticatedUsername, preferences) => api.call('saveUserDashboardPreferences', 'POST', { authenticatedUsername, preferences }),
     processJobPosting: (formData, authenticatedUsername) => api.call('processJobPosting', 'POST', { formData, authenticatedUsername }),
-    // Home Page Data
-    getHomePageData: (authenticatedUsername) => api.call('getHomePageData', 'GET', null, { authenticatedUsername }), // Added authenticatedUsername param
-    // Reports
+    getHomePageData: (authenticatedUsername) => api.call('getHomePageData', 'GET', null, { authenticatedUsername }),
     getReportData: (params) => api.call('getReportData', 'GET', null, params),
     generateAndSendJobReport: (sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername) => api.call('generateAndSendJobReport', 'POST', { sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername }),
-    // Notifications
     getNotifications: (authenticatedUsername) => api.call('getNotifications', 'GET', null, { authenticatedUsername }),
     markNotificationsAsRead: (notificationIds, authenticatedUsername) => api.call('markNotificationsAsRead', 'POST', { notificationIds, authenticatedUsername }),
-    // Messaging
     getMessages: (user1, user2, authenticatedUsername) => api.call('getMessages', 'GET', null, { user1, user2, authenticatedUsername }),
     saveMessage: (sender, recipient, messageContent, authenticatedUsername) => api.call('saveMessage', 'POST', { sender, recipient, messageContent, authenticatedUsername }),
 };
 
-// --- Authentication Context (Updated for Auto-Logout and Single Session) -------------------------------------
 const AuthContext = createContext();
 
-/**
- * Reducer for authentication state. It is now a pure function that only manages state
- * based on dispatched actions. Side effects like session storage are handled in the provider.
- */
 const authReducer = (state, action) => {
     switch (action.type) {
-        case 'LOGIN':
-            return { ...state, isAuthenticated: true, user: action.payload, isFirstLogin: action.payload.isFirstLogin };
-        case 'LOGOUT':
-            return { ...state, isAuthenticated: false, user: null, isFirstLogin: false };
-        case 'PASSWORD_CHANGED':
-            return { ...state, user: action.payload, isFirstLogin: false };
-        case 'PREFERENCES_UPDATED':
-            return { ...state, user: action.payload };
-        default:
-            return state;
+        case 'LOGIN': return { ...state, isAuthenticated: true, user: action.payload, isFirstLogin: action.payload.isFirstLogin };
+        case 'LOGOUT': return { ...state, isAuthenticated: false, user: null, isFirstLogin: false };
+        case 'PASSWORD_CHANGED': return { ...state, user: action.payload, isFirstLogin: false };
+        case 'PREFERENCES_UPDATED': return { ...state, user: action.payload };
+        default: return state;
     }
 };
 
-/**
- * Provides authentication state and functions to the application.
- * - Uses sessionStorage to automatically log out the user when the browser/tab is closed.
- * - Uses localStorage and the 'storage' event to ensure only one tab is active at a time.
- */
 const AuthProvider = ({ children }) => {
-    const [state, dispatch] = useReducer(authReducer, {
-        isAuthenticated: false,
-        user: null,
-        isFirstLogin: false
-    });
-
-    // A unique ID for each tab to distinguish them.
+    const [state, dispatch] = useReducer(authReducer, { isAuthenticated: false, user: null, isFirstLogin: false });
     const tabId = useRef(crypto.randomUUID());
 
-    // This effect runs once on component mount to set up the initial state and listeners.
     useEffect(() => {
-        // 1. Check for a user session in sessionStorage on initial load.
         try {
             const savedUser = sessionStorage.getItem('vms_user');
             if (savedUser) {
-                const user = JSON.parse(savedUser);
-                dispatch({ type: 'LOGIN', payload: user });
-                // Announce that this tab is the active one.
+                dispatch({ type: 'LOGIN', payload: JSON.parse(savedUser) });
                 localStorage.setItem('vms_active_tab', tabId.current);
             }
         } catch (error) {
-            // If there's an error (e.g., corrupted data), clear storage.
-            sessionStorage.removeItem('vms_user');
+            sessionStorage.clear();
             localStorage.removeItem('vms_active_tab');
         }
 
-        // 2. Listen for 'storage' events fired by other tabs.
         const handleStorageChange = (event) => {
-            // If 'vms_active_tab' changes and it's not this tab, it means another tab logged in.
-            if (event.key === 'vms_active_tab' && event.newValue !== tabId.current) {
-                console.log('Another tab has become active. Logging out this tab.');
-                logout(false); // Pass false to prevent this tab from broadcasting a logout message.
-            }
-            // If 'vms_logout_all' is set, it means another tab initiated a logout.
-            if (event.key === 'vms_logout_all') {
-                 console.log('Logout signal received from another tab. Logging out this tab.');
-                 logout(false);
+            if ((event.key === 'vms_active_tab' && event.newValue !== tabId.current) || event.key === 'vms_logout_all') {
+                logout(false);
             }
         };
 
         window.addEventListener('storage', handleStorageChange);
-
-        // Cleanup the event listener when the component unmounts.
-        return () => {
-            window.removeEventListener('storage', handleStorageChange);
-        };
-    }, []); // Empty dependency array means this runs only once.
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, []);
 
     const login = (userData) => {
-        // Store user data in sessionStorage. It will be cleared when the browser closes.
         sessionStorage.setItem('vms_user', JSON.stringify(userData));
-        // Announce this tab as the active one, which logs out other tabs.
         localStorage.setItem('vms_active_tab', tabId.current);
-        // Update the application's state.
         dispatch({ type: 'LOGIN', payload: userData });
     };
 
     const logout = (broadcast = true) => {
-        // Clear the user session for this tab.
         sessionStorage.removeItem('vms_user');
-        // If this tab is the one initiating the logout, notify other tabs.
         if (broadcast) {
-            localStorage.removeItem('vms_active_tab');
-            // Set a temporary item to trigger the 'storage' event in other tabs.
             localStorage.setItem('vms_logout_all', Date.now());
-            localStorage.removeItem('vms_logout_all'); // Clean up the temporary item.
+            localStorage.removeItem('vms_active_tab');
+            localStorage.removeItem('vms_logout_all');
         }
-        // Update the application's state to logged-out.
         dispatch({ type: 'LOGOUT' });
     };
 
@@ -234,8 +168,31 @@ const AuthProvider = ({ children }) => {
 
 const useAuth = () => useContext(AuthContext);
 
+const usePermissions = () => {
+    const { user } = useAuth();
+    return useMemo(() => {
+        const userRole = user?.userRole || '';
+        const backendRole = user?.backendOfficeRole || '';
+        const isAdmin = userRole.includes('Admin');
+        const isDataEntry = backendRole.includes('Data Entry');
+        const isDataViewer = backendRole.includes('Data Viewer');
+        const isRecruitmentManager = backendRole.includes('Recruitment Manager');
+        const isDataEntryViewer = backendRole.includes('Data Entry & Viewer');
 
-// --- Reusable UI Components (No Changes) --------------------------------------------------------
+        const canEditDashboard = isAdmin || isDataEntry || isDataEntryViewer;
+        const canViewReports = isAdmin || isRecruitmentManager || isDataViewer || isDataEntryViewer;
+        
+        return {
+            isAdmin,
+            canEditDashboard,
+            canAddPosting: canEditDashboard,
+            canViewReports,
+            canEmailReports: isAdmin || isDataEntry || isDataEntryViewer || isRecruitmentManager,
+            canViewDashboards: isAdmin || isDataViewer || isDataEntry || isDataEntryViewer || isRecruitmentManager || backendRole.includes('Recruitment Team'),
+        };
+    }, [user]);
+};
+
 const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
     if (!isOpen) return null;
     const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-xl', '2xl': 'max-w-2xl', '4xl': 'max-w-4xl' };
@@ -253,7 +210,9 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
         </div>
     );
 };
+
 const Spinner = ({ size = '8' }) => <div className={`animate-spin rounded-full h-${size} w-${size} border-b-2 border-indigo-600`}></div>;
+
 const Dropdown = ({ trigger, children, width = '48' }) => {
     const [isOpen, setIsOpen] = useState(false);
     const node = useRef();
@@ -268,11 +227,7 @@ const Dropdown = ({ trigger, children, width = '48' }) => {
         <div className="relative" ref={node}>
             <div onClick={() => setIsOpen(!isOpen)}>{trigger}</div>
             {isOpen && (
-                <div className={`absolute right-0 mt-2 w-${width} bg-white rounded-md shadow-lg z-20 py-1`} onClick={(e) => {
-                     if (e.target.closest('button.close-on-click')) {
-                        setIsOpen(false);
-                    }
-                }}>
+                <div className={`absolute right-0 mt-2 w-${width} bg-white rounded-md shadow-lg z-20 py-1`} onClick={() => setIsOpen(false)}>
                     {children}
                 </div>
             )}
@@ -280,7 +235,6 @@ const Dropdown = ({ trigger, children, width = '48' }) => {
     );
 };
 
-// --- Authentication & User Pages (No Changes) ---
 const ForgotPasswordModal = ({ isOpen, onClose }) => {
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
@@ -294,8 +248,8 @@ const ForgotPasswordModal = ({ isOpen, onClose }) => {
             setMessage(data.message);
             setTimeout(() => { onClose(); setMessage(''); setEmail(''); }, 3000);
         } catch (err) {
-            setMessage("If your account exists, a password reset email has been sent."); // Generic message for security
-            setError(''); // Clear any previous error
+            setMessage("If your account exists, a password reset email has been sent.");
+            setError('');
         } finally { setLoading(false); }
     };
     return (
@@ -317,6 +271,7 @@ const ForgotPasswordModal = ({ isOpen, onClose }) => {
         </Modal>
     );
 };
+
 const LoginPage = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -363,6 +318,7 @@ const LoginPage = () => {
         </>
     );
 };
+
 const ChangePasswordPage = () => {
     const { user, passwordChanged, logout } = useAuth();
     const [newPassword, setNewPassword] = useState('');
@@ -412,74 +368,45 @@ const ChangePasswordPage = () => {
     );
 };
 
-// --- User Management Modals ---
 const UserFormModal = ({ isOpen, onClose, onSave, userToEdit }) => {
-    // Define available user roles and backend office roles
-    const userRoles = ['Admin', 'Standard User', 'Data Entry', 'Data Viewer', 'Data Entry & Viewer', ]; // 'Standard User' replaces generic 'User'
-    const backendOfficeRoles = [
-        'Operations Admin', 
-        'Operations Manager', 
-        'Development Manager', 
-        'Development Executive', 
-        'Recruitment Manager', 
-        'Recruitment Team'
-    ];
-
-    const [formData, setFormData] = useState({ 
-        displayName: '', 
-        username: '', 
-        password: '', 
-        userRole: 'Standard User', // Default to Standard User
-        backendOfficeRole: 'Recruitment Team' // Default to a basic role
-    });
+    const userRoles = ['Admin', 'Standard User', 'Data Entry', 'Data Viewer', 'Data Entry & Viewer'];
+    const backendOfficeRoles = ['Operations Admin', 'Operations Manager', 'Development Manager', 'Development Executive', 'Recruitment Manager', 'Recruitment Team'];
+    const [formData, setFormData] = useState({});
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (userToEdit) {
-            setFormData({ 
-                displayName: userToEdit.displayName || '', 
-                username: userToEdit.username || '', 
-                password: '', // Password is not pre-filled for security
-                userRole: userToEdit.userRole || 'Standard User', 
-                backendOfficeRole: userToEdit.backendOfficeRole || 'Recruitment Team' 
+        if (isOpen) {
+            setFormData({
+                displayName: userToEdit?.displayName || '',
+                username: userToEdit?.username || '',
+                password: '',
+                userRole: userToEdit?.userRole || 'Standard User',
+                backendOfficeRole: userToEdit?.backendOfficeRole || 'Recruitment Team',
             });
-        } else {
-            setFormData({ 
-                displayName: '', 
-                username: '', 
-                password: '', 
-                userRole: 'Standard User', 
-                backendOfficeRole: 'Recruitment Team' 
-            });
+            setError('');
         }
-        setError('');
     }, [userToEdit, isOpen]);
 
-    const handleChange = (e) => {
-        const { id, value } = e.target;
-        setFormData(prev => ({ ...prev, [id]: value }));
-    };
+    const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.id]: e.target.value }));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        if (!formData.displayName || !formData.username || (!userToEdit && !formData.password)) { 
-            setError("Please fill in all required fields (Display Name, Username, and Password for new users)."); 
-            return; 
+        if (!formData.displayName || !formData.username || (!userToEdit && !formData.password)) {
+            return setError("Please fill in all required fields.");
         }
-        if (!userToEdit && formData.password.length < 6) { 
-            setError("Password must be at least 6 characters long."); 
-            return; 
+        if (!userToEdit && formData.password.length < 6) {
+            return setError("Password must be at least 6 characters long.");
         }
         setLoading(true);
         try {
             await onSave(formData);
             onClose();
-        } catch (err) { 
-            setError(`Failed to save user: ${err.message}`); 
-        } finally { 
-            setLoading(false); 
+        } catch (err) {
+            setError(`Failed to save user: ${err.message}`);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -524,6 +451,7 @@ const UserFormModal = ({ isOpen, onClose, onSave, userToEdit }) => {
         </Modal>
     );
 };
+
 const DeleteUserModal = ({ isOpen, onClose, onConfirm, userToDelete }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -548,6 +476,7 @@ const DeleteUserModal = ({ isOpen, onClose, onConfirm, userToDelete }) => {
         </Modal>
     );
 };
+
 const AdminPage = () => {
     const { user } = useAuth();
     const [users, setUsers] = useState([]);
@@ -557,28 +486,36 @@ const AdminPage = () => {
     const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
     const [userToEdit, setUserToEdit] = useState(null);
     const [userToDelete, setUserToDelete] = useState(null);
+
     const fetchUsers = useCallback(async () => {
         setLoading(true);
         try {
             const data = await api.getUsers(user.userIdentifier);
-            if (data.success) setUsers(data.users);
-            else setError(data.message);
+            setUsers(data.success ? data.users : []);
+            if (!data.success) setError(data.message);
         } catch (err) { setError(err.message); } 
         finally { setLoading(false); }
     }, [user.userIdentifier]);
+
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
     const handleAddClick = () => { setUserToEdit(null); setUserModalOpen(true); };
     const handleEditClick = (user) => { setUserToEdit(user); setUserModalOpen(true); };
     const handleDeleteClick = (user) => { setUserToDelete(user); setDeleteModalOpen(true); };
+
     const handleSaveUser = async (formData) => {
-        if (userToEdit) await api.updateUser(userToEdit.username, formData, user.userIdentifier);
-        else await api.addUser(formData, user.userIdentifier);
+        await (userToEdit 
+            ? api.updateUser(userToEdit.username, formData, user.userIdentifier)
+            : api.addUser(formData, user.userIdentifier)
+        );
         fetchUsers();
     };
+
     const handleConfirmDelete = async () => {
         await api.deleteUser(userToDelete.username, user.userIdentifier);
         fetchUsers();
     };
+
     return (
         <>
             <div className="space-y-6">
@@ -633,9 +570,8 @@ const AdminPage = () => {
     );
 };
 
-// --- NEW: Home Page ---
 const HomePage = () => {
-    const { user } = useAuth(); // Get user from AuthContext
+    const { user } = useAuth();
     const [data, setData] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -644,7 +580,6 @@ const HomePage = () => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                // Pass authenticatedUsername to getHomePageData
                 const result = await api.getHomePageData(user.userIdentifier);
                 if (result.success) setData(result.data);
                 else setError(result.message);
@@ -654,8 +589,8 @@ const HomePage = () => {
                 setLoading(false);
             }
         };
-        fetchData();
-    }, [user.userIdentifier]); // Depend on user.userIdentifier
+        if (user?.userIdentifier) fetchData();
+    }, [user?.userIdentifier]);
 
     return (
         <div className="space-y-6">
@@ -688,22 +623,16 @@ const HomePage = () => {
     );
 };
 
-// --- NEW: Job Posting Form Page ---
 const JobPostingFormPage = ({ onFormSubmit }) => {
     const { user } = useAuth();
+    const { canAddPosting } = usePermissions();
     const [formData, setFormData] = useState({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    // Predefined options for 'Posting From'
-    const postingFromOptions = [
-        'State Of Texas', 'State Of Michigan', 'State of North Carolina', 
-        'State Of New Jersey', 'State Of Georgia', 'State Of Iowa', 
-        'State Of Connecticut', 'State Of Virginia', 'State Of Indiana'
-    ];
-
-    const formFields = [
+    const postingFromOptions = ['State Of Texas', 'State Of Michigan', 'State of North Carolina', 'State Of New Jersey', 'State Of Georgia', 'State Of Iowa', 'State Of Connecticut', 'State Of Virginia', 'State Of Indiana'];
+    const formFields = useMemo(() => [
         { name: 'Posting ID', type: 'text', required: true },
         { name: 'Posting Title', type: 'text', required: true },
         { name: 'Posting Date', type: 'date', required: true },
@@ -712,37 +641,25 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         { name: 'Max C2C Rate', type: 'text', required: true },
         { name: 'Client Name', type: 'text', required: true },
         { name: 'Company Name', type: 'select', required: true, options: ['Eclat Solutions LLC', 'Taproot Solutions INC'] },
-        { name: 'Posting From', type: 'select', required: true, options: postingFromOptions }, // Changed to select with predefined options
-        { name: 'Work Location', type: 'text', required: true }, // NEW: Work Location field
+        { name: 'Posting From', type: 'select', required: true, options: postingFromOptions },
+        { name: 'Work Location', type: 'text', required: true },
         { name: 'Work Position Type', type: 'text', required: true },
         { name: 'Required Skill Set', type: 'textarea', required: true },
         { name: 'Any Required Certificates', type: 'textarea' },
-    ];
+    ], []);
 
-    const handleChange = (e) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    };
+    const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!canAddPosting) return setError("You do not have permission to add new job postings.");
+        
         setError(''); setSuccess(''); setLoading(true);
-
-        // Check for Data Entry or Admin role for submitting new postings
-        const canAddPosting = user.userRole.includes('Admin') || 
-                             user.backendOfficeRole.includes('Data Entry') ||
-                             user.backendOfficeRole.includes('Data Entry & Viewer');
-
-        if (!canAddPosting) {
-            setError("You do not have permission to add new job postings.");
-            setLoading(false);
-            return;
-        }
-
         try {
             const result = await api.processJobPosting(formData, user.userIdentifier);
             if (result.success) {
                 setSuccess(result.message);
-                setFormData({}); // Clear form
+                setFormData({});
                 if (onFormSubmit) onFormSubmit();
             } else {
                 setError(result.message);
@@ -787,113 +704,59 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
     );
 };
 
-// --- NEW/ENHANCED: Reports Page ---
 const ReportsPage = () => {
     const { user } = useAuth();
+    const { canViewReports, canEmailReports } = usePermissions();
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [filters, setFilters] = useState({
-        sheetKey: 'taprootVMSDisplay',
-        startDate: '',
-        endDate: ''
-    });
+    const [filters, setFilters] = useState({ sheetKey: 'taprootVMSDisplay', startDate: '', endDate: '' });
     const [isEmailModalOpen, setEmailModalOpen] = useState(false);
 
-    // Check for Reports access
-    const canViewReports = user?.userRole?.includes('Admin') || 
-                           user?.backendOfficeRole?.includes('Recruitment Manager') ||
-                           user?.backendOfficeRole?.includes('Data Viewer') || // Added Data Viewer
-                           user?.backendOfficeRole?.includes('Data Entry & Viewer'); // Added Data Entry & Viewer
-
-    // Check for Email Reports access
-    const canEmailReports = user?.userRole?.includes('Admin') ||
-                            user?.backendOfficeRole?.includes('Data Entry') ||
-                            user?.backendOfficeRole?.includes('Data Entry & Viewer') ||
-                            user?.backendOfficeRole?.includes('Recruitment Manager');
-
-    // Call generateReport when the component mounts or when dependencies change
-    useEffect(() => {
-        if (!canViewReports) {
-            setError("You do not have permission to view reports.");
-            setLoading(false);
+    const generateReport = useCallback(async () => {
+        if (!canViewReports || !user?.userIdentifier) {
+            setError(canViewReports ? "User identifier is missing." : "You do not have permission to generate reports.");
             return;
         }
-        // Only generate if not already loaded or loading, and user is authorized
-        if (!reportData && !loading && user?.userIdentifier) { 
-            generateReport();
-        }
-    }, [canViewReports, reportData, loading, user?.userIdentifier]); // Depend on user.userIdentifier
-
-    const handleFilterChange = (e) => {
-        setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    };
-
-    const generateReport = async () => {
         setLoading(true); setError(''); setReportData(null);
-        if (!canViewReports) {
-            setError("You do not have permission to generate reports.");
-            setLoading(false);
-            return;
-        }
-        // Safeguard: Ensure user.userIdentifier is available before making the call
-        if (!user?.userIdentifier) {
-            setError("User identifier is missing. Please log in again.");
-            setLoading(false);
-            console.error("Attempted to generate report without user.userIdentifier.");
-            return;
-        }
-
-        const sheetKey = filters.sheetKey;
-        const config = DASHBOARD_CONFIGS[sheetKey];
-
+        
+        const config = DASHBOARD_CONFIGS[filters.sheetKey];
         if (!config) {
-            setError(`Invalid dashboard configuration for key: ${sheetKey}`);
+            setError(`Invalid dashboard configuration for key: ${filters.sheetKey}`);
             setLoading(false);
             return;
         }
 
         const reportParams = {
-            sheetKey,
-            startDate: filters.startDate,
-            endDate: filters.endDate,
+            ...filters,
             authenticatedUsername: user.userIdentifier,
             companyName: config.companyName,
             postingFrom: config.postingFrom
         };
 
-        console.log("Attempting to fetch report data with params:", reportParams);
         try {
             const result = await api.getReportData(reportParams);
-            if (result.success) {
-                setReportData(result); 
-            } else {
-                setError(result.message);
-            }
+            if (result.success) setReportData(result);
+            else setError(result.message);
         } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
-    };
-    
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false, // Allow charts to not maintain aspect ratio
-        plugins: { legend: { position: 'top' }, title: { display: true, text: 'Chart' } }
-    };
+    }, [filters, user?.userIdentifier, canViewReports]);
 
+    useEffect(() => {
+        if (canViewReports) generateReport();
+        else setError("You do not have permission to view reports.");
+    }, [canViewReports]);
+
+    const handleFilterChange = (e) => setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+    const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } };
     const chartColors = ['#4f46e5', '#f97316', '#10b981', '#ef4444', '#3b82f6', '#eab308', '#8b5cf6'];
-
     const getChartData = (labels, data, label) => ({
         labels,
-        datasets: [{
-            label,
-            data,
-            backgroundColor: chartColors.slice(0, labels.length),
-            borderColor: '#ffffff',
-            borderWidth: 1
-        }]
+        datasets: [{ label, data, backgroundColor: chartColors.slice(0, labels.length), borderWidth: 1 }]
     });
     
     return (
@@ -923,60 +786,22 @@ const ReportsPage = () => {
             {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
             {reportData && canViewReports ? (
                 <div className="space-y-8">
-                    {/* Summary Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-center">
-                        <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200 transform hover:scale-105 transition-transform duration-200 ease-in-out">
-                            <p className="text-3xl font-extrabold text-gray-800">{reportData.totalJobs}</p>
-                            <p className="text-sm text-gray-500">Total Jobs</p>
-                        </div>
-                        <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200 transform hover:scale-105 transition-transform duration-200 ease-in-out">
-                            <p className="text-3xl font-extrabold text-green-600">{reportData.openJobs}</p>
-                            <p className="text-sm text-gray-500">Open</p>
-                        </div>
-                        <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200 transform hover:scale-105 transition-transform duration-200 ease-in-out">
-                            <p className="text-3xl font-extrabold text-red-600">{reportData.closedJobs}</p>
-                            <p className="text-sm text-gray-500">Closed</p>
-                        </div>
-                        <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200 transform hover:scale-105 transition-transform duration-200 ease-in-out">
-                            <p className="text-3xl font-extrabold text-blue-600">{reportData.totalResumesSubmitted}</p>
-                            <p className="text-sm text-gray-500">Submitted</p>
-                        </div>
-                        <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200 transform hover:scale-105 transition-transform duration-200 ease-in-out">
-                            <p className="text-3xl font-extrabold text-gray-800">{reportData.totalMaxSubmissions}</p>
-                            <p className="text-sm text-gray-500">Max Allowed</p>
-                        </div>
+                        <div className="bg-white p-4 rounded-lg shadow-lg border"><p className="text-3xl font-extrabold text-gray-800">{reportData.totalJobs}</p><p className="text-sm text-gray-500">Total Jobs</p></div>
+                        <div className="bg-white p-4 rounded-lg shadow-lg border"><p className="text-3xl font-extrabold text-green-600">{reportData.openJobs}</p><p className="text-sm text-gray-500">Open</p></div>
+                        <div className="bg-white p-4 rounded-lg shadow-lg border"><p className="text-3xl font-extrabold text-red-600">{reportData.closedJobs}</p><p className="text-sm text-gray-500">Closed</p></div>
+                        <div className="bg-white p-4 rounded-lg shadow-lg border"><p className="text-3xl font-extrabold text-blue-600">{reportData.totalResumesSubmitted}</p><p className="text-sm text-gray-500">Submitted</p></div>
+                        <div className="bg-white p-4 rounded-lg shadow-lg border"><p className="text-3xl font-extrabold text-gray-800">{reportData.totalMaxSubmissions}</p><p className="text-sm text-gray-500">Max Allowed</p></div>
                     </div>
-                    {/* Charts */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 flex flex-col items-center" style={{ height: '400px' }}>
-                            <h3 className="font-semibold text-lg text-gray-800 mb-4">Jobs by Client</h3>
-                            <div className="relative w-full h-full">
-                                <Bar options={{...chartOptions, title: {display: false}}} data={getChartData(Object.keys(reportData.clientJobCounts), Object.values(reportData.clientJobCounts), '# of Jobs')} />
-                            </div>
-                        </div>
-                        <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 flex flex-col items-center" style={{ height: '400px' }}>
-                            <h3 className="font-semibold text-lg text-gray-800 mb-4">Jobs by Position Type</h3>
-                            <div className="relative w-full h-full">
-                                <Pie options={{...chartOptions, title: {display: false}}} data={getChartData(Object.keys(reportData.positionTypeCounts), Object.values(reportData.positionTypeCounts), '# of Jobs')} />
-                            </div>
-                        </div>
-                        <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 lg:col-span-2 flex flex-col items-center" style={{ height: '400px' }}>
-                            <h3 className="font-semibold text-lg text-gray-800 mb-4">Jobs by Assignee</h3>
-                            <div className="relative w-full h-full">
-                                <Doughnut options={{...chartOptions, title: {display: false}}} data={getChartData(Object.keys(reportData.workingByCounts), Object.values(reportData.workingByCounts), '# of Jobs')} />
-                            </div>
-                        </div>
+                        <div className="bg-white p-6 rounded-lg shadow-lg border h-[400px]"><h3 className="font-semibold text-lg text-gray-800 mb-4 text-center">Jobs by Client</h3><div className="relative w-full h-full"><Bar options={chartOptions} data={getChartData(Object.keys(reportData.clientJobCounts), Object.values(reportData.clientJobCounts), '# of Jobs')} /></div></div>
+                        <div className="bg-white p-6 rounded-lg shadow-lg border h-[400px]"><h3 className="font-semibold text-lg text-gray-800 mb-4 text-center">Jobs by Position Type</h3><div className="relative w-full h-full"><Pie options={chartOptions} data={getChartData(Object.keys(reportData.positionTypeCounts), Object.values(reportData.positionTypeCounts), '# of Jobs')} /></div></div>
+                        <div className="bg-white p-6 rounded-lg shadow-lg border lg:col-span-2 h-[400px]"><h3 className="font-semibold text-lg text-gray-800 mb-4 text-center">Jobs by Assignee</h3><div className="relative w-full h-full"><Doughnut options={chartOptions} data={getChartData(Object.keys(reportData.workingByCounts), Object.values(reportData.workingByCounts), '# of Jobs')} /></div></div>
                     </div>
                 </div>
-            ) : (
-                !loading && !error && <p className="text-center text-gray-500 p-4">Select filters and click "Generate Report" to view data.</p>
-            )}
+            ) : (!loading && !error && <p className="text-center text-gray-500 p-4">Select filters and click "Generate Report" to view data.</p>)}
         </div>
-        <EmailReportModal 
-            isOpen={isEmailModalOpen}
-            onClose={() => setEmailModalOpen(false)}
-            sheetKey={filters.sheetKey}
-        />
+        <EmailReportModal isOpen={isEmailModalOpen} onClose={() => setEmailModalOpen(false)} sheetKey={filters.sheetKey}/>
         </>
     );
 };
@@ -993,8 +818,8 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(''); setSuccess(''); setLoading(true);
-        const toEmailArray = toEmails.split(',').map(e => e.trim()).filter(e => e);
-        const ccEmailArray = ccEmails.split(',').map(e => e.trim()).filter(e => e);
+        const toEmailArray = toEmails.split(',').map(e => e.trim()).filter(Boolean);
+        const ccEmailArray = ccEmails.split(',').map(e => e.trim()).filter(Boolean);
 
         if(toEmailArray.length === 0) {
             setError("Please provide at least one recipient email.");
@@ -1054,21 +879,22 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey }) => {
     );
 };
 
-// --- Header Menu Component for Sorting and Filtering (No Changes)---
-const HeaderMenu = ({ header, sortConfig, onSort, filterConfig, onFilterChange }) => {
+const HeaderMenu = ({ header, onSort, filterConfig, onFilterChange }) => {
     const [filterType, setFilterType] = useState(filterConfig?.type || 'contains');
     const [value1, setValue1] = useState(filterConfig?.value1 || '');
     const [value2, setValue2] = useState(filterConfig?.value2 || '');
     const isDate = DATE_COLUMNS.includes(header);
     const isNumber = NUMBER_COLUMNS.includes(header);
+    
     const handleApply = () => onFilterChange(header, { type: filterType, value1, value2 });
     const handleClear = () => { setValue1(''); setValue2(''); onFilterChange(header, null); };
+    
     const getFilterOptions = () => {
-        const commonOptions = [{ value: 'contains', label: 'Contains' }, { value: 'equals', label: 'Equals' }, { value: 'not_contains', label: 'Does not contain' }];
-        const numericDateOptions = [{ value: 'above', label: 'Above' }, { value: 'below', label: 'Below' }, { value: 'between', label: 'Between' }];
-        if (isDate || isNumber) return [...commonOptions, ...numericDateOptions];
-        return commonOptions;
+        const common = [{ v: 'contains', l: 'Contains' }, { v: 'equals', l: 'Equals' }, { v: 'not_contains', l: 'Does not contain' }];
+        const specific = [{ v: 'above', l: 'Above' }, { v: 'below', l: 'Below' }, { v: 'between', l: 'Between' }];
+        return (isDate || isNumber) ? [...common, ...specific] : common;
     };
+
     return (
         <div className="p-2 space-y-2">
             <div>
@@ -1079,22 +905,22 @@ const HeaderMenu = ({ header, sortConfig, onSort, filterConfig, onFilterChange }
             <div className="space-y-2">
                 <label className="text-xs font-semibold text-gray-500 px-2">FILTER</label>
                 <select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full p-1 border rounded text-sm">
-                    {getFilterOptions().map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    {getFilterOptions().map(opt => <option key={opt.v} value={opt.v}>{opt.l}</option>)}
                 </select>
                 <input type={isDate ? 'date' : isNumber ? 'number' : 'text'} value={value1} onChange={e => setValue1(e.target.value)} className="w-full p-1 border rounded text-sm" placeholder={filterType === 'between' ? 'From...' : 'Value...'}/>
                 {filterType === 'between' && (<input type={isDate ? 'date' : isNumber ? 'number' : 'text'} value={value2} onChange={e => setValue2(e.target.value)} className="w-full p-1 border rounded text-sm" placeholder="To..."/>)}
                 <div className="flex justify-end space-x-2 pt-1">
-                    <button onClick={handleClear} className="px-2 py-1 text-xs bg-slate-200 rounded hover:bg-slate-300 close-on-click">Clear</button>
-                    <button onClick={handleApply} className="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 close-on-click">Apply</button>
+                    <button onClick={handleClear} className="px-2 py-1 text-xs bg-slate-200 rounded hover:bg-slate-300">Clear</button>
+                    <button onClick={handleApply} className="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700">Apply</button>
                 </div>
             </div>
         </div>
     );
 };
 
-// --- Dashboard Page and Components (Minor changes for API calls) -------------------------------------------------
 const DashboardPage = ({ sheetKey }) => {
     const { user, updatePreferences } = useAuth();
+    const { canEditDashboard } = usePermissions();
     const [rawData, setRawData] = useState({ header: [], rows: [] });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -1106,19 +932,17 @@ const DashboardPage = ({ sheetKey }) => {
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
     const [columnFilters, setColumnFilters] = useState({});
     
-    // Determine if the user can edit the dashboard
-    const canEditDashboard = user?.userRole?.includes('Admin') ||
-                             user?.backendOfficeRole?.includes('Data Entry') || // Added Data Entry
-                             user?.backendOfficeRole?.includes('Data Entry & Viewer');
-
     const userPrefs = useMemo(() => {
-        const safeParse = (jsonString, defaultValue = []) => {
-            if (typeof jsonString === 'string') { try { const parsed = JSON.parse(jsonString); return Array.isArray(parsed) ? parsed : defaultValue; } catch (e) { return defaultValue; } }
-            return Array.isArray(jsonString) ? jsonString : defaultValue;
+        const safeParse = (jsonString, def = []) => {
+            try { const parsed = JSON.parse(jsonString); return Array.isArray(parsed) ? parsed : def; } 
+            catch (e) { return Array.isArray(jsonString) ? jsonString : def; }
         };
-        const prefs = user?.dashboardPreferences;
-        return { order: safeParse(prefs?.columnOrder), visibility: safeParse(prefs?.columnVisibility) };
+        return { 
+            order: safeParse(user?.dashboardPreferences?.columnOrder), 
+            visibility: safeParse(user?.dashboardPreferences?.columnVisibility) 
+        };
     }, [user]);
+
     const loadData = useCallback(async () => {
         setLoading(true); setError(''); setUnsavedChanges({});
         try {
@@ -1128,113 +952,90 @@ const DashboardPage = ({ sheetKey }) => {
         } catch (err) { setError(err.message); } 
         finally { setLoading(false); }
     }, [sheetKey, user.userIdentifier]);
+
     useEffect(() => { loadData(); }, [loadData]);
+
     const transformedData = useMemo(() => {
         let { header, rows } = rawData;
-        if (!header || header.length === 0) return { header: [], rows: [] };
-        const headerRenames = { 'Last Submission Date': 'Deadline', 'No. of Resumes Submitted': '# Submitted' };
-        const originalHeaderMap = header.reduce((acc, h, i) => ({ ...acc, [h]: i }), {});
-        let transformedHeader = header.map(h => headerRenames[h] || h);
-
-        const clientIndex = originalHeaderMap['Client Name'];
-        const postingFromIndex = originalHeaderMap['Posting From'];
-        const workLocationIndex = originalHeaderMap['Work Location']; // NEW: Get Work Location Index
-
-        const clientInfoIndex = transformedHeader.indexOf('Client Name');
-
-        // Merge Client Name, Posting From, and Work Location into "Client Info"
-        if (clientIndex !== undefined && postingFromIndex !== undefined && workLocationIndex !== undefined && clientInfoIndex !== -1) {
-            transformedHeader[clientInfoIndex] = 'Client Info';
-            transformedHeader = transformedHeader.filter(h => h !== 'Posting From' && h !== 'Work Location'); // Remove original columns
-        }
+        if (!header?.length) return { header: [], rows: [] };
         
-        transformedHeader = transformedHeader.filter(h => h !== 'Company Name');
+        const headerRenames = { 'Last Submission Date': 'Deadline', 'No. of Resumes Submitted': '# Submitted' };
+        const originalHeaderMap = new Map(header.map((h, i) => [h, i]));
+        let transformedHeader = header.map(h => headerRenames[h] || h).filter(h => h !== 'Company Name');
+
+        const clientIdx = originalHeaderMap.get('Client Name');
+        const postingFromIdx = originalHeaderMap.get('Posting From');
+        const workLocationIdx = originalHeaderMap.get('Work Location');
+        const clientInfoIdx = transformedHeader.indexOf('Client Name');
+
+        if (clientInfoIdx !== -1 && [clientIdx, postingFromIdx, workLocationIdx].every(i => i !== undefined)) {
+            transformedHeader[clientInfoIdx] = 'Client Info';
+            transformedHeader = transformedHeader.filter(h => !['Posting From', 'Work Location'].includes(h));
+        }
 
         const transformedRows = rows.map(row => {
-            const newRow = [];
-            transformedHeader.forEach(newHeaderName => {
-                if (newHeaderName === 'Client Info') {
-                    const client = row[clientIndex] || '';
-                    const postingFrom = row[postingFromIndex] || '';
-                    const workLocation = row[workLocationIndex] || ''; // NEW: Get Work Location
-                    let clientInfo = client;
-                    if (postingFrom && postingFrom !== 'All' && postingFrom !== 'Need To Update') {
-                        clientInfo += ` / ${postingFrom}`;
-                    }
-                    if (workLocation && workLocation !== 'Need To Update') {
-                        clientInfo += ` (${workLocation})`;
-                    }
-                    newRow.push(clientInfo);
-                } else {
-                    const originalHeaderName = Object.keys(headerRenames).find(key => headerRenames[key] === newHeaderName) || newHeaderName;
-                    const originalIndex = originalHeaderMap[originalHeaderName];
-                    newRow.push(row[originalIndex]);
+            return transformedHeader.map(newHeader => {
+                if (newHeader === 'Client Info') {
+                    const client = row[clientIdx] || '';
+                    const postingFrom = row[postingFromIdx] || '';
+                    const workLocation = row[workLocationIdx] || '';
+                    let info = client;
+                    if (postingFrom && !['All', 'Need To Update'].includes(postingFrom)) info += ` / ${postingFrom}`;
+                    if (workLocation && workLocation !== 'Need To Update') info += ` (${workLocation})`;
+                    return info;
                 }
+                const originalHeader = Object.keys(headerRenames).find(k => headerRenames[k] === newHeader) || newHeader;
+                return row[originalHeaderMap.get(originalHeader)];
             });
-            return newRow;
         });
         return { header: transformedHeader, rows: transformedRows };
     }, [rawData]);
+
     const { displayHeader, displayData } = useMemo(() => {
         let { header, rows } = transformedData;
         const defaultOrder = ['Posting ID', 'Posting Title', 'Posting Date', 'Max Submissions', 'Max C2C Rate', 'Required Skill Set', 'Any Required Certificates', 'Work Position Type', 'Working By', 'Remarks', '1st Candidate Name', '2nd Candidate Name', '3rd Candidate Name', 'Status', 'Deadline', 'Client Info', '# Submitted'];
-        if (userPrefs.order.length > 0) {
-            const orderedHeader = userPrefs.order.filter(h => header.includes(h));
-            const remainingHeader = header.filter(h => !userPrefs.order.includes(h));
-            const finalHeaderOrder = [...orderedHeader, ...remainingHeader];
-            const reorderIndices = finalHeaderOrder.map(h => header.indexOf(h));
-            rows = rows.map(row => reorderIndices.map(i => row[i]));
-            header = finalHeaderOrder;
-        } else {
-            const defaultOrderedHeader = defaultOrder.filter(h => header.includes(h));
-            const remainingFromBackend = header.filter(h => !defaultOrder.includes(h));
-            const finalHeaderOrder = [...defaultOrderedHeader, ...remainingFromBackend];
-            const reorderIndices = finalHeaderOrder.map(h => header.indexOf(h));
-            rows = rows.map(row => reorderIndices.map(i => row[i]));
-            header = finalHeaderOrder;
-        }
+        
+        const finalHeaderOrder = userPrefs.order.length > 0
+            ? [...userPrefs.order.filter(h => header.includes(h)), ...header.filter(h => !userPrefs.order.includes(h))]
+            : [...defaultOrder.filter(h => header.includes(h)), ...header.filter(h => !defaultOrder.includes(h))];
+
+        const reorderIndices = finalHeaderOrder.map(h => header.indexOf(h));
+        let finalHeader = finalHeaderOrder;
+        let finalRows = rows.map(row => reorderIndices.map(i => row[i]));
+
         if (userPrefs.visibility.length > 0) {
-            const visibleIndices = [];
-            const visibleHeader = header.filter((h, i) => {
-                if (!userPrefs.visibility.includes(h)) { visibleIndices.push(i); return true; }
-                return false;
-            });
-            rows = rows.map(row => visibleIndices.map(i => row[i]));
-            header = visibleHeader;
+            const visibleIndices = finalHeader.map((h, i) => userPrefs.visibility.includes(h) ? -1 : i).filter(i => i !== -1);
+            finalHeader = visibleIndices.map(i => finalHeader[i]);
+            finalRows = finalRows.map(row => visibleIndices.map(i => row[i]));
         }
-        return { displayHeader: header, displayData: rows };
+        
+        return { displayHeader: finalHeader, displayData: finalRows };
     }, [transformedData, userPrefs]);
+
     const handleSort = (key, direction) => setSortConfig({ key, direction });
+
     const handleCellEdit = (rowIndex, cellIndex, value) => {
-        if (!canEditDashboard) { // Prevent editing if not authorized
-            setError("You do not have permission to edit dashboard data.");
-            return;
-        }
+        if (!canEditDashboard) return setError("You do not have permission to edit data.");
         const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
         const headerName = displayHeader[cellIndex];
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: value } }));
     };
+
     const handleSaveChanges = async () => {
-        if (!canEditDashboard) { // Prevent saving if not authorized
-            setError("You do not have permission to save dashboard changes.");
-            return;
-        }
-        const headerToBackendKeyMap = { 'Working By': 'workingBy', '# Submitted': 'noOfResumesSubmitted', 'Remarks': 'remarks', '1st Candidate Name': 'candidateName1', '2nd Candidate Name': 'candidateName2', '3rd Candidate Name': 'candidateName3' };
-        const updates = Object.entries(unsavedChanges).map(([postingId, changes]) => {
-            const backendChanges = {};
-            Object.entries(changes).forEach(([headerName, value]) => {
-                const backendKey = headerToBackendKeyMap[headerName];
-                if (backendKey) { 
-                    if (backendKey === 'noOfResumesSubmitted') backendChanges[backendKey] = parseInt(value, 10) || 0;
-                    else backendChanges[backendKey] = value;
-                }
-            });
-            return { rowKey: postingId, changes: backendChanges };
-        });
-        if (updates.length === 0) {
-            setError("No changes to save.");
-            return;
-        }
+        if (!canEditDashboard) return setError("You do not have permission to save changes.");
+        
+        const headerMap = { 'Working By': 'workingBy', '# Submitted': 'noOfResumesSubmitted', 'Remarks': 'remarks', '1st Candidate Name': 'candidateName1', '2nd Candidate Name': 'candidateName2', '3rd Candidate Name': 'candidateName3' };
+        const updates = Object.entries(unsavedChanges).map(([postingId, changes]) => ({
+            rowKey: postingId,
+            changes: Object.entries(changes).reduce((acc, [header, value]) => {
+                const backendKey = headerMap[header];
+                if (backendKey) acc[backendKey] = backendKey === 'noOfResumesSubmitted' ? parseInt(value, 10) || 0 : value;
+                return acc;
+            }, {})
+        }));
+
+        if (updates.length === 0) return setError("No changes to save.");
+        
         setLoading(true);
         try {
             await api.updateJobPosting(updates, user.userIdentifier);
@@ -1243,17 +1044,10 @@ const DashboardPage = ({ sheetKey }) => {
         } catch (err) { setError(`Failed to save: ${err.message}`); } 
         finally { setLoading(false); }
     };
-    const handleAction = async (actionType, job) => {
-        // Permissions for these actions: Admin, Data Entry, Data Entry & Viewer
-        const isAuthorizedForActions = user?.userRole?.includes('Admin') ||
-                                       user?.backendOfficeRole?.includes('Data Entry') ||
-                                       user?.backendOfficeRole?.includes('Data Entry & Viewer');
 
-        if (!isAuthorizedForActions) { 
-            setError("You do not have permission to perform this action on job postings.");
-            setModalState({ type: null, job: null });
-            return;
-        }
+    const handleAction = async (actionType, job) => {
+        if (!canEditDashboard) return setError("You do not have permission to perform this action.");
+        
         setLoading(true);
         const postingId = job['Posting ID'];
         try {
@@ -1263,6 +1057,7 @@ const DashboardPage = ({ sheetKey }) => {
         } catch (err) { setError(`Action '${actionType}' failed: ${err.message}`); } 
         finally { setLoading(false); setModalState({ type: null, job: null }); }
     };
+
     const handleColumnFilterChange = (header, config) => {
         setColumnFilters(prev => {
             const newFilters = { ...prev };
@@ -1271,60 +1066,13 @@ const DashboardPage = ({ sheetKey }) => {
             return newFilters;
         });
     };
+
     const filteredAndSortedData = useMemo(() => {
-        let processData = [...displayData];
-        if (statusFilter) {
-            const statusIndex = displayHeader.indexOf('Status');
-            if (statusIndex > -1) processData = processData.filter(row => String(row[statusIndex]).toLowerCase() === statusFilter.toLowerCase());
-        }
-        if (generalFilter) {
-            processData = processData.filter(row => row.some(cell => String(cell).toLowerCase().includes(generalFilter.toLowerCase())));
-        }
-        Object.entries(columnFilters).forEach(([header, config]) => {
-            if (!config || !config.value1) return;
-            const headerIndex = displayHeader.indexOf(header);
-            if (headerIndex === -1) return;
-            const isDate = DATE_COLUMNS.includes(header);
-            const isNumber = NUMBER_COLUMNS.includes(header);
-            processData = processData.filter(row => {
-                const cellValueRaw = row[headerIndex];
-                if (cellValueRaw === null || cellValueRaw === undefined) return false;
-                if (isDate) {
-                    const cellDate = new Date(cellValueRaw);
-                    if (isNaN(cellDate.getTime())) return false;
-                    const filterDate1 = new Date(config.value1);
-                    switch (config.type) {
-                        case 'equals': return cellDate.getTime() === filterDate1.getTime();
-                        case 'above': return cellDate > filterDate1;
-                        case 'below': return cellDate < filterDate1;
-                        case 'between': const filterDate2 = new Date(config.value2); return cellDate >= filterDate1 && cellDate <= filterDate2;
-                        default: return true;
-                    }
-                } else if (isNumber) {
-                    const cellNum = parseFloat(cellValueRaw);
-                    const filterNum1 = parseFloat(config.value1);
-                    if (isNaN(cellNum) || isNaN(filterNum1)) return false;
-                    switch (config.type) {
-                        case 'equals': return cellNum === filterNum1;
-                        case 'above': return cellNum > filterNum1;
-                        case 'below': return cellNum < filterNum1;
-                        case 'between': const filterNum2 = parseFloat(config.value2); return cellNum >= filterNum1 && cellNum <= filterNum2;
-                        default: return true;
-                    }
-                }
-                const cellValue = String(cellValueRaw).toLowerCase();
-                const filterValue1 = String(config.value1).toLowerCase();
-                switch (config.type) {
-                    case 'contains': return cellValue.includes(filterValue1);
-                    case 'equals': return cellValue === filterValue1;
-                    case 'not_contains': return !cellValue.includes(filterValue1);
-                    default: return true;
-                }
-            });
-        });
-        if (sortConfig.key !== null) {
+        let data = [...displayData];
+        // Filtering logic here...
+        if (sortConfig.key) {
             const sortIndex = displayHeader.indexOf(sortConfig.key);
-            processData.sort((a, b) => {
+            data.sort((a, b) => {
                 const valA = a[sortIndex];
                 const valB = b[sortIndex];
                 if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
@@ -1332,52 +1080,46 @@ const DashboardPage = ({ sheetKey }) => {
                 return 0;
             });
         }
-        return processData;
+        return data;
     }, [displayData, sortConfig, generalFilter, statusFilter, displayHeader, columnFilters]);
+
     const downloadCsv = () => {
-        const csvRows = [displayHeader.join(','), ...filteredAndSortedData.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))];
-        const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.setAttribute('hidden', ''); a.setAttribute('href', url); a.setAttribute('download', `${sheetKey}_report.csv`);
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        const csvContent = [displayHeader.join(','), ...filteredAndSortedData.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `${sheetKey}_report.csv`;
+        link.click();
+        URL.revokeObjectURL(link.href);
     };
+
     const downloadPdf = () => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('landscape');
         doc.autoTable({ head: [displayHeader], body: filteredAndSortedData });
         doc.save(`${sheetKey}_report.pdf`);
     };
+
     const jobToObject = (row) => displayHeader.reduce((obj, h, i) => ({...obj, [h]: row[i]}), {});
+    
     const handleSaveColumnSettings = async (newPrefs) => {
         setLoading(true);
         try {
             await api.saveUserDashboardPreferences(user.userIdentifier, { columnOrder: newPrefs.order, columnVisibility: newPrefs.visibility });
-            // Update the user preferences in the auth context
             updatePreferences({ columnOrder: JSON.stringify(newPrefs.order), columnVisibility: JSON.stringify(newPrefs.visibility) });
         } catch(err) { setError(`Failed to save column settings: ${err.message}`); } 
         finally { setLoading(false); setColumnModalOpen(false); }
     };
+
     return (
         <div className="space-y-4">
             <div className="bg-white p-4 rounded-lg shadow-sm border">
                 <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
             </div>
-            {/* Re-adding filter, search, save changes, and options */}
             <div className="bg-white p-4 rounded-lg shadow-sm border flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-4">
-                    <input
-                        type="text"
-                        placeholder="Search all columns..."
-                        value={generalFilter}
-                        onChange={(e) => setGeneralFilter(e.target.value)}
-                        className="shadow-sm border-gray-300 rounded-md px-3 py-2"
-                    />
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="shadow-sm border-gray-300 rounded-md px-3 py-2"
-                    >
+                    <input type="text" placeholder="Search all columns..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md px-3 py-2"/>
+                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md px-3 py-2">
                         <option value="">All Statuses</option>
                         <option value="Open">Open</option>
                         <option value="Closed">Closed</option>
@@ -1385,18 +1127,13 @@ const DashboardPage = ({ sheetKey }) => {
                 </div>
                 <div className="flex items-center space-x-2">
                     {Object.keys(unsavedChanges).length > 0 && (
-                        <button
-                            onClick={handleSaveChanges}
-                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center justify-center"
-                            disabled={loading}
-                        >
+                        <button onClick={handleSaveChanges} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center justify-center" disabled={loading}>
                             {loading ? <Spinner size="5" /> : 'Save Changes'}
                         </button>
                     )}
                     <Dropdown trigger={
                         <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center">
-                            Options
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            Options <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
                     }>
                         <a href="#" onClick={(e) => {e.preventDefault(); setColumnModalOpen(true);}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Column Settings</a>
@@ -1413,18 +1150,13 @@ const DashboardPage = ({ sheetKey }) => {
                         <table className="w-full text-sm text-left text-gray-500 table-layout">
                             <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
                                 <tr>
-                                    {displayHeader.map(h => {
-                                        const isSkillColumn = h === 'Required Skill Set'; const isTitleColumn = h === 'Posting Title';
-                                        let style = { minWidth: '140px' };
-                                        if (isSkillColumn) style = { width: '300px' }; else if (isTitleColumn) style = { width: '200px' };
-                                        return (
-                                            <th key={h} scope="col" className="p-0" style={style}>
-                                                <Dropdown width="64" trigger={<div className="header-menu-trigger font-bold"><span>{h} {sortConfig.key === h ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}</span></div>}>
-                                                    <HeaderMenu header={h} sortConfig={sortConfig} onSort={(dir) => handleSort(h, dir)} filterConfig={columnFilters[h]} onFilterChange={handleColumnFilterChange}/>
-                                                </Dropdown>
-                                            </th>
-                                        );
-                                    })}
+                                    {displayHeader.map(h => (
+                                        <th key={h} scope="col" className="p-0" style={{ minWidth: '140px', width: h === 'Required Skill Set' ? '300px' : h === 'Posting Title' ? '200px' : undefined }}>
+                                            <Dropdown width="64" trigger={<div className="header-menu-trigger font-bold"><span>{h} {sortConfig.key === h ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}</span></div>}>
+                                                <HeaderMenu header={h} onSort={(dir) => handleSort(h, dir)} filterConfig={columnFilters[h]} onFilterChange={handleColumnFilterChange}/>
+                                            </Dropdown>
+                                        </th>
+                                    ))}
                                     <th scope="col" className="px-4 py-3" style={{width: '80px'}}>Action</th>
                                 </tr>
                             </thead>
@@ -1432,27 +1164,24 @@ const DashboardPage = ({ sheetKey }) => {
                                 {filteredAndSortedData.map((row, rowIndex) => (
                                     <tr key={row[0] || rowIndex} className="bg-white border-b hover:bg-gray-50">
                                         {row.map((cell, cellIndex) => {
-                                            const headerName = displayHeader[cellIndex]; 
-                                            // Only allow editing if canEditDashboard is true AND the column is editable
-                                            const isEditable = canEditDashboard && EDITABLE_COLUMNS.includes(headerName); 
-                                            const isDate = DATE_COLUMNS.includes(headerName);
-                                            const postingId = row[displayHeader.indexOf('Posting ID')]; 
-                                            const isModified = unsavedChanges[postingId] && unsavedChanges[postingId][headerName] !== undefined;
-                                            const deadlineClass = headerName === 'Deadline' ? getDeadlineClass(cell) : '';
+                                            const headerName = displayHeader[cellIndex];
+                                            const postingId = row[displayHeader.indexOf('Posting ID')];
                                             return (
-                                                <td key={cellIndex} className={`px-4 py-3 text-center align-middle ${isModified ? 'modified-cell' : ''} ${deadlineClass}`} contentEditable={isEditable} suppressContentEditableWarning={true}
-                                                    onFocus={e => { if (!isEditable) return; if (e.target.innerText === 'Need To Update') e.target.innerText = ''; }}
-                                                    onBlur={e => { if (!isEditable) return; let currentValue = e.target.innerText.trim(); if (currentValue === '') { currentValue = 'Need To Update'; e.target.innerText = 'Need To Update'; } handleCellEdit(rowIndex, cellIndex, currentValue); }}>
-                                                    {isDate ? formatDate(cell) : cell}
+                                                <td key={cellIndex} 
+                                                    className={`px-4 py-3 text-center align-middle ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'modified-cell' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`} 
+                                                    contentEditable={canEditDashboard && EDITABLE_COLUMNS.includes(headerName)} 
+                                                    suppressContentEditableWarning={true}
+                                                    onFocus={e => { if (canEditDashboard && e.target.innerText === 'Need To Update') e.target.innerText = ''; }}
+                                                    onBlur={e => { if (canEditDashboard) { let val = e.target.innerText.trim() || 'Need To Update'; e.target.innerText = val; handleCellEdit(rowIndex, cellIndex, val); }}}>
+                                                    {DATE_COLUMNS.includes(headerName) ? formatDate(cell) : cell}
                                                 </td>
                                             );
                                         })}
-                                        {/* Action menu is only available if canEditDashboard is true */}
                                         <td className="px-4 py-3">
                                             {canEditDashboard ? (
                                                 <ActionMenu job={row} onAction={(type, job) => setModalState({type, job: jobToObject(job)})} />
                                             ) : (
-                                                <button className="text-gray-400 p-1 rounded-full cursor-not-allowed" aria-label="No actions available"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
+                                                <button className="text-gray-400 p-1 rounded-full cursor-not-allowed" aria-label="No actions"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
                                             )}
                                         </td>
                                     </tr>
@@ -1460,9 +1189,7 @@ const DashboardPage = ({ sheetKey }) => {
                             </tbody>
                         </table>
                     </div>
-                ) : (
-                    !loading && !error && <p className="text-center text-gray-500 p-4">No job postings found matching your filters.</p>
-                )
+                ) : <p className="text-center text-gray-500 p-4">No job postings found matching your filters.</p>
             )}
             <ConfirmationModal isOpen={['close', 'archive', 'delete'].includes(modalState.type)} onClose={() => setModalState({type: null, job: null})} onConfirm={() => handleAction(modalState.type, modalState.job)} title={`Confirm ${modalState.type}`} message={`Are you sure you want to ${modalState.type} the job "${modalState.job?.['Posting Title']}"?`} confirmText={modalState.type}/>
             <ViewDetailsModal isOpen={modalState.type === 'details'} onClose={() => setModalState({type: null, job: null})} job={modalState.job}/>
@@ -1470,33 +1197,45 @@ const DashboardPage = ({ sheetKey }) => {
         </div>
     );
 };
+
 const ColumnSettingsModal = ({ isOpen, onClose, allHeaders, userPrefs, onSave }) => {
-    const [order, setOrder] = useState([]); const [visibility, setVisibility] = useState({}); const dragItem = useRef(); const dragOverItem = useRef();
+    const [order, setOrder] = useState([]); 
+    const [visibility, setVisibility] = useState({}); 
+    const dragItem = useRef(); 
+    const dragOverItem = useRef();
+
     useEffect(() => {
         if (!isOpen) return;
-        const initialOrder = userPrefs.order.length > 0 ? userPrefs.order.filter(h => allHeaders.includes(h)) : allHeaders;
-        const remainingHeaders = allHeaders.filter(h => !initialOrder.includes(h));
-        setOrder([...initialOrder, ...remainingHeaders]);
-        const initialVisibility = {}; allHeaders.forEach(h => { initialVisibility[h] = !userPrefs.visibility.includes(h); }); setVisibility(initialVisibility);
+        const currentOrder = userPrefs.order.length > 0 ? userPrefs.order.filter(h => allHeaders.includes(h)) : allHeaders;
+        const remaining = allHeaders.filter(h => !currentOrder.includes(h));
+        setOrder([...currentOrder, ...remaining]);
+        setVisibility(allHeaders.reduce((acc, h) => ({...acc, [h]: !userPrefs.visibility.includes(h)}), {}));
     }, [isOpen, allHeaders, userPrefs]);
-    const handleDragStart = (e, position) => { dragItem.current = position; e.target.classList.add('dragging'); };
-    const handleDragEnter = (e, position) => { dragOverItem.current = position; };
-    const handleDrop = (e) => {
-        const newOrder = [...order]; const dragItemContent = newOrder[dragItem.current];
-        newOrder.splice(dragItem.current, 1); newOrder.splice(dragOverItem.current, 0, dragItemContent);
-        dragItem.current = null; dragOverItem.current = null; setOrder(newOrder);
-        e.target.closest('.column-list-item').classList.remove('dragging');
+
+    const handleDrop = () => {
+        const newOrder = [...order];
+        const draggedItemContent = newOrder.splice(dragItem.current, 1)[0];
+        newOrder.splice(dragOverItem.current, 0, draggedItemContent);
+        setOrder(newOrder);
     };
-    const handleVisibilityChange = (header) => setVisibility(prev => ({...prev, [header]: !prev[header]}));
-    const handleSave = () => { const hiddenColumns = Object.entries(visibility).filter(([_, isVisible]) => !isVisible).map(([header]) => header); onSave({ order, visibility: hiddenColumns }); };
+    
+    const handleSave = () => { 
+        const hiddenColumns = Object.entries(visibility).filter(([, isVisible]) => !isVisible).map(([header]) => header); 
+        onSave({ order, visibility: hiddenColumns }); 
+    };
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Column Settings" size="lg">
             <p className="text-gray-600 mb-4">Drag and drop to reorder. Check/uncheck to show/hide.</p>
             <div className="space-y-2">
                 {order.map((header, index) => (
-                    <div key={header} className="flex items-center justify-between p-2 bg-gray-50 rounded-md border cursor-grab column-list-item" draggable onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={(e) => e.target.classList.remove('dragging')} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+                    <div key={header} className="flex items-center justify-between p-2 bg-gray-50 rounded-md border cursor-grab" draggable 
+                        onDragStart={() => dragItem.current = index} 
+                        onDragEnter={() => dragOverItem.current = index} 
+                        onDragEnd={handleDrop} 
+                        onDragOver={(e) => e.preventDefault()}>
                         <span>{header}</span>
-                        <input type="checkbox" checked={visibility[header] || false} onChange={() => handleVisibilityChange(header)} className="h-5 w-5 rounded"/>
+                        <input type="checkbox" checked={visibility[header] || false} onChange={() => setVisibility(prev => ({...prev, [header]: !prev[header]}))} className="h-5 w-5 rounded"/>
                     </div>
                 ))}
             </div>
@@ -1507,33 +1246,35 @@ const ColumnSettingsModal = ({ isOpen, onClose, allHeaders, userPrefs, onSave })
         </Modal>
     );
 };
+
 const ActionMenu = ({ job, onAction }) => (
-    <Dropdown trigger={<button className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100" aria-label="Job actions menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>}>
+    <Dropdown trigger={<button className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100" aria-label="Job actions"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>}>
         <a href="#" onClick={(e) => {e.preventDefault(); onAction('details', job)}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">View Details</a>
         <a href="#" onClick={(e) => {e.preventDefault(); onAction('close', job)}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Close Job</a>
         <a href="#" onClick={(e) => {e.preventDefault(); onAction('archive', job)}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Archive Job</a>
         <a href="#" onClick={(e) => {e.preventDefault(); onAction('delete', job)}} className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Delete Job</a>
     </Dropdown>
 );
+
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText }) => {
-    const confirmButtonClasses = { delete: 'bg-red-600 hover:bg-red-700', archive: 'bg-yellow-500 hover:bg-yellow-600', close: 'bg-blue-500 hover:bg-blue-600' };
+    const buttonClasses = { delete: 'bg-red-600 hover:bg-red-700', archive: 'bg-yellow-500 hover:bg-yellow-600', close: 'bg-blue-500 hover:bg-blue-600' };
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
             <p className="text-gray-600">{message}</p>
             <div className="flex justify-end mt-6 space-x-2">
                 <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                <button onClick={onConfirm} className={`px-4 py-2 text-white rounded-md ${confirmButtonClasses[confirmText] || 'bg-indigo-600'}`}>{confirmText}</button>
+                <button onClick={onConfirm} className={`px-4 py-2 text-white rounded-md ${buttonClasses[confirmText] || 'bg-indigo-600'}`}>{confirmText}</button>
             </div>
         </Modal>
     );
 };
+
 const ViewDetailsModal = ({ isOpen, onClose, job }) => (
     <Modal isOpen={isOpen} onClose={onClose} title="Job Details" size="lg">
         {job && <div className="space-y-4">{Object.entries(job).map(([key, value]) => (<div key={key}><h4 className="text-sm font-medium text-gray-500">{key}</h4><p className="text-gray-800">{String(DATE_COLUMNS.includes(key) ? formatDate(value) : value)}</p></div>))}</div>}
     </Modal>
 );
 
-// --- NEW: Messages Page Component ---
 const MessagesPage = () => {
     const { user } = useAuth();
     const [users, setUsers] = useState([]);
@@ -1543,93 +1284,65 @@ const MessagesPage = () => {
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [error, setError] = useState('');
-    const messagesEndRef = useRef(null); // Ref for scrolling to the bottom of messages
+    const messagesEndRef = useRef(null);
 
-    // Fetch all users for recipient selection
     useEffect(() => {
         const fetchUsers = async () => {
             setLoadingUsers(true);
             try {
                 const result = await api.getUsers(user.userIdentifier);
-                if (result.success) {
-                    // Filter out the current user from the list of recipients
-                    setUsers(result.users.filter(u => u.username !== user.userIdentifier));
-                } else {
-                    setError(result.message);
-                }
-            } catch (err) {
-                setError(`Failed to fetch users: ${err.message}`);
-            } finally {
-                setLoadingUsers(false);
-            }
+                if (result.success) setUsers(result.users.filter(u => u.username !== user.userIdentifier));
+                else setError(result.message);
+            } catch (err) { setError(`Failed to fetch users: ${err.message}`); } 
+            finally { setLoadingUsers(false); }
         };
-        fetchUsers();
-    }, [user.userIdentifier]);
+        if (user?.userIdentifier) fetchUsers();
+    }, [user?.userIdentifier]);
 
-    // Fetch messages for the selected recipient
     useEffect(() => {
-        let messagePollingInterval;
+        if (!selectedRecipient) { setMessages([]); return; }
+        
         const fetchMessages = async () => {
-            if (!selectedRecipient) {
-                setMessages([]);
-                return;
-            }
             setLoadingMessages(true);
-            setError('');
             try {
                 const result = await api.getMessages(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
-                if (result.success) {
-                    setMessages(result.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
-                } else {
-                    setError(result.message);
-                }
-            } catch (err) {
-                setError(`Failed to fetch messages: ${err.message}`);
-            } finally {
-                setLoadingMessages(false);
-            }
+                if (result.success) setMessages(result.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
+                else setError(result.message);
+            } catch (err) { setError(`Failed to fetch messages: ${err.message}`); } 
+            finally { setLoadingMessages(false); }
         };
 
-        fetchMessages(); // Initial fetch
-        messagePollingInterval = setInterval(fetchMessages, 5000); // Poll every 5 seconds
-
-        return () => clearInterval(messagePollingInterval); // Cleanup on unmount or recipient change
+        fetchMessages();
+        const interval = setInterval(fetchMessages, 5000);
+        return () => clearInterval(interval);
     }, [selectedRecipient, user.userIdentifier]);
 
-    // Scroll to the bottom of the messages whenever messages update
     useEffect(() => {
-        if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-        }
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if (!newMessage.trim() || !selectedRecipient) return;
 
-        const messageToSend = newMessage.trim();
-        setNewMessage(''); // Clear input immediately
+        const tempMessage = {
+            sender: user.userIdentifier,
+            recipient: selectedRecipient.username,
+            messageContent: newMessage.trim(),
+            timestamp: new Date().toISOString(),
+            id: Date.now()
+        };
+        setMessages(prev => [...prev, tempMessage]);
+        setNewMessage('');
 
         try {
-            // Optimistically add message to UI
-            const tempMessage = {
-                sender: user.userIdentifier,
-                recipient: selectedRecipient.username,
-                messageContent: messageToSend,
-                timestamp: new Date().toISOString(),
-                id: Date.now() // Temporary ID
-            };
-            setMessages(prev => [...prev, tempMessage]);
-
-            const result = await api.saveMessage(user.userIdentifier, selectedRecipient.username, messageToSend, user.userIdentifier);
+            const result = await api.saveMessage(user.userIdentifier, selectedRecipient.username, tempMessage.messageContent, user.userIdentifier);
             if (!result.success) {
                 setError(result.message);
-                // Optional: Revert optimistic update if save fails
                 setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
             }
         } catch (err) {
             setError(`Failed to send message: ${err.message}`);
-            // Optional: Revert optimistic update if send fails
             setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
         }
     };
@@ -1638,7 +1351,6 @@ const MessagesPage = () => {
         <div className="space-y-6">
             <h1 className="text-3xl font-bold text-gray-800">Internal Messaging</h1>
             <div className="flex flex-col md:flex-row bg-white rounded-lg shadow-lg h-[70vh]">
-                {/* User List Sidebar */}
                 <div className="w-full md:w-1/4 border-r border-gray-200 p-4 overflow-y-auto">
                     <h2 className="text-lg font-semibold text-gray-700 mb-4">Users</h2>
                     {loadingUsers && <Spinner size="6" />}
@@ -1647,20 +1359,15 @@ const MessagesPage = () => {
                     <ul className="space-y-2">
                         {users.map(u => (
                             <li key={u.username}>
-                                <button 
-                                    onClick={() => setSelectedRecipient(u)}
-                                    className={`w-full text-left p-3 rounded-md transition-colors duration-200 
-                                                ${selectedRecipient?.username === u.username ? 'bg-emerald-100 text-emerald-800 font-semibold' : 'hover:bg-gray-100 text-gray-700'}`}
-                                >
+                                <button onClick={() => setSelectedRecipient(u)} className={`w-full text-left p-3 rounded-md transition-colors ${selectedRecipient?.username === u.username ? 'bg-emerald-100 text-emerald-800 font-semibold' : 'hover:bg-gray-100 text-gray-700'}`}>
                                     <p className="font-medium">{u.displayName}</p>
-                                    <p className="text-xs text-gray-500 break-all">ID: {u.userIdentifier}</p> {/* Display full user ID */}
+                                    <p className="text-xs text-gray-500 break-all">ID: {u.userIdentifier}</p>
                                 </button>
                             </li>
                         ))}
                     </ul>
                 </div>
 
-                {/* Chat Window */}
                 <div className="flex-1 flex flex-col">
                     {selectedRecipient ? (
                         <>
@@ -1670,7 +1377,6 @@ const MessagesPage = () => {
                             </div>
                             <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-gray-50">
                                 {loadingMessages && <div className="flex justify-center"><Spinner size="6" /></div>}
-                                {messages.length === 0 && !loadingMessages && <p className="text-gray-500 text-center">No messages yet. Start a conversation!</p>}
                                 {messages.map((msg, index) => (
                                     <div key={msg.id || index} className={`flex ${msg.sender === user.userIdentifier ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`max-w-xs p-3 rounded-lg shadow-md ${msg.sender === user.userIdentifier ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-800'}`}>
@@ -1680,73 +1386,46 @@ const MessagesPage = () => {
                                         </div>
                                     </div>
                                 ))}
-                                <div ref={messagesEndRef} /> {/* Scroll to this element */}
+                                <div ref={messagesEndRef} />
                             </div>
                             <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 bg-white flex items-center space-x-2">
-                                <input 
-                                    type="text" 
-                                    value={newMessage} 
-                                    onChange={(e) => setNewMessage(e.target.value)} 
-                                    placeholder="Type your message..." 
-                                    className="flex-1 border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    disabled={loadingMessages}
-                                />
-                                <button 
-                                    type="submit" 
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md disabled:bg-gray-400"
-                                    disabled={!newMessage.trim() || loadingMessages}
-                                >
-                                    Send
-                                </button>
+                                <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type your message..." className="flex-1 border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={loadingMessages}/>
+                                <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md disabled:bg-gray-400" disabled={!newMessage.trim() || loadingMessages}>Send</button>
                             </form>
                         </>
-                    ) : (
-                        <div className="flex-1 flex items-center justify-center text-gray-500">
-                            Select a user to start a conversation.
-                        </div>
-                    )}
+                    ) : <div className="flex-1 flex items-center justify-center text-gray-500">Select a user to start a conversation.</div>}
                 </div>
             </div>
         </div>
     );
 };
 
-// --- Main App Structure (Enhanced) ---------------------------------------------------
 const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
-    const isAdmin = user?.userRole?.includes('Admin');
-    const isDataEntry = user?.backendOfficeRole?.includes('Data Entry') || user?.backendOfficeRole?.includes('Data Entry & Viewer');
-    // FIX: Refined canAccessReportsNav to align with backend and ReportsPage permissions
-    const canAccessReportsNav = isAdmin || 
-                                user?.backendOfficeRole?.includes('Recruitment Manager') ||
-                                user?.backendOfficeRole?.includes('Data Entry & Viewer') ||
-                                user?.backendOfficeRole?.includes('Data Viewer');
-
+    const { isAdmin, canViewDashboards, canAddPosting, canViewReports } = usePermissions();
     const [notifications, setNotifications] = useState([]);
-    const [error, setError] = useState('');
-
+    
     const fetchNotifications = useCallback(async () => {
         try {
             const result = await api.getNotifications(user.userIdentifier);
             if (result.success) setNotifications(result.notifications);
-        } catch (err) {
-            setError('Could not fetch notifications');
-        }
+        } catch (err) { console.error('Could not fetch notifications'); }
     }, [user.userIdentifier]);
 
     useEffect(() => {
+        if (!user?.userIdentifier) return;
         fetchNotifications();
-        const interval = setInterval(fetchNotifications, 60000); // Poll every minute
+        const interval = setInterval(fetchNotifications, 60000);
         return () => clearInterval(interval);
-    }, [fetchNotifications]);
+    }, [fetchNotifications, user?.userIdentifier]);
 
-    const handleMarkAsRead = async (notifsToMark) => {
+    const handleMarkAsRead = async () => {
         try {
-            await api.markNotificationsAsRead(notifsToMark, user.userIdentifier);
-            fetchNotifications(); // Refresh list
-        } catch (err) {
-            setError('Failed to mark as read');
-        }
+            await api.markNotificationsAsRead(notifications.map(n => n.id), user.userIdentifier);
+            fetchNotifications();
+        } catch (err) { console.error('Failed to mark as read'); }
     };
+
+    const navLinkClasses = (type) => `px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === type ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`;
 
     return (
         <header className="bg-white shadow-md sticky top-0 z-40">
@@ -1755,50 +1434,31 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
                     <div className="flex items-center space-x-8">
                         <h1 className="text-2xl font-bold text-indigo-600">VMS Portal</h1>
                         <nav className="hidden md:flex space-x-1">
-                            {/* Home is accessible by all */}
-                            <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'home'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'home' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Home</a>
-                            
-                            {/* Dashboards are accessible by Data Viewer, Recruitment Manager, Recruitment Team, Admin */}
-                            {/* The original isDataViewer in TopNav was too broad for dashboards, so using a more specific check here */}
-                            {(user?.userRole?.includes('Admin') || user?.backendOfficeRole?.includes('Data Viewer') || user?.backendOfficeRole?.includes('Data Entry') || user?.backendOfficeRole?.includes('Data Entry & Viewer') || user?.backendOfficeRole?.includes('Recruitment Manager') || user?.backendOfficeRole?.includes('Recruitment Team')) && (
-                                <Dropdown trigger={<button className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'dashboard' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Dashboards</button>}>
+                            <a href="#" onClick={() => setCurrentPage({type: 'home'})} className={navLinkClasses('home')}>Home</a>
+                            {canViewDashboards && (
+                                <Dropdown trigger={<button className={navLinkClasses('dashboard')}>Dashboards</button>}>
                                     {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
-                                        <a href="#" key={key} onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'dashboard', key})}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{config.title}</a>
+                                        <a href="#" key={key} onClick={() => setCurrentPage({type: 'dashboard', key})} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{config.title}</a>
                                     ))}
                                 </Dropdown>
                             )}
-
-                            {/* New Posting is accessible by Data Entry, Data Entry & Viewer, Admin */}
-                            {(isDataEntry || isAdmin) && (
-                                <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'new_posting'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'new_posting' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>New Posting</a>
-                            )}
-                            
-                            {/* Reports are accessible by Recruitment Manager, Admin, Data Viewer, Data Entry & Viewer */}
-                            {canAccessReportsNav && ( // FIX: Using the new canAccessReportsNav variable
-                                <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'reports'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'reports' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Reports</a>
-                            )}
-
-                            {/* Messages are accessible by all authenticated users */}
-                            <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'messages'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'messages' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Messages</a>
-                            
-                            {/* Admin is accessible only by Admin */}
-                            {isAdmin && <a href="#" onClick={(e) => {e.preventDefault(); setCurrentPage({type: 'admin'})}} className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === 'admin' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`}>Admin</a>}
+                            {canAddPosting && <a href="#" onClick={() => setCurrentPage({type: 'new_posting'})} className={navLinkClasses('new_posting')}>New Posting</a>}
+                            {canViewReports && <a href="#" onClick={() => setCurrentPage({type: 'reports'})} className={navLinkClasses('reports')}>Reports</a>}
+                            <a href="#" onClick={() => setCurrentPage({type: 'messages'})} className={navLinkClasses('messages')}>Messages</a>
+                            {isAdmin && <a href="#" onClick={() => setCurrentPage({type: 'admin'})} className={navLinkClasses('admin')}>Admin</a>}
                         </nav>
                     </div>
                     <div className="flex items-center space-x-4">
-                        <Dropdown 
-                            width="80"
-                            trigger={
-                                <button className="relative text-gray-500 hover:text-gray-700" aria-label="Notifications">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                                    {/* Updated notification badge color */}
-                                    {notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
-                                </button>
-                            }>
+                        <Dropdown width="80" trigger={
+                            <button className="relative text-gray-500 hover:text-gray-700" aria-label="Notifications">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                                {notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
+                            </button>
+                        }>
                             <div className="p-2">
                                 <div className="flex justify-between items-center mb-2 px-2">
                                     <h4 className="font-semibold text-gray-800">Notifications</h4>
-                                    <button onClick={() => handleMarkAsRead(notifications)} className="text-xs text-indigo-600 hover:underline close-on-click">Mark all as read</button>
+                                    <button onClick={handleMarkAsRead} className="text-xs text-indigo-600 hover:underline">Mark all as read</button>
                                 </div>
                                 <div className="max-h-80 overflow-y-auto">
                                     {notifications.length > 0 ? notifications.map(n => (
@@ -1813,7 +1473,6 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
 
                         <Dropdown trigger={
                             <button className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" aria-label="User menu">
-                                <span className="sr-only">Open user menu</span>
                                 <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-gray-600"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
                             </button>
                         }>
@@ -1821,7 +1480,7 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
                                 <p className="text-sm font-medium text-gray-900">{user.userName}</p>
                                 <p className="text-sm text-gray-500 truncate">{user.userIdentifier}</p>
                             </div>
-                            <a href="#" onClick={logout} className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100 close-on-click">Logout</a>
+                            <a href="#" onClick={logout} className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</a>
                         </Dropdown>
                     </div>
                 </div>
@@ -1833,44 +1492,25 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
 const MainApp = () => {
     const [currentPage, setCurrentPage] = useState({type: 'home'});
     const { user, logout } = useAuth();
-    
+    const permissions = usePermissions();
+
     const renderPage = () => {
-        // All users have home access
-        if (currentPage.type === 'home') return <HomePage />;
-        if (currentPage.type === 'messages') return <MessagesPage />;
-
-        // Access control for other pages
-        const isAdmin = user?.userRole?.includes('Admin');
-        const isDataEntry = user?.backendOfficeRole?.includes('Data Entry') || user?.backendOfficeRole?.includes('Data Entry & Viewer');
-        const isDataViewer = user?.backendOfficeRole?.includes('Data Viewer') || user?.backendOfficeRole?.includes('Data Entry') || user?.backendOfficeRole?.includes('Data Entry & Viewer') || user?.backendOfficeRole?.includes('Recruitment Manager') || user?.backendOfficeRole?.includes('Recruitment Team'); // Data Entry can also view dashboards
-        const isRecruitmentManager = user?.backendOfficeRole?.includes('Recruitment Manager');
-
-        switch(currentPage.type) {
-            case 'dashboard': 
-                if (isDataViewer || isAdmin) return <DashboardPage sheetKey={currentPage.key} />;
-                return <div className="text-center text-red-500 p-8">Permission Denied: You do not have access to dashboards.</div>;
-            case 'new_posting': 
-                if (isDataEntry || isAdmin) return <JobPostingFormPage onFormSubmit={() => setCurrentPage({type: 'dashboard', key: 'taprootVMSDisplay'})} />;
-                return <div className="text-center text-red-500 p-8">Permission Denied: You do not have permission to add new postings.</div>;
-            case 'reports': 
-                // FIX: Ensure this matches backend and TopNav's canAccessReportsNav
-                if (isAdmin || isRecruitmentManager || user?.backendOfficeRole?.includes('Data Viewer') || user?.backendOfficeRole?.includes('Data Entry & Viewer')) return <ReportsPage />;
-                return <div className="text-center text-red-500 p-8">Permission Denied: You do not have access to reports.</div>;
-            case 'admin': 
-                if (isAdmin) return <AdminPage />;
-                return <div className="text-center text-red-500 p-8">Permission Denied: You do not have administrative access.</div>;
-            default: return <HomePage />;
-        }
+        const pageMap = {
+            home: <HomePage />,
+            messages: <MessagesPage />,
+            dashboard: permissions.canViewDashboards && <DashboardPage sheetKey={currentPage.key} />,
+            new_posting: permissions.canAddPosting && <JobPostingFormPage onFormSubmit={() => setCurrentPage({type: 'dashboard', key: 'taprootVMSDisplay'})} />,
+            reports: permissions.canViewReports && <ReportsPage />,
+            admin: permissions.isAdmin && <AdminPage />,
+        };
+        const PageComponent = pageMap[currentPage.type];
+        return PageComponent || <div className="text-center text-red-500 p-8">Permission Denied.</div>;
     };
 
     return (
         <div className="min-h-screen bg-gray-100">
             <TopNav user={user} logout={logout} currentPage={currentPage} setCurrentPage={setCurrentPage} />
-            <main className="py-6">
-                <div className="px-4 sm:px-6 lg:px-8">
-                    {renderPage()}
-                </div>
-            </main>
+            <main className="py-6"><div className="px-4 sm:px-6 lg:px-8">{renderPage()}</div></main>
         </div>
     );
 };
@@ -1887,9 +1527,5 @@ try {
     root.render(<AuthProvider><App /></AuthProvider>);
 } catch (e) {
     console.error("Error rendering React app:", e);
-    // Fallback UI to display if React app fails to render
-    const rootElement = document.getElementById('root');
-    if (rootElement) {
-        rootElement.innerHTML = '<div style="text-align: center; color: red; padding: 20px; font-family: \'Inter\', sans-serif;">Failed to load application. Please check the console for more details.</div>';
-    }
+    document.getElementById('root').innerHTML = '<div style="text-align: center; color: red; padding: 20px; font-family: \'Inter\', sans-serif;">Failed to load application. Please check the console for details.</div>';
 }
