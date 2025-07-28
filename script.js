@@ -17,6 +17,14 @@ const { useState, useEffect, createContext, useContext, useReducer, useMemo, use
 const { createRoot } = ReactDOM;
 const { Bar, Pie, Doughnut } = ReactChartjs2;
 
+// --- FIX: Chart.js Component Registration ---
+// This block explicitly registers the components needed for Bar, Pie, and Doughnut charts.
+// This prevents crashes by ensuring Chart.js is properly initialized before React tries to render any charts.
+const { Chart, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } = window.Chart;
+Chart.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
+// --- END FIX ---
+
+
 // --- Configuration & Utilities -----------------------------------------------------
 const API_BASE_URL = '/api'; // Assumes proxy or same-domain deployment
 
