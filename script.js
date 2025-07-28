@@ -1,5 +1,5 @@
 // ===================================================================================
-// VMS Dashboard - React Application - FULLY INTEGRATED (Patched v2)
+// VMS Dashboard - React Application - FULLY INTEGRATED (Patched v3)
 // ===================================================================================
 
 // Global error handler for uncaught exceptions
@@ -14,7 +14,24 @@ window.onerror = function(message, source, lineno, colno, error) {
 
 const { useState, useEffect, createContext, useContext, useReducer, useMemo, useCallback, useRef, Component } = React;
 const { createRoot } = ReactDOM;
+
+// --- CHART.JS v3+ REGISTRATION FIX ---
+// This is the critical fix for the report page crash.
+// We must manually register the components Chart.js needs to function with react-chartjs-2.
+const { Chart: ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } = window.Chart;
 const { Bar, Pie, Doughnut } = ReactChartjs2;
+
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title
+);
+// --- END FIX ---
+
 
 // --- Configuration & Utilities -----------------------------------------------------
 const API_BASE_URL = '/api';
