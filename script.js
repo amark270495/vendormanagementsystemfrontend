@@ -53,7 +53,15 @@ const formatDate = (isoString) => {
  */
 const getDeadlineClass = (dateString) => {
     if (!dateString || dateString === 'Need To Update') return '';
-    const deadline = new Date(dateString);
+    
+    // Handle MM/DD/YYYY format by converting to YYYY-MM-DD which is reliably parsed
+    let parsableDateString = dateString;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+        const parts = dateString.split('/');
+        parsableDateString = `${parts[2]}-${parts[0]}-${parts[1]}`;
+    }
+
+    const deadline = new Date(parsableDateString);
     if (isNaN(deadline.getTime())) return ''; // Return empty if the date is invalid
 
     const today = new Date();
@@ -1151,7 +1159,7 @@ const DashboardPage = ({ sheetKey }) => {
         // Status filter
         const statusIndex = displayHeader.indexOf('Status');
         if (statusFilter && statusIndex !== -1) {
-            data = data.filter(row => row[statusIndex] === statusFilter);
+            data = data.filter(row => row[statusIndex] && String(row[statusIndex]).trim() === statusFilter);
         }
 
         // Column-specific filters
@@ -1565,7 +1573,8 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
         return () => clearInterval(interval);
     }, [fetchNotifications, user?.userIdentifier]);
 
-    const handleMarkAsRead = async () => {
+    const handleMarkAsRead = async (e) => {
+        e.stopPropagation(); // Prevent the dropdown from closing on click.
         if (notifications.length === 0) return;
         const originalNotifications = [...notifications];
         setNotifications([]);
@@ -1610,7 +1619,7 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
                             <div className="p-2">
                                 <div className="flex justify-between items-center mb-2 px-2">
                                     <h4 className="font-semibold text-gray-800">Notifications</h4>
-                                    <button onClick={handleMarkAsRead} className="text-xs text-indigo-600 hover:underline" disabled={notifications.length === 0}>Mark all as read</button>
+                                    <button onClick={(e) => handleMarkAsRead(e)} className="text-xs text-indigo-600 hover:underline" disabled={notifications.length === 0}>Mark all as read</button>
                                 </div>
                                 <div className="max-h-80 overflow-y-auto">
                                     {notifications.length > 0 ? notifications.map(n => (
