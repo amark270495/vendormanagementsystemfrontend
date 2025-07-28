@@ -9,7 +9,6 @@ window.onerror = function(message, source, lineno, colno, error) {
 
 const { useState, useEffect, createContext, useContext, useReducer, useMemo, useCallback, useRef } = React;
 const { createRoot } = ReactDOM;
-const { Bar, Pie, Doughnut } = ReactChartjs2;
 
 const API_BASE_URL = '/api';
 
@@ -704,6 +703,32 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
     );
 };
 
+const ChartComponent = ({ type, data, options }) => {
+    const canvasRef = useRef(null);
+    const chartRef = useRef(null);
+
+    useEffect(() => {
+        if (chartRef.current) {
+            chartRef.current.destroy();
+        }
+
+        const ctx = canvasRef.current.getContext('2d');
+        chartRef.current = new Chart(ctx, {
+            type: type,
+            data: data,
+            options: options,
+        });
+
+        return () => {
+            if (chartRef.current) {
+                chartRef.current.destroy();
+            }
+        };
+    }, [type, data, options]);
+
+    return <canvas ref={canvasRef}></canvas>;
+};
+
 const ReportsPage = () => {
     const { user } = useAuth();
     const { canViewReports, canEmailReports } = usePermissions();
@@ -794,9 +819,9 @@ const ReportsPage = () => {
                         <div className="bg-white p-4 rounded-lg shadow-lg border"><p className="text-3xl font-extrabold text-gray-800">{reportData.totalMaxSubmissions}</p><p className="text-sm text-gray-500">Max Allowed</p></div>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div className="bg-white p-6 rounded-lg shadow-lg border h-[400px]"><h3 className="font-semibold text-lg text-gray-800 mb-4 text-center">Jobs by Client</h3><div className="relative w-full h-full"><Bar options={chartOptions} data={getChartData(Object.keys(reportData.clientJobCounts), Object.values(reportData.clientJobCounts), '# of Jobs')} /></div></div>
-                        <div className="bg-white p-6 rounded-lg shadow-lg border h-[400px]"><h3 className="font-semibold text-lg text-gray-800 mb-4 text-center">Jobs by Position Type</h3><div className="relative w-full h-full"><Pie options={chartOptions} data={getChartData(Object.keys(reportData.positionTypeCounts), Object.values(reportData.positionTypeCounts), '# of Jobs')} /></div></div>
-                        <div className="bg-white p-6 rounded-lg shadow-lg border lg:col-span-2 h-[400px]"><h3 className="font-semibold text-lg text-gray-800 mb-4 text-center">Jobs by Assignee</h3><div className="relative w-full h-full"><Doughnut options={chartOptions} data={getChartData(Object.keys(reportData.workingByCounts), Object.values(reportData.workingByCounts), '# of Jobs')} /></div></div>
+                        <div className="bg-white p-6 rounded-lg shadow-lg border h-[400px]"><h3 className="font-semibold text-lg text-gray-800 mb-4 text-center">Jobs by Client</h3><div className="relative w-full h-full"><ChartComponent type='bar' options={chartOptions} data={getChartData(Object.keys(reportData.clientJobCounts), Object.values(reportData.clientJobCounts), '# of Jobs')} /></div></div>
+                        <div className="bg-white p-6 rounded-lg shadow-lg border h-[400px]"><h3 className="font-semibold text-lg text-gray-800 mb-4 text-center">Jobs by Position Type</h3><div className="relative w-full h-full"><ChartComponent type='pie' options={chartOptions} data={getChartData(Object.keys(reportData.positionTypeCounts), Object.values(reportData.positionTypeCounts), '# of Jobs')} /></div></div>
+                        <div className="bg-white p-6 rounded-lg shadow-lg border lg:col-span-2 h-[400px]"><h3 className="font-semibold text-lg text-gray-800 mb-4 text-center">Jobs by Assignee</h3><div className="relative w-full h-full"><ChartComponent type='doughnut' options={chartOptions} data={getChartData(Object.keys(reportData.workingByCounts), Object.values(reportData.workingByCounts), '# of Jobs')} /></div></div>
                     </div>
                 </div>
             ) : (!loading && !error && <p className="text-center text-gray-500 p-4">Select filters and click "Generate Report" to view data.</p>)}
@@ -1248,7 +1273,7 @@ const ColumnSettingsModal = ({ isOpen, onClose, allHeaders, userPrefs, onSave })
 };
 
 const ActionMenu = ({ job, onAction }) => (
-    <Dropdown trigger={<button className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100" aria-label="Job actions"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>}>
+    <Dropdown trigger={<button className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100" aria-label="Job actions"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>}>
         <a href="#" onClick={(e) => {e.preventDefault(); onAction('details', job)}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">View Details</a>
         <a href="#" onClick={(e) => {e.preventDefault(); onAction('close', job)}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Close Job</a>
         <a href="#" onClick={(e) => {e.preventDefault(); onAction('archive', job)}} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Archive Job</a>
