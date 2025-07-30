@@ -48,12 +48,36 @@ const formatDate = (isoString) => {
 
 /**
  * Determines the CSS class for a deadline based on its proximity to the current date.
+ * Handles MM/DD/YY and MM/DD/YYYY formats.
  * @param {string} dateString - The deadline date string.
  * @returns {string} Tailwind CSS classes for color and font weight.
  */
 const getDeadlineClass = (dateString) => {
     if (!dateString || dateString === 'Need To Update') return '';
-    const deadline = new Date(dateString);
+    
+    let parsableDateString = dateString;
+    // Regex to match MM/DD/YY or MM/DD/YYYY
+    const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/;
+    const match = dateString.match(dateRegex);
+
+    if (match) {
+        const month = match[1];
+        const day = match[2];
+        let year = parseInt(match[3], 10);
+        // If the year is 2 digits, assume it's in the 21st century.
+        if (year < 100) {
+            year += 2000;
+        }
+        // Format as YYYY-MM-DD for reliable parsing by new Date()
+        parsableDateString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    const deadline = new Date(parsableDateString);
+    if (isNaN(deadline.getTime())) {
+        console.warn("Invalid date format for deadline:", dateString);
+        return ''; // Return empty if the date is invalid
+    }
+
     const today = new Date();
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(today.getDate() + 7);
@@ -194,42 +218,45 @@ const AuthProvider = ({ children }) => {
 // Custom hook to use the authentication context.
 const useAuth = () => useContext(AuthContext);
 
+// Centralized function to calculate permissions based on a user object.
+const calculatePermissions = (user) => {
+    const userRole = (user?.userRole || '').trim();
+    const backendRole = (user?.backendOfficeRole || '').trim();
+
+    // Direct role checks
+    const isAdmin = userRole === 'Admin';
+    const isDataEntry = userRole === 'Data Entry';
+    const isDataViewer = userRole === 'Data Viewer';
+    const isDataEntryViewer = userRole === 'Data Entry & Viewer';
+    
+    const isRecruitmentManager = backendRole === 'Recruitment Manager';
+    const isRecruitmentTeam = backendRole === 'Recruitment Team';
+    const isOpsAdmin = backendRole === 'Operations Admin';
+    const isOpsManager = backendRole === 'Operations Manager';
+    const isDevManager = backendRole === 'Development Manager';
+    const isDevExec = backendRole === 'Development Executive';
+
+    // Permission aggregations based on the matrix
+    const canViewDashboards = isAdmin || isDataViewer || isDataEntry || isDataEntryViewer || isRecruitmentManager || isRecruitmentTeam || isOpsAdmin || isOpsManager || isDevManager || isDevExec;
+    const canEditDashboard = isAdmin || isDataEntry || isDataEntryViewer || isDevManager || isDevExec;
+    const canAddPosting = canEditDashboard;
+    const canViewReports = isAdmin || isRecruitmentManager || isDataViewer || isDataEntryViewer;
+    const canEmailReports = isAdmin || isDataEntry || isDataEntryViewer || isRecruitmentManager;
+
+    return {
+        isAdmin,
+        canViewDashboards,
+        canEditDashboard,
+        canAddPosting,
+        canViewReports,
+        canEmailReports,
+    };
+};
+
 // Custom hook to determine user permissions based on roles.
 const usePermissions = () => {
     const { user } = useAuth();
-    return useMemo(() => {
-        const userRole = (user?.userRole || '').trim();
-        const backendRole = (user?.backendOfficeRole || '').trim();
-
-        // Direct role checks
-        const isAdmin = userRole === 'Admin';
-        const isDataEntry = userRole === 'Data Entry';
-        const isDataViewer = userRole === 'Data Viewer';
-        const isDataEntryViewer = userRole === 'Data Entry & Viewer';
-        
-        const isRecruitmentManager = backendRole === 'Recruitment Manager';
-        const isRecruitmentTeam = backendRole === 'Recruitment Team';
-        const isOpsAdmin = backendRole === 'Operations Admin';
-        const isOpsManager = backendRole === 'Operations Manager';
-        const isDevManager = backendRole === 'Development Manager';
-        const isDevExec = backendRole === 'Development Executive';
-
-        // Permission aggregations based on the matrix
-        const canViewDashboards = isAdmin || isDataViewer || isDataEntry || isDataEntryViewer || isRecruitmentManager || isRecruitmentTeam || isOpsAdmin || isOpsManager || isDevManager || isDevExec;
-        const canEditDashboard = isAdmin || isDataEntry || isDataEntryViewer || isDevManager || isDevExec;
-        const canAddPosting = canEditDashboard;
-        const canViewReports = isAdmin || isRecruitmentManager || isDataViewer || isDataEntryViewer;
-        const canEmailReports = isAdmin || isDataEntry || isDataEntryViewer || isRecruitmentManager;
-
-        return {
-            isAdmin,
-            canViewDashboards,
-            canEditDashboard,
-            canAddPosting,
-            canViewReports,
-            canEmailReports,
-        };
-    }, [user]);
+    return useMemo(() => calculatePermissions(user), [user]);
 };
 
 // Reusable Modal component.
@@ -638,35 +665,7 @@ const PermissionsPage = () => {
             userRole: role.type === 'userRole' ? role.name : 'Standard User',
             backendOfficeRole: role.type === 'backendRole' ? role.name : ''
         };
-        
-        const userRole = (mockUser?.userRole || '').trim();
-        const backendRole = (mockUser?.backendOfficeRole || '').trim();
-
-        const isAdmin = userRole === 'Admin';
-        const isDataEntry = userRole === 'Data Entry';
-        const isDataViewer = userRole === 'Data Viewer';
-        const isDataEntryViewer = userRole === 'Data Entry & Viewer';
-        
-        const isRecruitmentManager = backendRole === 'Recruitment Manager';
-        const isRecruitmentTeam = backendRole === 'Recruitment Team';
-        const isOpsAdmin = backendRole === 'Operations Admin';
-        const isOpsManager = backendRole === 'Operations Manager';
-        const isDevManager = backendRole === 'Development Manager';
-        const isDevExec = backendRole === 'Development Executive';
-
-        const canViewDashboards = isAdmin || isDataViewer || isDataEntry || isDataEntryViewer || isRecruitmentManager || isRecruitmentTeam || isOpsAdmin || isOpsManager || isDevManager || isDevExec;
-        const canEditDashboard = isAdmin || isDataEntry || isDataEntryViewer || isDevManager || isDevExec;
-        const canAddPosting = canEditDashboard;
-        const canViewReports = isAdmin || isRecruitmentManager || isDataViewer || isDataEntryViewer;
-        const canEmailReports = isAdmin || isDataEntry || isDataEntryViewer || isRecruitmentManager;
-
-        return {
-            isAdmin,
-            canViewDashboards,
-            canAddPosting,
-            canViewReports,
-            canEmailReports,
-        };
+        return calculatePermissions(mockUser);
     };
 
     return (
