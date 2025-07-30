@@ -634,8 +634,13 @@ const PermissionsPage = () => {
     ];
 
     const getPermissionsForRole = (role) => {
-        const userRole = role.type === 'userRole' ? role.name : '';
-        const backendRole = role.type === 'backendRole' ? role.name : '';
+        const mockUser = {
+            userRole: role.type === 'userRole' ? role.name : 'Standard User',
+            backendOfficeRole: role.type === 'backendRole' ? role.name : ''
+        };
+        
+        const userRole = (mockUser?.userRole || '').trim();
+        const backendRole = (mockUser?.backendOfficeRole || '').trim();
 
         const isAdmin = userRole === 'Admin';
         const isDataEntry = userRole === 'Data Entry';
