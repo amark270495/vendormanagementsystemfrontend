@@ -22,6 +22,8 @@ const DASHBOARD_CONFIGS = {
     'michiganDisplay': { title: 'Michigan VMS', companyName: 'Taproot Solutions INC', postingFrom: 'State Of Michigan' },
     'EclatTexasDisplay': { title: 'Eclat Teaxs VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'State Of Texas' },
     'TaprootTexasDisplay': { title: 'Taproot Texas VMS', companyName: 'Taproot Solutions INC', postingFrom: 'State Of Texas' },
+    'VirtusaDisplay':{title: 'Virtusa Taproot',companyName: 'Taproot Solutions INC', postingFrom: 'Virtusa'},
+    'DeloitteDisplay':{title: 'Deloitte Taproot',companyName: 'Taproot Solutions INC', postingFrom: 'Deloitte'}
 };
 
 // Columns that are editable in the dashboard.
@@ -785,7 +787,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    const postingFromOptions = ['State Of Texas', 'State Of Michigan', 'State of North Carolina', 'State Of New Jersey', 'State Of Georgia', 'State Of Iowa', 'State Of Connecticut', 'State Of Virginia', 'State Of Indiana'];
+    const postingFromOptions = ['State Of Texas', 'State Of Michigan', 'State of North Carolina', 'State Of New Jersey', 'State Of Georgia', 'State Of Iowa', 'State Of Connecticut', 'State Of Virginia', 'State Of Indiana', 'Virtusa', 'Deloitte'];
     const formFields = useMemo(() => [
         { name: 'Posting ID', type: 'text', required: true },
         { name: 'Posting Title', type: 'text', required: true },
