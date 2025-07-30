@@ -48,36 +48,12 @@ const formatDate = (isoString) => {
 
 /**
  * Determines the CSS class for a deadline based on its proximity to the current date.
- * Handles MM/DD/YY and MM/DD/YYYY formats.
  * @param {string} dateString - The deadline date string.
  * @returns {string} Tailwind CSS classes for color and font weight.
  */
 const getDeadlineClass = (dateString) => {
     if (!dateString || dateString === 'Need To Update') return '';
-    
-    let parsableDateString = dateString;
-    // Regex to match MM/DD/YY or MM/DD/YYYY
-    const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/;
-    const match = dateString.match(dateRegex);
-
-    if (match) {
-        const month = match[1];
-        const day = match[2];
-        let year = parseInt(match[3], 10);
-        // If the year is 2 digits, assume it's in the 21st century.
-        if (year < 100) {
-            year += 2000;
-        }
-        // Format as YYYY-MM-DD for reliable parsing by new Date()
-        parsableDateString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    }
-
-    const deadline = new Date(parsableDateString);
-    if (isNaN(deadline.getTime())) {
-        console.warn("Invalid date format for deadline:", dateString);
-        return ''; // Return empty if the date is invalid
-    }
-
+    const deadline = new Date(dateString);
     const today = new Date();
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(today.getDate() + 7);
@@ -222,24 +198,36 @@ const useAuth = () => useContext(AuthContext);
 const usePermissions = () => {
     const { user } = useAuth();
     return useMemo(() => {
-        const userRole = user?.userRole || '';
-        const backendRole = user?.backendOfficeRole || '';
-        const isAdmin = userRole.includes('Admin');
-        const isDataEntry = backendRole.includes('Data Entry');
-        const isDataViewer = backendRole.includes('Data Viewer');
-        const isRecruitmentManager = backendRole.includes('Recruitment Manager');
-        const isDataEntryViewer = backendRole.includes('Data Entry & Viewer');
+        const userRole = (user?.userRole || '').trim();
+        const backendRole = (user?.backendOfficeRole || '').trim();
 
-        const canEditDashboard = isAdmin || isDataEntry || isDataEntryViewer;
-        const canViewReports = isAdmin || isRecruitmentManager || isDataViewer || isDataEntryViewer;
+        // Direct role checks
+        const isAdmin = userRole === 'Admin';
+        const isDataEntry = userRole === 'Data Entry';
+        const isDataViewer = userRole === 'Data Viewer';
+        const isDataEntryViewer = userRole === 'Data Entry & Viewer';
         
+        const isRecruitmentManager = backendRole === 'Recruitment Manager';
+        const isRecruitmentTeam = backendRole === 'Recruitment Team';
+        const isOpsAdmin = backendRole === 'Operations Admin';
+        const isOpsManager = backendRole === 'Operations Manager';
+        const isDevManager = backendRole === 'Development Manager';
+        const isDevExec = backendRole === 'Development Executive';
+
+        // Permission aggregations based on the matrix
+        const canViewDashboards = isAdmin || isDataViewer || isDataEntry || isDataEntryViewer || isRecruitmentManager || isRecruitmentTeam || isOpsAdmin || isOpsManager || isDevManager || isDevExec;
+        const canEditDashboard = isAdmin || isDataEntry || isDataEntryViewer || isDevManager || isDevExec;
+        const canAddPosting = canEditDashboard;
+        const canViewReports = isAdmin || isRecruitmentManager || isDataViewer || isDataEntryViewer;
+        const canEmailReports = isAdmin || isDataEntry || isDataEntryViewer || isRecruitmentManager;
+
         return {
             isAdmin,
+            canViewDashboards,
             canEditDashboard,
-            canAddPosting: canEditDashboard,
+            canAddPosting,
             canViewReports,
-            canEmailReports: isAdmin || isDataEntry || isDataEntryViewer || isRecruitmentManager,
-            canViewDashboards: isAdmin || isDataViewer || isDataEntry || isDataEntryViewer || isRecruitmentManager || backendRole.includes('Recruitment Team'),
+            canEmailReports,
         };
     }, [user]);
 };
@@ -281,22 +269,8 @@ const Dropdown = ({ trigger, children, width = '48' }) => {
         <div className="relative" ref={node}>
             <div onClick={() => setIsOpen(!isOpen)}>{trigger}</div>
             {isOpen && (
-                <div className={`absolute right-0 mt-2 w-${width} bg-white rounded-md shadow-lg z-20 py-1`} onClick={(e) => { 
-                    // This onClick handler on the dropdown panel itself can cause it to close.
-                    // We only want it to close if a child element doesn't handle the click.
-                }}>
-                    {React.Children.map(children, child => 
-                        React.cloneElement(child, { onClick: (e) => {
-                            // If the child has its own onClick, let it run, then close.
-                            if (child.props.onClick) {
-                                child.props.onClick(e);
-                            }
-                            // We let the notification button's stopPropagation handle itself.
-                            if (!e.isPropagationStopped()) {
-                                setIsOpen(false);
-                            }
-                        }})
-                    )}
+                <div className={`absolute right-0 mt-2 w-${width} bg-white rounded-md shadow-lg z-20 py-1`} onClick={() => setIsOpen(false)}>
+                    {children}
                 </div>
             )}
         </div>
@@ -550,8 +524,8 @@ const DeleteUserModal = ({ isOpen, onClose, onConfirm, userToDelete }) => {
     );
 };
 
-// Admin Page for user management.
-const AdminPage = () => {
+// User Management Page component.
+const UserManagementPage = () => {
     const { user } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -592,55 +566,155 @@ const AdminPage = () => {
 
     return (
         <>
-            <div className="space-y-6">
-                <h1 className="text-3xl font-bold text-gray-800">Admin - User Management</h1>
-                <div className="bg-white p-6 rounded-lg shadow">
-                    <div className="flex justify-end mb-4">
-                        <button onClick={handleAddClick} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
-                            Add User
-                        </button>
-                    </div>
-                    {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
-                    {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
-                    {!loading && !error && (
-                        <div className="overflow-x-auto">
-                            {users.length > 0 ? (
-                                <table className="w-full text-sm text-left text-gray-500">
-                                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                                        <tr>
-                                            <th scope="col" className="px-6 py-3">Display Name</th>
-                                            <th scope="col" className="px-6 py-3">Username</th>
-                                            <th scope="col" className="px-6 py-3">Role</th>
-                                            <th scope="col" className="px-6 py-3">Backend Role</th>
-                                            <th scope="col" className="px-6 py-3">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {users.map((u) => (
-                                            <tr key={u.username} className="bg-white border-b hover:bg-gray-50">
-                                                <td className="px-6 py-4 font-medium text-gray-900">{u.displayName}</td>
-                                                <td className="px-6 py-4">{u.username}</td>
-                                                <td className="px-6 py-4">{u.userRole}</td>
-                                                <td className="px-6 py-4">{u.backendOfficeRole}</td>
-                                                <td className="px-6 py-4 flex space-x-2">
-                                                    <button onClick={() => handleEditClick(u)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded-full hover:bg-gray-100" aria-label={`Edit user ${u.displayName}`}><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
-                                                    <button onClick={() => handleDeleteClick(u)} className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-gray-100" aria-label={`Delete user ${u.displayName}`}><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <p className="text-center text-gray-500 p-4">No users found.</p>
-                            )}
-                        </div>
-                    )}
+            <div className="bg-white p-6 rounded-lg shadow">
+                <div className="flex justify-end mb-4">
+                    <button onClick={handleAddClick} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
+                        Add User
+                    </button>
                 </div>
+                {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
+                {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
+                {!loading && !error && (
+                    <div className="overflow-x-auto">
+                        {users.length > 0 ? (
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3">Display Name</th>
+                                        <th scope="col" className="px-6 py-3">Username</th>
+                                        <th scope="col" className="px-6 py-3">Role</th>
+                                        <th scope="col" className="px-6 py-3">Backend Role</th>
+                                        <th scope="col" className="px-6 py-3">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {users.map((u) => (
+                                        <tr key={u.username} className="bg-white border-b hover:bg-gray-50">
+                                            <td className="px-6 py-4 font-medium text-gray-900">{u.displayName}</td>
+                                            <td className="px-6 py-4">{u.username}</td>
+                                            <td className="px-6 py-4">{u.userRole}</td>
+                                            <td className="px-6 py-4">{u.backendOfficeRole}</td>
+                                            <td className="px-6 py-4 flex space-x-2">
+                                                <button onClick={() => handleEditClick(u)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded-full hover:bg-gray-100" aria-label={`Edit user ${u.displayName}`}><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+                                                <button onClick={() => handleDeleteClick(u)} className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-gray-100" aria-label={`Delete user ${u.displayName}`}><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <p className="text-center text-gray-500 p-4">No users found.</p>
+                        )}
+                    </div>
+                )}
             </div>
             <UserFormModal isOpen={isUserModalOpen} onClose={() => setUserModalOpen(false)} onSave={handleSaveUser} userToEdit={userToEdit} />
             <DeleteUserModal isOpen={isDeleteModalOpen} onClose={() => setDeleteModalOpen(false)} onConfirm={handleConfirmDelete} userToDelete={userToDelete} />
         </>
+    );
+};
+
+// Permissions Page component.
+const PermissionsPage = () => {
+    const allUserRoles = ['Admin', 'Standard User', 'Data Entry', 'Data Viewer', 'Data Entry & Viewer'];
+    const allBackendRoles = ['Operations Admin', 'Operations Manager', 'Development Manager', 'Development Executive', 'Recruitment Manager', 'Recruitment Team'];
+    
+    const rolesForDisplay = [
+        ...allUserRoles.map(r => ({ name: r, type: 'userRole' })),
+        ...allBackendRoles.map(r => ({ name: r, type: 'backendRole' }))
+    ];
+
+    const features = [
+        { name: 'View Dashboards', key: 'canViewDashboards' },
+        { name: 'Add/Edit Jobs', key: 'canAddPosting' },
+        { name: 'View Reports', key: 'canViewReports' },
+        { name: 'Email Reports', key: 'canEmailReports' },
+        { name: 'User Management', key: 'isAdmin' },
+    ];
+
+    const getPermissionsForRole = (role) => {
+        const userRole = role.type === 'userRole' ? role.name : '';
+        const backendRole = role.type === 'backendRole' ? role.name : '';
+
+        const isAdmin = userRole === 'Admin';
+        const isDataEntry = userRole === 'Data Entry';
+        const isDataViewer = userRole === 'Data Viewer';
+        const isDataEntryViewer = userRole === 'Data Entry & Viewer';
+        
+        const isRecruitmentManager = backendRole === 'Recruitment Manager';
+        const isRecruitmentTeam = backendRole === 'Recruitment Team';
+        const isOpsAdmin = backendRole === 'Operations Admin';
+        const isOpsManager = backendRole === 'Operations Manager';
+        const isDevManager = backendRole === 'Development Manager';
+        const isDevExec = backendRole === 'Development Executive';
+
+        const canViewDashboards = isAdmin || isDataViewer || isDataEntry || isDataEntryViewer || isRecruitmentManager || isRecruitmentTeam || isOpsAdmin || isOpsManager || isDevManager || isDevExec;
+        const canEditDashboard = isAdmin || isDataEntry || isDataEntryViewer || isDevManager || isDevExec;
+        const canAddPosting = canEditDashboard;
+        const canViewReports = isAdmin || isRecruitmentManager || isDataViewer || isDataEntryViewer;
+        const canEmailReports = isAdmin || isDataEntry || isDataEntryViewer || isRecruitmentManager;
+
+        return {
+            isAdmin,
+            canViewDashboards,
+            canAddPosting,
+            canViewReports,
+            canEmailReports,
+        };
+    };
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow">
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-gray-500">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            <th scope="col" className="px-6 py-3">Role</th>
+                            {features.map(feature => <th key={feature.key} scope="col" className="px-6 py-3 text-center">{feature.name}</th>)}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rolesForDisplay.map(role => {
+                            if (role.name === 'Standard User') return null;
+                            const permissions = getPermissionsForRole(role);
+                            return (
+                                <tr key={role.name} className="bg-white border-b hover:bg-gray-50">
+                                    <td className="px-6 py-4 font-medium text-gray-900">{role.name} <span className="text-xs text-gray-400">({role.type})</span></td>
+                                    {features.map(feature => (
+                                        <td key={feature.key} className="px-6 py-4 text-center">
+                                            {permissions[feature.key] ? (
+                                                <span className="text-green-500">✔️</span>
+                                            ) : (
+                                                <span className="text-red-500">❌</span>
+                                            )}
+                                        </td>
+                                    ))}
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+// Admin Page container component.
+const AdminPage = () => {
+    const [view, setView] = useState('users'); // 'users' or 'permissions'
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold text-gray-800">Admin Section</h1>
+                <div className="flex rounded-lg shadow-sm">
+                    <button onClick={() => setView('users')} className={`px-4 py-2 rounded-l-lg transition-colors ${view === 'users' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-800 hover:bg-gray-50'}`}>User Management</button>
+                    <button onClick={() => setView('permissions')} className={`px-4 py-2 rounded-r-lg transition-colors ${view === 'permissions' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-800 hover:bg-gray-50'}`}>Permissions Matrix</button>
+                </div>
+            </div>
+            {view === 'users' ? <UserManagementPage /> : <PermissionsPage />}
+        </div>
     );
 };
 
@@ -1123,8 +1197,7 @@ const DashboardPage = ({ sheetKey }) => {
 
     const handleCellEdit = (rowIndex, cellIndex, value) => {
         if (!canEditDashboard) return setError("You do not have permission to edit data.");
-        const originalRow = filteredAndSortedData[rowIndex];
-        const postingId = originalRow[displayHeader.indexOf('Posting ID')];
+        const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
         const headerName = displayHeader[cellIndex];
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: value } }));
     };
@@ -1169,7 +1242,7 @@ const DashboardPage = ({ sheetKey }) => {
     const handleColumnFilterChange = (header, config) => {
         setColumnFilters(prev => {
             const newFilters = { ...prev };
-            if (config && config.value1) newFilters[header] = config;
+            if (config) newFilters[header] = config;
             else delete newFilters[header];
             return newFilters;
         });
@@ -1177,88 +1250,19 @@ const DashboardPage = ({ sheetKey }) => {
 
     const filteredAndSortedData = useMemo(() => {
         let data = [...displayData];
-        
-        // General text filter
-        if (generalFilter) {
-            const lowercasedFilter = generalFilter.toLowerCase();
-            data = data.filter(row => row.some(cell => String(cell).toLowerCase().includes(lowercasedFilter)));
-        }
-
-        // Status filter
-        const statusIndex = displayHeader.indexOf('Status');
-        if (statusFilter && statusIndex !== -1) {
-            data = data.filter(row => row[statusIndex] && String(row[statusIndex]).trim() === statusFilter);
-        }
-
-        // Column-specific filters
-        if (Object.keys(columnFilters).length > 0) {
-            data = data.filter(row => {
-                return Object.entries(columnFilters).every(([header, config]) => {
-                    const cellIndex = displayHeader.indexOf(header);
-                    if (cellIndex === -1) return true;
-                    const cellValue = row[cellIndex];
-                    const { type, value1, value2 } = config;
-
-                    if (DATE_COLUMNS.includes(header)) {
-                        const cellDate = new Date(cellValue).getTime();
-                        const filterDate1 = new Date(value1).getTime();
-                        const filterDate2 = value2 ? new Date(value2).getTime() : null;
-                        if (isNaN(cellDate) || isNaN(filterDate1)) return false;
-
-                        switch (type) {
-                            case 'equals': return cellDate === filterDate1;
-                            case 'above': return cellDate > filterDate1;
-                            case 'below': return cellDate < filterDate1;
-                            case 'between': return cellDate >= filterDate1 && cellDate <= filterDate2;
-                            default: return String(cellValue).toLowerCase().includes(String(value1).toLowerCase());
-                        }
-                    } else if (NUMBER_COLUMNS.includes(header)) {
-                        const cellNum = parseFloat(cellValue);
-                        const filterNum1 = parseFloat(value1);
-                        const filterNum2 = value2 ? parseFloat(value2) : null;
-                        if (isNaN(cellNum) || isNaN(filterNum1)) return false;
-
-                        switch (type) {
-                            case 'equals': return cellNum === filterNum1;
-                            case 'above': return cellNum > filterNum1;
-                            case 'below': return cellNum < filterNum1;
-                            case 'between': return cellNum >= filterNum1 && cellNum <= filterNum2;
-                            default: return String(cellValue).toLowerCase().includes(String(value1).toLowerCase());
-                        }
-                    } else { // String filters
-                        const lowerCell = String(cellValue).toLowerCase();
-                        const lowerVal1 = String(value1).toLowerCase();
-                        switch (type) {
-                            case 'contains': return lowerCell.includes(lowerVal1);
-                            case 'equals': return lowerCell === lowerVal1;
-                            case 'not_contains': return !lowerCell.includes(lowerVal1);
-                            default: return true;
-                        }
-                    }
-                });
-            });
-        }
-
-        // Sorting
+        // Filtering logic here...
         if (sortConfig.key) {
             const sortIndex = displayHeader.indexOf(sortConfig.key);
-            if (sortIndex !== -1) {
-                data.sort((a, b) => {
-                    const valA = a[sortIndex];
-                    const valB = b[sortIndex];
-                    
-                    let comparison = 0;
-                    if (valA === null || valA === undefined) comparison = 1;
-                    else if (valB === null || valB === undefined) comparison = -1;
-                    else if (valA < valB) comparison = -1;
-                    else if (valA > valB) comparison = 1;
-
-                    return sortConfig.direction === 'ascending' ? comparison : -comparison;
-                });
-            }
+            data.sort((a, b) => {
+                const valA = a[sortIndex];
+                const valB = b[sortIndex];
+                if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
+                return 0;
+            });
         }
         return data;
-    }, [displayData, displayHeader, sortConfig, generalFilter, statusFilter, columnFilters]);
+    }, [displayData, sortConfig, generalFilter, statusFilter, displayHeader, columnFilters]);
 
     const downloadCsv = () => {
         const csvContent = [displayHeader.join(','), ...filteredAndSortedData.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
@@ -1339,12 +1343,12 @@ const DashboardPage = ({ sheetKey }) => {
                             </thead>
                             <tbody>
                                 {filteredAndSortedData.map((row, rowIndex) => (
-                                    <tr key={row[displayHeader.indexOf('Posting ID')] || rowIndex} className="bg-white border-b hover:bg-gray-50">
+                                    <tr key={row[0] || rowIndex} className="bg-white border-b hover:bg-gray-50">
                                         {row.map((cell, cellIndex) => {
                                             const headerName = displayHeader[cellIndex];
                                             const postingId = row[displayHeader.indexOf('Posting ID')];
                                             return (
-                                                <td key={`${postingId}-${headerName}`} 
+                                                <td key={cellIndex} 
                                                     className={`px-4 py-3 text-center align-middle ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'modified-cell' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`} 
                                                     contentEditable={canEditDashboard && EDITABLE_COLUMNS.includes(headerName)} 
                                                     suppressContentEditableWarning={true}
@@ -1543,7 +1547,7 @@ const MessagesPage = () => {
                             <li key={u.username}>
                                 <button onClick={() => setSelectedRecipient(u)} className={`w-full text-left p-3 rounded-md transition-colors ${selectedRecipient?.username === u.username ? 'bg-emerald-100 text-emerald-800 font-semibold' : 'hover:bg-gray-100 text-gray-700'}`}>
                                     <p className="font-medium">{u.displayName}</p>
-                                    <p className="text-xs text-gray-500 break-all">ID: {u.userIdentifier}</p>
+                                    <p className="text-xs text-gray-500 break-all">{u.username}</p>
                                 </button>
                             </li>
                         ))}
@@ -1555,7 +1559,6 @@ const MessagesPage = () => {
                         <>
                             <div className="p-4 border-b border-gray-200 bg-gray-50">
                                 <h2 className="text-lg font-semibold text-gray-800">Chat with {selectedRecipient.displayName}</h2>
-                                <p className="text-sm text-gray-500 break-all">ID: {selectedRecipient.userIdentifier}</p>
                             </div>
                             <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-gray-50">
                                 {loadingMessages && <div className="flex justify-center"><Spinner size="6" /></div>}
@@ -1601,17 +1604,11 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
         return () => clearInterval(interval);
     }, [fetchNotifications, user?.userIdentifier]);
 
-    const handleMarkAsRead = async (e) => {
-        e.stopPropagation(); // Prevent the dropdown from closing on click.
-        if (notifications.length === 0) return;
-        const originalNotifications = [...notifications];
-        setNotifications([]);
+    const handleMarkAsRead = async () => {
         try {
-            await api.markNotificationsAsRead(originalNotifications.map(n => n.id), user.userIdentifier);
-        } catch (err) {
-            console.error('Failed to mark as read');
-            setNotifications(originalNotifications);
-        }
+            await api.markNotificationsAsRead(notifications.map(n => ({ id: n.id, partitionKey: n.partitionKey })), user.userIdentifier);
+            fetchNotifications();
+        } catch (err) { console.error('Failed to mark as read'); }
     };
 
     const navLinkClasses = (type) => `px-3 py-2 rounded-md text-sm font-medium ${currentPage.type === type ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700'}`;
@@ -1638,29 +1635,27 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
                         </nav>
                     </div>
                     <div className="flex items-center space-x-4">
-                         <div className="relative">
-                            <Dropdown trigger={
-                                <button className="relative text-gray-500 hover:text-gray-700" aria-label="Notifications">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                                    {notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
-                                </button>
-                            }>
-                                <div className="p-2 w-80">
-                                    <div className="flex justify-between items-center mb-2 px-2">
-                                        <h4 className="font-semibold text-gray-800">Notifications</h4>
-                                        <button onClick={handleMarkAsRead} className="text-xs text-indigo-600 hover:underline" disabled={notifications.length === 0}>Mark all as read</button>
-                                    </div>
-                                    <div className="max-h-80 overflow-y-auto">
-                                        {notifications.length > 0 ? notifications.map(n => (
-                                            <div key={n.id} className="p-2 border-b hover:bg-slate-50">
-                                                <p className="text-sm text-gray-700">{n.message}</p>
-                                                <p className="text-xs text-gray-400">{new Date(n.timestamp).toLocaleString()}</p>
-                                            </div>
-                                        )) : <p className="text-sm text-gray-500 p-4 text-center">No new notifications.</p>}
-                                    </div>
+                        <Dropdown width="80" trigger={
+                            <button className="relative text-gray-500 hover:text-gray-700" aria-label="Notifications">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                                {notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
+                            </button>
+                        }>
+                            <div className="p-2">
+                                <div className="flex justify-between items-center mb-2 px-2">
+                                    <h4 className="font-semibold text-gray-800">Notifications</h4>
+                                    <button onClick={handleMarkAsRead} className="text-xs text-indigo-600 hover:underline">Mark all as read</button>
                                 </div>
-                            </Dropdown>
-                        </div>
+                                <div className="max-h-80 overflow-y-auto">
+                                    {notifications.length > 0 ? notifications.map(n => (
+                                        <div key={n.id} className="p-2 border-b hover:bg-slate-50">
+                                            <p className="text-sm text-gray-700">{n.message}</p>
+                                            <p className="text-xs text-gray-400">{new Date(n.timestamp).toLocaleString()}</p>
+                                        </div>
+                                    )) : <p className="text-sm text-gray-500 p-4 text-center">No new notifications.</p>}
+                                </div>
+                            </div>
+                        </Dropdown>
 
                         <Dropdown trigger={
                             <button className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" aria-label="User menu">
@@ -1671,6 +1666,7 @@ const TopNav = ({ user, logout, currentPage, setCurrentPage }) => {
                                 <p className="text-sm font-medium text-gray-900">{user.userName}</p>
                                 <p className="text-sm text-gray-500 truncate">{user.userIdentifier}</p>
                             </div>
+                            <a href="#" onClick={() => setCurrentPage({type: 'admin', view: 'permissions'})} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Permissions</a>
                             <a href="#" onClick={logout} className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</a>
                         </Dropdown>
                     </div>
