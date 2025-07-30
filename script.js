@@ -20,7 +20,7 @@ const DASHBOARD_CONFIGS = {
     'ecaltVMSDisplay': { title: 'Eclat VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'All' },
     'taprootVMSDisplay': { title: 'Taproot VMS', companyName: 'Taproot Solutions INC', postingFrom: 'All' },
     'michiganDisplay': { title: 'Michigan VMS', companyName: 'Taproot Solutions INC', postingFrom: 'State Of Michigan' },
-    'EclatTexasDisplay': { title: 'Eclat Teaxs VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'State Of Texas' },
+    'EclatTexasDisplay': { title: 'Eclat Texas VMS', companyName: 'Eclat Solutions LLC', postingFrom: 'State Of Texas' },
     'TaprootTexasDisplay': { title: 'Taproot Texas VMS', companyName: 'Taproot Solutions INC', postingFrom: 'State Of Texas' },
     'VirtusaDisplay':{title: 'Virtusa Taproot',companyName: 'Taproot Solutions INC', postingFrom: 'Virtusa'},
     'DeloitteDisplay':{title: 'Deloitte Taproot',companyName: 'Taproot Solutions INC', postingFrom: 'Deloitte'}
@@ -710,16 +710,24 @@ const PermissionsPage = () => {
 const AdminPage = () => {
     const [view, setView] = useState('users'); // 'users' or 'permissions'
 
+    const renderView = () => {
+        switch (view) {
+            case 'users': return <UserManagementPage />;
+            case 'permissions': return <PermissionsPage />;
+            default: return <UserManagementPage />;
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold text-gray-800">Admin Section</h1>
                 <div className="flex rounded-lg shadow-sm">
-                    <button onClick={() => setView('users')} className={`px-4 py-2 rounded-l-lg transition-colors ${view === 'users' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-800 hover:bg-gray-50'}`}>User Management</button>
-                    <button onClick={() => setView('permissions')} className={`px-4 py-2 rounded-r-lg transition-colors ${view === 'permissions' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-800 hover:bg-gray-50'}`}>Permissions Matrix</button>
+                    <button onClick={() => setView('users')} className={`px-4 py-2 rounded-l-lg transition-colors ${view === 'users' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-800 hover:bg-gray-50'}`}>Users</button>
+                    <button onClick={() => setView('permissions')} className={`px-4 py-2 rounded-r-lg transition-colors border-l border-gray-200 ${view === 'permissions' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-800 hover:bg-gray-50'}`}>Permissions</button>
                 </div>
             </div>
-            {view === 'users' ? <UserManagementPage /> : <PermissionsPage />}
+            {renderView()}
         </div>
     );
 };
@@ -1049,8 +1057,8 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey }) => {
                     <label className="block text-sm font-medium text-gray-700">Job Status to Include</label>
                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
                         <option value="all">All</option>
-                        <option value="open">Open</option>
-                        <option value="closed">Closed</option>
+                        <option value="Open">Open</option>
+                        <option value="Closed">Closed</option>
                     </select>
                 </div>
                 <div className="flex justify-end space-x-2">
@@ -1254,18 +1262,99 @@ const DashboardPage = ({ sheetKey }) => {
         });
     };
 
+    // === FILTERING LOGIC IMPLEMENTED HERE ===
     const filteredAndSortedData = useMemo(() => {
         let data = [...displayData];
-        // Filtering logic here...
+        const statusIndex = displayHeader.indexOf('Status');
+
+        // 1. Apply Status Filter
+        if (statusFilter && statusIndex !== -1) {
+            data = data.filter(row => (row[statusIndex] || '').toLowerCase() === statusFilter.toLowerCase());
+        }
+
+        // 2. Apply General Search Filter
+        if (generalFilter) {
+            const lowercasedFilter = generalFilter.toLowerCase();
+            data = data.filter(row =>
+                row.some(cell => String(cell).toLowerCase().includes(lowercasedFilter))
+            );
+        }
+
+        // 3. Apply Column-Specific Filters
+        if (Object.keys(columnFilters).length > 0) {
+            data = data.filter(row => {
+                return Object.entries(columnFilters).every(([header, config]) => {
+                    if (!config || !config.type || !config.value1) return true;
+                    const colIndex = displayHeader.indexOf(header);
+                    if (colIndex === -1) return true;
+
+                    const cellValue = String(row[colIndex] || '').toLowerCase();
+                    const filterValue1 = String(config.value1).toLowerCase();
+                    const filterValue2 = String(config.value2 || '').toLowerCase();
+                    
+                    const isDate = DATE_COLUMNS.includes(header);
+                    const isNumber = NUMBER_COLUMNS.includes(header);
+                    
+                    let cellNum = NaN, val1Num = NaN, val2Num = NaN;
+
+                    if (isDate) {
+                        cellNum = new Date(row[colIndex]).getTime();
+                        val1Num = new Date(config.value1).getTime();
+                        val2Num = new Date(config.value2).getTime();
+                    } else if (isNumber) {
+                        cellNum = parseFloat(row[colIndex]);
+                        val1Num = parseFloat(config.value1);
+                        val2Num = parseFloat(config.value2);
+                    }
+
+                    switch (config.type) {
+                        case 'contains': return cellValue.includes(filterValue1);
+                        case 'not_contains': return !cellValue.includes(filterValue1);
+                        case 'equals':
+                             if ((isNumber || isDate) && !isNaN(cellNum) && !isNaN(val1Num)) return cellNum === val1Num;
+                             return cellValue === filterValue1;
+                        case 'above':
+                            if ((isNumber || isDate) && !isNaN(cellNum) && !isNaN(val1Num)) return cellNum > val1Num;
+                            return cellValue > filterValue1;
+                        case 'below':
+                            if ((isNumber || isDate) && !isNaN(cellNum) && !isNaN(val1Num)) return cellNum < val1Num;
+                            return cellValue < filterValue1;
+                        case 'between':
+                            if ((isNumber || isDate) && !isNaN(cellNum) && !isNaN(val1Num) && !isNaN(val2Num)) return cellNum >= val1Num && cellNum <= val2Num;
+                            return cellValue >= filterValue1 && cellValue <= filterValue2;
+                        default: return true;
+                    }
+                });
+            });
+        }
+
+        // 4. Apply Sorting
         if (sortConfig.key) {
             const sortIndex = displayHeader.indexOf(sortConfig.key);
-            data.sort((a, b) => {
-                const valA = a[sortIndex];
-                const valB = b[sortIndex];
-                if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
-                if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
-                return 0;
-            });
+            if (sortIndex !== -1) {
+                const isDate = DATE_COLUMNS.includes(sortConfig.key);
+                const isNumber = NUMBER_COLUMNS.includes(sortConfig.key);
+
+                data.sort((a, b) => {
+                    let valA = a[sortIndex];
+                    let valB = b[sortIndex];
+
+                    if (isDate) {
+                        valA = new Date(valA).getTime() || 0;
+                        valB = new Date(valB).getTime() || 0;
+                    } else if (isNumber) {
+                        valA = parseFloat(valA) || 0;
+                        valB = parseFloat(valB) || 0;
+                    } else {
+                        valA = String(valA || '').toLowerCase();
+                        valB = String(valB || '').toLowerCase();
+                    }
+
+                    if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
+                    if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
+                    return 0;
+                });
+            }
         }
         return data;
     }, [displayData, sortConfig, generalFilter, statusFilter, displayHeader, columnFilters]);
@@ -1698,7 +1787,7 @@ const MainApp = () => {
             admin: permissions.isAdmin && <AdminPage />,
         };
         const PageComponent = pageMap[currentPage.type];
-        return PageComponent || <div className="text-center text-red-500 p-8">Permission Denied.</div>;
+        return PageComponent || <div className="text-center text-red-500 p-8">Permission Denied or Page not found.</div>;
     };
 
     return (
