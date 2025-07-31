@@ -807,7 +807,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         { name: 'Company Name', type: 'select', required: true, options: ['Eclat Solutions LLC', 'Taproot Solutions INC'] },
         { name: 'Posting From', type: 'select', required: true, options: postingFromOptions },
         { name: 'Work Location', type: 'text', required: true },
-        { name: 'Work Position Type', type: 'text', required: true },
+        { name: 'Work Position Type', type: 'select', required: true, options: ['Hybrid', 'Remote', 'Onsite'] }, // <-- MODIFIED
         { name: 'Required Skill Set', type: 'textarea', required: true },
         { name: 'Any Required Certificates', type: 'textarea' },
     ], []);
@@ -1126,7 +1126,9 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, job: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
     const [columnFilters, setColumnFilters] = useState({});
-    
+    const [recruiters, setRecruiters] = useState([]); // <-- ADDED: State for recruiters list
+    const [editingCell, setEditingCell] = useState(null); // <-- ADDED: State to track which cell is being edited
+
     const userPrefs = useMemo(() => {
         const safeParse = (jsonString, def = []) => {
             try { const parsed = JSON.parse(jsonString); return Array.isArray(parsed) ? parsed : def; } 
@@ -1147,6 +1149,24 @@ const DashboardPage = ({ sheetKey }) => {
         } catch (err) { setError(err.message); } 
         finally { setLoading(false); }
     }, [sheetKey, user.userIdentifier]);
+
+    // ADDED: useEffect to fetch users and filter for recruiters
+    useEffect(() => {
+        const fetchRecruiters = async () => {
+            try {
+                const result = await api.getUsers(user.userIdentifier);
+                if (result.success) {
+                    const recruitmentRoles = ['Recruitment Team', 'Recruitment Manager'];
+                    const filteredUsers = result.users.filter(u => recruitmentRoles.includes(u.backendOfficeRole));
+                    setRecruiters(filteredUsers);
+                }
+            } catch (err) {
+                console.error("Failed to fetch users for dropdown:", err);
+            }
+        };
+        fetchRecruiters();
+    }, [user.userIdentifier]);
+
 
     useEffect(() => { loadData(); }, [loadData]);
 
@@ -1442,14 +1462,44 @@ const DashboardPage = ({ sheetKey }) => {
                                         {row.map((cell, cellIndex) => {
                                             const headerName = displayHeader[cellIndex];
                                             const postingId = row[displayHeader.indexOf('Posting ID')];
+                                            const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
+
                                             return (
                                                 <td key={cellIndex} 
-                                                    className={`px-4 py-3 text-center align-middle ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'modified-cell' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`} 
-                                                    contentEditable={canEditDashboard && EDITABLE_COLUMNS.includes(headerName)} 
-                                                    suppressContentEditableWarning={true}
-                                                    onFocus={e => { if (canEditDashboard && e.target.innerText === 'Need To Update') e.target.innerText = ''; }}
-                                                    onBlur={e => { if (canEditDashboard) { let val = e.target.innerText.trim() || 'Need To Update'; e.target.innerText = val; handleCellEdit(rowIndex, cellIndex, val); }}}>
-                                                    {DATE_COLUMNS.includes(headerName) ? formatDate(cell) : cell}
+                                                    onClick={() => { if (canEditDashboard && EDITABLE_COLUMNS.includes(headerName)) setEditingCell({rowIndex, cellIndex}); }}
+                                                    className={`px-4 py-3 text-center align-middle ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'modified-cell' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`}
+                                                >
+                                                    {isEditing && headerName === 'Working By' ? (
+                                                        <select
+                                                            value={unsavedChanges[postingId]?.[headerName] || cell}
+                                                            onBlur={() => setEditingCell(null)}
+                                                            onChange={(e) => {
+                                                                handleCellEdit(rowIndex, cellIndex, e.target.value);
+                                                                setEditingCell(null);
+                                                            }}
+                                                            className="block w-full border-gray-300 rounded-md shadow-sm p-2"
+                                                            autoFocus
+                                                        >
+                                                            <option value="Need To Update">Unassigned</option>
+                                                            {recruiters.map(r => <option key={r.username} value={r.displayName}>{r.displayName}</option>)}
+                                                        </select>
+                                                    ) : (
+                                                        <div 
+                                                            contentEditable={isEditing && headerName !== 'Working By'}
+                                                            suppressContentEditableWarning={true}
+                                                            onFocus={e => { if (e.target.innerText === 'Need To Update') e.target.innerText = ''; }}
+                                                            onBlur={e => { 
+                                                                if (isEditing) {
+                                                                    let val = e.target.innerText.trim() || 'Need To Update'; 
+                                                                    e.target.innerText = val; 
+                                                                    handleCellEdit(rowIndex, cellIndex, val); 
+                                                                    setEditingCell(null);
+                                                                }
+                                                            }}
+                                                        >
+                                                            {DATE_COLUMNS.includes(headerName) ? formatDate(cell) : cell}
+                                                        </div>
+                                                    )}
                                                 </td>
                                             );
                                         })}
