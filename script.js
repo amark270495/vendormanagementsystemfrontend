@@ -143,6 +143,7 @@ const api = {
     markNotificationsAsRead: (notificationIds, authenticatedUsername) => api.call('markNotificationsAsRead', 'POST', { notificationIds, authenticatedUsername }),
     getMessages: (user1, user2, authenticatedUsername) => api.call('getMessages', 'GET', null, { user1, user2, authenticatedUsername }),
     saveMessage: (sender, recipient, messageContent, authenticatedUsername) => api.call('saveMessage', 'POST', { sender, recipient, messageContent, authenticatedUsername }),
+    sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) => api.call('sendAssignmentEmail', 'POST', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
 };
 
 // React Context for authentication state.
@@ -1254,6 +1255,23 @@ const DashboardPage = ({ sheetKey }) => {
         setLoading(true);
         try {
             await api.updateJobPosting(updates, user.userIdentifier);
+
+            // After successful save, check for assignment changes and send emails
+            for (const [postingId, changes] of Object.entries(unsavedChanges)) {
+                if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
+                    const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
+                    if (jobRow) {
+                        const jobTitle = jobRow[displayHeader.indexOf('Posting Title')];
+                        try {
+                            await api.sendAssignmentEmail(jobTitle, postingId, changes['Working By'], user.userIdentifier);
+                        } catch (emailError) {
+                            console.error(`Failed to send assignment email for job ${postingId}:`, emailError);
+                            // Optionally, show a non-blocking error to the user
+                        }
+                    }
+                }
+            }
+
             setUnsavedChanges({});
             loadData(); 
         } catch (err) { setError(`Failed to save: ${err.message}`); } 
