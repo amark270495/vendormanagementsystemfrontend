@@ -10,6 +10,8 @@ import ActionMenu from '../components/dashboard/ActionMenu';
 import ConfirmationModal from '../components/dashboard/ConfirmationModal';
 import ViewDetailsModal from '../components/dashboard/ViewDetailsModal';
 import ColumnSettingsModal from '../components/dashboard/ColumnSettingsModal';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 // Dashboard-specific constants
 const DASHBOARD_CONFIGS = {
@@ -46,7 +48,6 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, job: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
-    // Memoized user preferences for column order and visibility
     const userPrefs = useMemo(() => {
         const safeParse = (jsonString, def = []) => {
             try {
@@ -62,7 +63,6 @@ const DashboardPage = ({ sheetKey }) => {
         };
     }, [user]);
 
-    // Fetch dashboard data from the API
     const loadData = useCallback(async () => {
         setLoading(true);
         setError('');
@@ -81,7 +81,6 @@ const DashboardPage = ({ sheetKey }) => {
         }
     }, [sheetKey, user.userIdentifier]);
 
-    // Fetch list of recruiters for the "Working By" dropdown
     useEffect(() => {
         const fetchRecruiters = async () => {
             try {
@@ -98,12 +97,10 @@ const DashboardPage = ({ sheetKey }) => {
         fetchRecruiters();
     }, [user.userIdentifier]);
 
-    // Load data when the component mounts or sheetKey changes
     useEffect(() => {
         loadData();
     }, [loadData]);
 
-    // Memoized transformation of raw data (renaming headers, combining columns)
     const transformedData = useMemo(() => {
         let { header, rows } = rawData;
         if (!header?.length) return { header: [], rows: [] };
@@ -140,7 +137,6 @@ const DashboardPage = ({ sheetKey }) => {
         return { header: transformedHeader, rows: transformedRows };
     }, [rawData]);
 
-    // Memoized application of column visibility and ordering
     const { displayHeader, displayData } = useMemo(() => {
         let { header, rows } = transformedData;
         const defaultOrder = ['Posting ID', 'Posting Title', 'Posting Date', 'Max Submissions', 'Max C2C Rate', 'Required Skill Set', 'Any Required Certificates', 'Work Position Type', 'Working By', 'Remarks', '1st Candidate Name', '2nd Candidate Name', '3rd Candidate Name', 'Status', 'Deadline', 'Client Info', '# Submitted'];
@@ -162,7 +158,6 @@ const DashboardPage = ({ sheetKey }) => {
         return { displayHeader: finalHeader, displayData: finalRows };
     }, [transformedData, userPrefs]);
 
-    // Memoized filtering and sorting of data
     const filteredAndSortedData = useMemo(() => {
         let data = [...displayData];
         const statusIndex = displayHeader.indexOf('Status');
@@ -191,7 +186,6 @@ const DashboardPage = ({ sheetKey }) => {
                         case 'contains': return cellValue.includes(filterValue1);
                         case 'not_contains': return !cellValue.includes(filterValue1);
                         case 'equals': return cellValue === filterValue1;
-                        // Add more complex cases for numbers and dates if needed
                         default: return true;
                     }
                 });
@@ -213,14 +207,7 @@ const DashboardPage = ({ sheetKey }) => {
         return data;
     }, [displayData, sortConfig, generalFilter, statusFilter, displayHeader, columnFilters]);
     
-    // Handlers for UI actions
-    const handleSort = (key) => {
-        let direction = 'ascending';
-        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-            direction = 'descending';
-        }
-        setSortConfig({ key, direction });
-    };
+    const handleSort = (key, direction) => setSortConfig({ key, direction });
 
     const handleCellEdit = (rowIndex, cellIndex, value) => {
         if (!canEditDashboard) return;
@@ -284,6 +271,32 @@ const DashboardPage = ({ sheetKey }) => {
             setColumnModalOpen(false);
         }
     };
+
+    const downloadCsv = () => {
+        const csvContent = [
+            displayHeader.join(','),
+            ...filteredAndSortedData.map(row => 
+                row.map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')
+            )
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `${sheetKey}_report.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const downloadPdf = () => {
+        const doc = new jsPDF('landscape');
+        doc.autoTable({
+            head: [displayHeader],
+            body: filteredAndSortedData,
+        });
+        doc.save(`${sheetKey}_report.pdf`);
+    };
     
     const jobToObject = (row) => displayHeader.reduce((obj, h, i) => ({...obj, [h]: row[i]}), {});
 
@@ -306,7 +319,18 @@ const DashboardPage = ({ sheetKey }) => {
                             {loading ? <Spinner size="5" /> : 'Save Changes'}
                         </button>
                     )}
-                    <button onClick={() => setColumnModalOpen(true)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Column Settings</button>
+                    <Dropdown 
+                        trigger={
+                            <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center">
+                                Options 
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 h-4 w-4"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </button>
+                        }
+                    >
+                        <a href="#" onClick={(e) => { e.preventDefault(); setColumnModalOpen(true); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Column Settings</a>
+                        <a href="#" onClick={(e) => { e.preventDefault(); downloadPdf(); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Download PDF</a>
+                        <a href="#" onClick={(e) => { e.preventDefault(); downloadCsv(); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Download CSV</a>
+                    </Dropdown>
                 </div>
             </div>
 
@@ -315,14 +339,16 @@ const DashboardPage = ({ sheetKey }) => {
             
             {!loading && !error && (
                 <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-auto" style={{ maxHeight: '70vh' }}>
-                    <table className="w-full text-sm text-left text-gray-500">
+                    {/* ADDED: table-fixed for consistent column widths */}
+                    <table className="w-full text-sm text-left text-gray-500 table-fixed">
                         <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
                             <tr>
                                 {displayHeader.map(h => (
-                                    <th key={h} scope="col" className="px-4 py-3">
-                                        <Dropdown trigger={
-                                            <div className="flex items-center cursor-pointer">
-                                                <span>{h}</span>
+                                    // ADDED: border-r for vertical lines
+                                    <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0">
+                                        <Dropdown width="64" trigger={
+                                            <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
+                                                <span className="font-bold">{h}</span>
                                                 {sortConfig.key === h && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
                                             </div>
                                         }>
@@ -342,7 +368,8 @@ const DashboardPage = ({ sheetKey }) => {
                                         const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                                         
                                         return (
-                                            <td key={cellIndex} onClick={() => { if (canEditDashboard && EDITABLE_COLUMNS.includes(headerName)) setEditingCell({rowIndex, cellIndex}); }} className={`px-4 py-3 ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`}>
+                                            // ADDED: border-r for vertical lines
+                                            <td key={cellIndex} onClick={() => { if (canEditDashboard && EDITABLE_COLUMNS.includes(headerName)) setEditingCell({rowIndex, cellIndex}); }} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`}>
                                                 {isEditing && headerName === 'Working By' ? (
                                                     <select
                                                         value={unsavedChanges[postingId]?.[headerName] || cell}
