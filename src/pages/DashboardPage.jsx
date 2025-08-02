@@ -303,7 +303,7 @@ const DashboardPage = ({ sheetKey }) => {
     const getColumnWidth = (header) => {
         if (header === 'Required Skill Set') return '300px';
         if (header === 'Posting Title') return '200px';
-        return '150px'; // Default width for other columns
+        return '150px';
     };
 
     return (
@@ -344,64 +344,66 @@ const DashboardPage = ({ sheetKey }) => {
             {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
             
             {!loading && !error && (
-                <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-auto" style={{ maxHeight: '70vh' }}>
-                    <table className="w-full text-sm text-left text-gray-500 table-fixed">
-                        <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
-                            <tr>
-                                {displayHeader.map(h => (
-                                    <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0" style={{ width: getColumnWidth(h) }}>
-                                        <Dropdown width="64" trigger={
-                                            <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
-                                                <span className="font-bold">{h}</span>
-                                                {sortConfig.key === h && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
-                                            </div>
-                                        }>
-                                            <HeaderMenu header={h} onSort={(dir) => handleSort(h, dir)} filterConfig={columnFilters[h]} onFilterChange={(header, config) => setColumnFilters(prev => ({...prev, [header]: config}))}/>
-                                        </Dropdown>
-                                    </th>
-                                ))}
-                                <th scope="col" className="px-4 py-3" style={{ width: '100px' }}>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredAndSortedData.map((row, rowIndex) => (
-                                <tr key={row[0] || rowIndex} className="bg-white border-b hover:bg-gray-50">
-                                    {row.map((cell, cellIndex) => {
-                                        const headerName = displayHeader[cellIndex];
-                                        const postingId = row[displayHeader.indexOf('Posting ID')];
-                                        const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
-                                        
-                                        return (
-                                            <td key={cellIndex} onClick={() => { if (canEditDashboard && EDITABLE_COLUMNS.includes(headerName)) setEditingCell({rowIndex, cellIndex}); }} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`}>
-                                                {isEditing && headerName === 'Working By' ? (
-                                                    <select
-                                                        value={unsavedChanges[postingId]?.[headerName] || cell}
-                                                        onBlur={() => setEditingCell(null)}
-                                                        onChange={(e) => {
-                                                            handleCellEdit(rowIndex, cellIndex, e.target.value);
-                                                            setEditingCell(null);
-                                                        }}
-                                                        className="block w-full border-gray-300 rounded-md shadow-sm p-2"
-                                                        autoFocus
-                                                    >
-                                                        <option value="Need To Update">Unassigned</option>
-                                                        {recruiters.map(r => <option key={r.username} value={r.displayName}>{r.displayName}</option>)}
-                                                    </select>
-                                                ) : (
-                                                    <div contentEditable={isEditing && headerName !== 'Working By'} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}>
-                                                        {DATE_COLUMNS.includes(headerName) ? formatDate(cell) : cell}
-                                                    </div>
-                                                )}
-                                            </td>
-                                        );
-                                    })}
-                                    <td className="px-4 py-3">
-                                        <ActionMenu job={jobToObject(row)} onAction={(type, job) => setModalState({type, job})} />
-                                    </td>
+                <div className="bg-white rounded-lg shadow-lg border border-gray-200" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left text-gray-500 table-fixed">
+                            <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
+                                <tr>
+                                    {displayHeader.map(h => (
+                                        <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0" style={{ width: getColumnWidth(h) }}>
+                                            <Dropdown width="64" trigger={
+                                                <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
+                                                    <span className="font-bold">{h}</span>
+                                                    {sortConfig.key === h && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
+                                                </div>
+                                            }>
+                                                <HeaderMenu header={h} onSort={(dir) => handleSort(h, dir)} filterConfig={columnFilters[h]} onFilterChange={(header, config) => setColumnFilters(prev => ({...prev, [header]: config}))}/>
+                                            </Dropdown>
+                                        </th>
+                                    ))}
+                                    <th scope="col" className="px-4 py-3" style={{ width: '100px' }}>Action</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {filteredAndSortedData.map((row, rowIndex) => (
+                                    <tr key={row[0] || rowIndex} className="bg-gray-50 border-b hover:bg-gray-100">
+                                        {row.map((cell, cellIndex) => {
+                                            const headerName = displayHeader[cellIndex];
+                                            const postingId = row[displayHeader.indexOf('Posting ID')];
+                                            const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
+                                            
+                                            return (
+                                                <td key={cellIndex} onClick={() => { if (canEditDashboard && EDITABLE_COLUMNS.includes(headerName)) setEditingCell({rowIndex, cellIndex}); }} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`}>
+                                                    {isEditing && headerName === 'Working By' ? (
+                                                        <select
+                                                            value={unsavedChanges[postingId]?.[headerName] || cell}
+                                                            onBlur={() => setEditingCell(null)}
+                                                            onChange={(e) => {
+                                                                handleCellEdit(rowIndex, cellIndex, e.target.value);
+                                                                setEditingCell(null);
+                                                            }}
+                                                            className="block w-full border-gray-300 rounded-md shadow-sm p-2"
+                                                            autoFocus
+                                                        >
+                                                            <option value="Need To Update">Unassigned</option>
+                                                            {recruiters.map(r => <option key={r.username} value={r.displayName}>{r.displayName}</option>)}
+                                                        </select>
+                                                    ) : (
+                                                        <div contentEditable={isEditing && headerName !== 'Working By'} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}>
+                                                            {DATE_COLUMNS.includes(headerName) ? formatDate(cell) : cell}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
+                                        <td className="px-4 py-3 align-middle">
+                                            <ActionMenu job={jobToObject(row)} onAction={(type, job) => setModalState({type, job})} />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
             
