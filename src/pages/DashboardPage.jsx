@@ -300,12 +300,6 @@ const DashboardPage = ({ sheetKey }) => {
     
     const jobToObject = (row) => displayHeader.reduce((obj, h, i) => ({...obj, [h]: row[i]}), {});
 
-    const getColumnWidth = (header) => {
-        if (header === 'Required Skill Set') return '300px';
-        if (header === 'Posting Title') return '200px';
-        return '150px';
-    };
-
     return (
         <div className="space-y-4">
             <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
@@ -346,11 +340,13 @@ const DashboardPage = ({ sheetKey }) => {
             {!loading && !error && (
                 <div className="bg-white rounded-lg shadow-lg border border-gray-200" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-gray-500 table-fixed">
+                        {/* REMOVED: table-fixed class */}
+                        <table className="w-full text-sm text-left text-gray-500">
                             <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
                                 <tr>
                                     {displayHeader.map(h => (
-                                        <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0" style={{ width: getColumnWidth(h) }}>
+                                        // REMOVED: style prop with fixed width
+                                        <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0">
                                             <Dropdown width="64" trigger={
                                                 <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
                                                     <span className="font-bold">{h}</span>
@@ -361,7 +357,7 @@ const DashboardPage = ({ sheetKey }) => {
                                             </Dropdown>
                                         </th>
                                     ))}
-                                    <th scope="col" className="px-4 py-3" style={{ width: '100px' }}>Action</th>
+                                    <th scope="col" className="px-4 py-3">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
