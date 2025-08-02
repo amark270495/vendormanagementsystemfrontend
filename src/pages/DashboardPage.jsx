@@ -300,6 +300,12 @@ const DashboardPage = ({ sheetKey }) => {
     
     const jobToObject = (row) => displayHeader.reduce((obj, h, i) => ({...obj, [h]: row[i]}), {});
 
+    const getColumnWidth = (header) => {
+        if (header === 'Required Skill Set') return '300px';
+        if (header === 'Posting Title') return '200px';
+        return '150px'; // Default width for other columns
+    };
+
     return (
         <div className="space-y-4">
             <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
@@ -323,7 +329,7 @@ const DashboardPage = ({ sheetKey }) => {
                         trigger={
                             <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center">
                                 Options 
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 h-4 w-4"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 h-4 w-4"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </button>
                         }
                     >
@@ -339,13 +345,11 @@ const DashboardPage = ({ sheetKey }) => {
             
             {!loading && !error && (
                 <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-auto" style={{ maxHeight: '70vh' }}>
-                    {/* ADDED: table-fixed for consistent column widths */}
                     <table className="w-full text-sm text-left text-gray-500 table-fixed">
                         <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
                             <tr>
                                 {displayHeader.map(h => (
-                                    // ADDED: border-r for vertical lines
-                                    <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0">
+                                    <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0" style={{ width: getColumnWidth(h) }}>
                                         <Dropdown width="64" trigger={
                                             <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
                                                 <span className="font-bold">{h}</span>
@@ -356,7 +360,7 @@ const DashboardPage = ({ sheetKey }) => {
                                         </Dropdown>
                                     </th>
                                 ))}
-                                <th scope="col" className="px-4 py-3">Action</th>
+                                <th scope="col" className="px-4 py-3" style={{ width: '100px' }}>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -368,7 +372,6 @@ const DashboardPage = ({ sheetKey }) => {
                                         const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                                         
                                         return (
-                                            // ADDED: border-r for vertical lines
                                             <td key={cellIndex} onClick={() => { if (canEditDashboard && EDITABLE_COLUMNS.includes(headerName)) setEditingCell({rowIndex, cellIndex}); }} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`}>
                                                 {isEditing && headerName === 'Working By' ? (
                                                     <select
