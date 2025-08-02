@@ -372,7 +372,7 @@ const DashboardPage = ({ sheetKey }) => {
                                         const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                                         
                                         return (
-                                            <td key={cellIndex} onClick={() => { if (canEditDashboard && EDITABLE_COLUMNS.includes(headerName)) setEditingCell({rowIndex, cellIndex}); }} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`}>
+                                            <td key={cellIndex} onClick={() => { if (canEditDashboard && EDITABLE_COLUMNS.includes(headerName)) setEditingCell({rowIndex, cellIndex}); }} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`}>
                                                 {isEditing && headerName === 'Working By' ? (
                                                     <select
                                                         value={unsavedChanges[postingId]?.[headerName] || cell}

@@ -45,7 +45,8 @@ const MainApp = () => {
     return (
         <div className="min-h-screen bg-gray-100">
             <TopNav onNavigate={handleNavigate} />
-            <main className="py-6">
+            {/* ADDED: overflow-x-hidden to the main content area */}
+            <main className="py-6 overflow-x-hidden">
                 <div className="px-4 sm:px-6 lg:px-8">
                     {renderPage()}
                 </div>
