@@ -356,20 +356,6 @@ const DashboardPage = ({ sheetKey }) => {
     
     const jobToObject = (row) => displayHeader.reduce((obj, h, i) => ({...obj, [h]: row[i]}), {});
 
-    const getColumnStyle = (header) => {
-        const style = {};
-        if (header === 'Required Skill Set') {
-            style.minWidth = '300px';
-        }
-        if (header === 'Client Info') {
-            style.minWidth = '250px';
-        }
-        if (['Posting ID', 'Status', 'Action'].includes(header)) {
-            style.width = '120px';
-        }
-        return style;
-    };
-
     return (
         <div className="space-y-4">
             <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
@@ -414,7 +400,7 @@ const DashboardPage = ({ sheetKey }) => {
                             <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
                                 <tr>
                                     {displayHeader.map(h => (
-                                        <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0" style={getColumnStyle(h)}>
+                                        <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0">
                                             <Dropdown width="64" trigger={
                                                 <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
                                                     <span className="font-bold">{h}</span>
@@ -425,7 +411,7 @@ const DashboardPage = ({ sheetKey }) => {
                                             </Dropdown>
                                         </th>
                                     ))}
-                                    <th scope="col" className="px-4 py-3" style={{ width: '100px' }}>Action</th>
+                                    <th scope="col" className="px-4 py-3">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
