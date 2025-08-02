@@ -231,6 +231,23 @@ const DashboardPage = ({ sheetKey }) => {
         setLoading(true);
         try {
             await apiService.updateJobPosting(updates, user.userIdentifier);
+
+            // After successful save, check for assignment changes and send emails
+            for (const [postingId, changes] of Object.entries(unsavedChanges)) {
+                if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
+                    const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
+                    if (jobRow) {
+                        const jobTitle = jobRow[displayHeader.indexOf('Posting Title')];
+                        try {
+                            // CORRECTED: Changed api. to apiService.
+                            await apiService.sendAssignmentEmail(jobTitle, postingId, changes['Working By'], user.userIdentifier);
+                        } catch (emailError) {
+                            console.error(`Failed to send assignment email for job ${postingId}:`, emailError);
+                        }
+                    }
+                }
+            }
+
             setUnsavedChanges({});
             loadData();
         } catch (err) {
