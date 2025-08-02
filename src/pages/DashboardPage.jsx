@@ -25,6 +25,7 @@ const DASHBOARD_CONFIGS = {
 };
 const EDITABLE_COLUMNS = ['Working By', '# Submitted', 'Remarks', '1st Candidate Name', '2nd Candidate Name', '3rd Candidate Name'];
 const DATE_COLUMNS = ['Posting Date', 'Deadline'];
+const NUMBER_COLUMNS = ['# Submitted', 'Max Submissions'];
 
 const DashboardPage = ({ sheetKey }) => {
     const { user, updatePreferences } = useAuth();
@@ -181,11 +182,37 @@ const DashboardPage = ({ sheetKey }) => {
                     const cellValue = String(row[colIndex] || '').toLowerCase();
                     const filterValue1 = String(config.value1).toLowerCase();
                     const filterValue2 = String(config.value2 || '').toLowerCase();
+
+                    const isDate = DATE_COLUMNS.includes(header);
+                    const isNumber = NUMBER_COLUMNS.includes(header);
+                    
+                    let cellNum = NaN, val1Num = NaN, val2Num = NaN;
+
+                    if (isDate) {
+                        cellNum = new Date(row[colIndex]).getTime();
+                        val1Num = new Date(config.value1).getTime();
+                        val2Num = new Date(config.value2).getTime();
+                    } else if (isNumber) {
+                        cellNum = parseFloat(row[colIndex]);
+                        val1Num = parseFloat(config.value1);
+                        val2Num = parseFloat(config.value2);
+                    }
                     
                     switch (config.type) {
                         case 'contains': return cellValue.includes(filterValue1);
                         case 'not_contains': return !cellValue.includes(filterValue1);
-                        case 'equals': return cellValue === filterValue1;
+                        case 'equals':
+                             if ((isNumber || isDate) && !isNaN(cellNum) && !isNaN(val1Num)) return cellNum === val1Num;
+                             return cellValue === filterValue1;
+                        case 'above':
+                            if ((isNumber || isDate) && !isNaN(cellNum) && !isNaN(val1Num)) return cellNum > val1Num;
+                            return cellValue > filterValue1;
+                        case 'below':
+                            if ((isNumber || isDate) && !isNaN(cellNum) && !isNaN(val1Num)) return cellNum < val1Num;
+                            return cellValue < filterValue1;
+                        case 'between':
+                            if ((isNumber || isDate) && !isNaN(cellNum) && !isNaN(val1Num) && !isNaN(val2Num)) return cellNum >= val1Num && cellNum <= val2Num;
+                            return cellValue >= filterValue1 && cellValue <= filterValue2;
                         default: return true;
                     }
                 });
@@ -195,11 +222,25 @@ const DashboardPage = ({ sheetKey }) => {
         if (sortConfig.key) {
             const sortIndex = displayHeader.indexOf(sortConfig.key);
             if (sortIndex !== -1) {
+                const isDate = DATE_COLUMNS.includes(sortConfig.key);
+                const isNumber = NUMBER_COLUMNS.includes(sortConfig.key);
                 data.sort((a, b) => {
-                    let valA = a[sortIndex] || '';
-                    let valB = b[sortIndex] || '';
-                    if (String(valA) < String(valB)) return sortConfig.direction === 'ascending' ? -1 : 1;
-                    if (String(valA) > String(valB)) return sortConfig.direction === 'ascending' ? 1 : -1;
+                    let valA = a[sortIndex];
+                    let valB = b[sortIndex];
+
+                    if (isDate) {
+                        valA = new Date(valA).getTime() || 0;
+                        valB = new Date(valB).getTime() || 0;
+                    } else if (isNumber) {
+                        valA = parseFloat(valA) || 0;
+                        valB = parseFloat(valB) || 0;
+                    } else {
+                        valA = String(valA || '').toLowerCase();
+                        valB = String(valB || '').toLowerCase();
+                    }
+
+                    if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
+                    if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
                     return 0;
                 });
             }
@@ -232,14 +273,12 @@ const DashboardPage = ({ sheetKey }) => {
         try {
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
-            // After successful save, check for assignment changes and send emails
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
                 if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
                     const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
                     if (jobRow) {
                         const jobTitle = jobRow[displayHeader.indexOf('Posting Title')];
                         try {
-                            // CORRECTED: Changed api. to apiService.
                             await apiService.sendAssignmentEmail(jobTitle, postingId, changes['Working By'], user.userIdentifier);
                         } catch (emailError) {
                             console.error(`Failed to send assignment email for job ${postingId}:`, emailError);
@@ -322,6 +361,12 @@ const DashboardPage = ({ sheetKey }) => {
         if (header === 'Required Skill Set') {
             style.minWidth = '300px';
         }
+        if (header === 'Client Info') {
+            style.minWidth = '250px';
+        }
+        if (['Posting ID', 'Status', 'Action'].includes(header)) {
+            style.width = '120px';
+        }
         return style;
     };
 
@@ -380,7 +425,7 @@ const DashboardPage = ({ sheetKey }) => {
                                             </Dropdown>
                                         </th>
                                     ))}
-                                    <th scope="col" className="px-4 py-3">Action</th>
+                                    <th scope="col" className="px-4 py-3" style={{ width: '100px' }}>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
