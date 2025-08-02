@@ -400,7 +400,7 @@ const DashboardPage = ({ sheetKey }) => {
                             <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
                                 <tr>
                                     {displayHeader.map(h => (
-                                        <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0">
+                                        <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0" style={{ minWidth: h === 'Required Skill Set' ? '300px' : 'auto' }}>
                                             <Dropdown width="64" trigger={
                                                 <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
                                                     <span className="font-bold">{h}</span>
