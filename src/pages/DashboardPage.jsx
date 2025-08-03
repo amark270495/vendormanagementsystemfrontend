@@ -401,14 +401,14 @@ const DashboardPage = ({ sheetKey }) => {
             {!loading && !error && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" style={{ maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
                     <div className="overflow-x-auto flex-grow">
-                        <table className="w-full text-sm text-left text-gray-600 table-fixed">
+                        <table className="w-full text-sm text-left text-gray-600">
                             <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10">
                                 <tr>
                                     {displayHeader.map(h => (
                                         <th key={h} scope="col" className={`p-0 border-r border-gray-200 last:border-r-0 ${h === 'Required Skill Set' ? 'w-[250px]' : ''}`}>
                                             <Dropdown width="64" trigger={
                                                 <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-gray-200">
-                                                    <span className="font-semibold truncate">{h}</span>
+                                                    <span className="font-semibold whitespace-normal break-words">{h}</span>
                                                     {sortConfig.key === h && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
                                                 </div>
                                             }>
