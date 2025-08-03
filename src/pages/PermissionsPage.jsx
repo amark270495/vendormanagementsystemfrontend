@@ -62,36 +62,50 @@ const PermissionsPage = () => {
         return calculatePermissions(mockUser);
     };
 
+    const PermissionIcon = ({ allowed }) => (
+        <span className={`flex justify-center items-center w-6 h-6 rounded-full ${allowed ? 'bg-green-100' : 'bg-red-100'}`}>
+            {allowed ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+            ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            )}
+        </span>
+    );
+
     return (
-        <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Role Permissions Matrix</h2>
+        <div className="bg-white p-6 rounded-xl shadow-sm border">
+            <div className="mb-5">
+                <h2 className="text-xl font-bold text-gray-800">Role Permissions Matrix</h2>
+                <p className="text-sm text-gray-500">An overview of permissions for each user and backend role.</p>
+            </div>
             <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left text-gray-500">
+                <table className="w-full text-sm text-left text-gray-600">
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                         <tr>
-                            <th scope="col" className="px-6 py-3">Role</th>
+                            <th scope="col" className="px-6 py-4">Role</th>
                             {features.map(feature => (
-                                <th key={feature.key} scope="col" className="px-6 py-3 text-center">{feature.name}</th>
+                                <th key={feature.key} scope="col" className="px-6 py-4 text-center">{feature.name}</th>
                             ))}
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-gray-200">
                         {rolesForDisplay.map(role => {
-                            // Don't display the generic "Standard User" as it has no specific permissions.
                             if (role.name === 'Standard User') return null;
                             const permissions = getPermissionsForRole(role);
                             return (
-                                <tr key={role.name} className="bg-white border-b hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-medium text-gray-900">
-                                        {role.name} <span className="text-xs text-gray-400">({role.type})</span>
+                                <tr key={role.name} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4 font-semibold text-gray-900">
+                                        {role.name} <span className="text-xs font-normal text-gray-500">({role.type})</span>
                                     </td>
                                     {features.map(feature => (
-                                        <td key={feature.key} className="px-6 py-4 text-center">
-                                            {permissions[feature.key] ? (
-                                                <span className="text-green-500" title="Allowed">✔️</span>
-                                            ) : (
-                                                <span className="text-red-500" title="Not Allowed">❌</span>
-                                            )}
+                                        <td key={feature.key} className="px-6 py-4">
+                                            <div className="flex justify-center">
+                                                <PermissionIcon allowed={permissions[feature.key]} />
+                                            </div>
                                         </td>
                                     ))}
                                 </tr>

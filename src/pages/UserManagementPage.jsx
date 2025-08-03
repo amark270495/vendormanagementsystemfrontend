@@ -74,47 +74,67 @@ const UserManagementPage = () => {
         fetchUsers(); // Refresh the user list after deleting
     };
 
+    const RoleBadge = ({ role }) => {
+        const roleColor = {
+            'Admin': 'bg-red-100 text-red-800',
+            'Recruitment Manager': 'bg-purple-100 text-purple-800',
+            'Recruitment Team': 'bg-indigo-100 text-indigo-800',
+            'Operations Admin': 'bg-blue-100 text-blue-800',
+            'Data Entry & Viewer': 'bg-green-100 text-green-800',
+            'Data Viewer': 'bg-yellow-100 text-yellow-800',
+            'Data Entry': 'bg-teal-100 text-teal-800',
+        }[role] || 'bg-gray-100 text-gray-800';
+        return <span className={`px-2 py-1 text-xs font-medium rounded-full ${roleColor}`}>{role}</span>
+    };
+
     return (
         <>
-            <div className="bg-white p-6 rounded-lg shadow">
-                <div className="flex justify-end mb-4">
-                    <button onClick={handleAddClick} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
+            <div className="bg-white p-6 rounded-xl shadow-sm border">
+                <div className="flex justify-between items-center mb-5">
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-800">Users</h2>
+                        <p className="text-sm text-gray-500">A list of all users in the system.</p>
+                    </div>
+                    <button onClick={handleAddClick} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg flex items-center shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         Add User
                     </button>
                 </div>
                 {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
-                {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
+                {error && <div className="text-red-600 bg-red-50 p-4 rounded-lg border border-red-200">Error: {error}</div>}
                 {!loading && !error && (
                     <div className="overflow-x-auto">
                         {users.length > 0 ? (
-                            <table className="w-full text-sm text-left text-gray-500">
+                            <table className="w-full text-sm text-left text-gray-600">
                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                     <tr>
                                         <th scope="col" className="px-6 py-3">Display Name</th>
                                         <th scope="col" className="px-6 py-3">Username</th>
                                         <th scope="col" className="px-6 py-3">Role</th>
                                         <th scope="col" className="px-6 py-3">Backend Role</th>
-                                        <th scope="col" className="px-6 py-3">Actions</th>
+                                        <th scope="col" className="px-6 py-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-gray-200">
                                     {users.map((u) => (
-                                        <tr key={u.username} className="bg-white border-b hover:bg-gray-50">
-                                            <td className="px-6 py-4 font-medium text-gray-900">{u.displayName}</td>
+                                        <tr key={u.username} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 font-semibold text-gray-900">{u.displayName}</td>
                                             <td className="px-6 py-4">{u.username}</td>
-                                            <td className="px-6 py-4">{u.userRole}</td>
-                                            <td className="px-6 py-4">{u.backendOfficeRole}</td>
-                                            <td className="px-6 py-4 flex space-x-2">
-                                                <button onClick={() => handleEditClick(u)} className="text-indigo-600 hover:text-indigo-900 p-1" aria-label={`Edit user ${u.displayName}`}><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
-                                                <button onClick={() => handleDeleteClick(u)} className="text-red-600 hover:text-red-900 p-1" aria-label={`Delete user ${u.displayName}`}><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
+                                            <td className="px-6 py-4"><RoleBadge role={u.userRole} /></td>
+                                            <td className="px-6 py-4"><RoleBadge role={u.backendOfficeRole} /></td>
+                                            <td className="px-6 py-4 flex space-x-2 justify-end">
+                                                <button onClick={() => handleEditClick(u)} className="text-gray-500 hover:text-indigo-600 p-2 rounded-md" aria-label={`Edit user ${u.displayName}`}><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+                                                <button onClick={() => handleDeleteClick(u)} className="text-gray-500 hover:text-red-600 p-2 rounded-md" aria-label={`Delete user ${u.displayName}`}><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         ) : (
-                            <p className="text-center text-gray-500 p-4">No users found.</p>
+                             <div className="text-center text-gray-500 p-10">
+                                <h3 className="text-lg font-medium">No Users Found</h3>
+                                <p className="text-sm">Click "Add User" to create the first user.</p>
+                            </div>
                         )}
                     </div>
                 )}

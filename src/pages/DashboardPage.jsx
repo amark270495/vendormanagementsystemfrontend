@@ -358,28 +358,19 @@ const DashboardPage = ({ sheetKey }) => {
 
     return (
         <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
-            
-            <div className="bg-white p-4 rounded-lg shadow-sm border flex flex-wrap items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-4">
-                    <input type="text" placeholder="Search all columns..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md px-3 py-2"/>
-                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md px-3 py-2">
-                        <option value="">All Statuses</option>
-                        <option value="Open">Open</option>
-                        <option value="Closed">Closed</option>
-                    </select>
-                </div>
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
                 <div className="flex items-center space-x-2">
                     {Object.keys(unsavedChanges).length > 0 && (
-                        <button onClick={handleSaveChanges} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700" disabled={loading}>
-                            {loading ? <Spinner size="5" /> : 'Save Changes'}
+                        <button onClick={handleSaveChanges} className="px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm hover:bg-green-700 flex items-center disabled:bg-green-400" disabled={loading}>
+                            {loading ? <Spinner size="5" /> : <><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>Save Changes</>}
                         </button>
                     )}
                     <Dropdown 
                         trigger={
-                            <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center">
+                            <button className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 flex items-center">
                                 Options 
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 h-4 w-4"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 h-4 w-4"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </button>
                         }
                     >
@@ -389,21 +380,35 @@ const DashboardPage = ({ sheetKey }) => {
                     </Dropdown>
                 </div>
             </div>
+            
+            <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-4 flex-1">
+                    <div className="relative min-w-[250px] flex-grow">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input type="text" placeholder="Search across all columns..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="w-full shadow-sm border-gray-300 rounded-lg pl-10 pr-4 py-2 focus:ring-indigo-500 focus:border-indigo-500"/>
+                    </div>
+                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">All Statuses</option>
+                        <option value="Open">Open</option>
+                        <option value="Closed">Closed</option>
+                    </select>
+                </div>
+            </div>
 
             {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
-            {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
+            {error && <div className="text-red-600 bg-red-50 p-4 rounded-lg border border-red-200">Error: {error}</div>}
             
             {!loading && !error && (
-                <div className="bg-white rounded-lg shadow-lg border border-gray-200" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-gray-500">
-                            <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" style={{ maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
+                    <div className="overflow-x-auto flex-grow">
+                        <table className="w-full text-sm text-left text-gray-600">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10">
                                 <tr>
                                     {displayHeader.map(h => (
-                                        <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0" style={{ minWidth: h === 'Required Skill Set' ? '200px' : 'auto' }}>
+                                        <th key={h} scope="col" className="p-0 border-r border-gray-200 last:border-r-0 whitespace-nowrap" style={{ minWidth: h === 'Required Skill Set' ? '250px' : '150px' }}>
                                             <Dropdown width="64" trigger={
-                                                <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
-                                                    <span className="font-bold">{h}</span>
+                                                <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-gray-200">
+                                                    <span className="font-semibold">{h}</span>
                                                     {sortConfig.key === h && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
                                                 </div>
                                             }>
@@ -411,19 +416,19 @@ const DashboardPage = ({ sheetKey }) => {
                                             </Dropdown>
                                         </th>
                                     ))}
-                                    <th scope="col" className="px-4 py-3">Action</th>
+                                    <th scope="col" className="px-4 py-3 sticky right-0 bg-gray-100">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-gray-200">
                                 {filteredAndSortedData.map((row, rowIndex) => (
-                                    <tr key={row[0] || rowIndex} className="bg-gray-50 border-b hover:bg-gray-100">
+                                    <tr key={row[0] || rowIndex} className="hover:bg-gray-50">
                                         {row.map((cell, cellIndex) => {
                                             const headerName = displayHeader[cellIndex];
                                             const postingId = row[displayHeader.indexOf('Posting ID')];
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                                             
                                             return (
-                                                <td key={cellIndex} onClick={() => { if (canEditDashboard && EDITABLE_COLUMNS.includes(headerName)) setEditingCell({rowIndex, cellIndex}); }} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`}>
+                                                <td key={cellIndex} onClick={() => { if (canEditDashboard && EDITABLE_COLUMNS.includes(headerName)) setEditingCell({rowIndex, cellIndex}); }} className={`px-4 py-3 border-r border-gray-200 last:border-r-0 text-gray-800 align-top ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-50' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`}>
                                                     {isEditing && headerName === 'Working By' ? (
                                                         <select
                                                             value={unsavedChanges[postingId]?.[headerName] || cell}
@@ -432,21 +437,21 @@ const DashboardPage = ({ sheetKey }) => {
                                                                 handleCellEdit(rowIndex, cellIndex, e.target.value);
                                                                 setEditingCell(null);
                                                             }}
-                                                            className="block w-full border-gray-300 rounded-md shadow-sm p-2"
+                                                            className="block w-full border-gray-300 rounded-md shadow-sm p-2 text-sm"
                                                             autoFocus
                                                         >
                                                             <option value="Need To Update">Unassigned</option>
                                                             {recruiters.map(r => <option key={r.username} value={r.displayName}>{r.displayName}</option>)}
                                                         </select>
                                                     ) : (
-                                                        <div contentEditable={isEditing && headerName !== 'Working By'} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}>
-                                                            {DATE_COLUMNS.includes(headerName) ? formatDate(cell) : cell}
+                                                        <div contentEditable={isEditing && headerName !== 'Working By'} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }} className="min-h-[20px]">
+                                                            {DATE_COLUMNS.includes(headerName) ? formatDate(cell) : String(cell)}
                                                         </div>
                                                     )}
                                                 </td>
                                             );
                                         })}
-                                        <td className="px-4 py-3 align-middle">
+                                        <td className="px-4 py-3 align-middle sticky right-0 bg-white hover:bg-gray-50 border-l border-gray-200">
                                             <ActionMenu job={jobToObject(row)} onAction={(type, job) => setModalState({type, job})} />
                                         </td>
                                     </tr>

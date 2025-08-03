@@ -101,53 +101,76 @@ const MessagesPage = () => {
     };
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-gray-800">Internal Messaging</h1>
-            <div className="flex flex-col md:flex-row bg-white rounded-lg shadow-lg h-[70vh]">
+        <div className="space-y-6 h-full flex flex-col">
+            <div>
+                <h1 className="text-3xl font-bold text-gray-900">Internal Messaging</h1>
+                <p className="mt-1 text-gray-600">Communicate with other users in the system.</p>
+            </div>
+            
+            <div className="flex flex-col md:flex-row bg-white rounded-xl shadow-sm border border-gray-200 flex-grow" style={{ minHeight: '70vh' }}>
                 {/* User List Panel */}
-                <div className="w-full md:w-1/4 border-r border-gray-200 p-4 overflow-y-auto">
-                    <h2 className="text-lg font-semibold text-gray-700 mb-4">Users</h2>
-                    {loadingUsers && <Spinner size="6" />}
-                    {error && <div className="text-red-500 text-sm p-2">{error}</div>}
-                    {!loadingUsers && users.length === 0 && <p className="text-gray-500 text-sm">No other users found.</p>}
-                    <ul className="space-y-2">
-                        {users.map(u => (
-                            <li key={u.username}>
-                                <button onClick={() => setSelectedRecipient(u)} className={`w-full text-left p-3 rounded-md transition-colors ${selectedRecipient?.username === u.username ? 'bg-indigo-100 text-indigo-800 font-semibold' : 'hover:bg-gray-100 text-gray-700'}`}>
-                                    <p className="font-medium">{u.displayName}</p>
-                                    <p className="text-xs text-gray-500 break-all">{u.username}</p>
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
+                <div className="w-full md:w-1/3 lg:w-1/4 border-r border-gray-200 flex flex-col">
+                    <div className="p-4 border-b border-gray-200">
+                        <h2 className="text-lg font-bold text-gray-800">Users</h2>
+                    </div>
+                    <div className="p-2 overflow-y-auto flex-grow">
+                        {loadingUsers && <div className="flex justify-center items-center h-full"><Spinner size="8" /></div>}
+                        {error && <div className="text-red-500 text-sm p-4">{error}</div>}
+                        {!loadingUsers && users.length === 0 && <p className="text-gray-500 text-sm text-center p-4">No other users found.</p>}
+                        <ul className="space-y-1">
+                            {users.map(u => (
+                                <li key={u.username}>
+                                    <button onClick={() => setSelectedRecipient(u)} className={`w-full text-left p-3 rounded-lg transition-colors flex items-center space-x-3 ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-100 text-gray-700'}`}>
+                                        <span className="flex-shrink-0 w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600">{u.displayName.charAt(0)}</span>
+                                        <div className="flex-grow overflow-hidden">
+                                             <p className="font-semibold truncate">{u.displayName}</p>
+                                             <p className="text-xs text-gray-500 truncate">{u.username}</p>
+                                        </div>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 </div>
 
                 {/* Chat Panel */}
-                <div className="flex-1 flex flex-col">
+                <div className="flex-1 flex flex-col bg-gray-50">
                     {selectedRecipient ? (
                         <>
-                            <div className="p-4 border-b border-gray-200 bg-gray-50">
-                                <h2 className="text-lg font-semibold text-gray-800">Chat with {selectedRecipient.displayName}</h2>
+                            <div className="p-4 border-b border-gray-200 bg-white flex items-center space-x-3">
+                                <span className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center font-bold text-indigo-600">{selectedRecipient.displayName.charAt(0)}</span>
+                                <div>
+                                    <h2 className="text-lg font-bold text-gray-900">{selectedRecipient.displayName}</h2>
+                                    <p className="text-sm text-gray-500">Online</p> {/* Placeholder for status */}
+                                </div>
                             </div>
-                            <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-gray-50">
-                                {loadingMessages && <div className="flex justify-center"><Spinner size="6" /></div>}
+                            <div className="flex-1 p-6 overflow-y-auto space-y-4">
+                                {loadingMessages && <div className="flex justify-center h-full items-center"><Spinner size="8" /></div>}
                                 {messages.map((msg, index) => (
-                                    <div key={msg.id || index} className={`flex ${msg.sender === user.userIdentifier ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-xs md:max-w-md p-3 rounded-lg shadow-md ${msg.sender === user.userIdentifier ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-800'}`}>
-                                            <p className="text-xs font-semibold mb-1">{msg.sender === user.userIdentifier ? 'You' : selectedRecipient.displayName}</p>
+                                    <div key={msg.id || index} className={`flex items-end gap-2 ${msg.sender === user.userIdentifier ? 'justify-end' : 'justify-start'}`}>
+                                        {msg.sender !== user.userIdentifier && <span className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600">{selectedRecipient.displayName.charAt(0)}</span>}
+                                        <div className={`max-w-md p-3 rounded-2xl shadow-sm ${msg.sender === user.userIdentifier ? 'bg-indigo-600 text-white rounded-br-lg' : 'bg-white text-slate-800 border border-gray-200 rounded-bl-lg'}`}>
                                             <p>{msg.messageContent}</p>
-                                            <p className="text-right text-xs mt-1 opacity-75">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                            <p className="text-right text-xs mt-1 opacity-60">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                         </div>
                                     </div>
                                 ))}
                                 <div ref={messagesEndRef} />
                             </div>
-                            <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 bg-white flex items-center space-x-2">
-                                <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type your message..." className="flex-1 border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={loadingMessages}/>
-                                <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md disabled:bg-gray-400" disabled={!newMessage.trim() || loadingMessages}>Send</button>
+                            <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 bg-white flex items-center space-x-3">
+                                <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={loadingMessages}/>
+                                <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg disabled:bg-gray-400 flex-shrink-0" disabled={!newMessage.trim() || loadingMessages}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                </button>
                             </form>
                         </>
-                    ) : <div className="flex-1 flex items-center justify-center text-gray-500">Select a user to start a conversation.</div>}
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center text-gray-500 p-4">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-16 h-16 text-gray-300 mb-4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                           <h3 className="text-lg font-semibold text-gray-800">Select a Conversation</h3>
+                           <p>Choose a user from the list to start messaging.</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

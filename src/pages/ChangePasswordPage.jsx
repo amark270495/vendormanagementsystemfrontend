@@ -13,13 +13,12 @@ const ChangePasswordPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        // Basic validation
         if (newPassword !== confirmPassword) {
             setError("Passwords do not match.");
             return;
         }
-        if (newPassword.length < 6) {
-            setError("Password must be at least 6 characters long.");
+        if (newPassword.length < 8) {
+            setError("Password must be at least 8 characters long.");
             return;
         }
 
@@ -28,8 +27,7 @@ const ChangePasswordPage = () => {
         try {
             const response = await apiService.changePassword(user.userIdentifier, newPassword, user.userIdentifier);
             if (response.data.success) {
-                setSuccess("Password changed successfully! You can now access the dashboard.");
-                // Update the auth state after a short delay to show the success message
+                setSuccess("Password changed successfully! Redirecting to the dashboard...");
                 setTimeout(() => {
                     passwordChanged();
                 }, 2000);
@@ -45,53 +43,62 @@ const ChangePasswordPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 flex flex-col justify-center items-center p-4">
-            <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800">Change Your Password</h1>
-                    <p className="text-gray-500 mt-2">This is your first login. Please set a new password.</p>
+        <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
+            <div className="w-full max-w-md mx-auto">
+                 <div className="text-center mb-6">
+                    <div className="inline-block bg-indigo-600 p-3 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </div>
+                    <h1 className="text-3xl font-bold text-gray-900">Create a New Password</h1>
+                    <p className="text-gray-600 mt-2">For security, you must change your password on first login.</p>
                 </div>
 
-                {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
-                {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">{success}</div>}
+                <div className="bg-white p-8 rounded-2xl shadow-md">
+                    {error && <div className="bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">{error}</div>}
+                    {success && <div className="bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6">{success}</div>}
 
-                <form onSubmit={handleSubmit}>
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="new-password">
-                            New Password
-                        </label>
-                        <input
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-                            id="new-password"
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div className="mb-6">
-                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="confirm-password">
-                            Confirm New Password
-                        </label>
-                        <input
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-                            id="confirm-password"
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <button
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full flex justify-center items-center h-10"
-                        type="submit"
-                        disabled={loading || success} // Disable button on success
-                    >
-                        {loading ? <Spinner size="5" /> : 'Set New Password'}
-                    </button>
-                </form>
-                <button onClick={logout} className="mt-4 text-sm text-gray-600 hover:text-gray-800 w-full">
-                    Logout
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="new-password">
+                                New Password
+                            </label>
+                            <input
+                                className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                id="new-password"
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                required
+                                placeholder="Enter your new password"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="confirm-password">
+                                Confirm New Password
+                            </label>
+                            <input
+                                className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                id="confirm-password"
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                required
+                                placeholder="Confirm your new password"
+                            />
+                        </div>
+                         <div className="pt-2">
+                            <button
+                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg flex justify-center items-center h-12 transition-colors duration-300 disabled:bg-indigo-400"
+                                type="submit"
+                                disabled={loading || success}
+                            >
+                                {loading ? <Spinner size="6" /> : 'Set New Password'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <button onClick={logout} className="mt-6 text-sm font-medium text-gray-600 hover:text-gray-900 w-full">
+                    Logout and return to Sign In
                 </button>
             </div>
         </div>
