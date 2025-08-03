@@ -10,7 +10,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
     const buttonClass = buttonClasses[confirmText?.toLowerCase()] || 'bg-indigo-600';
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
+        <Modal isOpen={isOpen} onClose={onClose} title={title} size="md">
             <p className="text-gray-600">{message}</p>
             <div className="flex justify-end mt-6 space-x-2">
                 <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
