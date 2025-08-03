@@ -401,14 +401,14 @@ const DashboardPage = ({ sheetKey }) => {
             {!loading && !error && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" style={{ maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
                     <div className="overflow-x-auto flex-grow">
-                        <table className="w-full text-sm text-left text-gray-600">
+                        <table className="w-full text-sm text-left text-gray-600 table-fixed">
                             <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10">
                                 <tr>
                                     {displayHeader.map(h => (
-                                        <th key={h} scope="col" className="p-0 border-r border-gray-200 last:border-r-0 whitespace-nowrap" style={{ minWidth: h === 'Required Skill Set' ? '250px' : '150px' }}>
+                                        <th key={h} scope="col" className={`p-0 border-r border-gray-200 last:border-r-0 ${h === 'Required Skill Set' ? 'w-[250px]' : ''}`}>
                                             <Dropdown width="64" trigger={
                                                 <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-gray-200">
-                                                    <span className="font-semibold">{h}</span>
+                                                    <span className="font-semibold truncate">{h}</span>
                                                     {sortConfig.key === h && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
                                                 </div>
                                             }>
@@ -416,7 +416,7 @@ const DashboardPage = ({ sheetKey }) => {
                                             </Dropdown>
                                         </th>
                                     ))}
-                                    <th scope="col" className="px-4 py-3 sticky right-0 bg-gray-100">Actions</th>
+                                    <th scope="col" className="px-4 py-3 sticky right-0 bg-gray-100 w-[100px]">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
@@ -428,7 +428,7 @@ const DashboardPage = ({ sheetKey }) => {
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                                             
                                             return (
-                                                <td key={cellIndex} onClick={() => { if (canEditDashboard && EDITABLE_COLUMNS.includes(headerName)) setEditingCell({rowIndex, cellIndex}); }} className={`px-4 py-3 border-r border-gray-200 last:border-r-0 text-gray-800 align-top ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-50' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`}>
+                                                <td key={cellIndex} onClick={() => { if (canEditDashboard && EDITABLE_COLUMNS.includes(headerName)) setEditingCell({rowIndex, cellIndex}); }} className={`px-4 py-3 border-r border-gray-200 last:border-r-0 text-gray-800 align-top break-words ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-50' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`}>
                                                     {isEditing && headerName === 'Working By' ? (
                                                         <select
                                                             value={unsavedChanges[postingId]?.[headerName] || cell}
