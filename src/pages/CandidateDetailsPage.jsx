@@ -54,11 +54,11 @@ const CandidateDetailsPage = () => {
     const tableRows = useMemo(() => {
         return candidates.map(c => [
             `${c.firstName} ${c.middleName || ''} ${c.lastName}`.replace(/\s+/g, ' ').trim(),
-            c.email, // This was correct
+            c.email,
             c.mobileNumber,
             c.currentRole,
             c.currentLocation,
-            c.postingId, // This was correct
+            c.postingId,
             c.clientInfo,
             c.submittedBy,
             c.submissionDate
@@ -66,7 +66,6 @@ const CandidateDetailsPage = () => {
     }, [candidates]);
 
     const filteredAndSortedData = useMemo(() => {
-        // This logic correctly uses the data from tableRows, so the fix above will flow through.
         let filteredRows = [...tableRows];
         // General search filter
         if (generalFilter) {
