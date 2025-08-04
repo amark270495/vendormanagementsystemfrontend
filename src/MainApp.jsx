@@ -1,3 +1,4 @@
+// src/MainApp.jsx (Updated)
 import React, { useState } from 'react';
 import { usePermissions } from './hooks/usePermissions';
 import TopNav from './components/TopNav';
@@ -7,6 +8,7 @@ import JobPostingFormPage from './pages/JobPostingFormPage';
 import ReportsPage from './pages/ReportsPage';
 import MessagesPage from './pages/MessagesPage';
 import DashboardPage from './pages/DashboardPage';
+import CandidateDetailsPage from './pages/CandidateDetailsPage'; // <-- IMPORT
 
 const MainApp = () => {
     const [currentPage, setCurrentPage] = useState({ type: 'home' });
@@ -25,6 +27,7 @@ const MainApp = () => {
                 reports: permissions.canViewReports && <ReportsPage />,
                 messages: <MessagesPage />,
                 dashboard: permissions.canViewDashboards && <DashboardPage sheetKey={currentPage.key} />,
+                candidate_details: permissions.canViewDashboards && <CandidateDetailsPage />, // <-- ADD ROUTE
             };
 
             const PageComponent = pageMap[currentPage.type];
@@ -33,11 +36,9 @@ const MainApp = () => {
                 return PageComponent;
             }
 
-            // Fallback for pages that are not yet built or if permissions are denied
             return <div className="p-8 text-center">Page: <strong>{currentPage.type}</strong> (Component not created yet or permission denied)</div>;
         } catch (error) {
             console.error("Error rendering page:", error);
-            // This is a local fallback in case the global ErrorBoundary fails for some reason.
             return <div className="p-8 text-center text-red-500">An error occurred while trying to display this page.</div>;
         }
     };
@@ -45,9 +46,7 @@ const MainApp = () => {
     return (
         <div className="min-h-screen bg-gray-100">
             <TopNav onNavigate={handleNavigate} />
-            {/* Main content area */}
             <main className="py-6">
-                {/* This container is now constrained to the screen width */}
                 <div className="px-4 sm:px-6 lg:px-8 w-full max-w-full overflow-x-hidden">
                     {renderPage()}
                 </div>

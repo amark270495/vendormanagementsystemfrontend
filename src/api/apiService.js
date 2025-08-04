@@ -1,10 +1,8 @@
+// src/api/apiService.js (Updated)
 import axios from 'axios';
 
-// The base URL for all API calls. This can be moved to an environment variable later.
 const API_BASE_URL = '/api';
 
-// Create an instance of axios with the base URL configured.
-// This means we don't have to type the full URL for every request.
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -12,10 +10,6 @@ const apiClient = axios.create({
   },
 });
 
-/**
- * A centralized place for all API calls. Each function corresponds to an endpoint.
- * This makes the code more organized and easier to test or modify.
- */
 export const apiService = {
   authenticateUser: (username, password) => 
     apiClient.post('/authenticateUser', { username, password }),
@@ -55,6 +49,15 @@ export const apiService = {
 
   processJobPosting: (formData, authenticatedUsername) => 
     apiClient.post('/processJobPosting', { formData, authenticatedUsername }),
+    
+  addCandidateDetails: (candidateData, authenticatedUsername) =>
+    apiClient.post('/addCandidateDetails', { candidateData, authenticatedUsername }),
+
+  getCandidateDetails: (postingId, email, authenticatedUsername) =>
+    apiClient.get('/getCandidateDetails', { params: { postingId, email, authenticatedUsername } }),
+  
+  getCandidateDetailsPageData: (authenticatedUsername) => // <-- NEW
+    apiClient.get('/getCandidateDetailsPageData', { params: { authenticatedUsername } }),
 
   getHomePageData: (authenticatedUsername) => 
     apiClient.get('/getHomePageData', { params: { authenticatedUsername } }),

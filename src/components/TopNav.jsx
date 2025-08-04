@@ -1,10 +1,10 @@
+// src/components/TopNav.jsx (Updated)
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
 import Dropdown from './Dropdown';
 
-// Configuration for different dashboards, moved here for use in the dropdown.
 const DASHBOARD_CONFIGS = {
     'ecaltVMSDisplay': { title: 'Eclat VMS' },
     'taprootVMSDisplay': { title: 'Taproot VMS' },
@@ -14,7 +14,6 @@ const DASHBOARD_CONFIGS = {
     'VirtusaDisplay': { title: 'Virtusa Taproot' },
     'DeloitteDisplay': { title: 'Deloitte Taproot' }
 };
-
 
 const TopNav = ({ onNavigate }) => {
     const { user, logout } = useAuth();
@@ -35,7 +34,6 @@ const TopNav = ({ onNavigate }) => {
 
     useEffect(() => {
         fetchNotifications();
-        // Fetch notifications every minute
         const interval = setInterval(fetchNotifications, 60000);
         return () => clearInterval(interval);
     }, [fetchNotifications]);
@@ -45,7 +43,7 @@ const TopNav = ({ onNavigate }) => {
         try {
             const idsToMark = notifications.map(n => ({ id: n.id, partitionKey: n.partitionKey }));
             await apiService.markNotificationsAsRead(idsToMark, user.userIdentifier);
-            fetchNotifications(); // Refresh notifications list
+            fetchNotifications();
         } catch (err) {
             console.error('Failed to mark notifications as read', err);
         }
@@ -67,6 +65,7 @@ const TopNav = ({ onNavigate }) => {
                                 </Dropdown>
                             )}
                             {canAddPosting && <a href="#" onClick={() => onNavigate('new_posting')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">New Posting</a>}
+                            {canViewDashboards && <a href="#" onClick={() => onNavigate('candidate_details')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Candidates</a>}
                             {canViewReports && <a href="#" onClick={() => onNavigate('reports')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Reports</a>}
                             <a href="#" onClick={() => onNavigate('messages')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Messages</a>
                             {isAdmin && <a href="#" onClick={() => onNavigate('admin')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Admin</a>}

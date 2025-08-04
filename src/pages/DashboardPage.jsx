@@ -10,10 +10,10 @@ import ActionMenu from '../components/dashboard/ActionMenu';
 import ConfirmationModal from '../components/dashboard/ConfirmationModal';
 import ViewDetailsModal from '../components/dashboard/ViewDetailsModal';
 import ColumnSettingsModal from '../components/dashboard/ColumnSettingsModal';
+import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal'; // <-- IMPORT NEW MODAL
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-// Dashboard-specific constants
 const DASHBOARD_CONFIGS = {
     'ecaltVMSDisplay': { title: 'Eclat VMS' },
     'taprootVMSDisplay': { title: 'Taproot VMS' },
@@ -23,7 +23,8 @@ const DASHBOARD_CONFIGS = {
     'VirtusaDisplay': { title: 'Virtusa Taproot' },
     'DeloitteDisplay': { title: 'Deloitte Taproot' }
 };
-const EDITABLE_COLUMNS = ['Working By', '# Submitted', 'Remarks', '1st Candidate Name', '2nd Candidate Name', '3rd Candidate Name'];
+const EDITABLE_COLUMNS = ['Working By', '# Submitted', 'Remarks'];
+const CANDIDATE_COLUMNS = ['1st Candidate Name', '2nd Candidate Name', '3rd Candidate Name']; // <-- DEFINE CANDIDATE COLUMNS
 const DATE_COLUMNS = ['Posting Date', 'Deadline'];
 const NUMBER_COLUMNS = ['# Submitted', 'Max Submissions'];
 
@@ -31,12 +32,10 @@ const DashboardPage = ({ sheetKey }) => {
     const { user, updatePreferences } = useAuth();
     const { canEditDashboard } = usePermissions();
 
-    // Core data state
     const [rawData, setRawData] = useState({ header: [], rows: [] });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    // UI and interaction state
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
     const [generalFilter, setGeneralFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
@@ -45,8 +44,7 @@ const DashboardPage = ({ sheetKey }) => {
     const [editingCell, setEditingCell] = useState(null);
     const [recruiters, setRecruiters] = useState([]);
     
-    // Modal state
-    const [modalState, setModalState] = useState({ type: null, job: null });
+    const [modalState, setModalState] = useState({ type: null, data: null }); // <-- MODIFIED MODAL STATE
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
     const userPrefs = useMemo(() => {
@@ -96,12 +94,10 @@ const DashboardPage = ({ sheetKey }) => {
             }
         };
         fetchRecruiters();
-    }, [user.userIdentifier]);
-
-    useEffect(() => {
         loadData();
-    }, [loadData]);
+    }, [loadData, user.userIdentifier]);
 
+    // ... (transformedData, displayHeader, displayData, filteredAndSortedData memos remain the same) ...
     const transformedData = useMemo(() => {
         let { header, rows } = rawData;
         if (!header?.length) return { header: [], rows: [] };
@@ -247,7 +243,7 @@ const DashboardPage = ({ sheetKey }) => {
         }
         return data;
     }, [displayData, sortConfig, generalFilter, statusFilter, displayHeader, columnFilters]);
-    
+
     const handleSort = (key, direction) => setSortConfig({ key, direction });
 
     const handleCellEdit = (rowIndex, cellIndex, value) => {
@@ -259,14 +255,14 @@ const DashboardPage = ({ sheetKey }) => {
 
     const handleSaveChanges = async () => {
         if (!canEditDashboard) return;
-        const headerMap = { 'Working By': 'workingBy', '# Submitted': 'noOfResumesSubmitted', 'Remarks': 'remarks', '1st Candidate Name': 'candidateName1', '2nd Candidate Name': 'candidateName2', '3rd Candidate Name': 'candidateName3' };
+        const headerMap = { 'Working By': 'workingBy', '# Submitted': 'noOfResumesSubmitted', 'Remarks': 'remarks' };
         const updates = Object.entries(unsavedChanges).map(([postingId, changes]) => ({
             rowKey: postingId,
             changes: Object.entries(changes).reduce((acc, [header, value]) => {
                 if (headerMap[header]) acc[headerMap[header]] = value;
                 return acc;
             }, {})
-        }));
+        })).filter(u => Object.keys(u.changes).length > 0);
 
         if (updates.length === 0) return;
         setLoading(true);
@@ -278,15 +274,10 @@ const DashboardPage = ({ sheetKey }) => {
                     const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
                     if (jobRow) {
                         const jobTitle = jobRow[displayHeader.indexOf('Posting Title')];
-                        try {
-                            await apiService.sendAssignmentEmail(jobTitle, postingId, changes['Working By'], user.userIdentifier);
-                        } catch (emailError) {
-                            console.error(`Failed to send assignment email for job ${postingId}:`, emailError);
-                        }
+                        await apiService.sendAssignmentEmail(jobTitle, postingId, changes['Working By'], user.userIdentifier);
                     }
                 }
             }
-
             setUnsavedChanges({});
             loadData();
         } catch (err) {
@@ -311,7 +302,36 @@ const DashboardPage = ({ sheetKey }) => {
             setError(`Action '${actionType}' failed: ${err.response?.data?.message || err.message}`);
         } finally {
             setLoading(false);
-            setModalState({ type: null, job: null });
+            setModalState({ type: null, data: null });
+        }
+    };
+
+    const handleSaveCandidate = async (candidateData, candidateSlot) => {
+        setLoading(true);
+        try {
+            // 1. Save the detailed candidate info
+            await apiService.addCandidateDetails(candidateData, user.userIdentifier);
+
+            // 2. Update the job posting with the candidate's full name
+            const fullName = `${candidateData.firstName} ${candidateData.middleName || ''} ${candidateData.lastName}`.replace(/\s+/g, ' ').trim();
+            const headerMap = { '1st Candidate Name': 'candidateName1', '2nd Candidate Name': 'candidateName2', '3rd Candidate Name': 'candidateName3' };
+            const fieldToUpdate = headerMap[candidateSlot];
+
+            const updatePayload = [{
+                rowKey: candidateData.postingId,
+                changes: { [fieldToUpdate]: fullName }
+            }];
+
+            await apiService.updateJobPosting(updatePayload, user.userIdentifier);
+
+            // 3. Refresh data
+            loadData();
+        } catch (error) {
+            setError(error.response?.data?.message || error.message || "An error occurred while saving the candidate.");
+            // Re-throw to show error in modal
+            throw error;
+        } finally {
+            setLoading(false);
         }
     };
     
@@ -356,21 +376,47 @@ const DashboardPage = ({ sheetKey }) => {
     
     const jobToObject = (row) => displayHeader.reduce((obj, h, i) => ({...obj, [h]: row[i]}), {});
 
+    const handleCellClick = (rowIndex, cellIndex) => {
+        if (!canEditDashboard) return;
+        const headerName = displayHeader[cellIndex];
+        
+        if (EDITABLE_COLUMNS.includes(headerName)) {
+            setEditingCell({ rowIndex, cellIndex });
+        } else if (CANDIDATE_COLUMNS.includes(headerName)) {
+            const rowData = filteredAndSortedData[rowIndex];
+            const jobInfo = {
+                postingId: rowData[displayHeader.indexOf('Posting ID')],
+                clientInfo: rowData[displayHeader.indexOf('Client Info')],
+                candidateSlot: headerName
+            };
+            setModalState({ type: 'addCandidate', data: jobInfo });
+        }
+    };
+
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
+            <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
+            
+            <div className="bg-white p-4 rounded-lg shadow-sm border flex flex-wrap items-center justify-between gap-4">
+                 <div className="flex flex-wrap items-center gap-4">
+                    <input type="text" placeholder="Search all columns..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md px-3 py-2"/>
+                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md px-3 py-2">
+                        <option value="">All Statuses</option>
+                        <option value="Open">Open</option>
+                        <option value="Closed">Closed</option>
+                    </select>
+                </div>
                 <div className="flex items-center space-x-2">
                     {Object.keys(unsavedChanges).length > 0 && (
-                        <button onClick={handleSaveChanges} className="px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm hover:bg-green-700 flex items-center disabled:bg-green-400" disabled={loading}>
-                            {loading ? <Spinner size="5" /> : <><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>Save Changes</>}
+                        <button onClick={handleSaveChanges} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700" disabled={loading}>
+                            {loading ? <Spinner size="5" /> : 'Save Changes'}
                         </button>
                     )}
                     <Dropdown 
                         trigger={
-                            <button className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 flex items-center">
+                            <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center">
                                 Options 
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 h-4 w-4"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 h-4 w-4"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </button>
                         }
                     >
@@ -380,35 +426,21 @@ const DashboardPage = ({ sheetKey }) => {
                     </Dropdown>
                 </div>
             </div>
-            
-            <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-4 flex-1">
-                    <div className="relative min-w-[250px] flex-grow">
-                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        <input type="text" placeholder="Search across all columns..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="w-full shadow-sm border-gray-300 rounded-lg pl-10 pr-4 py-2 focus:ring-indigo-500 focus:border-indigo-500"/>
-                    </div>
-                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="">All Status</option>
-                        <option value="Open">Open</option>
-                        <option value="Closed">Closed</option>
-                    </select>
-                </div>
-            </div>
 
             {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
-            {error && <div className="text-red-600 bg-red-50 p-4 rounded-lg border border-red-200">Error: {error}</div>}
+            {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
             
             {!loading && !error && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" style={{ maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
-                    <div className="overflow-x-auto flex-grow">
-                        <table className="w-full text-sm text-left text-gray-600">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10">
+                <div className="bg-white rounded-lg shadow-lg border border-gray-200" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left text-gray-500">
+                            <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
                                 <tr>
                                     {displayHeader.map(h => (
-                                        <th key={h} scope="col" className={`p-0 border-r border-gray-200 last:border-r-0 ${h === 'Required Skill Set' ? 'w-[300px]' : ''}`}>
+                                        <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0" style={{ minWidth: h === 'Required Skill Set' ? '200px' : 'auto' }}>
                                             <Dropdown width="64" trigger={
-                                                <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-gray-200">
-                                                    <span className="font-semibold whitespace-normal break-words">{h}</span>
+                                                <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
+                                                    <span className="font-bold">{h}</span>
                                                     {sortConfig.key === h && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
                                                 </div>
                                             }>
@@ -416,19 +448,19 @@ const DashboardPage = ({ sheetKey }) => {
                                             </Dropdown>
                                         </th>
                                     ))}
-                                    <th scope="col" className="px-4 py-3 sticky right-0 bg-gray-100 w-[100px]">Actions</th>
+                                    <th scope="col" className="px-4 py-3">Action</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
+                            <tbody>
                                 {filteredAndSortedData.map((row, rowIndex) => (
-                                    <tr key={row[0] || rowIndex} className="hover:bg-gray-50">
+                                    <tr key={row[0] || rowIndex} className="bg-gray-50 border-b hover:bg-gray-100">
                                         {row.map((cell, cellIndex) => {
                                             const headerName = displayHeader[cellIndex];
                                             const postingId = row[displayHeader.indexOf('Posting ID')];
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                                             
                                             return (
-                                                <td key={cellIndex} onClick={() => { if (canEditDashboard && EDITABLE_COLUMNS.includes(headerName)) setEditingCell({rowIndex, cellIndex}); }} className={`px-4 py-3 border-r border-gray-200 last:border-r-0 text-gray-800 align-top break-words ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-50' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''}`}>
+                                                <td key={cellIndex} onClick={() => handleCellClick(rowIndex, cellIndex)} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-blue-50' : ''}`}>
                                                     {isEditing && headerName === 'Working By' ? (
                                                         <select
                                                             value={unsavedChanges[postingId]?.[headerName] || cell}
@@ -437,22 +469,22 @@ const DashboardPage = ({ sheetKey }) => {
                                                                 handleCellEdit(rowIndex, cellIndex, e.target.value);
                                                                 setEditingCell(null);
                                                             }}
-                                                            className="block w-full border-gray-300 rounded-md shadow-sm p-2 text-sm"
+                                                            className="block w-full border-gray-300 rounded-md shadow-sm p-2"
                                                             autoFocus
                                                         >
                                                             <option value="Need To Update">Unassigned</option>
                                                             {recruiters.map(r => <option key={r.username} value={r.displayName}>{r.displayName}</option>)}
                                                         </select>
                                                     ) : (
-                                                        <div contentEditable={isEditing && headerName !== 'Working By'} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }} className="min-h-[20px]">
-                                                            {DATE_COLUMNS.includes(headerName) ? formatDate(cell) : String(cell)}
+                                                        <div contentEditable={isEditing && headerName !== 'Working By'} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}>
+                                                            {DATE_COLUMNS.includes(headerName) ? formatDate(cell) : cell}
                                                         </div>
                                                     )}
                                                 </td>
                                             );
                                         })}
-                                        <td className="px-4 py-3 align-middle sticky right-0 bg-white hover:bg-gray-50 border-l border-gray-200">
-                                            <ActionMenu job={jobToObject(row)} onAction={(type, job) => setModalState({type, job})} />
+                                        <td className="px-4 py-3 align-middle">
+                                            <ActionMenu job={jobToObject(row)} onAction={(type, job) => setModalState({type, data: job})} />
                                         </td>
                                     </tr>
                                 ))}
@@ -462,9 +494,10 @@ const DashboardPage = ({ sheetKey }) => {
                 </div>
             )}
             
-            <ConfirmationModal isOpen={['close', 'archive', 'delete'].includes(modalState.type)} onClose={() => setModalState({type: null, job: null})} onConfirm={() => handleAction(modalState.type, modalState.job)} title={`Confirm ${modalState.type}`} message={`Are you sure you want to ${modalState.type} the job "${modalState.job?.['Posting Title']}"?`} confirmText={modalState.type}/>
-            <ViewDetailsModal isOpen={modalState.type === 'details'} onClose={() => setModalState({type: null, job: null})} job={modalState.job}/>
+            <ConfirmationModal isOpen={['close', 'archive', 'delete'].includes(modalState.type)} onClose={() => setModalState({type: null, data: null})} onConfirm={() => handleAction(modalState.type, modalState.data)} title={`Confirm ${modalState.type}`} message={`Are you sure you want to ${modalState.type} the job "${modalState.data?.['Posting Title']}"?`} confirmText={modalState.type}/>
+            <ViewDetailsModal isOpen={modalState.type === 'details'} onClose={() => setModalState({type: null, data: null})} job={modalState.data}/>
             <ColumnSettingsModal isOpen={isColumnModalOpen} onClose={() => setColumnModalOpen(false)} allHeaders={transformedData.header} userPrefs={userPrefs} onSave={handleSaveColumnSettings}/>
+            <CandidateDetailsModal isOpen={modalState.type === 'addCandidate'} onClose={() => setModalState({type: null, data: null})} onSave={handleSaveCandidate} jobInfo={modalState.data} />
         </div>
     );
 };
