@@ -2,45 +2,37 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../Modal';
 import Spinner from '../Spinner';
 
-const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo }) => {
+const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEdit }) => {
     const [formData, setFormData] = useState({});
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const isEditMode = !!candidateToEdit;
 
     useEffect(() => {
         if (isOpen) {
-            setFormData({
+            const initialData = isEditMode ? {
+                ...candidateToEdit,
+                postingId: candidateToEdit.PartitionKey,
+            } : {
                 postingId: jobInfo?.postingId || '',
                 clientInfo: jobInfo?.clientInfo || '',
-                firstName: '',
-                middleName: '',
-                lastName: '',
-                email: '',
-                mobileNumber: '',
-                currentRole: '',
-                currentLocation: ''
-            });
+                firstName: '', middleName: '', lastName: '',
+                email: '', mobileNumber: '',
+                currentRole: '', currentLocation: ''
+            };
+            setFormData(initialData);
             setError('');
         }
-    }, [isOpen, jobInfo]);
+    }, [isOpen, jobInfo, candidateToEdit, isEditMode]);
 
     const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        
-        const requiredFields = ['firstName', 'lastName', 'email', 'mobileNumber', 'currentRole', 'currentLocation'];
-        for (const field of requiredFields) {
-            if (!formData[field]) {
-                setError(`Please fill in the required field: ${field}`);
-                return;
-            }
-        }
-        
         setLoading(true);
         try {
-            await onSave(formData, jobInfo.candidateSlot);
+            await onSave(formData, jobInfo?.candidateSlot);
             onClose();
         } catch (err) {
             setError(err.message || "Failed to save candidate details.");
@@ -50,45 +42,45 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Add Candidate Details" size="2xl">
+        <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Edit Candidate Details" : "Add Candidate Details"} size="2xl">
             {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Posting ID</label>
-                        <input type="text" value={formData.postingId} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100" readOnly />
+                        <input type="text" value={formData.postingId || ''} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100" readOnly />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Client Info</label>
-                        <input type="text" value={formData.clientInfo} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100" readOnly />
+                        <input type="text" value={formData.clientInfo || ''} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100" readOnly />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">First Name <span className="text-red-500">*</span></label>
-                        <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
+                        <input type="text" name="firstName" value={formData.firstName || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Middle Name</label>
-                        <input type="text" name="middleName" value={formData.middleName} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+                        <input type="text" name="middleName" value={formData.middleName || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Last Name <span className="text-red-500">*</span></label>
-                        <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
+                        <input type="text" name="lastName" value={formData.lastName || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
                     </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-700">Email <span className="text-red-500">*</span></label>
-                        <input type="email" name="email" value={formData.email} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
+                        <input type="email" name="email" value={formData.email || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Mobile Number <span className="text-red-500">*</span></label>
-                        <input type="tel" name="mobileNumber" value={formData.mobileNumber} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
+                        <input type="tel" name="mobileNumber" value={formData.mobileNumber || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Current Working Role <span className="text-red-500">*</span></label>
-                        <input type="text" name="currentRole" value={formData.currentRole} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
+                        <input type="text" name="currentRole" value={formData.currentRole || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
                     </div>
                     <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700">Current Location <span className="text-red-500">*</span></label>
-                        <input type="text" name="currentLocation" value={formData.currentLocation} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
+                        <input type="text" name="currentLocation" value={formData.currentLocation || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
                     </div>
                 </div>
                 <div className="flex justify-end space-x-2 pt-4">

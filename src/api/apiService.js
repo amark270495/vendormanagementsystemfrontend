@@ -1,4 +1,3 @@
-// src/api/apiService.js (Updated)
 import axios from 'axios';
 
 const API_BASE_URL = '/api';
@@ -52,11 +51,11 @@ export const apiService = {
     
   addCandidateDetails: (candidateData, authenticatedUsername) =>
     apiClient.post('/addCandidateDetails', { candidateData, authenticatedUsername }),
-
-  getCandidateDetails: (postingId, email, authenticatedUsername) =>
-    apiClient.get('/getCandidateDetails', { params: { postingId, email, authenticatedUsername } }),
   
-  getCandidateDetailsPageData: (authenticatedUsername) => // <-- NEW
+  updateCandidateDetails: (originalEmail, candidateData, authenticatedUsername) =>
+    apiClient.post('/updateCandidateDetails', { originalEmail, candidateData, authenticatedUsername }),
+
+  getCandidateDetailsPageData: (authenticatedUsername) =>
     apiClient.get('/getCandidateDetailsPageData', { params: { authenticatedUsername } }),
 
   getHomePageData: (authenticatedUsername) => 
