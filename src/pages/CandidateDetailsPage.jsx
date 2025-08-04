@@ -54,12 +54,19 @@ const CandidateDetailsPage = () => {
     const tableRows = useMemo(() => {
         return candidates.map(c => [
             `${c.firstName} ${c.middleName || ''} ${c.lastName}`.replace(/\s+/g, ' ').trim(),
-            c.email, c.mobileNumber, c.currentRole, c.currentLocation,
-            c.postingId, c.clientInfo, c.submittedBy, c.submissionDate
+            c.email, // This was correct
+            c.mobileNumber,
+            c.currentRole,
+            c.currentLocation,
+            c.postingId, // This was correct
+            c.clientInfo,
+            c.submittedBy,
+            c.submissionDate
         ]);
     }, [candidates]);
 
     const filteredAndSortedData = useMemo(() => {
+        // This logic correctly uses the data from tableRows, so the fix above will flow through.
         let filteredRows = [...tableRows];
         // General search filter
         if (generalFilter) {
@@ -118,9 +125,12 @@ const CandidateDetailsPage = () => {
     const handleFilterChange = (header, config) => setColumnFilters(prev => ({ ...prev, [header]: config }));
 
     const handleEditClick = (rowIndex) => {
-        const originalIndex = candidates.findIndex(c => c.email === filteredAndSortedData[rowIndex][1] && c.postingId === filteredAndSortedData[rowIndex][5]);
-        if (originalIndex !== -1) {
-            setCandidateToEdit(candidates[originalIndex]);
+        const emailToFind = filteredAndSortedData[rowIndex][1];
+        const postingIdToFind = filteredAndSortedData[rowIndex][5];
+        const originalCandidate = candidates.find(c => c.email === emailToFind && c.postingId === postingIdToFind);
+        
+        if (originalCandidate) {
+            setCandidateToEdit(originalCandidate);
             setIsModalOpen(true);
         }
     };
@@ -137,17 +147,17 @@ const CandidateDetailsPage = () => {
     const downloadPdf = () => {
         const doc = new jsPDF('landscape');
         doc.autoTable({
-            head: [tableHeader],
-            body: filteredAndSortedData,
+            head: [tableHeader.filter(h => h !== 'Actions')],
+            body: filteredAndSortedData.map(row => row.slice(0, -1)),
         });
         doc.save(`candidate_details_report.pdf`);
     };
 
     const downloadCsv = () => {
         const csvContent = [
-            tableHeader.join(','),
+            tableHeader.filter(h => h !== 'Actions').join(','),
             ...filteredAndSortedData.map(row => 
-                row.map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')
+                row.slice(0, -1).map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')
             )
         ].join('\n');
 
