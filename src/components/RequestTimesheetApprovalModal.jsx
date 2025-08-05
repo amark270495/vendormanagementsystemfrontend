@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Modal from '../Modal';
+import Modal from '../Modal.jsx'; // Corrected import path
 import Spinner from '../Spinner';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../api/apiService';
