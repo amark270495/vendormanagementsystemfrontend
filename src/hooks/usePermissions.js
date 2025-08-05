@@ -13,7 +13,8 @@ const calculatePermissions = (permissions) => {
             canViewReports: false,
             canEmailReports: false,
             canViewDashboards: false, // Assuming dashboards are a general view permission
-            canEditDashboard: false, // Assuming dashboard editing is a specific permission
+            canEditDashboard: false,
+            canMessage: false, // Assuming dashboard editing is a specific permission
             // Add other permissions here with default false values
         };
     }
@@ -27,6 +28,7 @@ const calculatePermissions = (permissions) => {
         canEmailReports: permissions.canEmailReports === true,
         canViewDashboards: permissions.canViewDashboards === true,
         canEditDashboard: permissions.canEditDashboard === true,
+        canMessage: permissions.canMessage === true,
         // Map other permissions from the permissions object
     };
 };
