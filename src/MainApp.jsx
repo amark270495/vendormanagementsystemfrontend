@@ -12,7 +12,7 @@ import CandidateDetailsPage from './pages/CandidateDetailsPage'; // <-- IMPORT
 
 const MainApp = () => {
     const [currentPage, setCurrentPage] = useState({ type: 'home' });
-    const permissions = usePermissions();
+    const permissions = usePermissions(); // Get all granular permissions
 
     const handleNavigate = (pageType, params = {}) => {
         setCurrentPage({ type: pageType, ...params });
@@ -21,22 +21,28 @@ const MainApp = () => {
     const renderPage = () => {
         try {
             const pageMap = {
-                home: <HomePage />,
-                admin: permissions.isAdmin && <AdminPage />,
+                home: <HomePage />, // HomePage component has its own internal permission check (canViewDashboards)
+                admin: permissions.canEditUsers && <AdminPage />, // <-- UPDATED: Use canEditUsers for AdminPage
                 new_posting: permissions.canAddPosting && <JobPostingFormPage onFormSubmit={() => handleNavigate('dashboard', { key: 'taprootVMSDisplay' })} />,
                 reports: permissions.canViewReports && <ReportsPage />,
-                messages: <MessagesPage />,
+                messages: <MessagesPage />, // MessagesPage component has its own internal permission check (canViewDashboards)
                 dashboard: permissions.canViewDashboards && <DashboardPage sheetKey={currentPage.key} />,
-                candidate_details: permissions.canViewDashboards && <CandidateDetailsPage />, // <-- ADD ROUTE
+                candidate_details: permissions.canViewCandidates && <CandidateDetailsPage />, // <-- UPDATED: Use canViewCandidates
             };
 
             const PageComponent = pageMap[currentPage.type];
+            
+            // If PageComponent is explicitly false (due to permission check), render permission denied message
+            if (PageComponent === false) {
+                return <div className="p-8 text-center">Page: <strong>{currentPage.type}</strong> (Permission denied)</div>;
+            }
             
             if (PageComponent) {
                 return PageComponent;
             }
 
-            return <div className="p-8 text-center">Page: <strong>{currentPage.type}</strong> (Component not created yet or permission denied)</div>;
+            // Fallback for pages not in map or other issues
+            return <div className="p-8 text-center">Page: <strong>{currentPage.type}</strong> (Component not found or other issue)</div>;
         } catch (error) {
             console.error("Error rendering page:", error);
             return <div className="p-8 text-center text-red-500">An error occurred while trying to display this page.</div>;
