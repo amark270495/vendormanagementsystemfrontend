@@ -4,7 +4,7 @@ import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu'; // Reusing HeaderMenu for sorting/filtering
-import RequestTimesheetApprovalModal from '../components/timesheets/RequestTimesheetApprovalModal'; // NEW: Import modal
+import RequestTimesheetApprovalModal from '../components/RequestTimesheetApprovalModal'; // NEW: Import modal
 import { usePermissions } from '../hooks/usePermissions';
 
 const TimesheetsDashboardPage = () => {
