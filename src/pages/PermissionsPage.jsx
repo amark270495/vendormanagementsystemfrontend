@@ -5,8 +5,8 @@ import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 
 const PermissionsPage = () => {
-    const { user, updatePermissions: updateAuthContextPermissions } = useAuth(); // Get updatePermissions from AuthContext
-    const { canEditUsers } = usePermissions(); // Check if the current user can edit permissions
+    const { user, updatePermissions: updateAuthContextPermissions } = useAuth();
+    const { canEditUsers } = usePermissions();
 
     const [usersWithPermissions, setUsersWithPermissions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -17,11 +17,12 @@ const PermissionsPage = () => {
     // Define the granular permission keys that will be displayed and editable
     const permissionKeys = [
         { key: 'canViewDashboards', name: 'View Dashboards' },
-        { key: 'canAddPosting', name: 'Add/Edit Jobs' }, // This permission covers adding and editing job postings
+        { key: 'canAddPosting', name: 'Add/Edit Jobs' },
         { key: 'canViewReports', name: 'View Reports' },
         { key: 'canEmailReports', name: 'Email Reports' },
         { key: 'canViewCandidates', name: 'View Candidates' },
-        { key: 'canEditUsers', name: 'Edit Users & Permissions' }, // This permission covers user management
+        { key: 'canEditDashboard', name: 'Edit Dashboard' }, // <-- NEW: Added canEditDashboard
+        { key: 'canEditUsers', name: 'Edit Users & Permissions' },
         // Add other granular permissions here as they are defined in tableUtils.js and useraccesscontrol table
     ];
 
@@ -43,7 +44,7 @@ const PermissionsPage = () => {
     }, [user.userIdentifier]);
 
     useEffect(() => {
-        if (canEditUsers) { // Only fetch if the current user has permission to edit users
+        if (canEditUsers) {
             fetchUserPermissions();
         } else {
             setLoading(false);
@@ -87,7 +88,7 @@ const PermissionsPage = () => {
                 }
                 // Re-fetch all permissions to ensure data consistency
                 fetchUserPermissions();
-                setTimeout(() => setSuccessMessage(''), 3000); // Clear success message after 3 seconds
+                setTimeout(() => setSuccessMessage(''), 3000);
             } else {
                 setError(response.data.message);
             }
@@ -134,7 +135,7 @@ const PermissionsPage = () => {
             {!loading && !canEditUsers && !error && (
                 <div className="text-center text-gray-500 p-10">
                     <h3 className="text-lg font-medium">Access Denied</h3>
-                    <p className="text-sm">You do not have the necessary permissions to view or edit user access controls.</p>
+                    <p className="text-sm">You do not have the necessary permissions to view or edit user permissions.</p>
                 </div>
             )}
             {!loading && canEditUsers && !error && (
@@ -173,7 +174,7 @@ const PermissionsPage = () => {
                                             <button
                                                 onClick={() => handleSavePermissions(u.username)}
                                                 className="px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-xs font-medium disabled:bg-gray-400"
-                                                disabled={saving || (u.username === user.userIdentifier && !u.permissions.canEditUsers)} // Prevent current user from disabling own canEditUsers
+                                                disabled={saving || (u.username === user.userIdentifier && !u.permissions.canEditUsers)}
                                             >
                                                 {saving ? <Spinner size="4" /> : 'Save'}
                                             </button>
