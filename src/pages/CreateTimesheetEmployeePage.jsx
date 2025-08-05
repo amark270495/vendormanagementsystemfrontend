@@ -1,8 +1,8 @@
-import React, { useState } from require('react');
-import { useAuth } from require('../context/AuthContext');
-import { apiService } from require('../api/apiService');
-import Spinner from require('../components/Spinner');
-import { usePermissions } from require('../hooks/usePermissions');
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { apiService } from '../api/apiService';
+import Spinner from '../components/Spinner';
+import { usePermissions } from '../hooks/usePermissions';
 
 const CreateTimesheetEmployeePage = () => {
     const { user } = useAuth();
