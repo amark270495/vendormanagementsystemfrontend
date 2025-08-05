@@ -5,15 +5,15 @@ import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
+import RequestCandidateTimesheetApprovalModal from '../components/timesheets/RequestCandidateTimesheetApprovalModal'; // NEW: Import the modal
 import { formatDate } from '../utils/helpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { usePermissions } from '../hooks/usePermissions'; // <-- NEW: Import usePermissions
+import { usePermissions } from '../hooks/usePermissions';
 
 const CandidateDetailsPage = () => {
     const { user } = useAuth();
-    // NEW: Destructure canViewCandidates and canEditDashboard from usePermissions
-    const { canViewCandidates, canEditDashboard } = usePermissions(); 
+    const { canViewCandidates, canEditDashboard, canRequestTimesheetApproval } = usePermissions(); // NEW: Include canRequestTimesheetApproval
 
     const [candidates, setCandidates] = useState([]);
     const [duplicateEmails, setDuplicateEmails] = useState([]);
@@ -24,14 +24,24 @@ const CandidateDetailsPage = () => {
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
     const [columnFilters, setColumnFilters] = useState({});
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
     const [candidateToEdit, setCandidateToEdit] = useState(null);
 
-    const tableHeader = useMemo(() => [
-        'Full Name', 'Email', 'Mobile Number', 'Current Role', 
-        'Current Location', 'Submitted For (Posting ID)', 'Client Info', 
-        'Submitted By', 'Submission Date', 'Actions'
-    ], []);
+    const [isTimesheetApprovalModalOpen, setIsTimesheetApprovalModalOpen] = useState(false); // NEW: State for Timesheet Approval Modal
+    const [candidateForTimesheetApproval, setCandidateForTimesheetApproval] = useState(null); // NEW: State for candidate being processed
+
+    const tableHeader = useMemo(() => {
+        const baseHeaders = [
+            'Full Name', 'Email', 'Mobile Number', 'Current Role', 
+            'Current Location', 'Submitted For (Posting ID)', 'Client Info', 
+            'Submitted By', 'Submission Date'
+        ];
+        // Only add 'Actions' if either canEditDashboard or canRequestTimesheetApproval is true
+        if (canEditDashboard || canRequestTimesheetApproval) {
+            return [...baseHeaders, 'Actions'];
+        }
+        return baseHeaders;
+    }, [canEditDashboard, canRequestTimesheetApproval]); // Re-evaluate header if permissions change
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -55,24 +65,27 @@ const CandidateDetailsPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [user.userIdentifier, canViewCandidates]); // Add canViewCandidates to dependencies
+    }, [user.userIdentifier, canViewCandidates]);
 
     useEffect(() => {
         loadData();
     }, [loadData]);
 
     const tableRows = useMemo(() => {
-        return candidates.map(c => [
-            `${c.firstName} ${c.middleName || ''} ${c.lastName}`.replace(/\s+/g, ' ').trim(),
-            c.email,
-            c.mobileNumber,
-            c.currentRole,
-            c.currentLocation,
-            c.postingId,
-            c.clientInfo,
-            c.submittedBy,
-            c.submissionDate
-        ]);
+        return candidates.map(c => ({
+            original: c, // Store original candidate object
+            display: [
+                `${c.firstName} ${c.middleName || ''} ${c.lastName}`.replace(/\s+/g, ' ').trim(),
+                c.email,
+                c.mobileNumber,
+                c.currentRole,
+                c.currentLocation,
+                c.postingId,
+                c.clientInfo,
+                c.submittedBy,
+                c.submissionDate
+            ]
+        }));
     }, [candidates]);
 
     const filteredAndSortedData = useMemo(() => {
@@ -80,20 +93,20 @@ const CandidateDetailsPage = () => {
         // General search filter
         if (generalFilter) {
             const lowercasedFilter = generalFilter.toLowerCase();
-            filteredRows = filteredRows.filter(row => 
-                row.some(cell => String(cell).toLowerCase().includes(lowercasedFilter))
+            filteredRows = filteredRows.filter(item => 
+                item.display.some(cell => String(cell).toLowerCase().includes(lowercasedFilter))
             );
         }
 
         // Column-specific filters
         if (Object.keys(columnFilters).length > 0) {
-            filteredRows = filteredRows.filter(row => {
+            filteredRows = filteredRows.filter(item => {
                 return Object.entries(columnFilters).every(([header, config]) => {
                     if (!config || !config.type || !config.value1) return true;
                     const colIndex = tableHeader.indexOf(header);
                     if (colIndex === -1) return true;
                     
-                    const cellValue = String(row[colIndex] || '').toLowerCase();
+                    const cellValue = String(item.display[colIndex] || '').toLowerCase();
                     const filterValue1 = String(config.value1).toLowerCase();
                     
                     switch (config.type) {
@@ -111,8 +124,8 @@ const CandidateDetailsPage = () => {
             const sortIndex = tableHeader.indexOf(sortConfig.key);
             if (sortIndex !== -1) {
                 filteredRows.sort((a, b) => {
-                    let valA = a[sortIndex] || '';
-                    let valB = b[sortIndex] || '';
+                    let valA = a.display[sortIndex] || '';
+                    let valB = b.display[sortIndex] || '';
                     if (sortConfig.key === 'Submission Date') {
                         valA = new Date(valA).getTime() || 0;
                         valB = new Date(valB).getTime() || 0;
@@ -133,20 +146,14 @@ const CandidateDetailsPage = () => {
     const handleSort = (key, direction) => setSortConfig({ key, direction });
     const handleFilterChange = (header, config) => setColumnFilters(prev => ({ ...prev, [header]: config }));
 
-    const handleEditClick = (rowIndex) => {
-        if (!canEditDashboard) return; // NEW: Check canEditDashboard
-        const emailToFind = filteredAndSortedData[rowIndex][1];
-        const postingIdToFind = filteredAndSortedData[rowIndex][5];
-        const originalCandidate = candidates.find(c => c.email === emailToFind && c.postingId === postingIdToFind);
-        
-        if (originalCandidate) {
-            setCandidateToEdit(originalCandidate);
-            setIsModalOpen(true);
-        }
+    const handleEditClick = (candidateData) => {
+        if (!canEditDashboard) return;
+        setCandidateToEdit(candidateData);
+        setIsCandidateModalOpen(true);
     };
 
     const handleSaveCandidate = async (formData) => {
-        if (!canEditDashboard) throw new Error("Permission denied to save candidate details."); // NEW: Check canEditDashboard
+        if (!canEditDashboard) throw new Error("Permission denied to save candidate details.");
         try {
             await apiService.updateCandidateDetails(candidateToEdit.email, formData, user.userIdentifier);
             loadData();
@@ -155,11 +162,17 @@ const CandidateDetailsPage = () => {
         }
     };
 
+    const handleRequestTimesheetApprovalClick = (candidateData) => { // NEW: Handler for timesheet approval
+        if (!canRequestTimesheetApproval) return;
+        setCandidateForTimesheetApproval(candidateData);
+        setIsTimesheetApprovalModalOpen(true);
+    };
+
     const downloadPdf = () => {
         const doc = new jsPDF('landscape');
         doc.autoTable({
             head: [tableHeader.filter(h => h !== 'Actions')],
-            body: filteredAndSortedData.map(row => row.slice(0, -1)),
+            body: filteredAndSortedData.map(item => item.display.slice(0, tableHeader.indexOf('Actions'))),
         });
         doc.save(`candidate_details_report.pdf`);
     };
@@ -167,8 +180,8 @@ const CandidateDetailsPage = () => {
     const downloadCsv = () => {
         const csvContent = [
             tableHeader.filter(h => h !== 'Actions').join(','),
-            ...filteredAndSortedData.map(row => 
-                row.slice(0, -1).map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')
+            ...filteredAndSortedData.map(item => 
+                item.display.slice(0, tableHeader.indexOf('Actions')).map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')
             )
         ].join('\n');
 
@@ -193,25 +206,25 @@ const CandidateDetailsPage = () => {
                         value={generalFilter} 
                         onChange={(e) => setGeneralFilter(e.target.value)} 
                         className="shadow-sm border-gray-300 rounded-md px-3 py-2"
-                        disabled={!canViewCandidates && !loading} // NEW: Disable search if no view permission
+                        disabled={!canViewCandidates && !loading}
                     />
                      <div className="flex items-center space-x-2">
-                        <button onClick={downloadPdf} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" disabled={!canViewCandidates || loading}>Download PDF</button> {/* NEW: Disable if no view permission */}
-                        <button onClick={downloadCsv} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" disabled={!canViewCandidates || loading}>Download CSV</button> {/* NEW: Disable if no view permission */}
+                        <button onClick={downloadPdf} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" disabled={!canViewCandidates || loading}>Download PDF</button>
+                        <button onClick={downloadCsv} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" disabled={!canViewCandidates || loading}>Download CSV</button>
                     </div>
                 </div>
 
                 {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
                 {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
                 
-                {!loading && !error && !canViewCandidates && ( // NEW: Access Denied message if no view permission
+                {!loading && !error && !canViewCandidates && (
                     <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
                         <h3 className="text-lg font-medium">Access Denied</h3>
                         <p className="text-sm">You do not have the necessary permissions to view candidate details.</p>
                     </div>
                 )}
 
-                {!loading && !error && canViewCandidates && ( // NEW: Render table only if canViewCandidates
+                {!loading && !error && canViewCandidates && (
                     <div className="bg-white rounded-lg shadow-lg border border-gray-200" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left text-gray-500">
@@ -245,20 +258,21 @@ const CandidateDetailsPage = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredAndSortedData.map((row, rowIndex) => {
+                                    {filteredAndSortedData.map((item, rowIndex) => {
+                                        const originalCandidate = item.original;
+                                        const displayRow = item.display;
                                         const emailIndex = tableHeader.indexOf('Email');
-                                        const email = row[emailIndex];
+                                        const email = displayRow[emailIndex];
                                         const isDuplicate = duplicateEmails.includes(email);
                                         return (
                                             <tr key={rowIndex} className={`border-b ${isDuplicate ? 'bg-yellow-100 hover:bg-yellow-200' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                                                {row.map((cell, cellIndex) => {
+                                                {displayRow.map((cell, cellIndex) => {
                                                     const headerName = tableHeader[cellIndex];
                                                     let tdClasses = "px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle";
                                                     let tdStyle = {};
 
                                                     if (headerName === 'Email' || headerName === 'Submitted For (Posting ID)') {
-                                                        tdClasses += " break-all"; // Allow long words to break
-                                                        // Explicitly set min-width here as well, in case the th min-width isn't fully propagating
+                                                        tdClasses += " break-all";
                                                         tdStyle.minWidth = headerName === 'Email' ? '200px' : '150px';
                                                     }
 
@@ -272,11 +286,16 @@ const CandidateDetailsPage = () => {
                                                         </td>
                                                     );
                                                 })}
-                                                <td className="px-4 py-3 border-r border-slate-200 last:border-r-0">
-                                                    {canEditDashboard && ( // NEW: Conditionally render Edit button
-                                                        <button onClick={() => handleEditClick(rowIndex)} className="text-indigo-600 hover:text-indigo-900 p-1 font-semibold">Edit</button>
-                                                    )}
-                                                </td>
+                                                {(canEditDashboard || canRequestTimesheetApproval) && ( // Only render actions if user has permission
+                                                    <td className="px-4 py-3 border-r border-slate-200 last:border-r-0 flex space-x-2">
+                                                        {canEditDashboard && (
+                                                            <button onClick={() => handleEditClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 p-1 font-semibold">Edit</button>
+                                                        )}
+                                                        {canRequestTimesheetApproval && ( // NEW: Request Timesheet Approval button
+                                                            <button onClick={() => handleRequestTimesheetApprovalClick(originalCandidate)} className="text-blue-600 hover:text-blue-900 p-1 font-semibold">Request Timesheet</button>
+                                                        )}
+                                                    </td>
+                                                )}
                                             </tr>
                                         );
                                     })}
@@ -287,11 +306,18 @@ const CandidateDetailsPage = () => {
                 )}
             </div>
             <CandidateDetailsModal 
-                isOpen={isModalOpen} 
-                onClose={() => setIsModalOpen(false)} 
+                isOpen={isCandidateModalOpen} 
+                onClose={() => setIsCandidateModalOpen(false)} 
                 onSave={handleSaveCandidate}
                 candidateToEdit={candidateToEdit}
             />
+            {candidateForTimesheetApproval && ( // NEW: Render RequestCandidateTimesheetApprovalModal
+                <RequestCandidateTimesheetApprovalModal
+                    isOpen={isTimesheetApprovalModalOpen}
+                    onClose={() => setIsTimesheetApprovalModalOpen(false)}
+                    candidate={candidateForTimesheetApproval}
+                />
+            )}
         </>
     );
 };

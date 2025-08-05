@@ -12,7 +12,9 @@ import CandidateDetailsPage from './pages/CandidateDetailsPage';
 import CreateCompanyPage from './pages/CreateCompanyPage';
 import LogHoursPage from './pages/LogHoursPage';
 import TimesheetsDashboardPage from './pages/TimesheetsDashboardPage';
-import CreateTimesheetEmployeePage from './pages/CreateTimesheetEmployeePage'; // <-- NEW: Import CreateTimesheetEmployeePage
+import CreateTimesheetEmployeePage from './pages/CreateTimesheetEmployeePage';
+import ManageTimesheetEmployeesPage from './pages/ManageTimesheetEmployeesPage'; // NEW: Import ManageTimesheetEmployeesPage
+import ManageCompaniesPage from './pages/ManageCompaniesPage'; // NEW: Import ManageCompaniesPage
 
 const MainApp = () => {
     const [currentPage, setCurrentPage] = useState({ type: 'home' });
@@ -33,9 +35,11 @@ const MainApp = () => {
                 dashboard: permissions.canViewDashboards && <DashboardPage sheetKey={currentPage.key} />,
                 candidate_details: permissions.canViewCandidates && <CandidateDetailsPage />,
                 create_company: permissions.canManageTimesheets && <CreateCompanyPage />,
+                manage_companies: permissions.canManageTimesheets && <ManageCompaniesPage />, // NEW: Add ManageCompaniesPage route
+                create_timesheet_employee: permissions.canManageTimesheets && <CreateTimesheetEmployeePage />,
+                manage_timesheet_employees: permissions.canManageTimesheets && <ManageTimesheetEmployeesPage />, // NEW: Add ManageTimesheetEmployeesPage route
                 log_hours: permissions.canManageTimesheets && <LogHoursPage />,
                 timesheets_dashboard: (permissions.canManageTimesheets || permissions.canRequestTimesheetApproval) && <TimesheetsDashboardPage />,
-                create_timesheet_employee: permissions.canManageTimesheets && <CreateTimesheetEmployeePage />, // <-- NEW: Add CreateTimesheetEmployeePage route
             };
 
             const PageComponent = pageMap[currentPage.type];

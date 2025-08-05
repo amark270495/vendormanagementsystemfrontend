@@ -3,8 +3,10 @@ import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
-import HeaderMenu from '../components/dashboard/HeaderMenu'; // Reusing HeaderMenu for sorting/filtering
+import HeaderMenu from '../components/dashboard/HeaderMenu';
 import RequestTimesheetApprovalModal from '../components/timesheets/RequestTimesheetApprovalModal';
+import EditLoggedHoursModal from '../components/timesheets/EditLoggedHoursModal'; // NEW: Import EditLoggedHoursModal
+import ConfirmationModal from '../components/dashboard/ConfirmationModal'; // NEW: Import ConfirmationModal
 import { usePermissions } from '../hooks/usePermissions';
 
 const TimesheetsDashboardPage = () => {
@@ -21,6 +23,12 @@ const TimesheetsDashboardPage = () => {
 
     const [isApprovalModalOpen, setApprovalModalOpen] = useState(false);
     const [timesheetToApprove, setTimesheetToApprove] = useState(null);
+
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false); // NEW: State for Edit Modal
+    const [timesheetToEdit, setTimesheetToEdit] = useState(null); // NEW: State for timesheet being edited
+
+    const [isDeleteModalOpen, setDeleteModalOpen] = useState(false); // NEW: State for Delete Modal
+    const [timesheetToDelete, setTimesheetToDelete] = useState(null); // NEW: State for timesheet being deleted
 
     const tableHeader = useMemo(() => [
         'Employee Name', 'Client Name', 'Month', 'Year', 'Logged Hours',
@@ -45,7 +53,6 @@ const TimesheetsDashboardPage = () => {
             return;
         }
         try {
-            // Fetch timesheet data
             const result = await apiService.getEmployeeLogHours({ authenticatedUsername: user.userIdentifier });
             if (result.data.success) {
                 setTimesheets(result.data.timesheets);
@@ -64,36 +71,39 @@ const TimesheetsDashboardPage = () => {
     }, [loadTimesheets]);
 
     const filteredAndSortedData = useMemo(() => {
-        let data = timesheets.map(ts => [
-            ts.employeeName,
-            ts.clientName,
-            months.find(m => m.value === ts.month)?.name || ts.month, // Display month name
-            ts.year,
-            ts.loggedHoursPerMonth,
-            ts.companyName,
-            ts.employeeId,
-            ts.employeeMail,
-            new Date(ts.submissionDate).toLocaleDateString(),
-            ts.submittedBy
-        ]);
+        let data = timesheets.map(ts => ({ // Map to objects to easily access original properties
+            original: ts, // Store original object for edit/delete
+            display: [
+                ts.employeeName,
+                ts.clientName,
+                months.find(m => m.value === ts.month)?.name || ts.month, // Display month name
+                ts.year,
+                ts.loggedHoursPerMonth,
+                ts.companyName,
+                ts.employeeId,
+                ts.employeeMail,
+                new Date(ts.submissionDate).toLocaleDateString(),
+                ts.submittedBy
+            ]
+        }));
 
         // General search filter
         if (generalFilter) {
             const lowercasedFilter = generalFilter.toLowerCase();
-            data = data.filter(row => 
-                row.some(cell => String(cell).toLowerCase().includes(lowercasedFilter))
+            data = data.filter(item => 
+                item.display.some(cell => String(cell).toLowerCase().includes(lowercasedFilter))
             );
         }
 
-        // Column-specific filters (reusing HeaderMenu logic, assuming it handles basic types)
+        // Column-specific filters (reusing HeaderMenu logic)
         if (Object.keys(columnFilters).length > 0) {
-            data = data.filter(row => {
+            data = data.filter(item => {
                 return Object.entries(columnFilters).every(([header, config]) => {
                     if (!config || !config.type || !config.value1) return true;
                     const colIndex = tableHeader.indexOf(header);
                     if (colIndex === -1) return true;
                     
-                    const cellValue = String(row[colIndex] || '').toLowerCase();
+                    const cellValue = String(item.display[colIndex] || '').toLowerCase();
                     const filterValue1 = String(config.value1).toLowerCase();
                     
                     switch (config.type) {
@@ -111,8 +121,8 @@ const TimesheetsDashboardPage = () => {
             const sortIndex = tableHeader.indexOf(sortConfig.key);
             if (sortIndex !== -1) {
                 data.sort((a, b) => {
-                    let valA = a[sortIndex];
-                    let valB = b[sortIndex];
+                    let valA = a.display[sortIndex];
+                    let valB = b.display[sortIndex];
 
                     // Special handling for numeric/date columns if necessary
                     if (sortConfig.key === 'Logged Hours') {
@@ -146,6 +156,49 @@ const TimesheetsDashboardPage = () => {
         if (!canRequestTimesheetApproval) return;
         setTimesheetToApprove(timesheetData);
         setApprovalModalOpen(true);
+    };
+
+    const handleEditClick = (timesheetData) => {
+        if (!canManageTimesheets) return;
+        setTimesheetToEdit(timesheetData);
+        setIsEditModalOpen(true);
+    };
+
+    const handleSaveTimesheet = async (updatedData) => {
+        if (!canManageTimesheets || !timesheetToEdit) return;
+        setLoading(true);
+        try {
+            await apiService.updateEmployeeLogHours(timesheetToEdit.RowKey, updatedData, user.userIdentifier);
+            loadTimesheets(); // Reload data after successful update
+            setIsEditModalOpen(false);
+            setTimesheetToEdit(null);
+        } catch (err) {
+            setError(err.message || `Failed to update timesheet for ${timesheetToEdit.employeeName}.`);
+            throw err; // Re-throw to allow modal to display error
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteClick = (timesheetData) => {
+        if (!canManageTimesheets) return;
+        setTimesheetToDelete(timesheetData);
+        setDeleteModalOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!canManageTimesheets || !timesheetToDelete) return;
+        setLoading(true);
+        try {
+            await apiService.deleteEmployeeLogHours(timesheetToDelete.PartitionKey, timesheetToDelete.RowKey, user.userIdentifier);
+            loadTimesheets(); // Reload data after successful deletion
+            setDeleteModalOpen(false);
+            setTimesheetToDelete(null);
+        } catch (err) {
+            setError(err.response?.data?.message || `Failed to delete timesheet entry for ${timesheetToDelete.employeeName}.`);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -205,16 +258,35 @@ const TimesheetsDashboardPage = () => {
                                 </thead>
                                 <tbody>
                                     {filteredAndSortedData.length > 0 ? (
-                                        filteredAndSortedData.map((row, rowIndex) => {
-                                            const originalTimesheet = timesheets[rowIndex]; // Get original object for modal
+                                        filteredAndSortedData.map((item, rowIndex) => {
+                                            const originalTimesheet = item.original; // Access the original object
+                                            const displayRow = item.display; // Access the display array
                                             return (
                                                 <tr key={rowIndex} className="bg-gray-50 border-b hover:bg-gray-100">
-                                                    {row.map((cell, cellIndex) => (
+                                                    {displayRow.map((cell, cellIndex) => (
                                                         <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle">
                                                             {cell}
                                                         </td>
                                                     ))}
-                                                    <td className="px-4 py-3 border-r border-slate-200 last:border-r-0">
+                                                    <td className="px-4 py-3 border-r border-slate-200 last:border-r-0 flex space-x-2 justify-center">
+                                                        {canManageTimesheets && ( // NEW: Edit button
+                                                            <button
+                                                                onClick={() => handleEditClick(originalTimesheet)}
+                                                                className="text-gray-500 hover:text-indigo-600 p-1 rounded-md"
+                                                                aria-label="Edit timesheet entry"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                                            </button>
+                                                        )}
+                                                        {canManageTimesheets && ( // NEW: Delete button
+                                                            <button
+                                                                onClick={() => handleDeleteClick(originalTimesheet)}
+                                                                className="text-gray-500 hover:text-red-600 p-1 rounded-md"
+                                                                aria-label="Delete timesheet entry"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                                            </button>
+                                                        )}
                                                         {canRequestTimesheetApproval && (
                                                             <button 
                                                                 onClick={() => handleRequestApprovalClick(originalTimesheet)} 
@@ -245,6 +317,24 @@ const TimesheetsDashboardPage = () => {
                     isOpen={isApprovalModalOpen}
                     onClose={() => setApprovalModalOpen(false)}
                     timesheet={timesheetToApprove}
+                />
+            )}
+            {timesheetToEdit && ( // NEW: Render EditLoggedHoursModal
+                <EditLoggedHoursModal
+                    isOpen={isEditModalOpen}
+                    onClose={() => setIsEditModalOpen(false)}
+                    onSave={handleSaveTimesheet}
+                    timesheetToEdit={timesheetToEdit}
+                />
+            )}
+            {timesheetToDelete && ( // NEW: Render ConfirmationModal for delete
+                <ConfirmationModal
+                    isOpen={isDeleteModalOpen}
+                    onClose={() => setDeleteModalOpen(false)}
+                    onConfirm={handleConfirmDelete}
+                    title="Confirm Deletion"
+                    message={`Are you sure you want to delete this timesheet entry for "${timesheetToDelete.employeeName}" (${timesheetToDelete.month}/${timesheetToDelete.year})? This action cannot be undone.`}
+                    confirmText="Delete"
                 />
             )}
         </>

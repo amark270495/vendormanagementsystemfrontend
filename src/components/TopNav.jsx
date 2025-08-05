@@ -24,8 +24,8 @@ const TopNav = ({ onNavigate }) => {
         canViewCandidates, 
         canEditUsers,
         canMessage,
-        canManageTimesheets, // <-- NEW: Destructure canManageTimesheets
-        canRequestTimesheetApproval // <-- NEW: Destructure canRequestTimesheetApproval
+        canManageTimesheets,
+        canRequestTimesheetApproval
     } = usePermissions(); 
     
     const [notifications, setNotifications] = useState([]);
@@ -78,10 +78,12 @@ const TopNav = ({ onNavigate }) => {
                             {canViewCandidates && <a href="#" onClick={() => onNavigate('candidate_details')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Candidates</a>}
                             {canViewReports && <a href="#" onClick={() => onNavigate('reports')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Reports</a>}
                             {canMessage && <a href="#" onClick={() => onNavigate('messages')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Messages</a>}
-                            {(canManageTimesheets || canRequestTimesheetApproval) && ( // <-- NEW: Conditional Timesheets Dropdown
+                            {(canManageTimesheets || canRequestTimesheetApproval) && (
                                 <Dropdown trigger={<button className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Timesheets</button>}>
                                     {canManageTimesheets && <a href="#" onClick={() => onNavigate('create_company')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Create Company</a>}
-                                    {canManageTimesheets && <a href="#" onClick={() => onNavigate('create_timesheet_employee')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Create Timesheet Employee</a>} {/* NEW: Added Create Timesheet Employee link */}
+                                    {canManageTimesheets && <a href="#" onClick={() => onNavigate('manage_companies')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Manage Companies</a>} {/* NEW: Added Manage Companies link */}
+                                    {canManageTimesheets && <a href="#" onClick={() => onNavigate('create_timesheet_employee')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Create Timesheet Employee</a>}
+                                    {canManageTimesheets && <a href="#" onClick={() => onNavigate('manage_timesheet_employees')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Manage Timesheet Employees</a>} {/* NEW: Added Manage Timesheet Employees link */}
                                     {canManageTimesheets && <a href="#" onClick={() => onNavigate('log_hours')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Log Hours</a>}
                                     {(canManageTimesheets || canRequestTimesheetApproval) && <a href="#" onClick={() => onNavigate('timesheets_dashboard')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Timesheets Dashboard</a>}
                                 </Dropdown>
