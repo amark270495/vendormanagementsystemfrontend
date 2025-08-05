@@ -81,6 +81,7 @@ const TopNav = ({ onNavigate }) => {
                             {(canManageTimesheets || canRequestTimesheetApproval) && ( // <-- NEW: Conditional Timesheets Dropdown
                                 <Dropdown trigger={<button className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Timesheets</button>}>
                                     {canManageTimesheets && <a href="#" onClick={() => onNavigate('create_company')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Create Company</a>}
+                                    {canManageTimesheets && <a href="#" onClick={() => onNavigate('create_timesheet_employee')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Create Timesheet Employee</a>} {/* NEW: Added Create Timesheet Employee link */}
                                     {canManageTimesheets && <a href="#" onClick={() => onNavigate('log_hours')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Log Hours</a>}
                                     {(canManageTimesheets || canRequestTimesheetApproval) && <a href="#" onClick={() => onNavigate('timesheets_dashboard')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Timesheets Dashboard</a>}
                                 </Dropdown>
