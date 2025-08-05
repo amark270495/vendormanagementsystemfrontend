@@ -21,7 +21,7 @@ const LogHoursPage = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [employees, setEmployees] = useState([]);
+    const [timesheetEmployees, setTimesheetEmployees] = useState([]); // Changed from 'employees' to 'timesheetEmployees'
     const [companies, setCompanies] = useState([]);
 
     const months = [
@@ -40,12 +40,10 @@ const LogHoursPage = () => {
         if (!user?.userIdentifier || !canManageTimesheets) return;
         
         try {
-            // Fetch employees (users with relevant roles)
-            const usersResponse = await apiService.getUsers(user.userIdentifier);
-            if (usersResponse.data.success) {
-                // Filter users who might be employees logging hours (e.g., all non-admin users)
-                const employeeList = usersResponse.data.users.filter(u => u.userRole !== 'Admin');
-                setEmployees(employeeList);
+            // Fetch timesheet-specific employees
+            const employeesResponse = await apiService.getTimesheetEmployees(user.userIdentifier); // Using new API
+            if (employeesResponse.data.success) {
+                setTimesheetEmployees(employeesResponse.data.employees);
             }
 
             // Fetch companies
@@ -70,12 +68,12 @@ const LogHoursPage = () => {
 
         // If employeeName changes, try to pre-fill employeeId and employeeMail
         if (name === 'employeeName') {
-            const selectedEmployee = employees.find(emp => emp.displayName === value);
+            const selectedEmployee = timesheetEmployees.find(emp => emp.employeeName === value); // Use timesheetEmployees
             if (selectedEmployee) {
                 setFormData(prev => ({
                     ...prev,
-                    employeeId: selectedEmployee.username, // Assuming username is employeeId
-                    employeeMail: selectedEmployee.username // Assuming username is employeeMail
+                    employeeId: selectedEmployee.employeeId,
+                    employeeMail: selectedEmployee.employeeMail
                 }));
             } else {
                 setFormData(prev => ({
@@ -141,8 +139,8 @@ const LogHoursPage = () => {
                                 <label htmlFor="employeeName" className="block text-sm font-medium text-gray-700">Employee Name <span className="text-red-500">*</span></label>
                                 <select name="employeeName" id="employeeName" value={formData.employeeName} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500">
                                     <option value="">Select Employee</option>
-                                    {employees.map(emp => (
-                                        <option key={emp.username} value={emp.displayName}>{emp.displayName}</option>
+                                    {timesheetEmployees.map(emp => (
+                                        <option key={emp.employeeId} value={emp.employeeName}>{emp.employeeName}</option>
                                     ))}
                                 </select>
                             </div>

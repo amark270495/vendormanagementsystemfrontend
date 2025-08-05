@@ -102,6 +102,9 @@ export const apiService = {
   getCompanies: (authenticatedUsername) => // <-- NEW: API call to get companies
     apiClient.get('/getCompanies', { params: { authenticatedUsername } }),
 
+  createTimesheetEmployee: (employeeData, authenticatedUsername) => // <-- NEW: API call to create timesheet employee
+    apiClient.post('/createTimesheetEmployee', { employeeData, authenticatedUsername }),
+
   sendTimesheetApprovalRequest: (employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername) =>
     apiClient.post('/sendTimesheetApprovalRequest', { employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername }),
 };

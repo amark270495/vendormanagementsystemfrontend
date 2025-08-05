@@ -4,7 +4,7 @@ import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu'; // Reusing HeaderMenu for sorting/filtering
-import RequestTimesheetApprovalModal from '../components/timesheets/RequestTimesheetApprovalModal'; // NEW: Import modal
+import RequestTimesheetApprovalModal from '../components/timesheets/RequestTimesheetApprovalModal';
 import { usePermissions } from '../hooks/usePermissions';
 
 const TimesheetsDashboardPage = () => {
@@ -45,6 +45,7 @@ const TimesheetsDashboardPage = () => {
             return;
         }
         try {
+            // Fetch timesheet data
             const result = await apiService.getEmployeeLogHours({ authenticatedUsername: user.userIdentifier });
             if (result.data.success) {
                 setTimesheets(result.data.timesheets);
