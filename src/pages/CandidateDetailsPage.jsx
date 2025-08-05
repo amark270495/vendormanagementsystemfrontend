@@ -198,7 +198,16 @@ const CandidateDetailsPage = () => {
                                 <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
                                     <tr>
                                         {tableHeader.map(h => (
-                                            <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0">
+                                            <th 
+                                                key={h} 
+                                                scope="col" 
+                                                className="p-0 border-r border-slate-300 last:border-r-0"
+                                                style={{ 
+                                                    minWidth: h === 'Email' ? '200px' : 
+                                                              h === 'Submitted For (Posting ID)' ? '150px' : 
+                                                              'auto' 
+                                                }}
+                                            >
                                                 {h === 'Actions' ? (
                                                     <div className="p-3 font-bold">{h}</div>
                                                 ) : (
