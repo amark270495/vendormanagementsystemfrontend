@@ -231,11 +231,27 @@ const CandidateDetailsPage = () => {
                                         const isDuplicate = duplicateEmails.includes(email);
                                         return (
                                             <tr key={rowIndex} className={`border-b ${isDuplicate ? 'bg-yellow-100 hover:bg-yellow-200' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                                                {row.map((cell, cellIndex) => (
-                                                    <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle">
-                                                        {tableHeader[cellIndex] === 'Submission Date' ? formatDate(cell) : cell}
-                                                    </td>
-                                                ))}
+                                                {row.map((cell, cellIndex) => {
+                                                    const headerName = tableHeader[cellIndex];
+                                                    let tdClasses = "px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle";
+                                                    let tdStyle = {};
+
+                                                    if (headerName === 'Email' || headerName === 'Submitted For (Posting ID)') {
+                                                        tdClasses += " break-all"; // Allow long words to break
+                                                        // Explicitly set min-width here as well, in case the th min-width isn't fully propagating
+                                                        tdStyle.minWidth = headerName === 'Email' ? '200px' : '150px';
+                                                    }
+
+                                                    return (
+                                                        <td 
+                                                            key={cellIndex} 
+                                                            className={tdClasses} 
+                                                            style={tdStyle}
+                                                        >
+                                                            {headerName === 'Submission Date' ? formatDate(cell) : cell}
+                                                        </td>
+                                                    );
+                                                })}
                                                 <td className="px-4 py-3 border-r border-slate-200 last:border-r-0">
                                                     <button onClick={() => handleEditClick(rowIndex)} className="text-indigo-600 hover:text-indigo-900 p-1 font-semibold">Edit</button>
                                                 </td>
