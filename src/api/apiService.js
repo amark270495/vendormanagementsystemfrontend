@@ -82,14 +82,14 @@ export const apiService = {
   sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) => 
     apiClient.post('/sendAssignmentEmail', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
 
-  // NEW: API calls for granular user access control
+  // API calls for granular user access control
   getUserPermissionsList: (authenticatedUsername) =>
     apiClient.get('/getUserPermissionsList', { params: { authenticatedUsername } }),
 
   updateUserPermissions: (username, permissions, authenticatedUsername) =>
     apiClient.post('/updateUserPermissions', { username, permissions, authenticatedUsername }),
 
-  // NEW: Timesheet and Company Management API Calls
+  // Timesheet and Company Management API Calls
   createCompany: (companyData, authenticatedUsername) =>
     apiClient.post('/createCompany', { companyData, authenticatedUsername }),
     
@@ -99,11 +99,17 @@ export const apiService = {
   getEmployeeLogHours: (params) =>
     apiClient.get('/getEmployeeLogHours', { params }),
 
-  getCompanies: (authenticatedUsername) => // <-- NEW: API call to get companies
+  getCompanies: (authenticatedUsername) => 
     apiClient.get('/getCompanies', { params: { authenticatedUsername } }),
 
-  createTimesheetEmployee: (employeeData, authenticatedUsername) => // <-- NEW: API call to create timesheet employee
+  createTimesheetEmployee: (employeeData, authenticatedUsername) => 
     apiClient.post('/createTimesheetEmployee', { employeeData, authenticatedUsername }),
+
+  updateTimesheetEmployee: (originalEmployeeId, updatedEmployeeData, authenticatedUsername) => // NEW: Added update function
+    apiClient.post('/updateTimesheetEmployee', { originalEmployeeId, updatedEmployeeData, authenticatedUsername }),
+
+  getTimesheetEmployees: (authenticatedUsername) => 
+    apiClient.get('/getTimesheetEmployees', { params: { authenticatedUsername } }),
 
   sendTimesheetApprovalRequest: (employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername) =>
     apiClient.post('/sendTimesheetApprovalRequest', { employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername }),
