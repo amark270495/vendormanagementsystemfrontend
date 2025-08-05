@@ -8,7 +8,10 @@ import JobPostingFormPage from './pages/JobPostingFormPage';
 import ReportsPage from './pages/ReportsPage';
 import MessagesPage from './pages/MessagesPage';
 import DashboardPage from './pages/DashboardPage';
-import CandidateDetailsPage from './pages/CandidateDetailsPage'; // <-- IMPORT
+import CandidateDetailsPage from './pages/CandidateDetailsPage';
+import CreateCompanyPage from './pages/CreateCompanyPage'; // <-- NEW: Import CreateCompanyPage
+import LogHoursPage from './pages/LogHoursPage'; // <-- NEW: Import LogHoursPage
+import TimesheetsDashboardPage from './pages/TimesheetsDashboardPage'; // <-- NEW: Import TimesheetsDashboardPage
 
 const MainApp = () => {
     const [currentPage, setCurrentPage] = useState({ type: 'home' });
@@ -21,20 +24,28 @@ const MainApp = () => {
     const renderPage = () => {
         try {
             const pageMap = {
-                home: <HomePage />, // HomePage component has its own internal permission check (canViewDashboards)
-                admin: permissions.canEditUsers && <AdminPage />, // <-- UPDATED: Use canEditUsers for AdminPage
+                home: <HomePage />,
+                admin: permissions.canEditUsers && <AdminPage />,
                 new_posting: permissions.canAddPosting && <JobPostingFormPage onFormSubmit={() => handleNavigate('dashboard', { key: 'taprootVMSDisplay' })} />,
                 reports: permissions.canViewReports && <ReportsPage />,
-                messages: <MessagesPage />, // MessagesPage component has its own internal permission check (canViewDashboards)
+                messages: <MessagesPage />,
                 dashboard: permissions.canViewDashboards && <DashboardPage sheetKey={currentPage.key} />,
-                candidate_details: permissions.canViewCandidates && <CandidateDetailsPage />, // <-- UPDATED: Use canViewCandidates
+                candidate_details: permissions.canViewCandidates && <CandidateDetailsPage />,
+                create_company: permissions.canManageTimesheets && <CreateCompanyPage />, // <-- NEW: Add CreateCompanyPage
+                log_hours: permissions.canManageTimesheets && <LogHoursPage />, // <-- NEW: Add LogHoursPage
+                timesheets_dashboard: (permissions.canManageTimesheets || permissions.canRequestTimesheetApproval) && <TimesheetsDashboardPage />, // <-- NEW: Add TimesheetsDashboardPage
             };
 
             const PageComponent = pageMap[currentPage.type];
             
             // If PageComponent is explicitly false (due to permission check), render permission denied message
             if (PageComponent === false) {
-                return <div className="p-8 text-center">Page: <strong>{currentPage.type}</strong> (Permission denied)</div>;
+                return (
+                    <div className="p-8 text-center bg-white rounded-xl shadow-sm border mt-8">
+                        <h3 className="text-lg font-medium text-gray-800">Access Denied</h3>
+                        <p className="mt-1 text-sm text-gray-500">You do not have the necessary permissions to view this page.</p>
+                    </div>
+                );
             }
             
             if (PageComponent) {

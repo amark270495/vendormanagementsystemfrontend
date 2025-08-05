@@ -22,8 +22,10 @@ const PermissionsPage = () => {
         { key: 'canEmailReports', name: 'Email Reports' },
         { key: 'canViewCandidates', name: 'View Candidates' },
         { key: 'canEditDashboard', name: 'Edit Dashboard' },
+        { key: 'canMessage', name: 'Send Messages' },
+        { key: 'canManageTimesheets', name: 'Manage Timesheets' }, // <-- NEW: Added canManageTimesheets
+        { key: 'canRequestTimesheetApproval', name: 'Request Timesheet Approval' }, // <-- NEW: Added canRequestTimesheetApproval
         { key: 'canEditUsers', name: 'Edit Users & Permissions' },
-        { key: 'canMessage', name: 'Send Messages' }, // <-- NEW: Added canMessage
         // Add other granular permissions here as they are defined in tableUtils.js and useraccesscontrol table
     ];
 

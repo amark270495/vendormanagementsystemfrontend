@@ -88,4 +88,20 @@ export const apiService = {
 
   updateUserPermissions: (username, permissions, authenticatedUsername) =>
     apiClient.post('/updateUserPermissions', { username, permissions, authenticatedUsername }),
+
+  // NEW: Timesheet and Company Management API Calls
+  createCompany: (companyData, authenticatedUsername) =>
+    apiClient.post('/createCompany', { companyData, authenticatedUsername }),
+    
+  saveEmployeeLogHours: (timesheetData, authenticatedUsername) =>
+    apiClient.post('/saveEmployeeLogHours', { timesheetData, authenticatedUsername }),
+
+  getEmployeeLogHours: (params) =>
+    apiClient.get('/getEmployeeLogHours', { params }),
+
+  getCompanies: (authenticatedUsername) => // <-- NEW: API call to get companies
+    apiClient.get('/getCompanies', { params: { authenticatedUsername } }),
+
+  sendTimesheetApprovalRequest: (employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername) =>
+    apiClient.post('/sendTimesheetApprovalRequest', { employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername }),
 };

@@ -15,6 +15,8 @@ const calculatePermissions = (permissions) => {
             canViewDashboards: false, // Assuming dashboards are a general view permission
             canEditDashboard: false,
             canMessage: false, // Assuming dashboard editing is a specific permission
+            canManageTimesheets: false, // NEW: Default false for timesheet management
+            canRequestTimesheetApproval: false, // NEW: Default false for timesheet approval requests
             // Add other permissions here with default false values
         };
     }
@@ -29,6 +31,8 @@ const calculatePermissions = (permissions) => {
         canViewDashboards: permissions.canViewDashboards === true,
         canEditDashboard: permissions.canEditDashboard === true,
         canMessage: permissions.canMessage === true,
+        canManageTimesheets: permissions.canManageTimesheets === true, // NEW: Map from permissions object
+        canRequestTimesheetApproval: permissions.canRequestTimesheetApproval === true, // NEW: Map from permissions object
         // Map other permissions from the permissions object
     };
 };
