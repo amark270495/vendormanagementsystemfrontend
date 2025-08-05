@@ -9,9 +9,10 @@ import ReportsPage from './pages/ReportsPage';
 import MessagesPage from './pages/MessagesPage';
 import DashboardPage from './pages/DashboardPage';
 import CandidateDetailsPage from './pages/CandidateDetailsPage';
-import CreateCompanyPage from './pages/CreateCompanyPage'; // <-- NEW: Import CreateCompanyPage
-import LogHoursPage from './pages/LogHoursPage'; // <-- NEW: Import LogHoursPage
-import TimesheetsDashboardPage from './pages/TimesheetsDashboardPage'; // <-- NEW: Import TimesheetsDashboardPage
+import CreateCompanyPage from './pages/CreateCompanyPage';
+import LogHoursPage from './pages/LogHoursPage';
+import TimesheetsDashboardPage from './pages/TimesheetsDashboardPage';
+import CreateTimesheetEmployeePage from './pages/CreateTimesheetEmployeePage'; // <-- NEW: Import CreateTimesheetEmployeePage
 
 const MainApp = () => {
     const [currentPage, setCurrentPage] = useState({ type: 'home' });
@@ -31,9 +32,10 @@ const MainApp = () => {
                 messages: <MessagesPage />,
                 dashboard: permissions.canViewDashboards && <DashboardPage sheetKey={currentPage.key} />,
                 candidate_details: permissions.canViewCandidates && <CandidateDetailsPage />,
-                create_company: permissions.canManageTimesheets && <CreateCompanyPage />, // <-- NEW: Add CreateCompanyPage
-                log_hours: permissions.canManageTimesheets && <LogHoursPage />, // <-- NEW: Add LogHoursPage
-                timesheets_dashboard: (permissions.canManageTimesheets || permissions.canRequestTimesheetApproval) && <TimesheetsDashboardPage />, // <-- NEW: Add TimesheetsDashboardPage
+                create_company: permissions.canManageTimesheets && <CreateCompanyPage />,
+                log_hours: permissions.canManageTimesheets && <LogHoursPage />,
+                timesheets_dashboard: (permissions.canManageTimesheets || permissions.canRequestTimesheetApproval) && <TimesheetsDashboardPage />,
+                create_timesheet_employee: permissions.canManageTimesheets && <CreateTimesheetEmployeePage />, // <-- NEW: Add CreateTimesheetEmployeePage route
             };
 
             const PageComponent = pageMap[currentPage.type];
