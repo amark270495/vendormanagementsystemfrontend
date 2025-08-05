@@ -1,7 +1,7 @@
 // src/components/TopNav.jsx (Updated)
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { usePermissions } from '../hooks/usePermissions';
+import { usePermissions } from '../hooks/usePermissions'; // <-- NEW: Import usePermissions
 import { apiService } from '../api/apiService';
 import Dropdown from './Dropdown';
 
@@ -17,7 +17,15 @@ const DASHBOARD_CONFIGS = {
 
 const TopNav = ({ onNavigate }) => {
     const { user, logout } = useAuth();
-    const { isAdmin, canViewDashboards, canAddPosting, canViewReports } = usePermissions();
+    // NEW: Destructure granular permissions from usePermissions
+    const { 
+        canViewDashboards, 
+        canAddPosting, 
+        canViewReports, 
+        canViewCandidates, 
+        canEditUsers // For Admin link
+    } = usePermissions(); 
+    
     const [notifications, setNotifications] = useState([]);
     
     const fetchNotifications = useCallback(async () => {
@@ -57,18 +65,18 @@ const TopNav = ({ onNavigate }) => {
                         <h1 className="text-2xl font-bold text-indigo-600">VMS Portal</h1>
                         <nav className="hidden md:flex space-x-1">
                             <a href="#" onClick={() => onNavigate('home')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Home</a>
-                            {canViewDashboards && (
+                            {canViewDashboards && ( // NEW: Conditional rendering based on canViewDashboards
                                 <Dropdown trigger={<button className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Dashboards</button>}>
                                     {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
                                         <a href="#" key={key} onClick={() => onNavigate('dashboard', { key })} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{config.title}</a>
                                     ))}
                                 </Dropdown>
                             )}
-                            {canAddPosting && <a href="#" onClick={() => onNavigate('new_posting')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">New Posting</a>}
-                            {canViewDashboards && <a href="#" onClick={() => onNavigate('candidate_details')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Candidates</a>}
-                            {canViewReports && <a href="#" onClick={() => onNavigate('reports')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Reports</a>}
+                            {canAddPosting && <a href="#" onClick={() => onNavigate('new_posting')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">New Posting</a>} {/* NEW: Conditional rendering based on canAddPosting */}
+                            {canViewCandidates && <a href="#" onClick={() => onNavigate('candidate_details')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Candidates</a>} {/* NEW: Conditional rendering based on canViewCandidates */}
+                            {canViewReports && <a href="#" onClick={() => onNavigate('reports')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Reports</a>} {/* NEW: Conditional rendering based on canViewReports */}
                             <a href="#" onClick={() => onNavigate('messages')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Messages</a>
-                            {isAdmin && <a href="#" onClick={() => onNavigate('admin')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Admin</a>}
+                            {canEditUsers && <a href="#" onClick={() => onNavigate('admin')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Admin</a>} {/* NEW: Conditional rendering based on canEditUsers */}
                         </nav>
                     </div>
                     <div className="flex items-center space-x-4">
@@ -103,7 +111,7 @@ const TopNav = ({ onNavigate }) => {
                                 <p className="text-sm font-medium text-gray-900">{user.userName}</p>
                                 <p className="text-sm text-gray-500 truncate">{user.userIdentifier}</p>
                             </div>
-                            <a href="#" onClick={() => onNavigate('admin')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Admin</a>
+                            {canEditUsers && <a href="#" onClick={() => onNavigate('admin')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Admin</a>} {/* NEW: Conditional rendering based on canEditUsers */}
                             <a href="#" onClick={logout} className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</a>
                         </Dropdown>
                     </div>

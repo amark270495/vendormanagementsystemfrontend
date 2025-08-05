@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { usePermissions } from '../hooks/usePermissions';
+import { usePermissions } from '../hooks/usePermissions'; // <-- NEW: Import usePermissions
 import { apiService } from '../api/apiService';
 import { formatDate, getDeadlineClass } from '../utils/helpers';
 import Spinner from '../components/Spinner';
@@ -30,7 +30,8 @@ const NUMBER_COLUMNS = ['# Submitted', 'Max Submissions'];
 
 const DashboardPage = ({ sheetKey }) => {
     const { user, updatePreferences } = useAuth();
-    const { canEditDashboard } = usePermissions();
+    // NEW: Destructure canEditDashboard from usePermissions
+    const { canEditDashboard } = usePermissions(); 
 
     const [rawData, setRawData] = useState({ header: [], rows: [] });
     const [loading, setLoading] = useState(true);
@@ -86,6 +87,8 @@ const DashboardPage = ({ sheetKey }) => {
                 const result = await apiService.getUsers(user.userIdentifier);
                 if (result.data.success) {
                     const recruitmentRoles = ['Recruitment Team', 'Recruitment Manager'];
+                    // Filter users based on their backendOfficeRole if still relevant for recruiter list
+                    // Or, if you have a 'canBeAssignedJob' permission, you could use that.
                     const filteredUsers = result.data.users.filter(u => recruitmentRoles.includes(u.backendOfficeRole));
                     setRecruiters(filteredUsers);
                 }
@@ -247,14 +250,14 @@ const DashboardPage = ({ sheetKey }) => {
     const handleSort = (key, direction) => setSortConfig({ key, direction });
 
     const handleCellEdit = (rowIndex, cellIndex, value) => {
-        if (!canEditDashboard) return;
+        if (!canEditDashboard) return; // NEW: Use canEditDashboard permission
         const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
         const headerName = displayHeader[cellIndex];
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: value } }));
     };
 
     const handleSaveChanges = async () => {
-        if (!canEditDashboard) return;
+        if (!canEditDashboard) return; // NEW: Use canEditDashboard permission
         const headerMap = { 'Working By': 'workingBy', '# Submitted': 'noOfResumesSubmitted', 'Remarks': 'remarks' };
         const updates = Object.entries(unsavedChanges).map(([postingId, changes]) => ({
             rowKey: postingId,
@@ -288,7 +291,7 @@ const DashboardPage = ({ sheetKey }) => {
     };
 
     const handleAction = async (actionType, job) => {
-        if (!canEditDashboard) return;
+        if (!canEditDashboard) return; // NEW: Use canEditDashboard permission
         setLoading(true);
         const postingId = job['Posting ID'];
         try {
@@ -377,7 +380,7 @@ const DashboardPage = ({ sheetKey }) => {
     const jobToObject = (row) => displayHeader.reduce((obj, h, i) => ({...obj, [h]: row[i]}), {});
 
     const handleCellClick = (rowIndex, cellIndex) => {
-        if (!canEditDashboard) return;
+        if (!canEditDashboard) return; // NEW: Use canEditDashboard permission
         const headerName = displayHeader[cellIndex];
         
         if (EDITABLE_COLUMNS.includes(headerName)) {
@@ -407,7 +410,7 @@ const DashboardPage = ({ sheetKey }) => {
                     </select>
                 </div>
                 <div className="flex items-center space-x-2">
-                    {Object.keys(unsavedChanges).length > 0 && (
+                    {canEditDashboard && Object.keys(unsavedChanges).length > 0 && ( // NEW: Conditional rendering based on canEditDashboard
                         <button onClick={handleSaveChanges} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700" disabled={loading}>
                             {loading ? <Spinner size="5" /> : 'Save Changes'}
                         </button>
@@ -460,8 +463,8 @@ const DashboardPage = ({ sheetKey }) => {
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                                             
                                             return (
-                                                <td key={cellIndex} onClick={() => handleCellClick(rowIndex, cellIndex)} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-blue-50' : ''}`}>
-                                                    {isEditing && headerName === 'Working By' ? (
+                                                <td key={cellIndex} onClick={() => handleCellClick(rowIndex, cellIndex)} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-blue-50' : ''}`}> {/* NEW: Conditional styling for editable cells */}
+                                                    {isEditing && headerName === 'Working By' && canEditDashboard ? ( // NEW: Conditional rendering based on canEditDashboard
                                                         <select
                                                             value={unsavedChanges[postingId]?.[headerName] || cell}
                                                             onBlur={() => setEditingCell(null)}
@@ -476,7 +479,7 @@ const DashboardPage = ({ sheetKey }) => {
                                                             {recruiters.map(r => <option key={r.username} value={r.displayName}>{r.displayName}</option>)}
                                                         </select>
                                                     ) : (
-                                                        <div contentEditable={isEditing && headerName !== 'Working By'} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}>
+                                                        <div contentEditable={isEditing && headerName !== 'Working By' && canEditDashboard} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}> {/* NEW: Conditional contentEditable */}
                                                             {DATE_COLUMNS.includes(headerName) ? formatDate(cell) : cell}
                                                         </div>
                                                     )}
@@ -484,7 +487,7 @@ const DashboardPage = ({ sheetKey }) => {
                                             );
                                         })}
                                         <td className="px-4 py-3 align-middle">
-                                            <ActionMenu job={jobToObject(row)} onAction={(type, job) => setModalState({type, data: job})} />
+                                            {canEditDashboard && <ActionMenu job={jobToObject(row)} onAction={(type, job) => setModalState({type, data: job})} />} {/* NEW: Conditional rendering based on canEditDashboard */}
                                         </td>
                                     </tr>
                                 ))}

@@ -8,9 +8,13 @@ import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal
 import { formatDate } from '../utils/helpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { usePermissions } from '../hooks/usePermissions'; // <-- NEW: Import usePermissions
 
 const CandidateDetailsPage = () => {
     const { user } = useAuth();
+    // NEW: Destructure canViewCandidates and canEditDashboard from usePermissions
+    const { canViewCandidates, canEditDashboard } = usePermissions(); 
+
     const [candidates, setCandidates] = useState([]);
     const [duplicateEmails, setDuplicateEmails] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -32,6 +36,12 @@ const CandidateDetailsPage = () => {
     const loadData = useCallback(async () => {
         setLoading(true);
         setError('');
+        // Only attempt to load data if the user has permission
+        if (!canViewCandidates) {
+            setLoading(false);
+            setError("You do not have permission to view candidate details.");
+            return;
+        }
         try {
             const result = await apiService.getCandidateDetailsPageData(user.userIdentifier);
             if (result.data.success) {
@@ -45,7 +55,7 @@ const CandidateDetailsPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [user.userIdentifier]);
+    }, [user.userIdentifier, canViewCandidates]); // Add canViewCandidates to dependencies
 
     useEffect(() => {
         loadData();
@@ -124,6 +134,7 @@ const CandidateDetailsPage = () => {
     const handleFilterChange = (header, config) => setColumnFilters(prev => ({ ...prev, [header]: config }));
 
     const handleEditClick = (rowIndex) => {
+        if (!canEditDashboard) return; // NEW: Check canEditDashboard
         const emailToFind = filteredAndSortedData[rowIndex][1];
         const postingIdToFind = filteredAndSortedData[rowIndex][5];
         const originalCandidate = candidates.find(c => c.email === emailToFind && c.postingId === postingIdToFind);
@@ -135,6 +146,7 @@ const CandidateDetailsPage = () => {
     };
 
     const handleSaveCandidate = async (formData) => {
+        if (!canEditDashboard) throw new Error("Permission denied to save candidate details."); // NEW: Check canEditDashboard
         try {
             await apiService.updateCandidateDetails(candidateToEdit.email, formData, user.userIdentifier);
             loadData();
@@ -181,17 +193,25 @@ const CandidateDetailsPage = () => {
                         value={generalFilter} 
                         onChange={(e) => setGeneralFilter(e.target.value)} 
                         className="shadow-sm border-gray-300 rounded-md px-3 py-2"
+                        disabled={!canViewCandidates && !loading} // NEW: Disable search if no view permission
                     />
                      <div className="flex items-center space-x-2">
-                        <button onClick={downloadPdf} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Download PDF</button>
-                        <button onClick={downloadCsv} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Download CSV</button>
+                        <button onClick={downloadPdf} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" disabled={!canViewCandidates || loading}>Download PDF</button> {/* NEW: Disable if no view permission */}
+                        <button onClick={downloadCsv} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" disabled={!canViewCandidates || loading}>Download CSV</button> {/* NEW: Disable if no view permission */}
                     </div>
                 </div>
 
                 {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
                 {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
                 
-                {!loading && !error && (
+                {!loading && !error && !canViewCandidates && ( // NEW: Access Denied message if no view permission
+                    <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
+                        <h3 className="text-lg font-medium">Access Denied</h3>
+                        <p className="text-sm">You do not have the necessary permissions to view candidate details.</p>
+                    </div>
+                )}
+
+                {!loading && !error && canViewCandidates && ( // NEW: Render table only if canViewCandidates
                     <div className="bg-white rounded-lg shadow-lg border border-gray-200" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left text-gray-500">
@@ -253,7 +273,9 @@ const CandidateDetailsPage = () => {
                                                     );
                                                 })}
                                                 <td className="px-4 py-3 border-r border-slate-200 last:border-r-0">
-                                                    <button onClick={() => handleEditClick(rowIndex)} className="text-indigo-600 hover:text-indigo-900 p-1 font-semibold">Edit</button>
+                                                    {canEditDashboard && ( // NEW: Conditionally render Edit button
+                                                        <button onClick={() => handleEditClick(rowIndex)} className="text-indigo-600 hover:text-indigo-900 p-1 font-semibold">Edit</button>
+                                                    )}
                                                 </td>
                                             </tr>
                                         );

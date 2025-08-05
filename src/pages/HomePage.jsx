@@ -2,52 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
-
-// Utility function to format dates
-const formatDate = (isoString) => {
-    if (!isoString || isoString === 'Need To Update') return isoString;
-    try {
-        const date = new Date(isoString);
-        return isNaN(date.getTime()) ? isoString : date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    } catch (e) {
-        return isoString;
-    }
-};
-
-// Utility function to determine deadline color
-const getDeadlineClass = (dateString) => {
-    if (!dateString || dateString === 'Need To Update') return '';
-    
-    let parsableDateString = dateString;
-    const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/;
-    const match = dateString.match(dateRegex);
-
-    if (match) {
-        const [, month, day, year] = match;
-        const fullYear = year.length === 2 ? `20${year}` : year;
-        parsableDateString = `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    }
-
-    const deadline = new Date(parsableDateString);
-    if (isNaN(deadline.getTime())) {
-        return ''; 
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const sevenDaysFromNow = new Date(today);
-    sevenDaysFromNow.setDate(today.getDate() + 7);
-
-    deadline.setHours(0, 0, 0, 0);
-
-    if (deadline < today) return 'text-red-600 font-bold';
-    if (deadline <= sevenDaysFromNow) return 'text-orange-500 font-semibold';
-    return 'text-green-600';
-};
-
+import { formatDate, getDeadlineClass } from '../utils/helpers';
+import { usePermissions } from '../hooks/usePermissions'; // <-- NEW: Import usePermissions
 
 const HomePage = () => {
     const { user } = useAuth();
+    // NEW: Destructure canViewDashboards from usePermissions (assuming home page view is tied to dashboards)
+    const { canViewDashboards } = usePermissions(); 
+
     const [data, setData] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -56,6 +18,13 @@ const HomePage = () => {
         const fetchData = async () => {
             if (!user?.userIdentifier) return;
             setLoading(true);
+            setError(''); // Clear previous errors
+            // Only attempt to fetch data if the user has permission
+            if (!canViewDashboards) { // NEW: Check canViewDashboards permission
+                setLoading(false);
+                setError("You do not have permission to view the home page dashboard.");
+                return;
+            }
             try {
                 const response = await apiService.getHomePageData(user.userIdentifier);
                 if (response.data.success) {
@@ -71,7 +40,7 @@ const HomePage = () => {
             }
         };
         fetchData();
-    }, [user?.userIdentifier]);
+    }, [user?.userIdentifier, canViewDashboards]); // Add canViewDashboards to dependencies
 
     const WelcomeBanner = () => (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
@@ -87,7 +56,14 @@ const HomePage = () => {
             {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
             {error && <div className="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200">Error: {error}</div>}
             
-            {!loading && !error && (
+            {!loading && !error && !canViewDashboards && ( // NEW: Access Denied message if no view permission
+                <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
+                    <h3 className="text-lg font-medium">Access Denied</h3>
+                    <p className="mt-1 text-sm text-gray-500">You do not have the necessary permissions to view the home page dashboard.</p>
+                </div>
+            )}
+
+            {!loading && !error && canViewDashboards && ( // NEW: Render content only if canViewDashboards
                 Object.keys(data).length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {Object.entries(data).map(([assignee, jobs]) => (

@@ -1,11 +1,25 @@
 import React, { useState } from 'react';
 import UserManagementPage from './UserManagementPage';
 import PermissionsPage from './PermissionsPage';
+import { usePermissions } from '../hooks/usePermissions'; // <-- NEW: Import usePermissions
 
 const AdminPage = () => {
+    // NEW: Destructure canEditUsers from usePermissions
+    const { canEditUsers } = usePermissions(); 
+
     const [view, setView] = useState('users');
 
     const renderView = () => {
+        // Only render sub-pages if the user has permission
+        if (!canEditUsers) {
+            return (
+                <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
+                    <h3 className="text-lg font-medium">Access Denied</h3>
+                    <p className="mt-1 text-sm text-gray-500">You do not have the necessary permissions to access the Admin Console.</p>
+                </div>
+            );
+        }
+
         switch (view) {
             case 'users':
                 return <UserManagementPage />;
@@ -33,22 +47,24 @@ const AdminPage = () => {
                 </div>
             </div>
             
-            <div className="border-b border-gray-200">
-                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-                     <button 
-                        onClick={() => setView('users')} 
-                        className={getButtonClasses('users')}
-                    >
-                        User Management
-                    </button>
-                    <button 
-                        onClick={() => setView('permissions')} 
-                        className={getButtonClasses('permissions')}
-                    >
-                        Role Permissions
-                    </button>
-                </nav>
-            </div>
+            {canEditUsers && ( // NEW: Conditionally render navigation tabs
+                <div className="border-b border-gray-200">
+                    <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                         <button 
+                            onClick={() => setView('users')} 
+                            className={getButtonClasses('users')}
+                        >
+                            User Management
+                        </button>
+                        <button 
+                            onClick={() => setView('permissions')} 
+                            className={getButtonClasses('permissions')}
+                        >
+                            Role Permissions
+                        </button>
+                    </nav>
+                </div>
+            )}
             
             <div>
                 {renderView()}

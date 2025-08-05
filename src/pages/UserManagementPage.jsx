@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions'; // <-- NEW: Import usePermissions
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import UserFormModal from '../components/UserFormModal';
@@ -7,6 +8,9 @@ import DeleteUserModal from '../components/DeleteUserModal';
 
 const UserManagementPage = () => {
     const { user } = useAuth();
+    // NEW: Destructure canEditUsers from usePermissions
+    const { canEditUsers } = usePermissions(); 
+
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -21,8 +25,14 @@ const UserManagementPage = () => {
 
     // Fetches the list of users from the server
     const fetchUsers = useCallback(async () => {
-        if (!user?.userIdentifier) return;
         setLoading(true);
+        setError('');
+        // Only attempt to load data if the user has permission
+        if (!canEditUsers) {
+            setLoading(false);
+            setError("You do not have permission to manage users.");
+            return;
+        }
         try {
             const response = await apiService.getUsers(user.userIdentifier);
             if (response.data.success) {
@@ -35,7 +45,7 @@ const UserManagementPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.userIdentifier]);
+    }, [user?.userIdentifier, canEditUsers]); // Add canEditUsers to dependencies
 
     // Fetch users when the component mounts
     useEffect(() => {
@@ -44,34 +54,49 @@ const UserManagementPage = () => {
 
     // Handlers to open the modals
     const handleAddClick = () => {
+        if (!canEditUsers) return; // NEW: Prevent action if no permission
         setUserToEdit(null); // Ensure we are in "add" mode
         setUserModalOpen(true);
     };
     const handleEditClick = (userToEdit) => {
+        if (!canEditUsers) return; // NEW: Prevent action if no permission
         setUserToEdit(userToEdit);
         setUserModalOpen(true);
     };
     const handleDeleteClick = (userToDelete) => {
+        if (!canEditUsers) return; // NEW: Prevent action if no permission
         setUserToDelete(userToDelete);
         setDeleteModalOpen(true);
     };
 
     // Handles the save action from the UserFormModal
     const handleSaveUser = async (formData) => {
-        if (userToEdit) {
-            // Update existing user
-            await apiService.updateUser(userToEdit.username, formData, user.userIdentifier);
-        } else {
-            // Add new user
-            await apiService.addUser(formData, user.userIdentifier);
+        if (!canEditUsers) throw new Error("Permission denied to save user."); // NEW: Prevent action if no permission
+        try {
+            if (userToEdit) {
+                // Update existing user
+                await apiService.updateUser(userToEdit.username, formData, user.userIdentifier);
+            } else {
+                // Add new user
+                await apiService.addUser(formData, user.userIdentifier);
+            }
+            fetchUsers(); // Refresh the user list after saving
+        } catch (error) {
+            // Re-throw to show error in modal
+            throw error; 
         }
-        fetchUsers(); // Refresh the user list after saving
     };
 
     // Handles the delete confirmation
     const handleConfirmDelete = async () => {
-        await apiService.deleteUser(userToDelete.username, user.userIdentifier);
-        fetchUsers(); // Refresh the user list after deleting
+        if (!canEditUsers) throw new Error("Permission denied to delete user."); // NEW: Prevent action if no permission
+        try {
+            await apiService.deleteUser(userToDelete.username, user.userIdentifier);
+            fetchUsers(); // Refresh the user list after deleting
+        } catch (error) {
+            // Re-throw to show error in modal
+            throw error;
+        }
     };
 
     const RoleBadge = ({ role }) => {
@@ -95,14 +120,24 @@ const UserManagementPage = () => {
                         <h2 className="text-xl font-bold text-gray-800">Users</h2>
                         <p className="text-sm text-gray-500">A list of all users in the system.</p>
                     </div>
-                    <button onClick={handleAddClick} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg flex items-center shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        Add User
-                    </button>
+                    {canEditUsers && ( // NEW: Conditionally render Add User button
+                        <button onClick={handleAddClick} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg flex items-center shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            Add User
+                        </button>
+                    )}
                 </div>
                 {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
                 {error && <div className="text-red-600 bg-red-50 p-4 rounded-lg border border-red-200">Error: {error}</div>}
-                {!loading && !error && (
+                
+                {!loading && !error && !canEditUsers && ( // NEW: Access Denied message if no edit permission
+                    <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
+                        <h3 className="text-lg font-medium">Access Denied</h3>
+                        <p className="text-sm">You do not have the necessary permissions to manage users.</p>
+                    </div>
+                )}
+
+                {!loading && !error && canEditUsers && ( // NEW: Render table only if canEditUsers
                     <div className="overflow-x-auto">
                         {users.length > 0 ? (
                             <table className="w-full text-sm text-left text-gray-600">

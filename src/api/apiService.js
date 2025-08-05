@@ -81,4 +81,11 @@ export const apiService = {
     
   sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) => 
     apiClient.post('/sendAssignmentEmail', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
+
+  // NEW: API calls for granular user access control
+  getUserPermissionsList: (authenticatedUsername) =>
+    apiClient.get('/getUserPermissionsList', { params: { authenticatedUsername } }),
+
+  updateUserPermissions: (username, permissions, authenticatedUsername) =>
+    apiClient.post('/updateUserPermissions', { username, permissions, authenticatedUsername }),
 };

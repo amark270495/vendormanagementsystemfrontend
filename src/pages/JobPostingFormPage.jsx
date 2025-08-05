@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { usePermissions } from '../hooks/usePermissions';
+import { usePermissions } from '../hooks/usePermissions'; // <-- NEW: Import usePermissions
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 
 const JobPostingFormPage = ({ onFormSubmit }) => {
     const { user } = useAuth();
-    const { canAddPosting } = usePermissions();
+    // NEW: Destructure canAddPosting from usePermissions
+    const { canAddPosting } = usePermissions(); 
+    
     const [formData, setFormData] = useState({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -36,7 +38,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!canAddPosting) {
+        if (!canAddPosting) { // NEW: Use canAddPosting permission
             return setError("You do not have permission to add new job postings.");
         }
         
@@ -67,37 +69,45 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
                 <h1 className="text-3xl font-bold text-gray-900">Add New Job Posting</h1>
                 <p className="mt-1 text-gray-600">Fill out the details below to create a new job entry.</p>
             </div>
-            <form onSubmit={handleSubmit}>
-                <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border">
-                    {error && <div className="bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">{error}</div>}
-                    {success && <div className="bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6">{success}</div>}
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
-                        {formFields.map(field => (
-                            <div key={field.id} className={field.full ? 'md:col-span-2' : ''}>
-                                <label htmlFor={field.id} className="block text-sm font-medium text-gray-700">
-                                    {field.name} {field.required && <span className="text-red-500">*</span>}
-                                </label>
-                                {field.type === 'textarea' ? (
-                                    <textarea name={field.name} id={field.id} value={formData[field.name] || ''} onChange={handleChange} required={field.required} rows="4" className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-                                ) : field.type === 'select' ? (
-                                    <select name={field.name} id={field.id} value={formData[field.name] || ''} onChange={handleChange} required={field.required} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500">
-                                        <option value="">Select an option</option>
-                                        {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                    </select>
-                                ) : (
-                                    <input type={field.type} name={field.name} id={field.id} value={formData[field.name] || ''} onChange={handleChange} required={field.required} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                                )}
-                            </div>
-                        ))}
+            {!canAddPosting && !loading && ( // NEW: Conditional rendering for access denied
+                <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
+                    <h3 className="text-lg font-medium">Access Denied</h3>
+                    <p className="text-sm">You do not have the necessary permissions to add new job postings.</p>
+                </div>
+            )}
+            {canAddPosting && ( // NEW: Conditional rendering for the form itself
+                <form onSubmit={handleSubmit}>
+                    <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border">
+                        {error && <div className="bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">{error}</div>}
+                        {success && <div className="bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6">{success}</div>}
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+                            {formFields.map(field => (
+                                <div key={field.id} className={field.full ? 'md:col-span-2' : ''}>
+                                    <label htmlFor={field.id} className="block text-sm font-medium text-gray-700">
+                                        {field.name} {field.required && <span className="text-red-500">*</span>}
+                                    </label>
+                                    {field.type === 'textarea' ? (
+                                        <textarea name={field.name} id={field.id} value={formData[field.name] || ''} onChange={handleChange} required={field.required} rows="4" className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                                    ) : field.type === 'select' ? (
+                                        <select name={field.name} id={field.id} value={formData[field.name] || ''} onChange={handleChange} required={field.required} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500">
+                                            <option value="">Select an option</option>
+                                            {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                        </select>
+                                    ) : (
+                                        <input type={field.type} name={field.name} id={field.id} value={formData[field.name] || ''} onChange={handleChange} required={field.required} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
-                <div className="mt-6 flex justify-end">
-                    <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center w-48 h-12 disabled:bg-indigo-400" disabled={loading || success}>
-                        {loading ? <Spinner size="6" /> : 'Submit Job Posting'}
-                    </button>
-                </div>
-            </form>
+                    <div className="mt-6 flex justify-end">
+                        <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center w-48 h-12 disabled:bg-indigo-400" disabled={loading || success}>
+                            {loading ? <Spinner size="6" /> : 'Submit Job Posting'}
+                        </button>
+                    </div>
+                </form>
+            )}
         </div>
     );
 };

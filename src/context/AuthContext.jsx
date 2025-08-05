@@ -12,6 +12,8 @@ const authReducer = (state, action) => {
                 isAuthenticated: true,
                 user: action.payload,
                 isFirstLogin: action.payload.isFirstLogin,
+                // NEW: Store permissions directly from the payload
+                permissions: action.payload.permissions || {}, 
             };
         case 'LOGOUT':
             return {
@@ -19,6 +21,7 @@ const authReducer = (state, action) => {
                 isAuthenticated: false,
                 user: null,
                 isFirstLogin: false,
+                permissions: {}, // Clear permissions on logout
             };
         case 'PASSWORD_CHANGED':
             return {
@@ -31,6 +34,13 @@ const authReducer = (state, action) => {
                 ...state,
                 user: action.payload,
             };
+        // NEW: Action to update permissions if they change (e.g., from admin panel)
+        case 'PERMISSIONS_UPDATED':
+            return {
+                ...state,
+                user: { ...state.user, permissions: action.payload },
+                permissions: action.payload,
+            };
         default:
             return state;
     }
@@ -42,6 +52,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: false,
         user: null,
         isFirstLogin: false,
+        permissions: {}, // NEW: Initialize permissions state
     });
 
     // A unique ID for the current browser tab to handle multi-tab logout
@@ -52,7 +63,9 @@ export const AuthProvider = ({ children }) => {
         try {
             const savedUser = sessionStorage.getItem('vms_user');
             if (savedUser) {
-                dispatch({ type: 'LOGIN', payload: JSON.parse(savedUser) });
+                const userData = JSON.parse(savedUser);
+                // Ensure permissions are loaded from session storage
+                dispatch({ type: 'LOGIN', payload: { ...userData, permissions: userData.permissions || {} } });
                 localStorage.setItem('vms_active_tab', tabId.current);
             }
         } catch (error) {
@@ -75,9 +88,11 @@ export const AuthProvider = ({ children }) => {
 
     // Define the actions that can be performed on the context
     const login = (userData) => {
-        sessionStorage.setItem('vms_user', JSON.stringify(userData));
+        // Ensure permissions are saved to session storage
+        const userToStore = { ...userData, permissions: userData.permissions || {} };
+        sessionStorage.setItem('vms_user', JSON.stringify(userToStore));
         localStorage.setItem('vms_active_tab', tabId.current);
-        dispatch({ type: 'LOGIN', payload: userData });
+        dispatch({ type: 'LOGIN', payload: userToStore });
     };
 
     const logout = (broadcast = true) => {
@@ -104,9 +119,16 @@ export const AuthProvider = ({ children }) => {
         dispatch({ type: 'PREFERENCES_UPDATED', payload: updatedUser });
     };
 
+    // NEW: Function to update permissions in the context
+    const updatePermissions = (newPermissions) => {
+        const updatedUser = { ...state.user, permissions: newPermissions };
+        sessionStorage.setItem('vms_user', JSON.stringify(updatedUser));
+        dispatch({ type: 'PERMISSIONS_UPDATED', payload: newPermissions });
+    };
+
     // Provide the state and action functions to all child components
     return (
-        <AuthContext.Provider value={{ ...state, login, logout, passwordChanged, updatePreferences }}>
+        <AuthContext.Provider value={{ ...state, login, logout, passwordChanged, updatePreferences, updatePermissions }}>
             {children}
         </AuthContext.Provider>
     );
