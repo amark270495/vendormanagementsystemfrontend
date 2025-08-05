@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
-import { usePermissions } from '../hooks/usePermissions'; // <-- NEW: Import usePermissions
+import { usePermissions } from '../hooks/usePermissions'; // <-- Import usePermissions
 
 const MessagesPage = () => {
     const { user } = useAuth();
-    // NEW: Destructure canViewDashboards from usePermissions (assuming message viewing is tied to dashboards)
-    const { canViewDashboards } = usePermissions(); 
+    // NEW: Destructure canMessage from usePermissions
+    const { canMessage } = usePermissions(); 
 
     const [users, setUsers] = useState([]);
     const [selectedRecipient, setSelectedRecipient] = useState(null);
@@ -25,13 +25,16 @@ const MessagesPage = () => {
             setLoadingUsers(true);
             setError(''); // Clear previous errors
             // Only attempt to fetch users if the user has permission
-            if (!canViewDashboards) { // NEW: Check canViewDashboards permission
+            if (!canMessage) { // NEW: Check canMessage permission
                 setLoadingUsers(false);
                 setError("You do not have permission to view messages.");
                 return;
             }
             try {
-                const response = await apiService.getUsers(user.userIdentifier);
+                // Note: getUsers backend function still requires canEditUsers permission.
+                // If you want all users with canMessage to see the user list,
+                // you'd need to modify getUsers.js backend to check canMessage or a less restrictive permission.
+                const response = await apiService.getUsers(user.userIdentifier); 
                 if (response.data.success) {
                     // Filter out the current user from the list
                     setUsers(response.data.users.filter(u => u.username !== user.userIdentifier));
@@ -45,7 +48,7 @@ const MessagesPage = () => {
             }
         };
         fetchUsers();
-    }, [user?.userIdentifier, canViewDashboards]); // Add canViewDashboards to dependencies
+    }, [user?.userIdentifier, canMessage]); // Add canMessage to dependencies
 
     // Fetch messages for the selected conversation and poll for new ones
     useEffect(() => {
@@ -58,7 +61,7 @@ const MessagesPage = () => {
             setLoadingMessages(true);
             setError(''); // Clear previous errors
             // Only attempt to fetch messages if the user has permission
-            if (!canViewDashboards) { // NEW: Check canViewDashboards permission
+            if (!canMessage) { // NEW: Check canMessage permission
                 setLoadingMessages(false);
                 setError("You do not have permission to view messages.");
                 return;
@@ -80,7 +83,7 @@ const MessagesPage = () => {
         fetchMessages();
         const interval = setInterval(fetchMessages, 5000); // Poll every 5 seconds
         return () => clearInterval(interval); // Cleanup on component unmount or recipient change
-    }, [selectedRecipient, user.userIdentifier, canViewDashboards]); // Add canViewDashboards to dependencies
+    }, [selectedRecipient, user.userIdentifier, canMessage]); // Add canMessage to dependencies
 
     // Auto-scroll to the latest message
     useEffect(() => {
@@ -91,7 +94,7 @@ const MessagesPage = () => {
         e.preventDefault();
         if (!newMessage.trim() || !selectedRecipient) return;
         // Only allow sending message if the user has permission
-        if (!canViewDashboards) { // NEW: Check canViewDashboards permission
+        if (!canMessage) { // NEW: Check canMessage permission
             setError("You do not have permission to send messages.");
             return;
         }
@@ -135,14 +138,14 @@ const MessagesPage = () => {
 
             {loadingUsers && <div className="flex justify-center items-center h-64"><Spinner /></div>}
             
-            {!loadingUsers && !error && !canViewDashboards && ( // NEW: Access Denied message if no view permission
+            {!loadingUsers && !error && !canMessage && ( // NEW: Access Denied message if no view permission
                 <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border flex-grow flex flex-col justify-center items-center">
                     <h3 className="text-lg font-medium">Access Denied</h3>
                     <p className="mt-1 text-sm text-gray-500">You do not have the necessary permissions to view messages.</p>
                 </div>
             )}
 
-            {!loadingUsers && !error && canViewDashboards && ( // NEW: Render content only if canViewDashboards
+            {!loadingUsers && !error && canMessage && ( // NEW: Render content only if canMessage
                 <div className="flex flex-col md:flex-row bg-white rounded-xl shadow-sm border border-gray-200 flex-grow" style={{ minHeight: '70vh' }}>
                     {/* User List Panel */}
                     <div className="w-full md:w-1/3 lg:w-1/4 border-r border-gray-200 flex flex-col">
@@ -157,8 +160,8 @@ const MessagesPage = () => {
                                         <button onClick={() => setSelectedRecipient(u)} className={`w-full text-left p-3 rounded-lg transition-colors flex items-center space-x-3 ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-100 text-gray-700'}`}>
                                             <span className="flex-shrink-0 w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600">{u.displayName.charAt(0)}</span>
                                             <div className="flex-grow overflow-hidden">
-                                                <p className="font-semibold truncate">{u.displayName}</p>
-                                                <p className="text-xs text-gray-500 truncate">{u.username}</p>
+                                                 <p className="font-semibold truncate">{u.displayName}</p>
+                                                 <p className="text-xs text-gray-500 truncate">{u.username}</p>
                                             </div>
                                         </button>
                                     </li>
@@ -192,8 +195,8 @@ const MessagesPage = () => {
                                     <div ref={messagesEndRef} />
                                 </div>
                                 <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 bg-white flex items-center space-x-3">
-                                    <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={loadingMessages || !canViewDashboards}/> {/* NEW: Disable input if no permission */}
-                                    <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg disabled:bg-gray-400 flex-shrink-0" disabled={!newMessage.trim() || loadingMessages || !canViewDashboards}> {/* NEW: Disable button if no permission */}
+                                    <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={loadingMessages || !canMessage}/> {/* NEW: Disable input if no permission */}
+                                    <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg disabled:bg-gray-400 flex-shrink-0" disabled={!newMessage.trim() || loadingMessages || !canMessage}> {/* NEW: Disable button if no permission */}
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                                     </button>
                                 </form>

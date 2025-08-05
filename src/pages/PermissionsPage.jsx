@@ -21,8 +21,9 @@ const PermissionsPage = () => {
         { key: 'canViewReports', name: 'View Reports' },
         { key: 'canEmailReports', name: 'Email Reports' },
         { key: 'canViewCandidates', name: 'View Candidates' },
-        { key: 'canEditDashboard', name: 'Edit Dashboard' }, // <-- NEW: Added canEditDashboard
+        { key: 'canEditDashboard', name: 'Edit Dashboard' },
         { key: 'canEditUsers', name: 'Edit Users & Permissions' },
+        { key: 'canMessage', name: 'Send Messages' }, // <-- NEW: Added canMessage
         // Add other granular permissions here as they are defined in tableUtils.js and useraccesscontrol table
     ];
 
