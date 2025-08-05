@@ -93,11 +93,23 @@ export const apiService = {
   createCompany: (companyData, authenticatedUsername) =>
     apiClient.post('/createCompany', { companyData, authenticatedUsername }),
     
+  updateCompany: (originalCompanyName, updatedCompanyData, authenticatedUsername) =>
+    apiClient.post('/updateCompany', { originalCompanyName, updatedCompanyData, authenticatedUsername }),
+
+  deleteCompany: (companyNameToDelete, authenticatedUsername) => // NEW: Added deleteCompany
+    apiClient.post('/deleteCompany', { companyNameToDelete, authenticatedUsername }),
+
   saveEmployeeLogHours: (timesheetData, authenticatedUsername) =>
     apiClient.post('/saveEmployeeLogHours', { timesheetData, authenticatedUsername }),
 
   getEmployeeLogHours: (params) =>
     apiClient.get('/getEmployeeLogHours', { params }),
+
+  updateEmployeeLogHours: (originalRowKey, updatedTimesheetData, authenticatedUsername) =>
+    apiClient.post('/updateEmployeeLogHours', { originalRowKey, updatedTimesheetData, authenticatedUsername }),
+
+  deleteEmployeeLogHours: (partitionKey, rowKey, authenticatedUsername) => // NEW: Added deleteEmployeeLogHours
+    apiClient.post('/deleteEmployeeLogHours', { partitionKey, rowKey, authenticatedUsername }),
 
   getCompanies: (authenticatedUsername) => 
     apiClient.get('/getCompanies', { params: { authenticatedUsername } }),
@@ -105,8 +117,11 @@ export const apiService = {
   createTimesheetEmployee: (employeeData, authenticatedUsername) => 
     apiClient.post('/createTimesheetEmployee', { employeeData, authenticatedUsername }),
 
-  updateTimesheetEmployee: (originalEmployeeId, updatedEmployeeData, authenticatedUsername) => // NEW: Added update function
+  updateTimesheetEmployee: (originalEmployeeId, updatedEmployeeData, authenticatedUsername) => 
     apiClient.post('/updateTimesheetEmployee', { originalEmployeeId, updatedEmployeeData, authenticatedUsername }),
+
+  deleteTimesheetEmployee: (employeeIdToDelete, authenticatedUsername) => // NEW: Added deleteTimesheetEmployee
+    apiClient.post('/deleteTimesheetEmployee', { employeeIdToDelete, authenticatedUsername }),
 
   getTimesheetEmployees: (authenticatedUsername) => 
     apiClient.get('/getTimesheetEmployees', { params: { authenticatedUsername } }),
