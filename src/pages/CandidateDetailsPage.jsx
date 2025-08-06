@@ -5,7 +5,8 @@ import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
-import RequestCandidateTimesheetApprovalModal from '../components/timesheets/RequestCandidateTimesheetApprovalModal'; // Re-import if needed for other features, but removed from direct use here
+// The RequestCandidateTimesheetApprovalModal import is removed from here
+// import RequestCandidateTimesheetApprovalModal from '../components/timesheets/RequestCandidateTimesheetApprovalModal';
 import { formatDate } from '../utils/helpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -13,7 +14,7 @@ import { usePermissions } from '../hooks/usePermissions';
 
 const CandidateDetailsPage = () => {
     const { user } = useAuth();
-    const { canViewCandidates, canEditDashboard, canRequestTimesheetApproval } = usePermissions();
+    const { canViewCandidates, canEditDashboard } = usePermissions(); 
 
     const [candidates, setCandidates] = useState([]);
     const [duplicateEmails, setDuplicateEmails] = useState([]);
@@ -27,7 +28,7 @@ const CandidateDetailsPage = () => {
     const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
     const [candidateToEdit, setCandidateToEdit] = useState(null);
 
-    // Removed states related to timesheet approval modal from this page, as it's now on ManageTimesheetEmployeesPage
+    // Removed states related to timesheet approval modal from this page
     // const [isTimesheetApprovalModalOpen, setIsTimesheetApprovalModalOpen] = useState(false);
     // const [candidateForTimesheetApproval, setCandidateForTimesheetApproval] = useState(null);
 
@@ -35,7 +36,7 @@ const CandidateDetailsPage = () => {
         const baseHeaders = [
             'Full Name', 'Email', 'Mobile Number', 'Current Role', 
             'Current Location', 'Submitted For (Posting ID)', 'Client Info', 
-            'Submitted By', 'Submission Date', 'Remarks', 'Resume Worked By' // NEW: Added Remarks and Resume Worked By
+            'Submitted By', 'Submission Date', 'Remarks', 'Resume Worked By' // Added Remarks and Resume Worked By
         ];
         // Only add 'Actions' if canEditDashboard is true
         if (canEditDashboard) { 
@@ -55,7 +56,7 @@ const CandidateDetailsPage = () => {
         try {
             const result = await apiService.getCandidateDetailsPageData(user.userIdentifier);
             if (result.data.success) {
-                setCandidates(result.data.candidates);
+                setCandidates(Array.isArray(result.data.candidates) ? result.data.candidates : []); // Ensure it's an array
                 setDuplicateEmails(result.data.duplicateEmails || []);
             } else {
                 setError(result.data.message);
@@ -84,8 +85,8 @@ const CandidateDetailsPage = () => {
                 c.clientInfo,
                 c.submittedBy,
                 c.submissionDate,
-                c.remarks, // NEW: Map remarks
-                c.resumeWorkedBy // NEW: Map resumeWorkedBy
+                c.remarks, // Map remarks
+                c.resumeWorkedBy // Map resumeWorkedBy
             ]
         }));
     }, [candidates]);
@@ -164,13 +165,6 @@ const CandidateDetailsPage = () => {
         }
     };
 
-    // Removed handler for timesheet approval from this page
-    // const handleRequestTimesheetApprovalClick = (candidateData) => {
-    //     if (!canRequestTimesheetApproval) return;
-    //     setCandidateForTimesheetApproval(candidateData);
-    //     setIsTimesheetApprovalModalOpen(true);
-    // };
-
     const downloadPdf = () => {
         const doc = new jsPDF('landscape');
         doc.autoTable({
@@ -223,7 +217,7 @@ const CandidateDetailsPage = () => {
                 {!loading && !error && !canViewCandidates && (
                     <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
                         <h3 className="text-lg font-medium">Access Denied</h3>
-                        <p className="text-sm">You do not have the necessary permissions to view candidate details.</p>
+                        <p className="mt-1 text-sm text-gray-500">You do not have the necessary permissions to view candidate details.</p>
                     </div>
                 )}
 
@@ -241,6 +235,8 @@ const CandidateDetailsPage = () => {
                                                 style={{ 
                                                     minWidth: h === 'Email' ? '200px' : 
                                                               h === 'Submitted For (Posting ID)' ? '150px' : 
+                                                              h === 'Remarks' ? '200px' : 
+                                                              h === 'Resume Worked By' ? '150px' : 
                                                               'auto' 
                                                 }}
                                             >
@@ -278,10 +274,9 @@ const CandidateDetailsPage = () => {
                                                         tdClasses += " break-all";
                                                         tdStyle.minWidth = headerName === 'Email' ? '200px' : '150px';
                                                     }
-                                                    // NEW: Apply specific styling for Remarks and Resume Worked By to ensure text wrapping
                                                     if (headerName === 'Remarks' || headerName === 'Resume Worked By') {
-                                                        tdClasses += " whitespace-normal"; // Allow text to wrap
-                                                        tdStyle.minWidth = '150px'; // Give it some space
+                                                        tdClasses += " whitespace-normal";
+                                                        tdStyle.minWidth = '150px';
                                                     }
 
                                                     return (
@@ -294,7 +289,7 @@ const CandidateDetailsPage = () => {
                                                         </td>
                                                     );
                                                 })}
-                                                {canEditDashboard && ( // Only render actions if user has permission
+                                                {canEditDashboard && (
                                                     <td className="px-4 py-3 border-r border-slate-200 last:border-r-0 flex space-x-2">
                                                         <button onClick={() => handleEditClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 p-1 font-semibold">Edit</button>
                                                     </td>
