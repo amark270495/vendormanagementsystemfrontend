@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
@@ -11,11 +11,30 @@ const CreateTimesheetEmployeePage = () => {
     const [formData, setFormData] = useState({
         employeeName: '',
         employeeId: '',
-        employeeMail: ''
+        employeeMail: '',
+        companyName: '' // NEW: Add companyName to formData
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [companies, setCompanies] = useState([]); // NEW: State to store fetched companies
+
+    // NEW: Fetch companies when the component mounts
+    useEffect(() => {
+        const fetchCompanies = async () => {
+            if (!user?.userIdentifier || !canManageTimesheets) return;
+            try {
+                const response = await apiService.getCompanies(user.userIdentifier);
+                if (response.data.success) {
+                    setCompanies(response.data.companies.map(c => c.companyName));
+                }
+            } catch (err) {
+                console.error("Failed to fetch companies:", err);
+                setError("Failed to load companies for selection.");
+            }
+        };
+        fetchCompanies();
+    }, [user?.userIdentifier, canManageTimesheets]);
 
     const handleChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -39,7 +58,8 @@ const CreateTimesheetEmployeePage = () => {
                 setFormData({ // Clear form on success
                     employeeName: '',
                     employeeId: '',
-                    employeeMail: ''
+                    employeeMail: '',
+                    companyName: '' // NEW: Clear companyName on success
                 });
                 setTimeout(() => setSuccess(''), 3000);
             } else {
@@ -82,6 +102,16 @@ const CreateTimesheetEmployeePage = () => {
                             <div className="md:col-span-2">
                                 <label htmlFor="employeeMail" className="block text-sm font-medium text-gray-700">Employee Email <span className="text-red-500">*</span></label>
                                 <input type="email" name="employeeMail" id="employeeMail" value={formData.employeeMail} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                            </div>
+                            {/* NEW: Company Name dropdown */}
+                            <div className="md:col-span-2">
+                                <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Company Name <span className="text-red-500">*</span></label>
+                                <select name="companyName" id="companyName" value={formData.companyName} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">Select Company</option>
+                                    {companies.map(comp => (
+                                        <option key={comp} value={comp}>{comp}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
                     </div>
