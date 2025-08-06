@@ -20,7 +20,7 @@ const ManageTimesheetEmployeesPage = () => {
     
     const [generalFilter, setGeneralFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
-    const [columnFilters, setColumnFilters] = {};
+    const [columnFilters, setColumnFilters] = useState({});
 
     const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
     const [employeeToDelete, setEmployeeToDelete] = useState(null);
