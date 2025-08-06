@@ -5,15 +5,15 @@ import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../api/apiService';
 import { usePermissions } from '../../hooks/usePermissions';
 
-const BulkTimesheetApprovalRequestModal = ({ isOpen, onClose, onSave, selectedEmployeeIds }) => {
+const BulkTimesheetApprovalRequestModal = ({ isOpen, onClose, onSave, selectedEmployeeIds, commonCompanyName }) => { // NEW: Accept commonCompanyName prop
     const { user } = useAuth();
     const { canRequestTimesheetApproval } = usePermissions();
 
     const [month, setMonth] = useState('');
     const [year, setYear] = useState(new Date().getFullYear().toString());
     const [deadlineDate, setDeadlineDate] = useState('');
-    const [companyName, setCompanyName] = useState('');
-    const [companies, setCompanies] = useState([]); // State to store fetched companies
+    // const [companyName, setCompanyName] = useState(''); // REMOVED: No longer needed
+    // const [companies, setCompanies] = useState([]); // REMOVED: No longer needed
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -30,30 +30,41 @@ const BulkTimesheetApprovalRequestModal = ({ isOpen, onClose, onSave, selectedEm
     const currentYear = new Date().getFullYear();
     const yearsOptions = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
 
-    // Fetch companies when modal opens
+    // REMOVED: Fetch companies effect as companyName is now passed as a prop
+    // useEffect(() => {
+    //     const fetchCompanies = async () => {
+    //         if (!user?.userIdentifier || !canRequestTimesheetApproval) return;
+    //         try {
+    //             const response = await apiService.getCompanies(user.userIdentifier);
+    //             if (response.data.success) {
+    //                 setCompanies(response.data.companies.map(c => c.companyName));
+    //             }
+    //         } catch (err) {
+    //             console.error("Failed to fetch companies for modal:", err);
+    //             setError("Failed to load companies for selection.");
+    //         }
+    //     };
+    //     if (isOpen) {
+    //         fetchCompanies();
+    //         // Reset form fields when modal opens
+    //         setMonth('');
+    //         setDeadlineDate('');
+    //         setCompanyName(''); // Reset company name too
+    //         setError('');
+    //         setSuccess('');
+    //     }
+    // }, [isOpen, user?.userIdentifier, canRequestTimesheetApproval]);
+
     useEffect(() => {
-        const fetchCompanies = async () => {
-            if (!user?.userIdentifier || !canRequestTimesheetApproval) return;
-            try {
-                const response = await apiService.getCompanies(user.userIdentifier);
-                if (response.data.success) {
-                    setCompanies(response.data.companies.map(c => c.companyName));
-                }
-            } catch (err) {
-                console.error("Failed to fetch companies for modal:", err);
-                setError("Failed to load companies for selection.");
-            }
-        };
         if (isOpen) {
-            fetchCompanies();
             // Reset form fields when modal opens
             setMonth('');
             setDeadlineDate('');
-            setCompanyName(''); // Reset company name too
             setError('');
             setSuccess('');
         }
-    }, [isOpen, user?.userIdentifier, canRequestTimesheetApproval]);
+    }, [isOpen]);
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -61,8 +72,8 @@ const BulkTimesheetApprovalRequestModal = ({ isOpen, onClose, onSave, selectedEm
             setError("You do not have permission to send bulk timesheet approvals.");
             return;
         }
-        if (!month || !year || !deadlineDate || !companyName) {
-            setError("Please fill in all required fields (Month, Year, Deadline Date, Company Name).");
+        if (!month || !year || !deadlineDate || !commonCompanyName) { // NEW: Validate commonCompanyName
+            setError("Please fill in all required fields (Month, Year, Deadline Date). A common company name is required.");
             return;
         }
         if (selectedEmployeeIds.length === 0) {
@@ -75,7 +86,7 @@ const BulkTimesheetApprovalRequestModal = ({ isOpen, onClose, onSave, selectedEm
         setLoading(true);
 
         try {
-            await onSave({ month, year, deadlineDate, companyName }); // Pass data to parent's onSave
+            await onSave({ month, year, deadlineDate, companyName: commonCompanyName }); // NEW: Pass commonCompanyName to onSave
             setSuccess("Bulk request sent successfully!");
             setTimeout(() => {
                 onClose();
@@ -103,7 +114,7 @@ const BulkTimesheetApprovalRequestModal = ({ isOpen, onClose, onSave, selectedEm
             {canRequestTimesheetApproval && (
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <p className="text-gray-700">
-                        Sending request to **{selectedEmployeeIds.length}** selected employee(s).
+                        Sending request to **{selectedEmployeeIds.length}** selected employee(s) for company **{commonCompanyName || 'N/A'}**.
                     </p>
                     <div>
                         <label htmlFor="month" className="block text-sm font-medium text-gray-700">Month <span className="text-red-500">*</span></label>
@@ -123,7 +134,8 @@ const BulkTimesheetApprovalRequestModal = ({ isOpen, onClose, onSave, selectedEm
                             ))}
                         </select>
                     </div>
-                    <div>
+                    {/* REMOVED: Company Name dropdown as it's now passed as a prop */}
+                    {/* <div>
                         <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Company Name <span className="text-red-500">*</span></label>
                         <select name="companyName" id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500" disabled={loading}>
                             <option value="">Select Company</option>
@@ -131,7 +143,7 @@ const BulkTimesheetApprovalRequestModal = ({ isOpen, onClose, onSave, selectedEm
                                 <option key={comp} value={comp}>{comp}</option>
                             ))}
                         </select>
-                    </div>
+                    </div> */}
                     <div>
                         <label htmlFor="deadlineDate" className="block text-sm font-medium text-gray-700">Deadline Date to Share <span className="text-red-500">*</span></label>
                         <input

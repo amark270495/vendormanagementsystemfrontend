@@ -32,6 +32,7 @@ const ManageTimesheetEmployeesPage = () => {
     const [employeeForTimesheetApproval, setEmployeeForTimesheetApproval] = useState(null);
 
     const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
+    const [commonCompanyName, setCommonCompanyName] = useState(null); // NEW: To store the common company name
     const [isBulkApprovalModalOpen, setIsBulkApprovalModalOpen] = useState(false);
 
     const tableHeader = useMemo(() => {
@@ -55,7 +56,6 @@ const ManageTimesheetEmployeesPage = () => {
         try {
             const result = await apiService.getTimesheetEmployees(user.userIdentifier);
             if (result.data.success) {
-                // FIX: Ensure result.data.employees is an array, default to empty array if not
                 setEmployees(Array.isArray(result.data.employees) ? result.data.employees : []); 
             } else {
                 setError(result.data.message);
@@ -70,6 +70,29 @@ const ManageTimesheetEmployeesPage = () => {
     useEffect(() => {
         loadEmployees();
     }, [loadEmployees]);
+
+    // NEW: Effect to determine commonCompanyName when selections change
+    useEffect(() => {
+        if (selectedEmployeeIds.length === 0) {
+            setCommonCompanyName(null);
+            return;
+        }
+        const selectedEmps = employees.filter(emp => selectedEmployeeIds.includes(emp.employeeId));
+        if (selectedEmps.length === 0) { // Should not happen if selectedEmployeeIds is derived from 'employees'
+            setCommonCompanyName(null);
+            return;
+        }
+
+        const firstCompanyName = selectedEmps[0].companyName;
+        const allSameCompany = selectedEmps.every(emp => emp.companyName === firstCompanyName);
+
+        if (allSameCompany) {
+            setCommonCompanyName(firstCompanyName);
+        } else {
+            setCommonCompanyName(null); // Indicates mixed companies
+        }
+    }, [selectedEmployeeIds, employees]);
+
 
     const filteredAndSortedData = useMemo(() => {
         let data = employees.map(emp => ({
@@ -207,6 +230,10 @@ const ManageTimesheetEmployeesPage = () => {
             setError("Please select at least one employee to send a bulk request.");
             return;
         }
+        if (!commonCompanyName) { // NEW: Check if a common company name exists
+            setError("Selected employees belong to different companies. Please select employees from the same company for a bulk request.");
+            return;
+        }
         setIsBulkApprovalModalOpen(true);
     };
 
@@ -218,7 +245,7 @@ const ManageTimesheetEmployeesPage = () => {
                 bulkData.month,
                 bulkData.year,
                 bulkData.deadlineDate,
-                bulkData.companyName,
+                commonCompanyName, // Use the determined commonCompanyName
                 user.userIdentifier
             );
             if (response.data.success) {
@@ -263,8 +290,8 @@ const ManageTimesheetEmployeesPage = () => {
                         {canRequestTimesheetApproval && selectedEmployeeIds.length > 0 && (
                             <button
                                 onClick={handleSendBulkRequest}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                                disabled={loading}
+                                className={`px-4 py-2 text-white rounded-md ${commonCompanyName ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'}`} // NEW: Conditional styling
+                                disabled={loading || !commonCompanyName} // NEW: Disable if no common company
                             >
                                 Send Bulk Request ({selectedEmployeeIds.length})
                             </button>
@@ -414,6 +441,7 @@ const ManageTimesheetEmployeesPage = () => {
                     onClose={() => setIsBulkApprovalModalOpen(false)}
                     onSave={handleBulkApprovalSave}
                     selectedEmployeeIds={selectedEmployeeIds}
+                    commonCompanyName={commonCompanyName} {/* NEW: Pass commonCompanyName to modal */}
                 />
             )}
         </>
