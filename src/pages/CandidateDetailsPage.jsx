@@ -5,7 +5,7 @@ import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
-// import RequestCandidateTimesheetApprovalModal from '../components/timesheets/RequestCandidateTimesheetApprovalModal'; // REMOVED: No longer needed here
+import RequestCandidateTimesheetApprovalModal from '../components/timesheets/RequestCandidateTimesheetApprovalModal'; // Re-import if needed for other features, but removed from direct use here
 import { formatDate } from '../utils/helpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -13,8 +13,7 @@ import { usePermissions } from '../hooks/usePermissions';
 
 const CandidateDetailsPage = () => {
     const { user } = useAuth();
-    // Removed canRequestTimesheetApproval from destructuring as it's not used here anymore for this specific action
-    const { canViewCandidates, canEditDashboard } = usePermissions(); 
+    const { canViewCandidates, canEditDashboard, canRequestTimesheetApproval } = usePermissions();
 
     const [candidates, setCandidates] = useState([]);
     const [duplicateEmails, setDuplicateEmails] = useState([]);
@@ -28,7 +27,7 @@ const CandidateDetailsPage = () => {
     const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
     const [candidateToEdit, setCandidateToEdit] = useState(null);
 
-    // Removed states related to timesheet approval modal
+    // Removed states related to timesheet approval modal from this page, as it's now on ManageTimesheetEmployeesPage
     // const [isTimesheetApprovalModalOpen, setIsTimesheetApprovalModalOpen] = useState(false);
     // const [candidateForTimesheetApproval, setCandidateForTimesheetApproval] = useState(null);
 
@@ -36,19 +35,18 @@ const CandidateDetailsPage = () => {
         const baseHeaders = [
             'Full Name', 'Email', 'Mobile Number', 'Current Role', 
             'Current Location', 'Submitted For (Posting ID)', 'Client Info', 
-            'Submitted By', 'Submission Date'
+            'Submitted By', 'Submission Date', 'Remarks', 'Resume Worked By' // NEW: Added Remarks and Resume Worked By
         ];
         // Only add 'Actions' if canEditDashboard is true
-        if (canEditDashboard) { // Only check for canEditDashboard now
+        if (canEditDashboard) { 
             return [...baseHeaders, 'Actions'];
         }
         return baseHeaders;
-    }, [canEditDashboard]); // Re-evaluate header if canEditDashboard permission changes
+    }, [canEditDashboard]); 
 
     const loadData = useCallback(async () => {
         setLoading(true);
         setError('');
-        // Only attempt to load data if the user has permission
         if (!canViewCandidates) {
             setLoading(false);
             setError("You do not have permission to view candidate details.");
@@ -85,7 +83,9 @@ const CandidateDetailsPage = () => {
                 c.postingId,
                 c.clientInfo,
                 c.submittedBy,
-                c.submissionDate
+                c.submissionDate,
+                c.remarks, // NEW: Map remarks
+                c.resumeWorkedBy // NEW: Map resumeWorkedBy
             ]
         }));
     }, [candidates]);
@@ -164,7 +164,7 @@ const CandidateDetailsPage = () => {
         }
     };
 
-    // Removed handler for timesheet approval
+    // Removed handler for timesheet approval from this page
     // const handleRequestTimesheetApprovalClick = (candidateData) => {
     //     if (!canRequestTimesheetApproval) return;
     //     setCandidateForTimesheetApproval(candidateData);
@@ -278,6 +278,11 @@ const CandidateDetailsPage = () => {
                                                         tdClasses += " break-all";
                                                         tdStyle.minWidth = headerName === 'Email' ? '200px' : '150px';
                                                     }
+                                                    // NEW: Apply specific styling for Remarks and Resume Worked By to ensure text wrapping
+                                                    if (headerName === 'Remarks' || headerName === 'Resume Worked By') {
+                                                        tdClasses += " whitespace-normal"; // Allow text to wrap
+                                                        tdStyle.minWidth = '150px'; // Give it some space
+                                                    }
 
                                                     return (
                                                         <td 
@@ -309,14 +314,6 @@ const CandidateDetailsPage = () => {
                 onSave={handleSaveCandidate}
                 candidateToEdit={candidateToEdit}
             />
-            {/* Removed the RequestCandidateTimesheetApprovalModal from here */}
-            {/* {candidateForTimesheetApproval && (
-                <RequestCandidateTimesheetApprovalModal
-                    isOpen={isTimesheetApprovalModalOpen}
-                    onClose={() => setIsTimesheetApprovalModalOpen(false)}
-                    candidate={candidateForTimesheetApproval}
-                />
-            )} */}
         </>
     );
 };
