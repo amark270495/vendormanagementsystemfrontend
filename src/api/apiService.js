@@ -96,7 +96,7 @@ export const apiService = {
   updateCompany: (originalCompanyName, updatedCompanyData, authenticatedUsername) =>
     apiClient.post('/updateCompany', { originalCompanyName, updatedCompanyData, authenticatedUsername }),
 
-  deleteCompany: (companyNameToDelete, authenticatedUsername) => // NEW: Added deleteCompany
+  deleteCompany: (companyNameToDelete, authenticatedUsername) => 
     apiClient.post('/deleteCompany', { companyNameToDelete, authenticatedUsername }),
 
   saveEmployeeLogHours: (timesheetData, authenticatedUsername) =>
@@ -108,7 +108,7 @@ export const apiService = {
   updateEmployeeLogHours: (originalRowKey, updatedTimesheetData, authenticatedUsername) =>
     apiClient.post('/updateEmployeeLogHours', { originalRowKey, updatedTimesheetData, authenticatedUsername }),
 
-  deleteEmployeeLogHours: (partitionKey, rowKey, authenticatedUsername) => // NEW: Added deleteEmployeeLogHours
+  deleteEmployeeLogHours: (partitionKey, rowKey, authenticatedUsername) => 
     apiClient.post('/deleteEmployeeLogHours', { partitionKey, rowKey, authenticatedUsername }),
 
   getCompanies: (authenticatedUsername) => 
@@ -120,7 +120,7 @@ export const apiService = {
   updateTimesheetEmployee: (originalEmployeeId, updatedEmployeeData, authenticatedUsername) => 
     apiClient.post('/updateTimesheetEmployee', { originalEmployeeId, updatedEmployeeData, authenticatedUsername }),
 
-  deleteTimesheetEmployee: (employeeIdToDelete, authenticatedUsername) => // NEW: Added deleteTimesheetEmployee
+  deleteTimesheetEmployee: (employeeIdToDelete, authenticatedUsername) => 
     apiClient.post('/deleteTimesheetEmployee', { employeeIdToDelete, authenticatedUsername }),
 
   getTimesheetEmployees: (authenticatedUsername) => 
@@ -128,4 +128,7 @@ export const apiService = {
 
   sendTimesheetApprovalRequest: (employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername) =>
     apiClient.post('/sendTimesheetApprovalRequest', { employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername }),
+    
+  sendBulkTimesheetApprovalRequest: (employeeIds, month, year, deadlineDate, companyName, authenticatedUsername) => // NEW: Bulk Timesheet Approval Request
+    apiClient.post('/sendBulkTimesheetApprovalRequest', { employeeIds, month, year, deadlineDate, companyName, authenticatedUsername }),
 };
