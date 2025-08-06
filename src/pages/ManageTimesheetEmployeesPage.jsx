@@ -5,7 +5,7 @@ import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu'; // Reusing for sorting/filtering
 import ConfirmationModal from '../components/dashboard/ConfirmationModal'; // Reusing for deletion confirmation
-import { usePermissions } from require('../hooks/usePermissions');
+import { usePermissions } from '../hooks/usePermissions';
 import EditTimesheetEmployeeModal from '../components/timesheets/EditTimesheetEmployeeModal';
 import RequestTimesheetApprovalForEmployeeModal from '../components/timesheets/RequestTimesheetApprovalForEmployeeModal'; // NEW: Import the modal
 
