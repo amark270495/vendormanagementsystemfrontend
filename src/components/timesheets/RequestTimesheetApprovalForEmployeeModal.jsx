@@ -12,8 +12,8 @@ const RequestTimesheetApprovalForEmployeeModal = ({ isOpen, onClose, timesheetEm
     const [month, setMonth] = useState('');
     const [year, setYear] = useState(new Date().getFullYear().toString());
     const [deadlineDate, setDeadlineDate] = useState('');
-    const [companyName, setCompanyName] = useState('');
-    const [companies, setCompanies] = useState([]);
+    // const [companyName, setCompanyName] = useState(''); // REMOVED: No longer needed
+    // const [companies, setCompanies] = useState([]); // REMOVED: No longer needed
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -31,28 +31,15 @@ const RequestTimesheetApprovalForEmployeeModal = ({ isOpen, onClose, timesheetEm
     const yearsOptions = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
 
     useEffect(() => {
-        const fetchCompanies = async () => {
-            if (!user?.userIdentifier || !canRequestTimesheetApproval) return;
-            try {
-                const response = await apiService.getCompanies(user.userIdentifier);
-                if (response.data.success) {
-                    setCompanies(response.data.companies.map(c => c.companyName));
-                }
-            } catch (err) {
-                console.error("Failed to fetch companies for modal:", err);
-                setError("Failed to load companies for selection.");
-            }
-        };
         if (isOpen) {
-            fetchCompanies();
             // Reset form fields when modal opens
             setMonth('');
             setDeadlineDate('');
-            setCompanyName('');
+            // setCompanyName(''); // REMOVED
             setError('');
             setSuccess('');
         }
-    }, [isOpen, user?.userIdentifier, canRequestTimesheetApproval]);
+    }, [isOpen]); // Removed user?.userIdentifier, canRequestTimesheetApproval from dependencies as companies are not fetched here
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -60,8 +47,8 @@ const RequestTimesheetApprovalForEmployeeModal = ({ isOpen, onClose, timesheetEm
             setError("You do not have permission to request timesheet approvals.");
             return;
         }
-        if (!month || !year || !deadlineDate || !companyName) {
-            setError("Please fill in all required fields (Month, Year, Deadline Date, Company Name).");
+        if (!month || !year || !deadlineDate) { // Removed companyName from validation
+            setError("Please fill in all required fields (Month, Year, Deadline Date).");
             return;
         }
 
@@ -71,12 +58,12 @@ const RequestTimesheetApprovalForEmployeeModal = ({ isOpen, onClose, timesheetEm
 
         try {
             const response = await apiService.sendTimesheetApprovalRequest(
-                timesheetEmployee.employeeMail, // Use timesheetEmployee's email
-                timesheetEmployee.employeeName, // Use timesheetEmployee's name
+                timesheetEmployee.employeeMail,
+                timesheetEmployee.employeeName,
                 month,
                 year,
                 deadlineDate,
-                companyName,
+                timesheetEmployee.companyName, // Use companyName directly from timesheetEmployee
                 user.userIdentifier
             );
             if (response.data.success) {
@@ -110,7 +97,7 @@ const RequestTimesheetApprovalForEmployeeModal = ({ isOpen, onClose, timesheetEm
             {canRequestTimesheetApproval && timesheetEmployee && (
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <p className="text-gray-700">
-                        Request timesheet approval for **{timesheetEmployee.employeeName}** (Email: **{timesheetEmployee.employeeMail}**).
+                        Request timesheet approval for **{timesheetEmployee.employeeName}** (Email: **{timesheetEmployee.employeeMail}**) for company **{timesheetEmployee.companyName}**.
                     </p>
                     <div>
                         <label htmlFor="month" className="block text-sm font-medium text-gray-700">Month <span className="text-red-500">*</span></label>
@@ -130,7 +117,8 @@ const RequestTimesheetApprovalForEmployeeModal = ({ isOpen, onClose, timesheetEm
                             ))}
                         </select>
                     </div>
-                    <div>
+                    {/* REMOVED: Company Name dropdown as it's now auto-filled */}
+                    {/* <div>
                         <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Company Name <span className="text-red-500">*</span></label>
                         <select name="companyName" id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500" disabled={loading}>
                             <option value="">Select Company</option>
@@ -138,7 +126,7 @@ const RequestTimesheetApprovalForEmployeeModal = ({ isOpen, onClose, timesheetEm
                                 <option key={comp} value={comp}>{comp}</option>
                             ))}
                         </select>
-                    </div>
+                    </div> */}
                     <div>
                         <label htmlFor="deadlineDate" className="block text-sm font-medium text-gray-700">Deadline Date to Share <span className="text-red-500">*</span></label>
                         <input
