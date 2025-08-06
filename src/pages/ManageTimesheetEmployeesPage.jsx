@@ -441,7 +441,7 @@ const ManageTimesheetEmployeesPage = () => {
                     onClose={() => setIsBulkApprovalModalOpen(false)}
                     onSave={handleBulkApprovalSave}
                     selectedEmployeeIds={selectedEmployeeIds}
-                    commonCompanyName={commonCompanyName} {/* NEW: Pass commonCompanyName to modal */}
+                    commonCompanyName={commonCompanyName}
                 />
             )}
         </>
