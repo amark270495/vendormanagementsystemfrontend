@@ -12,14 +12,14 @@ const CreateTimesheetEmployeePage = () => {
         employeeName: '',
         employeeId: '',
         employeeMail: '',
-        companyName: '' // NEW: Add companyName to formData
+        companyName: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [companies, setCompanies] = useState([]); // NEW: State to store fetched companies
+    const [companies, setCompanies] = useState([]);
 
-    // NEW: Fetch companies when the component mounts
+    // Fetch companies when the component mounts
     useEffect(() => {
         const fetchCompanies = async () => {
             if (!user?.userIdentifier || !canManageTimesheets) return;
@@ -36,14 +36,35 @@ const CreateTimesheetEmployeePage = () => {
         fetchCompanies();
     }, [user?.userIdentifier, canManageTimesheets]);
 
+    // Function to generate a simple unique ID based on company name
+    const generateEmployeeId = (companyName) => {
+        if (!companyName) return '';
+        const prefix = companyName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
+        const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase(); // 6 random chars
+        return `${prefix}-${randomSuffix}`;
+    };
+
     const handleChange = (e) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+
+        // Auto-generate employeeId when companyName changes
+        if (name === 'companyName') {
+            const newEmployeeId = generateEmployeeId(value);
+            setFormData(prev => ({ ...prev, companyName: value, employeeId: newEmployeeId }));
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!canManageTimesheets) {
             setError("You do not have permission to create timesheet employees.");
+            return;
+        }
+
+        // Basic validation for auto-generated ID
+        if (!formData.employeeId) {
+            setError("Employee ID could not be generated. Please select a company name.");
             return;
         }
 
@@ -59,7 +80,7 @@ const CreateTimesheetEmployeePage = () => {
                     employeeName: '',
                     employeeId: '',
                     employeeMail: '',
-                    companyName: '' // NEW: Clear companyName on success
+                    companyName: ''
                 });
                 setTimeout(() => setSuccess(''), 3000);
             } else {
@@ -95,16 +116,8 @@ const CreateTimesheetEmployeePage = () => {
                                 <label htmlFor="employeeName" className="block text-sm font-medium text-gray-700">Employee Name <span className="text-red-500">*</span></label>
                                 <input type="text" name="employeeName" id="employeeName" value={formData.employeeName} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
                             </div>
-                            <div>
-                                <label htmlFor="employeeId" className="block text-sm font-medium text-gray-700">Employee ID <span className="text-red-500">*</span></label>
-                                <input type="text" name="employeeId" id="employeeId" value={formData.employeeId} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </div>
-                            <div className="md:col-span-2">
-                                <label htmlFor="employeeMail" className="block text-sm font-medium text-gray-700">Employee Email <span className="text-red-500">*</span></label>
-                                <input type="email" name="employeeMail" id="employeeMail" value={formData.employeeMail} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </div>
                             {/* NEW: Company Name dropdown */}
-                            <div className="md:col-span-2">
+                            <div>
                                 <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Company Name <span className="text-red-500">*</span></label>
                                 <select name="companyName" id="companyName" value={formData.companyName} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500">
                                     <option value="">Select Company</option>
@@ -112,6 +125,15 @@ const CreateTimesheetEmployeePage = () => {
                                         <option key={comp} value={comp}>{comp}</option>
                                     ))}
                                 </select>
+                            </div>
+                            {/* NEW: Employee ID is now readOnly and auto-generated */}
+                            <div>
+                                <label htmlFor="employeeId" className="block text-sm font-medium text-gray-700">Employee ID <span className="text-red-500">*</span></label>
+                                <input type="text" name="employeeId" id="employeeId" value={formData.employeeId} readOnly className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 bg-gray-100" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="employeeMail" className="block text-sm font-medium text-gray-700">Employee Email <span className="text-red-500">*</span></label>
+                                <input type="email" name="employeeMail" id="employeeMail" value={formData.employeeMail} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
                             </div>
                         </div>
                     </div>
