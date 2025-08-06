@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../Modal';
 import Spinner from '../Spinner';
-import { usePermissions } from '../../hooks/usePermissions'; // <-- Import usePermissions
+import { usePermissions } from '../../hooks/usePermissions';
 
 const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEdit }) => {
     const { canEditDashboard } = usePermissions(); 
@@ -15,17 +15,18 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
         if (isOpen) {
             const initialData = isEditMode ? {
                 ...candidateToEdit,
-                postingId: candidateToEdit.PartitionKey,
-                remarks: candidateToEdit.remarks || '', // NEW: Initialize remarks
-                resumeWorkedBy: candidateToEdit.resumeWorkedBy || '' // NEW: Initialize resumeWorkedBy
+                // Ensure postingId is correctly set for edit mode, it's the PartitionKey
+                postingId: candidateToEdit.postingId || candidateToEdit.PartitionKey || '', 
+                remarks: candidateToEdit.remarks || '', // Initialize remarks
+                resumeWorkedBy: candidateToEdit.resumeWorkedBy || '' // Initialize resumeWorkedBy
             } : {
                 postingId: jobInfo?.postingId || '',
                 clientInfo: jobInfo?.clientInfo || '',
                 firstName: '', middleName: '', lastName: '',
                 email: '', mobileNumber: '',
                 currentRole: '', currentLocation: '',
-                remarks: '', // NEW: Initialize remarks for new candidate
-                resumeWorkedBy: '' // NEW: Initialize resumeWorkedBy for new candidate
+                remarks: '', // Initialize remarks for new candidate
+                resumeWorkedBy: '' // Initialize resumeWorkedBy for new candidate
             };
             setFormData(initialData);
             setError('');
@@ -94,7 +95,7 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                         <label className="block text-sm font-medium text-gray-700">Current Location <span className="text-red-500">*</span></label>
                         <input type="text" name="currentLocation" value={formData.currentLocation || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required disabled={!canEditDashboard} />
                     </div>
-                    {/* NEW: Remarks field */}
+                    {/* Remarks field */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Remarks</label>
                         <select name="remarks" value={formData.remarks || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 h-[42px]" disabled={!canEditDashboard}>
@@ -103,11 +104,11 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                             <option value="Interview In Progress">Interview In Progress</option>
                             <option value="Client Reject Due To Candidate Not Up To Mark">Client Reject Due To Candidate Not Up To Mark</option>
                             <option value="Rejected Due To Some Other Reasons">Rejected Due To Some Other Reasons</option>
-                            <option value="Candidate Selected">Candidate Selected</option> {/* NEW */}
-                            <option value="Client Rejected Details Not Mentioned">Client Rejected Details Not Mentioned</option> {/* NEW */}
+                            <option value="Candidate Selected">Candidate Selected</option>
+                            <option value="Client Rejected Details Not Mentioned">Client Rejected Details Not Mentioned</option>
                         </select>
                     </div>
-                    {/* NEW: Resume Worked By field (Read-only) */}
+                    {/* Resume Worked By field (Read-only) */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Resume Worked By</label>
                         <input type="text" name="resumeWorkedBy" value={formData.resumeWorkedBy || ''} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100" readOnly />
