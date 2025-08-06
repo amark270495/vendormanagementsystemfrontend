@@ -31,7 +31,7 @@ const NUMBER_COLUMNS = ['# Submitted', 'Max Submissions'];
 const DashboardPage = ({ sheetKey }) => {
     const { user, updatePreferences } = useAuth();
     // NEW: Destructure canEditDashboard from usePermissions
-    const { canEditDashboard } = usePermissions(); 
+    const { canEditDashboard, canViewDashboards, canAddPosting, canEmailReports } = usePermissions(); 
 
     const [rawData, setRawData] = useState({ header: [], rows: [] });
     const [loading, setLoading] = useState(true);
@@ -201,8 +201,8 @@ const DashboardPage = ({ sheetKey }) => {
                         case 'contains': return cellValue.includes(filterValue1);
                         case 'not_contains': return !cellValue.includes(filterValue1);
                         case 'equals':
-                             if ((isNumber || isDate) && !isNaN(cellNum) && !isNaN(val1Num)) return cellNum === val1Num;
-                             return cellValue === filterValue1;
+                            if ((isNumber || isDate) && !isNaN(cellNum) && !isNaN(val1Num)) return cellNum === val1Num;
+                            return cellValue === filterValue1;
                         case 'above':
                             if ((isNumber || isDate) && !isNaN(cellNum) && !isNaN(val1Num)) return cellNum > val1Num;
                             return cellValue > filterValue1;
@@ -390,6 +390,7 @@ const DashboardPage = ({ sheetKey }) => {
             const jobInfo = {
                 postingId: rowData[displayHeader.indexOf('Posting ID')],
                 clientInfo: rowData[displayHeader.indexOf('Client Info')],
+                resumeWorkedBy: rowData[displayHeader.indexOf('Working By')], // FIX: Pass Working By to CandidateDetailsModal
                 candidateSlot: headerName
             };
             setModalState({ type: 'addCandidate', data: jobInfo });
@@ -401,7 +402,7 @@ const DashboardPage = ({ sheetKey }) => {
             <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
             
             <div className="bg-white p-4 rounded-lg shadow-sm border flex flex-wrap items-center justify-between gap-4">
-                 <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                     <input type="text" placeholder="Search all columns..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md px-3 py-2"/>
                     <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md px-3 py-2">
                         <option value="">All Statuses</option>

@@ -18,15 +18,17 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                 // Ensure postingId is correctly set for edit mode, it's the PartitionKey
                 postingId: candidateToEdit.postingId || candidateToEdit.PartitionKey || '', 
                 remarks: candidateToEdit.remarks || '', // Initialize remarks
-                resumeWorkedBy: candidateToEdit.resumeWorkedBy || '' // Initialize resumeWorkedBy
+                // For edit mode, resumeWorkedBy comes from the existing candidateToEdit object
+                resumeWorkedBy: candidateToEdit.resumeWorkedBy || '' 
             } : {
                 postingId: jobInfo?.postingId || '',
                 clientInfo: jobInfo?.clientInfo || '',
                 firstName: '', middleName: '', lastName: '',
                 email: '', mobileNumber: '',
                 currentRole: '', currentLocation: '',
-                remarks: '', // Initialize remarks for new candidate
-                resumeWorkedBy: '' // Initialize resumeWorkedBy for new candidate
+                remarks: '',
+                // NEW: For add mode, resumeWorkedBy comes from jobInfo (which should have job.workingBy)
+                resumeWorkedBy: jobInfo?.resumeWorkedBy || '' 
             };
             setFormData(initialData);
             setError('');
