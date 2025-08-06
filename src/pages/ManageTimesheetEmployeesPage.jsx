@@ -5,12 +5,13 @@ import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu'; // Reusing for sorting/filtering
 import ConfirmationModal from '../components/dashboard/ConfirmationModal'; // Reusing for deletion confirmation
-import { usePermissions } from '../hooks/usePermissions';
-import EditTimesheetEmployeeModal from '../components/timesheets/EditTimesheetEmployeeModal'; // NEW: Import Edit Modal
+import { usePermissions } from require('../hooks/usePermissions');
+import EditTimesheetEmployeeModal from '../components/timesheets/EditTimesheetEmployeeModal';
+import RequestTimesheetApprovalForEmployeeModal from '../components/timesheets/RequestTimesheetApprovalForEmployeeModal'; // NEW: Import the modal
 
 const ManageTimesheetEmployeesPage = () => {
     const { user } = useAuth();
-    const { canManageTimesheets } = usePermissions();
+    const { canManageTimesheets, canRequestTimesheetApproval } = usePermissions(); // NEW: Include canRequestTimesheetApproval
 
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -23,12 +24,22 @@ const ManageTimesheetEmployeesPage = () => {
     const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
     const [employeeToDelete, setEmployeeToDelete] = useState(null);
 
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false); // NEW: State for Edit Modal
-    const [employeeToEdit, setEmployeeToEdit] = useState(null); // NEW: State for employee being edited
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [employeeToEdit, setEmployeeToEdit] = useState(null);
 
-    const tableHeader = useMemo(() => [
-        'Employee Name', 'Employee ID', 'Employee Email', 'Created By', 'Created At', 'Actions'
-    ], []);
+    const [isTimesheetApprovalModalOpen, setIsTimesheetApprovalModalOpen] = useState(false); // NEW: State for Timesheet Approval Modal
+    const [employeeForTimesheetApproval, setEmployeeForTimesheetApproval] = useState(null); // NEW: State for employee being processed
+
+    const tableHeader = useMemo(() => {
+        const baseHeaders = [
+            'Employee Name', 'Employee ID', 'Employee Email', 'Created By', 'Created At'
+        ];
+        // Only add 'Actions' if either canManageTimesheets or canRequestTimesheetApproval is true
+        if (canManageTimesheets || canRequestTimesheetApproval) {
+            return [...baseHeaders, 'Actions'];
+        }
+        return baseHeaders;
+    }, [canManageTimesheets, canRequestTimesheetApproval]); // Re-evaluate header if permissions change
 
     const loadEmployees = useCallback(async () => {
         setLoading(true);
@@ -57,31 +68,34 @@ const ManageTimesheetEmployeesPage = () => {
     }, [loadEmployees]);
 
     const filteredAndSortedData = useMemo(() => {
-        let data = employees.map(emp => [
-            emp.employeeName,
-            emp.employeeId,
-            emp.employeeMail,
-            emp.createdBy,
-            new Date(emp.createdAt).toLocaleDateString(), // Format date
-        ]);
+        let data = employees.map(emp => ({ // Map to objects to easily access original properties
+            original: emp, // Store original object for edit/delete/request
+            display: [
+                emp.employeeName,
+                emp.employeeId,
+                emp.employeeMail,
+                emp.createdBy,
+                new Date(emp.createdAt).toLocaleDateString(), // Format date
+            ]
+        }));
 
         // General search filter
         if (generalFilter) {
             const lowercasedFilter = generalFilter.toLowerCase();
-            data = data.filter(row => 
-                row.some(cell => String(cell).toLowerCase().includes(lowercasedFilter))
+            data = data.filter(item => 
+                item.display.some(cell => String(cell).toLowerCase().includes(lowercasedFilter))
             );
         }
 
         // Column-specific filters (reusing HeaderMenu logic)
         if (Object.keys(columnFilters).length > 0) {
-            data = data.filter(row => {
+            data = data.filter(item => {
                 return Object.entries(columnFilters).every(([header, config]) => {
                     if (!config || !config.type || !config.value1) return true;
                     const colIndex = tableHeader.indexOf(header);
                     if (colIndex === -1) return true;
                     
-                    const cellValue = String(row[colIndex] || '').toLowerCase();
+                    const cellValue = String(item.display[colIndex] || '').toLowerCase();
                     const filterValue1 = String(config.value1).toLowerCase();
                     
                     switch (config.type) {
@@ -99,8 +113,8 @@ const ManageTimesheetEmployeesPage = () => {
             const sortIndex = tableHeader.indexOf(sortConfig.key);
             if (sortIndex !== -1) {
                 data.sort((a, b) => {
-                    let valA = a[sortIndex];
-                    let valB = b[sortIndex];
+                    let valA = a.display[sortIndex];
+                    let valB = b.display[sortIndex];
 
                     if (sortConfig.key === 'Created At') {
                         valA = new Date(valA).getTime() || 0;
@@ -163,6 +177,12 @@ const ManageTimesheetEmployeesPage = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleRequestTimesheetApprovalClick = (employeeData) => { // NEW: Handler for timesheet approval
+        if (!canRequestTimesheetApproval) return;
+        setEmployeeForTimesheetApproval(employeeData);
+        setIsTimesheetApprovalModalOpen(true);
     };
 
     return (
@@ -231,31 +251,38 @@ const ManageTimesheetEmployeesPage = () => {
                                 </thead>
                                 <tbody>
                                     {filteredAndSortedData.length > 0 ? (
-                                        filteredAndSortedData.map((row, rowIndex) => {
-                                            // Find the original employee object to pass to edit/delete handlers
-                                            const originalEmployee = employees.find(emp => emp.employeeId === row[tableHeader.indexOf('Employee ID')]);
+                                        filteredAndSortedData.map((item, rowIndex) => {
+                                            const originalEmployee = item.original;
+                                            const displayRow = item.display;
                                             return (
                                                 <tr key={rowIndex} className="bg-gray-50 border-b hover:bg-gray-100">
-                                                    {row.map((cell, cellIndex) => (
+                                                    {displayRow.map((cell, cellIndex) => (
                                                         <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle">
                                                             {cell}
                                                         </td>
                                                     ))}
                                                     <td className="px-4 py-3 border-r border-slate-200 last:border-r-0 flex space-x-2 justify-center">
-                                                        <button 
-                                                            onClick={() => handleEditClick(originalEmployee)} 
-                                                            className="text-gray-500 hover:text-indigo-600 p-1 rounded-md" 
-                                                            aria-label="Edit employee"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => handleDeleteClick(originalEmployee)} 
-                                                            className="text-gray-500 hover:text-red-600 p-1 rounded-md" 
-                                                            aria-label="Delete employee"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                                        </button>
+                                                        {canManageTimesheets && (
+                                                            <button 
+                                                                onClick={() => handleEditClick(originalEmployee)} 
+                                                                className="text-gray-500 hover:text-indigo-600 p-1 rounded-md" 
+                                                                aria-label="Edit employee"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                                            </button>
+                                                        )}
+                                                        {canManageTimesheets && (
+                                                            <button 
+                                                                onClick={() => handleDeleteClick(originalEmployee)} 
+                                                                className="text-gray-500 hover:text-red-600 p-1 rounded-md" 
+                                                                aria-label="Delete employee"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                                            </button>
+                                                        )}
+                                                        {canRequestTimesheetApproval && ( // NEW: Request Timesheet Approval button
+                                                            <button onClick={() => handleRequestTimesheetApprovalClick(originalEmployee)} className="text-blue-600 hover:text-blue-900 p-1 font-semibold">Request Timesheet</button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             );
@@ -289,6 +316,13 @@ const ManageTimesheetEmployeesPage = () => {
                     onClose={() => setIsEditModalOpen(false)}
                     onSave={handleSaveEmployee}
                     employeeToEdit={employeeToEdit}
+                />
+            )}
+            {employeeForTimesheetApproval && ( // NEW: Render RequestTimesheetApprovalForEmployeeModal
+                <RequestTimesheetApprovalForEmployeeModal
+                    isOpen={isTimesheetApprovalModalOpen}
+                    onClose={() => setIsTimesheetApprovalModalOpen(false)}
+                    timesheetEmployee={employeeForTimesheetApproval}
                 />
             )}
         </>

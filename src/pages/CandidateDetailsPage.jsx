@@ -5,7 +5,7 @@ import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
-import RequestCandidateTimesheetApprovalModal from '../components/timesheets/RequestCandidateTimesheetApprovalModal'; // NEW: Import the modal
+// import RequestCandidateTimesheetApprovalModal from '../components/timesheets/RequestCandidateTimesheetApprovalModal'; // REMOVED: No longer needed here
 import { formatDate } from '../utils/helpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -13,7 +13,8 @@ import { usePermissions } from '../hooks/usePermissions';
 
 const CandidateDetailsPage = () => {
     const { user } = useAuth();
-    const { canViewCandidates, canEditDashboard, canRequestTimesheetApproval } = usePermissions(); // NEW: Include canRequestTimesheetApproval
+    // Removed canRequestTimesheetApproval from destructuring as it's not used here anymore for this specific action
+    const { canViewCandidates, canEditDashboard } = usePermissions(); 
 
     const [candidates, setCandidates] = useState([]);
     const [duplicateEmails, setDuplicateEmails] = useState([]);
@@ -27,8 +28,9 @@ const CandidateDetailsPage = () => {
     const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
     const [candidateToEdit, setCandidateToEdit] = useState(null);
 
-    const [isTimesheetApprovalModalOpen, setIsTimesheetApprovalModalOpen] = useState(false); // NEW: State for Timesheet Approval Modal
-    const [candidateForTimesheetApproval, setCandidateForTimesheetApproval] = useState(null); // NEW: State for candidate being processed
+    // Removed states related to timesheet approval modal
+    // const [isTimesheetApprovalModalOpen, setIsTimesheetApprovalModalOpen] = useState(false);
+    // const [candidateForTimesheetApproval, setCandidateForTimesheetApproval] = useState(null);
 
     const tableHeader = useMemo(() => {
         const baseHeaders = [
@@ -36,12 +38,12 @@ const CandidateDetailsPage = () => {
             'Current Location', 'Submitted For (Posting ID)', 'Client Info', 
             'Submitted By', 'Submission Date'
         ];
-        // Only add 'Actions' if either canEditDashboard or canRequestTimesheetApproval is true
-        if (canEditDashboard || canRequestTimesheetApproval) {
+        // Only add 'Actions' if canEditDashboard is true
+        if (canEditDashboard) { // Only check for canEditDashboard now
             return [...baseHeaders, 'Actions'];
         }
         return baseHeaders;
-    }, [canEditDashboard, canRequestTimesheetApproval]); // Re-evaluate header if permissions change
+    }, [canEditDashboard]); // Re-evaluate header if canEditDashboard permission changes
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -162,11 +164,12 @@ const CandidateDetailsPage = () => {
         }
     };
 
-    const handleRequestTimesheetApprovalClick = (candidateData) => { // NEW: Handler for timesheet approval
-        if (!canRequestTimesheetApproval) return;
-        setCandidateForTimesheetApproval(candidateData);
-        setIsTimesheetApprovalModalOpen(true);
-    };
+    // Removed handler for timesheet approval
+    // const handleRequestTimesheetApprovalClick = (candidateData) => {
+    //     if (!canRequestTimesheetApproval) return;
+    //     setCandidateForTimesheetApproval(candidateData);
+    //     setIsTimesheetApprovalModalOpen(true);
+    // };
 
     const downloadPdf = () => {
         const doc = new jsPDF('landscape');
@@ -286,14 +289,9 @@ const CandidateDetailsPage = () => {
                                                         </td>
                                                     );
                                                 })}
-                                                {(canEditDashboard || canRequestTimesheetApproval) && ( // Only render actions if user has permission
+                                                {canEditDashboard && ( // Only render actions if user has permission
                                                     <td className="px-4 py-3 border-r border-slate-200 last:border-r-0 flex space-x-2">
-                                                        {canEditDashboard && (
-                                                            <button onClick={() => handleEditClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 p-1 font-semibold">Edit</button>
-                                                        )}
-                                                        {canRequestTimesheetApproval && ( // NEW: Request Timesheet Approval button
-                                                            <button onClick={() => handleRequestTimesheetApprovalClick(originalCandidate)} className="text-blue-600 hover:text-blue-900 p-1 font-semibold">Request Timesheet</button>
-                                                        )}
+                                                        <button onClick={() => handleEditClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 p-1 font-semibold">Edit</button>
                                                     </td>
                                                 )}
                                             </tr>
@@ -311,13 +309,14 @@ const CandidateDetailsPage = () => {
                 onSave={handleSaveCandidate}
                 candidateToEdit={candidateToEdit}
             />
-            {candidateForTimesheetApproval && ( // NEW: Render RequestCandidateTimesheetApprovalModal
+            {/* Removed the RequestCandidateTimesheetApprovalModal from here */}
+            {/* {candidateForTimesheetApproval && (
                 <RequestCandidateTimesheetApprovalModal
                     isOpen={isTimesheetApprovalModalOpen}
                     onClose={() => setIsTimesheetApprovalModalOpen(false)}
                     candidate={candidateForTimesheetApproval}
                 />
-            )}
+            )} */}
         </>
     );
 };
