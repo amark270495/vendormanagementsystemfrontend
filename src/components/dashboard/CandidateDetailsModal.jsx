@@ -15,11 +15,10 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
         if (isOpen) {
             const initialData = isEditMode ? {
                 ...candidateToEdit,
-                // Ensure postingId is correctly set for edit mode, it's the PartitionKey
                 postingId: candidateToEdit.postingId || candidateToEdit.PartitionKey || '', 
-                remarks: candidateToEdit.remarks || '', // Initialize remarks
-                // For edit mode, resumeWorkedBy comes from the existing candidateToEdit object
-                resumeWorkedBy: candidateToEdit.resumeWorkedBy || '' 
+                remarks: candidateToEdit.remarks || '',
+                resumeWorkedBy: candidateToEdit.resumeWorkedBy || '',
+                referenceFrom: candidateToEdit.referenceFrom || '' // NEW: Initialize referenceFrom
             } : {
                 postingId: jobInfo?.postingId || '',
                 clientInfo: jobInfo?.clientInfo || '',
@@ -27,8 +26,8 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                 email: '', mobileNumber: '',
                 currentRole: '', currentLocation: '',
                 remarks: '',
-                // NEW: For add mode, resumeWorkedBy comes from jobInfo (which should have job.workingBy)
-                resumeWorkedBy: jobInfo?.resumeWorkedBy || '' 
+                resumeWorkedBy: jobInfo?.resumeWorkedBy || '', // For add mode, from Dashboard's workingBy
+                referenceFrom: '' // NEW: Initialize referenceFrom for new candidate
             };
             setFormData(initialData);
             setError('');
@@ -114,6 +113,11 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Resume Worked By</label>
                         <input type="text" name="resumeWorkedBy" value={formData.resumeWorkedBy || ''} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100" readOnly />
+                    </div>
+                    {/* NEW: Reference From field */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Reference From</label>
+                        <input type="text" name="referenceFrom" value={formData.referenceFrom || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" disabled={!canEditDashboard} />
                     </div>
                 </div>
                 <div className="flex justify-end space-x-2 pt-4">

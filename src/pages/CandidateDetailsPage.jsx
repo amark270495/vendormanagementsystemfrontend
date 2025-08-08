@@ -5,8 +5,6 @@ import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
-// The RequestCandidateTimesheetApprovalModal import is removed from here
-// import RequestCandidateTimesheetApprovalModal from '../components/timesheets/RequestCandidateTimesheetApprovalModal';
 import { formatDate } from '../utils/helpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -28,17 +26,12 @@ const CandidateDetailsPage = () => {
     const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
     const [candidateToEdit, setCandidateToEdit] = useState(null);
 
-    // Removed states related to timesheet approval modal from this page
-    // const [isTimesheetApprovalModalOpen, setIsTimesheetApprovalModalOpen] = useState(false);
-    // const [candidateForTimesheetApproval, setCandidateForTimesheetApproval] = useState(null);
-
     const tableHeader = useMemo(() => {
         const baseHeaders = [
             'Full Name', 'Email', 'Mobile Number', 'Current Role', 
             'Current Location', 'Submitted For (Posting ID)', 'Client Info', 
-            'Submitted By', 'Submission Date', 'Remarks', 'Resume Worked By' // Added Remarks and Resume Worked By
+            'Submitted By', 'Submission Date', 'Remarks', 'Resume Worked By', 'Reference From' // NEW: Added Reference From
         ];
-        // Only add 'Actions' if canEditDashboard is true
         if (canEditDashboard) { 
             return [...baseHeaders, 'Actions'];
         }
@@ -56,7 +49,7 @@ const CandidateDetailsPage = () => {
         try {
             const result = await apiService.getCandidateDetailsPageData(user.userIdentifier);
             if (result.data.success) {
-                setCandidates(Array.isArray(result.data.candidates) ? result.data.candidates : []); // Ensure it's an array
+                setCandidates(Array.isArray(result.data.candidates) ? result.data.candidates : []);
                 setDuplicateEmails(result.data.duplicateEmails || []);
             } else {
                 setError(result.data.message);
@@ -74,7 +67,7 @@ const CandidateDetailsPage = () => {
 
     const tableRows = useMemo(() => {
         return candidates.map(c => ({
-            original: c, // Store original candidate object
+            original: c,
             display: [
                 `${c.firstName} ${c.middleName || ''} ${c.lastName}`.replace(/\s+/g, ' ').trim(),
                 c.email,
@@ -85,15 +78,15 @@ const CandidateDetailsPage = () => {
                 c.clientInfo,
                 c.submittedBy,
                 c.submissionDate,
-                c.remarks, // Map remarks
-                c.resumeWorkedBy // Map resumeWorkedBy
+                c.remarks,
+                c.resumeWorkedBy,
+                c.referenceFrom // NEW: Map referenceFrom
             ]
         }));
     }, [candidates]);
 
     const filteredAndSortedData = useMemo(() => {
         let filteredRows = [...tableRows];
-        // General search filter
         if (generalFilter) {
             const lowercasedFilter = generalFilter.toLowerCase();
             filteredRows = filteredRows.filter(item => 
@@ -101,7 +94,6 @@ const CandidateDetailsPage = () => {
             );
         }
 
-        // Column-specific filters
         if (Object.keys(columnFilters).length > 0) {
             filteredRows = filteredRows.filter(item => {
                 return Object.entries(columnFilters).every(([header, config]) => {
@@ -122,7 +114,6 @@ const CandidateDetailsPage = () => {
             });
         }
 
-        // Sorting
         if (sortConfig.key) {
             const sortIndex = tableHeader.indexOf(sortConfig.key);
             if (sortIndex !== -1) {
@@ -237,6 +228,7 @@ const CandidateDetailsPage = () => {
                                                               h === 'Submitted For (Posting ID)' ? '150px' : 
                                                               h === 'Remarks' ? '200px' : 
                                                               h === 'Resume Worked By' ? '150px' : 
+                                                              h === 'Reference From' ? '150px' : // NEW: Min-width for Reference From
                                                               'auto' 
                                                 }}
                                             >
@@ -274,7 +266,7 @@ const CandidateDetailsPage = () => {
                                                         tdClasses += " break-all";
                                                         tdStyle.minWidth = headerName === 'Email' ? '200px' : '150px';
                                                     }
-                                                    if (headerName === 'Remarks' || headerName === 'Resume Worked By') {
+                                                    if (headerName === 'Remarks' || headerName === 'Resume Worked By' || headerName === 'Reference From') { // NEW: Added Reference From
                                                         tdClasses += " whitespace-normal";
                                                         tdStyle.minWidth = '150px';
                                                     }
