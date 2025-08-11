@@ -489,8 +489,24 @@ const DashboardPage = ({ sheetKey }) => {
                                                             <option value="Need To Update">Unassigned</option>
                                                             {recruiters.map(r => <option key={r.username} value={r.displayName}>{r.displayName}</option>)}
                                                         </select>
+                                                    ) : isEditing && headerName === 'Remarks' && canEditDashboard ? ( // FIX: Added Remarks dropdown
+                                                        <select
+                                                            value={unsavedChanges[postingId]?.[headerName] || cell}
+                                                            onBlur={() => setEditingCell(null)}
+                                                            onChange={(e) => {
+                                                                handleCellEdit(rowIndex, cellIndex, e.target.value);
+                                                                setEditingCell(null);
+                                                            }}
+                                                            className="block w-full border-gray-300 rounded-md shadow-sm p-2"
+                                                            autoFocus
+                                                        >
+                                                            <option value="">Select Remark</option>
+                                                            {REMARKS_OPTIONS.map(option => (
+                                                                <option key={option} value={option}>{option}</option>
+                                                            ))}
+                                                        </select>
                                                     ) : (
-                                                        <div contentEditable={isEditing && headerName !== 'Working By' && canEditDashboard} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}> {/* NEW: Conditional contentEditable */}
+                                                        <div contentEditable={isEditing && headerName !== 'Working By' && headerName !== 'Remarks' && canEditDashboard} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}> {/* NEW: Conditional contentEditable */}
                                                             {DATE_COLUMNS.includes(headerName) ? formatDate(cell) : cell}
                                                         </div>
                                                     )}
