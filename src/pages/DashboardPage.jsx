@@ -34,7 +34,8 @@ const REMARKS_OPTIONS = [
     'Posting Assigned',
     'Resume Received',
     'Resume Submitting',
-    'Resume Submitted'
+    'Resume Submitted',
+    'No Resumes Found'
 ];
 
 
