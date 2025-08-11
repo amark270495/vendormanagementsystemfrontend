@@ -28,6 +28,16 @@ const CANDIDATE_COLUMNS = ['1st Candidate Name', '2nd Candidate Name', '3rd Cand
 const DATE_COLUMNS = ['Posting Date', 'Deadline'];
 const NUMBER_COLUMNS = ['# Submitted', 'Max Submissions'];
 
+// NEW: Define the new remarks options
+const REMARKS_OPTIONS = [
+    'Posted Through Mail',
+    'Posting Assigned',
+    'Resume Received',
+    'Resume Submitting',
+    'Resume Submitted'
+];
+
+
 const DashboardPage = ({ sheetKey }) => {
     const { user, updatePreferences } = useAuth();
     // NEW: Destructure canEditDashboard from usePermissions
