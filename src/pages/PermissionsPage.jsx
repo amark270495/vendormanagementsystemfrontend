@@ -4,8 +4,50 @@ import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 
+/**
+ * An interactive toggle component that displays a tick or a cross.
+ * @param {object} props
+ * @param {boolean} props.allowed - The current permission state (true or false).
+ * @param {function} props.onChange - The function to call when the button is clicked.
+ * @param {boolean} props.disabled - Whether the button should be disabled.
+ */
+const PermissionToggle = ({ allowed, onChange, disabled }) => {
+    const baseClasses = "flex justify-center items-center w-6 h-6 rounded-full transition-colors";
+    const disabledClasses = "cursor-not-allowed opacity-50";
+    const allowedClasses = "bg-green-100 hover:bg-green-200";
+    const deniedClasses = "bg-red-100 hover:bg-red-200";
+
+    // This wrapper ensures the button is centered in the table cell.
+    const wrapperClasses = "flex justify-center items-center";
+
+    return (
+        <div className={wrapperClasses}>
+            <button
+                type="button"
+                onClick={onChange}
+                disabled={disabled}
+                className={`${baseClasses} ${allowed ? allowedClasses : deniedClasses} ${disabled ? disabledClasses : ''}`}
+                aria-label={allowed ? 'Revoke permission' : 'Grant permission'}
+            >
+                {allowed ? (
+                    // Tick mark SVG for TRUE
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                ) : (
+                    // Cross mark SVG for FALSE
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                )}
+            </button>
+        </div>
+    );
+};
+
+
 const PermissionsPage = () => {
-    const { user, updatePermissions: updateAuthContextPermissions } = useAuth();
+    const { user, updateAuthContextPermissions } = useAuth();
     const { canEditUsers } = usePermissions();
 
     const [usersWithPermissions, setUsersWithPermissions] = useState([]);
@@ -23,10 +65,9 @@ const PermissionsPage = () => {
         { key: 'canViewCandidates', name: 'View Candidates' },
         { key: 'canEditDashboard', name: 'Edit Dashboard' },
         { key: 'canMessage', name: 'Send Messages' },
-        { key: 'canManageTimesheets', name: 'Manage Timesheets' }, // <-- NEW: Added canManageTimesheets
-        { key: 'canRequestTimesheetApproval', name: 'Request Timesheet Approval' }, // <-- NEW: Added canRequestTimesheetApproval
+        { key: 'canManageTimesheets', name: 'Manage Timesheets' },
+        { key: 'canRequestTimesheetApproval', name: 'Request Timesheet Approval' },
         { key: 'canEditUsers', name: 'Edit Users & Permissions' },
-        // Add other granular permissions here as they are defined in tableUtils.js and useraccesscontrol table
     ];
 
     const fetchUserPermissions = useCallback(async () => {
@@ -102,20 +143,6 @@ const PermissionsPage = () => {
         }
     };
 
-    const PermissionIcon = ({ allowed }) => (
-        <span className={`flex justify-center items-center w-6 h-6 rounded-full ${allowed ? 'bg-green-100' : 'bg-red-100'}`}>
-            {allowed ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-            ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            )}
-        </span>
-    );
-
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border">
             <div className="mb-5">
@@ -135,12 +162,14 @@ const PermissionsPage = () => {
             )}
 
             {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
+            
             {!loading && !canEditUsers && !error && (
                 <div className="text-center text-gray-500 p-10">
                     <h3 className="text-lg font-medium">Access Denied</h3>
                     <p className="text-sm">You do not have the necessary permissions to view or edit user permissions.</p>
                 </div>
             )}
+
             {!loading && canEditUsers && !error && (
                 <div className="overflow-x-auto">
                     {usersWithPermissions.length > 0 ? (
@@ -162,14 +191,12 @@ const PermissionsPage = () => {
                                             <p className="text-xs font-normal text-gray-500">{u.username}</p>
                                         </td>
                                         {permissionKeys.map(p => (
-                                            <td key={p.key} className="px-6 py-4 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={u.permissions[p.key] || false}
-                                                    onChange={(e) => handlePermissionChange(u.username, p.key, e.target.checked)}
-                                                    // Disable editing for the current user's 'canEditUsers' permission
+                                            <td key={p.key} className="px-6 py-4">
+                                                <PermissionToggle
+                                                    allowed={u.permissions[p.key] || false}
+                                                    onChange={() => handlePermissionChange(u.username, p.key, !u.permissions[p.key])}
+                                                    // Disable editing for the current user's 'canEditUsers' permission to prevent self-lockout
                                                     disabled={u.username === user.userIdentifier && p.key === 'canEditUsers'}
-                                                    className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 rounded"
                                                 />
                                             </td>
                                         ))}
