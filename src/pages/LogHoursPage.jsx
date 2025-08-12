@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
@@ -18,10 +18,16 @@ const LogHoursPage = () => {
         employeeId: '',
         employeeMail: ''
     });
+    
+    // --- NEW: State for the autocomplete search ---
+    const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const searchRef = useRef(null); // Ref to handle clicks outside the dropdown
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [timesheetEmployees, setTimesheetEmployees] = useState([]); // Changed from 'employees' to 'timesheetEmployees'
+    const [timesheetEmployees, setTimesheetEmployees] = useState([]);
     const [companies, setCompanies] = useState([]);
 
     const months = [
@@ -34,19 +40,17 @@ const LogHoursPage = () => {
     ];
 
     const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString()); // Current year +/- 2
+    const years = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
 
     const fetchDropdownData = useCallback(async () => {
         if (!user?.userIdentifier || !canManageTimesheets) return;
         
         try {
-            // Fetch timesheet-specific employees
-            const employeesResponse = await apiService.getTimesheetEmployees(user.userIdentifier); // Using new API
+            const employeesResponse = await apiService.getTimesheetEmployees(user.userIdentifier);
             if (employeesResponse.data.success) {
                 setTimesheetEmployees(employeesResponse.data.employees);
             }
 
-            // Fetch companies
             const companiesResponse = await apiService.getCompanies(user.userIdentifier);
             if (companiesResponse.data.success) {
                 setCompanies(companiesResponse.data.companies.map(c => c.companyName));
@@ -62,33 +66,82 @@ const LogHoursPage = () => {
         fetchDropdownData();
     }, [fetchDropdownData]);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-
-        // If employeeName changes, try to pre-fill employeeId and employeeMail
-        if (name === 'employeeName') {
-            const selectedEmployee = timesheetEmployees.find(emp => emp.employeeName === value); // Use timesheetEmployees
-            if (selectedEmployee) {
-                setFormData(prev => ({
-                    ...prev,
-                    employeeId: selectedEmployee.employeeId,
-                    employeeMail: selectedEmployee.employeeMail
-                }));
-            } else {
-                setFormData(prev => ({
-                    ...prev,
-                    employeeId: '',
-                    employeeMail: ''
-                }));
+    // --- NEW: Effect to handle clicks outside the search dropdown ---
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (searchRef.current && !searchRef.current.contains(event.target)) {
+                setIsDropdownOpen(false);
             }
-        }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    // --- NEW: Memoized list of employees filtered by company and search term ---
+    const filteredEmployees = useMemo(() => {
+        if (!employeeSearchTerm) return [];
+        
+        return timesheetEmployees
+            .filter(emp => {
+                // First, filter by the selected company name
+                return !formData.companyName || emp.companyName === formData.companyName;
+            })
+            .filter(emp => {
+                // Then, filter by the search term (case-insensitive)
+                return emp.employeeName.toLowerCase().includes(employeeSearchTerm.toLowerCase());
+            });
+    }, [employeeSearchTerm, timesheetEmployees, formData.companyName]);
+
+
+    const handleCompanyChange = (e) => {
+        const { name, value } = e.target;
+        // When company changes, reset the selected employee
+        setFormData(prev => ({ 
+            ...prev, 
+            [name]: value,
+            employeeName: '',
+            employeeId: '',
+            employeeMail: ''
+        }));
+        setEmployeeSearchTerm('');
     };
+
+    const handleEmployeeSearchChange = (e) => {
+        setEmployeeSearchTerm(e.target.value);
+        setIsDropdownOpen(true);
+        // Clear related fields if user is typing a new name
+        setFormData(prev => ({
+            ...prev,
+            employeeName: '',
+            employeeId: '',
+            employeeMail: ''
+        }));
+    };
+
+    const handleEmployeeSelect = (employee) => {
+        setFormData(prev => ({
+            ...prev,
+            employeeName: employee.employeeName,
+            employeeId: employee.employeeId,
+            employeeMail: employee.employeeMail
+        }));
+        setEmployeeSearchTerm(employee.employeeName); // Show full name in input
+        setIsDropdownOpen(false); // Close dropdown on selection
+    };
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!canManageTimesheets) {
             setError("You do not have permission to log hours.");
+            return;
+        }
+        
+        // --- NEW: Validation to ensure an employee was selected from the list ---
+        if (!formData.employeeId) {
+            setError("Please select a valid employee from the list.");
             return;
         }
 
@@ -100,11 +153,12 @@ const LogHoursPage = () => {
             const response = await apiService.saveEmployeeLogHours(formData, user.userIdentifier);
             if (response.data.success) {
                 setSuccess(response.data.message);
-                setFormData(prev => ({ // Clear hours and client, keep employee/month/year for quick re-entry
+                setFormData(prev => ({ 
                     ...prev,
                     clientName: '',
                     loggedHoursPerMonth: ''
                 }));
+                setEmployeeSearchTerm(prev => formData.employeeName); // Keep the selected employee name
                 setTimeout(() => setSuccess(''), 3000);
             } else {
                 setError(response.data.message);
@@ -136,14 +190,45 @@ const LogHoursPage = () => {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
                             <div>
-                                <label htmlFor="employeeName" className="block text-sm font-medium text-gray-700">Employee Name <span className="text-red-500">*</span></label>
-                                <select name="employeeName" id="employeeName" value={formData.employeeName} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="">Select Employee</option>
-                                    {timesheetEmployees.map(emp => (
-                                        <option key={emp.employeeId} value={emp.employeeName}>{emp.employeeName}</option>
+                                <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Company Name <span className="text-red-500">*</span></label>
+                                <select name="companyName" id="companyName" value={formData.companyName} onChange={handleCompanyChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">Select Company First</option>
+                                    {companies.map(comp => (
+                                        <option key={comp} value={comp}>{comp}</option>
                                     ))}
                                 </select>
                             </div>
+                            
+                            {/* --- NEW: Autocomplete Employee Name Input --- */}
+                            <div className="relative" ref={searchRef}>
+                                <label htmlFor="employeeName" className="block text-sm font-medium text-gray-700">Employee Name <span className="text-red-500">*</span></label>
+                                <input 
+                                    type="text"
+                                    name="employeeName" 
+                                    id="employeeName" 
+                                    value={employeeSearchTerm} 
+                                    onChange={handleEmployeeSearchChange} 
+                                    required 
+                                    className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    placeholder="Type to search..."
+                                    disabled={!formData.companyName} // Disable until a company is selected
+                                    autoComplete="off"
+                                />
+                                {isDropdownOpen && filteredEmployees.length > 0 && (
+                                    <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-y-auto shadow-lg">
+                                        {filteredEmployees.map(emp => (
+                                            <li 
+                                                key={emp.employeeId} 
+                                                onClick={() => handleEmployeeSelect(emp)}
+                                                className="px-4 py-2 hover:bg-indigo-50 cursor-pointer"
+                                            >
+                                                {emp.employeeName}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+
                             <div>
                                 <label htmlFor="employeeId" className="block text-sm font-medium text-gray-700">Employee ID</label>
                                 <input type="text" name="employeeId" id="employeeId" value={formData.employeeId} readOnly className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 bg-gray-100" />
@@ -154,20 +239,11 @@ const LogHoursPage = () => {
                             </div>
                             <div>
                                 <label htmlFor="clientName" className="block text-sm font-medium text-gray-700">Client Name <span className="text-red-500">*</span></label>
-                                <input type="text" name="clientName" id="clientName" value={formData.clientName} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </div>
-                            <div>
-                                <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Company Name <span className="text-red-500">*</span></label>
-                                <select name="companyName" id="companyName" value={formData.companyName} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="">Select Company</option>
-                                    {companies.map(comp => (
-                                        <option key={comp} value={comp}>{comp}</option>
-                                    ))}
-                                </select>
+                                <input type="text" name="clientName" id="clientName" value={formData.clientName} onChange={(e) => setFormData(prev => ({...prev, clientName: e.target.value}))} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
                             </div>
                             <div>
                                 <label htmlFor="month" className="block text-sm font-medium text-gray-700">Month <span className="text-red-500">*</span></label>
-                                <select name="month" id="month" value={formData.month} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500">
+                                <select name="month" id="month" value={formData.month} onChange={(e) => setFormData(prev => ({...prev, month: e.target.value}))} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500">
                                     <option value="">Select Month</option>
                                     {months.map(m => (
                                         <option key={m.value} value={m.value}>{m.name}</option>
@@ -176,7 +252,7 @@ const LogHoursPage = () => {
                             </div>
                             <div>
                                 <label htmlFor="year" className="block text-sm font-medium text-gray-700">Year <span className="text-red-500">*</span></label>
-                                <select name="year" id="year" value={formData.year} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500">
+                                <select name="year" id="year" value={formData.year} onChange={(e) => setFormData(prev => ({...prev, year: e.target.value}))} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500">
                                     <option value="">Select Year</option>
                                     {years.map(y => (
                                         <option key={y} value={y}>{y}</option>
@@ -185,7 +261,7 @@ const LogHoursPage = () => {
                             </div>
                             <div>
                                 <label htmlFor="loggedHoursPerMonth" className="block text-sm font-medium text-gray-700">Logged Hours Per Month <span className="text-red-500">*</span></label>
-                                <input type="number" name="loggedHoursPerMonth" id="loggedHoursPerMonth" value={formData.loggedHoursPerMonth} onChange={handleChange} required min="0" step="0.5" className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                <input type="number" name="loggedHoursPerMonth" id="loggedHoursPerMonth" value={formData.loggedHoursPerMonth} onChange={(e) => setFormData(prev => ({...prev, loggedHoursPerMonth: e.target.value}))} required min="0" step="0.5" className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
                             </div>
                         </div>
                     </div>
