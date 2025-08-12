@@ -3,12 +3,17 @@ import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
-import HeaderMenu from '../components/dashboard/HeaderMenu'; // Reusing for sorting/filtering
-import ConfirmationModal from '../components/dashboard/ConfirmationModal'; // Reusing for deletion confirmation
+import HeaderMenu from '../components/dashboard/HeaderMenu';
+import ConfirmationModal from '../components/dashboard/ConfirmationModal';
 import { usePermissions } from '../hooks/usePermissions';
 import EditTimesheetEmployeeModal from '../components/timesheets/EditTimesheetEmployeeModal';
 import RequestTimesheetApprovalForEmployeeModal from '../components/timesheets/RequestTimesheetApprovalForEmployeeModal';
-import BulkTimesheetApprovalRequestModal from '../components/timesheets/BulkTimesheetApprovalRequestModal'; // NEW: Import Bulk Modal
+import BulkTimesheetApprovalRequestModal from '../components/timesheets/BulkTimesheetApprovalRequestModal';
+
+// Define the headers for the actual data columns separately. This is the key fix.
+const DATA_HEADERS = [
+    'Employee Name', 'Employee ID', 'Employee Email', 'Company Name', 'Created By', 'Created At'
+];
 
 const ManageTimesheetEmployeesPage = () => {
     const { user } = useAuth();
@@ -32,13 +37,12 @@ const ManageTimesheetEmployeesPage = () => {
     const [employeeForTimesheetApproval, setEmployeeForTimesheetApproval] = useState(null);
 
     const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
-    const [commonCompanyName, setCommonCompanyName] = useState(null); // NEW: To store the common company name
+    const [commonCompanyName, setCommonCompanyName] = useState(null);
     const [isBulkApprovalModalOpen, setIsBulkApprovalModalOpen] = useState(false);
 
+    // This header is for rendering the table head, including non-data columns.
     const tableHeader = useMemo(() => {
-        const baseHeaders = [
-            'Employee Name', 'Employee ID', 'Employee Email', 'Company Name', 'Created By', 'Created At'
-        ];
+        const baseHeaders = [...DATA_HEADERS];
         if (canManageTimesheets || canRequestTimesheetApproval) {
             return ['Select', ...baseHeaders, 'Actions'];
         }
@@ -71,14 +75,13 @@ const ManageTimesheetEmployeesPage = () => {
         loadEmployees();
     }, [loadEmployees]);
 
-    // NEW: Effect to determine commonCompanyName when selections change
     useEffect(() => {
         if (selectedEmployeeIds.length === 0) {
             setCommonCompanyName(null);
             return;
         }
         const selectedEmps = employees.filter(emp => selectedEmployeeIds.includes(emp.employeeId));
-        if (selectedEmps.length === 0) { // Should not happen if selectedEmployeeIds is derived from 'employees'
+        if (selectedEmps.length === 0) {
             setCommonCompanyName(null);
             return;
         }
@@ -89,7 +92,7 @@ const ManageTimesheetEmployeesPage = () => {
         if (allSameCompany) {
             setCommonCompanyName(firstCompanyName);
         } else {
-            setCommonCompanyName(null); // Indicates mixed companies
+            setCommonCompanyName(null);
         }
     }, [selectedEmployeeIds, employees]);
 
@@ -118,7 +121,8 @@ const ManageTimesheetEmployeesPage = () => {
             data = data.filter(item => {
                 return Object.entries(columnFilters).every(([header, config]) => {
                     if (!config || !config.type || !config.value1) return true;
-                    const colIndex = tableHeader.indexOf(header);
+                    // **FIX**: Use DATA_HEADERS to get the correct index.
+                    const colIndex = DATA_HEADERS.indexOf(header);
                     if (colIndex === -1) return true;
                     
                     const cellValue = String(item.display[colIndex] || '').toLowerCase();
@@ -135,7 +139,8 @@ const ManageTimesheetEmployeesPage = () => {
         }
 
         if (sortConfig.key) {
-            const sortIndex = tableHeader.indexOf(sortConfig.key);
+            // **FIX**: Use DATA_HEADERS to get the correct index.
+            const sortIndex = DATA_HEADERS.indexOf(sortConfig.key);
             if (sortIndex !== -1) {
                 data.sort((a, b) => {
                     let valA = a.display[sortIndex];
@@ -156,7 +161,7 @@ const ManageTimesheetEmployeesPage = () => {
             }
         }
         return data;
-    }, [employees, generalFilter, columnFilters, sortConfig, tableHeader]);
+    }, [employees, generalFilter, columnFilters, sortConfig]);
 
     const handleSort = (key, direction) => setSortConfig({ key, direction });
     const handleFilterChange = (header, config) => setColumnFilters(prev => ({ ...prev, [header]: config }));
@@ -230,7 +235,7 @@ const ManageTimesheetEmployeesPage = () => {
             setError("Please select at least one employee to send a bulk request.");
             return;
         }
-        if (!commonCompanyName) { // NEW: Check if a common company name exists
+        if (!commonCompanyName) {
             setError("Selected employees belong to different companies. Please select employees from the same company for a bulk request.");
             return;
         }
@@ -245,7 +250,7 @@ const ManageTimesheetEmployeesPage = () => {
                 bulkData.month,
                 bulkData.year,
                 bulkData.deadlineDate,
-                commonCompanyName, // Use the determined commonCompanyName
+                commonCompanyName,
                 user.userIdentifier
             );
             if (response.data.success) {
@@ -290,8 +295,8 @@ const ManageTimesheetEmployeesPage = () => {
                         {canRequestTimesheetApproval && selectedEmployeeIds.length > 0 && (
                             <button
                                 onClick={handleSendBulkRequest}
-                                className={`px-4 py-2 text-white rounded-md ${commonCompanyName ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'}`} // NEW: Conditional styling
-                                disabled={loading || !commonCompanyName} // NEW: Disable if no common company
+                                className={`px-4 py-2 text-white rounded-md ${commonCompanyName ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'}`}
+                                disabled={loading || !commonCompanyName}
                             >
                                 Send Bulk Request ({selectedEmployeeIds.length})
                             </button>
