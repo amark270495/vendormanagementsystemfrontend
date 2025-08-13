@@ -129,6 +129,19 @@ export const apiService = {
   sendTimesheetApprovalRequest: (employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername) =>
     apiClient.post('/sendTimesheetApprovalRequest', { employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername }),
     
-  sendBulkTimesheetApprovalRequest: (employeeIds, month, year, deadlineDate, companyName, authenticatedUsername) => // NEW: Bulk Timesheet Approval Request
+  sendBulkTimesheetApprovalRequest: (employeeIds, month, year, deadlineDate, companyName, authenticatedUsername) => 
     apiClient.post('/sendBulkTimesheetApprovalRequest', { employeeIds, month, year, deadlineDate, companyName, authenticatedUsername }),
+
+  // NEW: MSA and WO e-signing project API calls
+  createMSAandWO: (formData, authenticatedUsername) =>
+    apiClient.post('/createMSAandWO', { formData, authenticatedUsername }),
+
+  getMSAandWODashboardData: (authenticatedUsername) =>
+    apiClient.get('/getMSAandWODashboardData', { params: { authenticatedUsername } }),
+
+  accessMSAandWO: (token, tempPassword) =>
+    apiClient.post('/accessMSAandWO', { token, tempPassword }),
+
+  updateSigningStatus: (token, signerData, signerType, authenticatedUsername) =>
+    apiClient.post('/updateSigningStatus', { token, signerData, signerType, authenticatedUsername }),
 };

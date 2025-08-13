@@ -1,4 +1,3 @@
-// src/components/TopNav.jsx (Updated)
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions'; 
@@ -26,6 +25,8 @@ const TopNav = ({ onNavigate }) => {
         canMessage,
         canManageTimesheets,
         canRequestTimesheetApproval
+        // NEW: Add canManageMSAWO permission
+        // canManageMSAWO 
     } = usePermissions(); 
     
     const [notifications, setNotifications] = useState([]);
@@ -59,6 +60,10 @@ const TopNav = ({ onNavigate }) => {
         }
     };
 
+    // A placeholder permission for the new MSA/WO feature.
+    // Replace with a real permission from your backend if needed.
+    const canManageMSAWO = canAddPosting; // Using an existing permission for now as a proxy.
+
     return (
         <header className="bg-white shadow-md sticky top-0 z-40">
             <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -81,11 +86,17 @@ const TopNav = ({ onNavigate }) => {
                             {(canManageTimesheets || canRequestTimesheetApproval) && (
                                 <Dropdown trigger={<button className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Timesheets</button>}>
                                     {canManageTimesheets && <a href="#" onClick={() => onNavigate('create_company')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Create Company</a>}
-                                    {canManageTimesheets && <a href="#" onClick={() => onNavigate('manage_companies')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Manage Companies</a>} {/* NEW: Added Manage Companies link */}
+                                    {canManageTimesheets && <a href="#" onClick={() => onNavigate('manage_companies')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Manage Companies</a>}
                                     {canManageTimesheets && <a href="#" onClick={() => onNavigate('create_timesheet_employee')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Create Timesheet Employee</a>}
-                                    {canManageTimesheets && <a href="#" onClick={() => onNavigate('manage_timesheet_employees')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Manage Timesheet Employees</a>} {/* NEW: Added Manage Timesheet Employees link */}
+                                    {canManageTimesheets && <a href="#" onClick={() => onNavigate('manage_timesheet_employees')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Manage Timesheet Employees</a>}
                                     {canManageTimesheets && <a href="#" onClick={() => onNavigate('log_hours')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Log Hours</a>}
                                     {(canManageTimesheets || canRequestTimesheetApproval) && <a href="#" onClick={() => onNavigate('timesheets_dashboard')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Timesheets Dashboard</a>}
+                                </Dropdown>
+                            )}
+                            {canManageMSAWO && ( // NEW: Conditional MSA/WO dropdown
+                                <Dropdown trigger={<button className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">MSA/WO</button>}>
+                                    <a href="#" onClick={() => onNavigate('create_msa_wo')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Create MSA/WO</a>
+                                    <a href="#" onClick={() => onNavigate('msa_wo_dashboard')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">MSA/WO Dashboard</a>
                                 </Dropdown>
                             )}
                             {canEditUsers && <a href="#" onClick={() => onNavigate('admin')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Admin</a>}

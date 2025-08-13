@@ -1,4 +1,3 @@
-// src/MainApp.jsx (Updated)
 import React, { useState } from 'react';
 import { usePermissions } from './hooks/usePermissions';
 import TopNav from './components/TopNav';
@@ -13,12 +12,15 @@ import CreateCompanyPage from './pages/CreateCompanyPage';
 import LogHoursPage from './pages/LogHoursPage';
 import TimesheetsDashboardPage from './pages/TimesheetsDashboardPage';
 import CreateTimesheetEmployeePage from './pages/CreateTimesheetEmployeePage';
-import ManageTimesheetEmployeesPage from './pages/ManageTimesheetEmployeesPage'; // NEW: Import ManageTimesheetEmployeesPage
-import ManageCompaniesPage from './pages/ManageCompaniesPage'; // NEW: Import ManageCompaniesPage
+import ManageTimesheetEmployeesPage from './pages/ManageTimesheetEmployeesPage';
+import ManageCompaniesPage from './pages/ManageCompaniesPage';
+// NEW: Import MSA/WO pages
+import CreateMSAandWOPage from './pages/CreateMSAandWOPage';
+import MSAandWODashboardPage from './pages/MSAandWODashboardPage';
 
 const MainApp = () => {
     const [currentPage, setCurrentPage] = useState({ type: 'home' });
-    const permissions = usePermissions(); // Get all granular permissions
+    const permissions = usePermissions();
 
     const handleNavigate = (pageType, params = {}) => {
         setCurrentPage({ type: pageType, ...params });
@@ -26,25 +28,28 @@ const MainApp = () => {
 
     const renderPage = () => {
         try {
+            const canManageMSAWO = permissions.canAddPosting; // Using an existing permission for now as a proxy.
             const pageMap = {
                 home: <HomePage />,
                 admin: permissions.canEditUsers && <AdminPage />,
                 new_posting: permissions.canAddPosting && <JobPostingFormPage onFormSubmit={() => handleNavigate('dashboard', { key: 'taprootVMSDisplay' })} />,
                 reports: permissions.canViewReports && <ReportsPage />,
-                messages: <MessagesPage />,
+                messages: permissions.canMessage && <MessagesPage />,
                 dashboard: permissions.canViewDashboards && <DashboardPage sheetKey={currentPage.key} />,
                 candidate_details: permissions.canViewCandidates && <CandidateDetailsPage />,
                 create_company: permissions.canManageTimesheets && <CreateCompanyPage />,
-                manage_companies: permissions.canManageTimesheets && <ManageCompaniesPage />, // NEW: Add ManageCompaniesPage route
+                manage_companies: permissions.canManageTimesheets && <ManageCompaniesPage />,
                 create_timesheet_employee: permissions.canManageTimesheets && <CreateTimesheetEmployeePage />,
-                manage_timesheet_employees: permissions.canManageTimesheets && <ManageTimesheetEmployeesPage />, // NEW: Add ManageTimesheetEmployeesPage route
+                manage_timesheet_employees: permissions.canManageTimesheets && <ManageTimesheetEmployeesPage />,
                 log_hours: permissions.canManageTimesheets && <LogHoursPage />,
                 timesheets_dashboard: (permissions.canManageTimesheets || permissions.canRequestTimesheetApproval) && <TimesheetsDashboardPage />,
+                // NEW: Add MSA/WO pages to the pageMap
+                create_msa_wo: canManageMSAWO && <CreateMSAandWOPage />,
+                msa_wo_dashboard: canManageMSAWO && <MSAandWODashboardPage />,
             };
 
             const PageComponent = pageMap[currentPage.type];
             
-            // If PageComponent is explicitly false (due to permission check), render permission denied message
             if (PageComponent === false) {
                 return (
                     <div className="p-8 text-center bg-white rounded-xl shadow-sm border mt-8">
@@ -58,7 +63,6 @@ const MainApp = () => {
                 return PageComponent;
             }
 
-            // Fallback for pages not in map or other issues
             return <div className="p-8 text-center">Page: <strong>{currentPage.type}</strong> (Component not found or other issue)</div>;
         } catch (error) {
             console.error("Error rendering page:", error);
