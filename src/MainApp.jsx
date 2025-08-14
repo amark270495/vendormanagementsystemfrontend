@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePermissions } from './hooks/usePermissions';
 import TopNav from './components/TopNav';
 import HomePage from './pages/HomePage';
@@ -14,9 +14,10 @@ import TimesheetsDashboardPage from './pages/TimesheetsDashboardPage';
 import CreateTimesheetEmployeePage from './pages/CreateTimesheetEmployeePage';
 import ManageTimesheetEmployeesPage from './pages/ManageTimesheetEmployeesPage';
 import ManageCompaniesPage from './pages/ManageCompaniesPage';
-// NEW: Import MSA/WO pages
+// NEW: Import MSA/WO pages and components
 import CreateMSAandWOPage from './pages/CreateMSAandWOPage';
 import MSAandWODashboardPage from './pages/MSAandWODashboardPage';
+import MSAandWOSigningPage from './pages/MSAandWOSigningPage'; // NEW: For the signing page
 
 const MainApp = () => {
     const [currentPage, setCurrentPage] = useState({ type: 'home' });
@@ -26,9 +27,18 @@ const MainApp = () => {
         setCurrentPage({ type: pageType, ...params });
     };
 
+    // NEW: Handle URL parameters for direct access links
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        if (token) {
+            handleNavigate('msa_wo_signing', { token });
+        }
+    }, []);
+
     const renderPage = () => {
         try {
-            const canManageMSAWO = permissions.canAddPosting; // Using an existing permission for now as a proxy.
+            const canManageMSAWO = permissions.canAddPosting;
             const pageMap = {
                 home: <HomePage />,
                 admin: permissions.canEditUsers && <AdminPage />,
@@ -43,9 +53,9 @@ const MainApp = () => {
                 manage_timesheet_employees: permissions.canManageTimesheets && <ManageTimesheetEmployeesPage />,
                 log_hours: permissions.canManageTimesheets && <LogHoursPage />,
                 timesheets_dashboard: (permissions.canManageTimesheets || permissions.canRequestTimesheetApproval) && <TimesheetsDashboardPage />,
-                // NEW: Add MSA/WO pages to the pageMap
                 create_msa_wo: canManageMSAWO && <CreateMSAandWOPage />,
                 msa_wo_dashboard: canManageMSAWO && <MSAandWODashboardPage />,
+                msa_wo_signing: <MSAandWOSigningPage token={currentPage.token} /> // NEW: Add signing page route
             };
 
             const PageComponent = pageMap[currentPage.type];
