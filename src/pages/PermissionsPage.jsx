@@ -47,7 +47,7 @@ const PermissionToggle = ({ allowed, onChange, disabled }) => {
 
 
 const PermissionsPage = () => {
-    const { user, updateAuthContextPermissions } = useAuth();
+    const { user, updatePermissions: updateAuthContextPermissions } = useAuth();
     const { canEditUsers } = usePermissions();
 
     const [usersWithPermissions, setUsersWithPermissions] = useState([]);
@@ -67,6 +67,7 @@ const PermissionsPage = () => {
         { key: 'canMessage', name: 'Send Messages' },
         { key: 'canManageTimesheets', name: 'Manage Timesheets' },
         { key: 'canRequestTimesheetApproval', name: 'Request Timesheet Approval' },
+        { key: 'canManageMSAWO', name: 'Manage MSA/WO' },
         { key: 'canEditUsers', name: 'Edit Users & Permissions' },
     ];
 
@@ -116,7 +117,6 @@ const PermissionsPage = () => {
                 throw new Error("User not found for update.");
             }
 
-            // Send only the relevant permissions object
             const permissionsPayload = permissionKeys.reduce((acc, p) => {
                 acc[p.key] = userToUpdate.permissions[p.key];
                 return acc;
@@ -126,11 +126,9 @@ const PermissionsPage = () => {
 
             if (response.data.success) {
                 setSuccessMessage(`Permissions for ${userToUpdate.displayName} saved successfully!`);
-                // If the current user's permissions were updated, update AuthContext
                 if (userToUpdate.username === user.userIdentifier) {
                     updateAuthContextPermissions(permissionsPayload);
                 }
-                // Re-fetch all permissions to ensure data consistency
                 fetchUserPermissions();
                 setTimeout(() => setSuccessMessage(''), 3000);
             } else {
@@ -195,7 +193,6 @@ const PermissionsPage = () => {
                                                 <PermissionToggle
                                                     allowed={u.permissions[p.key] || false}
                                                     onChange={() => handlePermissionChange(u.username, p.key, !u.permissions[p.key])}
-                                                    // Disable editing for the current user's 'canEditUsers' permission to prevent self-lockout
                                                     disabled={u.username === user.userIdentifier && p.key === 'canEditUsers'}
                                                 />
                                             </td>
