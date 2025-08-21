@@ -102,7 +102,9 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                         <select name="remarks" value={formData.remarks || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 h-[42px]" disabled={!canEditDashboard}>
                             <option value="">Select Remark</option>
                             <option value="Submitted To Client">Submitted To Client</option>
-                            <option value="Interview In Progress">Interview In Progress</option>
+                            <option value="Resume Is Under View">Interview In Progress</option>
+                            <option value="Resume Shortlisted For Interview">Interview In Progress</option>
+                            <option value="Interview With Manager">Interview In Progress</option>
                             <option value="Client Reject Due To Candidate Not Up To Mark">Client Reject Due To Candidate Not Up To Mark</option>
                             <option value="Rejected Due To Some Other Reasons">Rejected Due To Some Other Reasons</option>
                             <option value="Candidate Selected">Candidate Selected</option>
