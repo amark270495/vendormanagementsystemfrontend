@@ -1,3 +1,5 @@
+// src/MainApp.jsx
+
 import React, { useState, useEffect } from 'react';
 import { usePermissions } from './hooks/usePermissions';
 import TopNav from './components/TopNav';
@@ -14,10 +16,9 @@ import TimesheetsDashboardPage from './pages/TimesheetsDashboardPage';
 import CreateTimesheetEmployeePage from './pages/CreateTimesheetEmployeePage';
 import ManageTimesheetEmployeesPage from './pages/ManageTimesheetEmployeesPage';
 import ManageCompaniesPage from './pages/ManageCompaniesPage';
-// NEW: Import MSA/WO pages and components
 import CreateMSAandWOPage from './pages/CreateMSAandWOPage';
 import MSAandWODashboardPage from './pages/MSAandWODashboardPage';
-import MSAandWOSigningPage from './pages/MSAandWOSigningPage'; // NEW: For the signing page
+import MSAandWOSigningPage from './pages/MSAandWOSigningPage';
 
 const MainApp = () => {
     const [currentPage, setCurrentPage] = useState({ type: 'home' });
@@ -27,7 +28,6 @@ const MainApp = () => {
         setCurrentPage({ type: pageType, ...params });
     };
 
-    // NEW: Handle URL parameters for direct access links
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
@@ -38,29 +38,32 @@ const MainApp = () => {
 
     const renderPage = () => {
         try {
-            const canManageMSAWO = permissions.canAddPosting;
+            // *** CHANGE: Use the specific canManageMSAWO permission from the hook. ***
+            const { canEditUsers, canAddPosting, canViewReports, canMessage, canViewDashboards, canViewCandidates, canManageTimesheets, canRequestTimesheetApproval, canManageMSAWO } = permissions;
+
             const pageMap = {
                 home: <HomePage />,
-                admin: permissions.canEditUsers && <AdminPage />,
-                new_posting: permissions.canAddPosting && <JobPostingFormPage onFormSubmit={() => handleNavigate('dashboard', { key: 'taprootVMSDisplay' })} />,
-                reports: permissions.canViewReports && <ReportsPage />,
-                messages: permissions.canMessage && <MessagesPage />,
-                dashboard: permissions.canViewDashboards && <DashboardPage sheetKey={currentPage.key} />,
-                candidate_details: permissions.canViewCandidates && <CandidateDetailsPage />,
-                create_company: permissions.canManageTimesheets && <CreateCompanyPage />,
-                manage_companies: permissions.canManageTimesheets && <ManageCompaniesPage />,
-                create_timesheet_employee: permissions.canManageTimesheets && <CreateTimesheetEmployeePage />,
-                manage_timesheet_employees: permissions.canManageTimesheets && <ManageTimesheetEmployeesPage />,
-                log_hours: permissions.canManageTimesheets && <LogHoursPage />,
-                timesheets_dashboard: (permissions.canManageTimesheets || permissions.canRequestTimesheetApproval) && <TimesheetsDashboardPage />,
+                admin: canEditUsers && <AdminPage />,
+                new_posting: canAddPosting && <JobPostingFormPage onFormSubmit={() => handleNavigate('dashboard', { key: 'taprootVMSDisplay' })} />,
+                reports: canViewReports && <ReportsPage />,
+                messages: canMessage && <MessagesPage />,
+                dashboard: canViewDashboards && <DashboardPage sheetKey={currentPage.key} />,
+                candidate_details: canViewCandidates && <CandidateDetailsPage />,
+                create_company: canManageTimesheets && <CreateCompanyPage />,
+                manage_companies: canManageTimesheets && <ManageCompaniesPage />,
+                create_timesheet_employee: canManageTimesheets && <CreateTimesheetEmployeePage />,
+                manage_timesheet_employees: canManageTimesheets && <ManageTimesheetEmployeesPage />,
+                log_hours: canManageTimesheets && <LogHoursPage />,
+                timesheets_dashboard: (canManageTimesheets || canRequestTimesheetApproval) && <TimesheetsDashboardPage />,
+                // *** CHANGE: These routes are now protected by the canManageMSAWO permission. ***
                 create_msa_wo: canManageMSAWO && <CreateMSAandWOPage />,
                 msa_wo_dashboard: canManageMSAWO && <MSAandWODashboardPage />,
-                msa_wo_signing: <MSAandWOSigningPage token={currentPage.token} /> // NEW: Add signing page route
+                msa_wo_signing: <MSAandWOSigningPage token={currentPage.token} />
             };
 
             const PageComponent = pageMap[currentPage.type];
             
-            if (PageComponent === false) {
+            if (PageComponent === false) { // This handles cases where permission is false
                 return (
                     <div className="p-8 text-center bg-white rounded-xl shadow-sm border mt-8">
                         <h3 className="text-lg font-medium text-gray-800">Access Denied</h3>
@@ -69,11 +72,8 @@ const MainApp = () => {
                 );
             }
             
-            if (PageComponent) {
-                return PageComponent;
-            }
+            return PageComponent || <HomePage />; // Default to home page if no match
 
-            return <div className="p-8 text-center">Page: <strong>{currentPage.type}</strong> (Component not found or other issue)</div>;
         } catch (error) {
             console.error("Error rendering page:", error);
             return <div className="p-8 text-center text-red-500">An error occurred while trying to display this page.</div>;

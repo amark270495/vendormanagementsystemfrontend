@@ -1,3 +1,5 @@
+// src/components/TopNav.jsx
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions'; 
@@ -16,6 +18,7 @@ const DASHBOARD_CONFIGS = {
 
 const TopNav = ({ onNavigate }) => {
     const { user, logout } = useAuth();
+    // *** CHANGE: Get the specific canManageMSAWO permission. ***
     const { 
         canViewDashboards, 
         canAddPosting, 
@@ -24,9 +27,8 @@ const TopNav = ({ onNavigate }) => {
         canEditUsers,
         canMessage,
         canManageTimesheets,
-        canRequestTimesheetApproval
-        // NEW: Add canManageMSAWO permission
-        // canManageMSAWO 
+        canRequestTimesheetApproval,
+        canManageMSAWO // Destructure the new permission
     } = usePermissions(); 
     
     const [notifications, setNotifications] = useState([]);
@@ -60,10 +62,6 @@ const TopNav = ({ onNavigate }) => {
         }
     };
 
-    // A placeholder permission for the new MSA/WO feature.
-    // Replace with a real permission from your backend if needed.
-    const canManageMSAWO = canAddPosting; // Using an existing permission for now as a proxy.
-
     return (
         <header className="bg-white shadow-md sticky top-0 z-40">
             <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -93,7 +91,8 @@ const TopNav = ({ onNavigate }) => {
                                     {(canManageTimesheets || canRequestTimesheetApproval) && <a href="#" onClick={() => onNavigate('timesheets_dashboard')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Timesheets Dashboard</a>}
                                 </Dropdown>
                             )}
-                            {canManageMSAWO && ( // NEW: Conditional MSA/WO dropdown
+                            {/* *** CHANGE: The MSA/WO dropdown is now only visible if the user has the canManageMSAWO permission. *** */}
+                            {canManageMSAWO && (
                                 <Dropdown trigger={<button className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">MSA/WO</button>}>
                                     <a href="#" onClick={() => onNavigate('create_msa_wo')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Create MSA/WO</a>
                                     <a href="#" onClick={() => onNavigate('msa_wo_dashboard')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">MSA/WO Dashboard</a>
@@ -102,6 +101,7 @@ const TopNav = ({ onNavigate }) => {
                             {canEditUsers && <a href="#" onClick={() => onNavigate('admin')} className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">Admin</a>}
                         </nav>
                     </div>
+                    {/* User menu and notifications remain unchanged */}
                     <div className="flex items-center space-x-4">
                         <Dropdown width="80" trigger={
                             <button className="relative text-gray-500 hover:text-gray-700" aria-label="Notifications">

@@ -1,7 +1,11 @@
+// src/hooks/usePermissions.js
+
 import { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 
+// This function calculates the final boolean permissions based on the user object.
 const calculatePermissions = (permissions) => {
+    // If no permissions object exists, default all to false for security.
     if (!permissions) {
         return {
             canViewCandidates: false,
@@ -14,10 +18,11 @@ const calculatePermissions = (permissions) => {
             canMessage: false,
             canManageTimesheets: false,
             canRequestTimesheetApproval: false,
-            canManageMSAWO: false, // NEW: Default to false
+            canManageMSAWO: false, // Default canManageMSAWO to false
         };
     }
 
+    // Ensure each permission is treated as a strict boolean `true`.
     return {
         canViewCandidates: permissions.canViewCandidates === true,
         canEditUsers: permissions.canEditUsers === true,
@@ -29,11 +34,14 @@ const calculatePermissions = (permissions) => {
         canMessage: permissions.canMessage === true,
         canManageTimesheets: permissions.canManageTimesheets === true,
         canRequestTimesheetApproval: permissions.canRequestTimesheetApproval === true,
-        canManageMSAWO: permissions.canManageMSAWO === true, // FIX: This line was missing. Now it maps the permission correctly.
+        // *** CHANGE: Correctly map the canManageMSAWO permission from the context. ***
+        canManageMSAWO: permissions.canManageMSAWO === true,
     };
 };
 
+// Custom hook to easily access permissions throughout the app.
 export const usePermissions = () => {
     const { permissions } = useAuth();
+    // useMemo ensures that the permissions object is only recalculated when the source permissions change.
     return useMemo(() => calculatePermissions(permissions), [permissions]);
 };
