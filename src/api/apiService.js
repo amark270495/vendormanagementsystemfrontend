@@ -1,3 +1,5 @@
+// src/api/apiService.js
+
 import axios from 'axios';
 
 const API_BASE_URL = '/api';
@@ -10,6 +12,7 @@ const apiClient = axios.create({
 });
 
 export const apiService = {
+  // --- User & Auth Functions ---
   authenticateUser: (username, password) => 
     apiClient.post('/authenticateUser', { username, password }),
 
@@ -31,6 +34,7 @@ export const apiService = {
   deleteUser: (usernameToDelete, authenticatedUsername) => 
     apiClient.post('/deleteUser', { usernameToDelete, authenticatedUsername }),
 
+  // --- Job & Dashboard Functions ---
   getDashboardData: (sheetKey, authenticatedUsername) => 
     apiClient.get('/getDashboardData', { params: { sheetKey, authenticatedUsername } }),
 
@@ -49,15 +53,17 @@ export const apiService = {
   processJobPosting: (formData, authenticatedUsername) => 
     apiClient.post('/processJobPosting', { formData, authenticatedUsername }),
     
+  // --- Candidate Functions ---
   addCandidateDetails: (candidateData, authenticatedUsername) =>
     apiClient.post('/addCandidateDetails', { candidateData, authenticatedUsername }),
-  
+
   updateCandidateDetails: (originalEmail, candidateData, authenticatedUsername) =>
     apiClient.post('/updateCandidateDetails', { originalEmail, candidateData, authenticatedUsername }),
 
   getCandidateDetailsPageData: (authenticatedUsername) =>
     apiClient.get('/getCandidateDetailsPageData', { params: { authenticatedUsername } }),
 
+  // --- Report & Notification Functions ---
   getHomePageData: (authenticatedUsername) => 
     apiClient.get('/getHomePageData', { params: { authenticatedUsername } }),
 
@@ -78,21 +84,21 @@ export const apiService = {
 
   saveMessage: (sender, recipient, messageContent, authenticatedUsername) => 
     apiClient.post('/saveMessage', { sender, recipient, messageContent, authenticatedUsername }),
-    
+
   sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) => 
     apiClient.post('/sendAssignmentEmail', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
 
-  // API calls for granular user access control
+  // --- Permissions Functions ---
   getUserPermissionsList: (authenticatedUsername) =>
     apiClient.get('/getUserPermissionsList', { params: { authenticatedUsername } }),
 
   updateUserPermissions: (username, permissions, authenticatedUsername) =>
     apiClient.post('/updateUserPermissions', { username, permissions, authenticatedUsername }),
 
-  // Timesheet and Company Management API Calls
+  // --- Timesheet & Company Functions ---
   createCompany: (companyData, authenticatedUsername) =>
     apiClient.post('/createCompany', { companyData, authenticatedUsername }),
-    
+
   updateCompany: (originalCompanyName, updatedCompanyData, authenticatedUsername) =>
     apiClient.post('/updateCompany', { originalCompanyName, updatedCompanyData, authenticatedUsername }),
 
@@ -128,11 +134,11 @@ export const apiService = {
 
   sendTimesheetApprovalRequest: (employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername) =>
     apiClient.post('/sendTimesheetApprovalRequest', { employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername }),
-    
+
   sendBulkTimesheetApprovalRequest: (employeeIds, month, year, deadlineDate, companyName, authenticatedUsername) => 
     apiClient.post('/sendBulkTimesheetApprovalRequest', { employeeIds, month, year, deadlineDate, companyName, authenticatedUsername }),
 
-  // NEW: MSA and WO e-signing project API calls
+  // --- MSA and WO e-signing project API calls ---
   createMSAandWO: (formData, authenticatedUsername) =>
     apiClient.post('/createMSAandWO', { formData, authenticatedUsername }),
 
@@ -144,4 +150,16 @@ export const apiService = {
 
   updateSigningStatus: (token, signerData, signerType, authenticatedUsername) =>
     apiClient.post('/updateSigningStatus', { token, signerData, signerType, authenticatedUsername }),
+
+  getMSAandWODetail: (partitionKey, rowKey, authenticatedUsername) =>
+    apiClient.get('/getMSAandWODetail', { params: { partitionKey, rowKey, authenticatedUsername } }),
+
+  updateMSAandWO: (documentData, authenticatedUsername) =>
+    apiClient.post('/updateMSAandWO', { documentData, authenticatedUsername }),
+
+  deleteMSAandWO: (partitionKey, rowKey, authenticatedUsername) =>
+    apiClient.post('/deleteMSAandWO', { partitionKey, rowKey, authenticatedUsername }),
+
+  resendMSAWOEmail: (partitionKey, rowKey, authenticatedUsername) =>
+    apiClient.post('/resendMSAWOEmail', { partitionKey, rowKey, authenticatedUsername }),
 };
