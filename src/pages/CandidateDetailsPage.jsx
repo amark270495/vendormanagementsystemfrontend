@@ -5,7 +5,7 @@ import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
-import CandidateProfileViewModal from '../components/dashboard/CandidateProfileViewModal'; // Import the new modal
+import CandidateProfileViewModal from '../components/dashboard/CandidateProfileViewModal';
 import { formatDate } from '../utils/helpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -26,12 +26,12 @@ const CandidateDetailsPage = () => {
 
     const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
     const [candidateToEdit, setCandidateToEdit] = useState(null);
-    const [isProfileViewModalOpen, setIsProfileViewModalOpen] = useState(false); // State for the new modal
-    const [candidateToView, setCandidateToView] = useState(null); // State for the candidate to view
+    const [isProfileViewModalOpen, setIsProfileViewModalOpen] = useState(false);
+    const [candidateToView, setCandidateToView] = useState(null);
 
     const tableHeader = useMemo(() => {
         const baseHeaders = [
-            'Full Name', 'Email', 'Mobile Number', 'Current Role', 
+            'Full Name', 'Candidate Contact Details', 'Current Role', 
             'Current Location', 'Skill Set', 'Submitted For (Posting ID)', 'Client Info', 
             'Submitted By', 'Submission Date', 'Remarks', 'Resume Worked By', 'Reference From'
         ];
@@ -71,13 +71,18 @@ const CandidateDetailsPage = () => {
     const tableRows = useMemo(() => {
         return candidates.map(c => ({
             original: c,
+            // The `display` array now holds JSX for the contact column
             display: [
                 `${c.firstName} ${c.middleName || ''} ${c.lastName}`.replace(/\s+/g, ' ').trim(),
-                c.email,
-                c.mobileNumber,
+                (
+                    <div>
+                        <p className="font-semibold">{c.email}</p>
+                        <p className="text-gray-600">{c.mobileNumber}</p>
+                    </div>
+                ),
                 c.currentRole,
                 c.currentLocation,
-                c.skillSet || [], // Pass the skillSet array
+                c.skillSet || [],
                 c.postingId,
                 c.clientInfo,
                 c.submittedBy,
@@ -85,7 +90,11 @@ const CandidateDetailsPage = () => {
                 c.remarks,
                 c.resumeWorkedBy,
                 c.referenceFrom
-            ]
+            ],
+            // A raw data representation for filtering/sorting the merged column
+            filterSortData: {
+                'Candidate Contact Details': `${c.email} ${c.mobileNumber}`
+            }
         }));
     }, [candidates]);
 
@@ -94,45 +103,28 @@ const CandidateDetailsPage = () => {
         if (generalFilter) {
             const lowercasedFilter = generalFilter.toLowerCase();
             filteredRows = filteredRows.filter(item => 
+                Object.values(item.original).some(val => String(val).toLowerCase().includes(lowercasedFilter)) ||
                 item.display.some(cell => {
-                    if (Array.isArray(cell)) {
-                        return cell.join(', ').toLowerCase().includes(lowercasedFilter);
-                    }
-                    return String(cell).toLowerCase().includes(lowercasedFilter);
+                    if (typeof cell === 'string') return cell.toLowerCase().includes(lowercasedFilter);
+                    if (Array.isArray(cell)) return cell.join(', ').toLowerCase().includes(lowercasedFilter);
+                    return false;
                 })
             );
-        }
-
-        if (Object.keys(columnFilters).length > 0) {
-            filteredRows = filteredRows.filter(item => {
-                return Object.entries(columnFilters).every(([header, config]) => {
-                    if (!config || !config.type || !config.value1) return true;
-                    const colIndex = tableHeader.indexOf(header);
-                    if (colIndex === -1) return true;
-                    
-                    let cellValue = item.display[colIndex] || '';
-                    if (Array.isArray(cellValue)) {
-                        cellValue = cellValue.join(', ');
-                    }
-                    cellValue = String(cellValue).toLowerCase();
-                    const filterValue1 = String(config.value1).toLowerCase();
-                    
-                    switch (config.type) {
-                        case 'contains': return cellValue.includes(filterValue1);
-                        case 'not_contains': return !cellValue.includes(filterValue1);
-                        case 'equals': return cellValue === filterValue1;
-                        default: return true;
-                    }
-                });
-            });
         }
 
         if (sortConfig.key) {
             const sortIndex = tableHeader.indexOf(sortConfig.key);
             if (sortIndex !== -1) {
                 filteredRows.sort((a, b) => {
-                    let valA = a.display[sortIndex] || '';
-                    let valB = b.display[sortIndex] || '';
+                    let valA, valB;
+                    if (sortConfig.key === 'Candidate Contact Details') {
+                        valA = a.original.email.toLowerCase();
+                        valB = b.original.email.toLowerCase();
+                    } else {
+                        valA = a.display[sortIndex] || '';
+                        valB = b.display[sortIndex] || '';
+                    }
+                    
                     if (Array.isArray(valA)) valA = valA.join(', ');
                     if (Array.isArray(valB)) valB = valB.join(', ');
                     
@@ -143,6 +135,7 @@ const CandidateDetailsPage = () => {
                         valA = String(valA).toLowerCase();
                         valB = String(valB).toLowerCase();
                     }
+
                     if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
                     if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
                     return 0;
@@ -153,13 +146,12 @@ const CandidateDetailsPage = () => {
         return filteredRows;
     }, [tableRows, generalFilter, columnFilters, sortConfig, tableHeader]);
     
-    // Define column widths
     const colWidths = {
         'Full Name': 'w-[12%]',
-        'Email': 'w-[15%]',
-        'Mobile Number': 'w-[10%]',
+        'Candidate Contact Details': 'w-[15%]',
         'Current Role': 'w-[12%]',
         'Skill Set': 'w-[15%]',
+        'Submitted By': 'w-[10%]',
         'Actions': 'w-[5%]'
     };
 
@@ -190,11 +182,14 @@ const CandidateDetailsPage = () => {
     const downloadPdf = () => {
         const doc = new jsPDF('landscape');
         const exportHeaders = tableHeader.filter(h => h !== 'Actions');
-        const body = filteredAndSortedData.map(item => 
-            item.display.slice(0, exportHeaders.length).map(cell => 
-                Array.isArray(cell) ? cell.join(', ') : cell
-            )
-        );
+        const body = filteredAndSortedData.map(item => {
+            return item.display.slice(0, exportHeaders.length).map((cell, index) => {
+                if (tableHeader[index] === 'Candidate Contact Details') {
+                    return `${item.original.email}, ${item.original.mobileNumber}`;
+                }
+                return Array.isArray(cell) ? cell.join(', ') : cell;
+            });
+        });
         doc.autoTable({ head: [exportHeaders], body });
         doc.save(`candidate_details_report.pdf`);
     };
@@ -204,9 +199,14 @@ const CandidateDetailsPage = () => {
         const csvContent = [
             exportHeaders.join(','),
             ...filteredAndSortedData.map(item => 
-                item.display.slice(0, exportHeaders.length).map(cell => 
-                    `"${String(Array.isArray(cell) ? cell.join('; ') : (cell || '')).replace(/"/g, '""')}"`
-                ).join(',')
+                exportHeaders.map(header => {
+                    const cellIndex = tableHeader.indexOf(header);
+                    let cell = item.display[cellIndex];
+                    if (header === 'Candidate Contact Details') {
+                        cell = `${item.original.email}, ${item.original.mobileNumber}`;
+                    }
+                    return `"${String(Array.isArray(cell) ? cell.join('; ') : (cell || '')).replace(/"/g, '""')}"`;
+                }).join(',')
             )
         ].join('\n');
 
@@ -277,18 +277,18 @@ const CandidateDetailsPage = () => {
                                     {filteredAndSortedData.map((item, rowIndex) => {
                                         const originalCandidate = item.original;
                                         const displayRow = item.display;
-                                        const emailIndex = tableHeader.indexOf('Email');
-                                        const email = displayRow[emailIndex];
-                                        const isDuplicate = duplicateEmails.includes(email);
+                                        const isDuplicate = duplicateEmails.includes(originalCandidate.email);
                                         return (
                                             <tr key={rowIndex} className={`border-b ${isDuplicate ? 'bg-yellow-100 hover:bg-yellow-200' : 'bg-gray-50 hover:bg-gray-100'}`}>
                                                 {displayRow.map((cell, cellIndex) => {
                                                     const headerName = tableHeader[cellIndex];
                                                     
+                                                    const tdClasses = "px-4 py-3 border-r border-slate-200 align-middle whitespace-normal break-words";
+
                                                     if (headerName === 'Full Name') {
                                                         return (
-                                                            <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 font-medium text-gray-900 align-middle truncate">
-                                                                <button onClick={() => handleViewProfileClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 hover:underline">
+                                                            <td key={cellIndex} className={`${tdClasses} font-medium text-gray-900`}>
+                                                                <button onClick={() => handleViewProfileClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 hover:underline text-left">
                                                                     {cell}
                                                                 </button>
                                                             </td>
@@ -297,7 +297,7 @@ const CandidateDetailsPage = () => {
                                                     
                                                     if (headerName === 'Skill Set') {
                                                         return (
-                                                            <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 align-middle">
+                                                            <td key={cellIndex} className={tdClasses}>
                                                                 <div className="flex flex-wrap gap-1">
                                                                     {Array.isArray(cell) && cell.slice(0, 3).map((skill, i) => (
                                                                         <span key={i} className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-800 rounded-full">
@@ -315,7 +315,7 @@ const CandidateDetailsPage = () => {
                                                     }
 
                                                     return (
-                                                        <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 font-medium text-gray-900 align-middle truncate">
+                                                        <td key={cellIndex} className={`${tdClasses} font-medium text-gray-900`}>
                                                             {headerName === 'Submission Date' ? formatDate(cell) : cell}
                                                         </td>
                                                     );
