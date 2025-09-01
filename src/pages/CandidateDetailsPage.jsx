@@ -152,6 +152,16 @@ const CandidateDetailsPage = () => {
 
         return filteredRows;
     }, [tableRows, generalFilter, columnFilters, sortConfig, tableHeader]);
+    
+    // Define column widths
+    const colWidths = {
+        'Full Name': 'w-[12%]',
+        'Email': 'w-[15%]',
+        'Mobile Number': 'w-[10%]',
+        'Current Role': 'w-[12%]',
+        'Skill Set': 'w-[15%]',
+        'Actions': 'w-[5%]'
+    };
 
     const handleSort = (key, direction) => setSortConfig({ key, direction });
     const handleFilterChange = (header, config) => setColumnFilters(prev => ({ ...prev, [header]: config }));
@@ -242,18 +252,18 @@ const CandidateDetailsPage = () => {
                 {!loading && !error && canViewCandidates && (
                     <div className="bg-white rounded-lg shadow-lg border border-gray-200" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left text-gray-500">
+                            <table className="w-full text-sm text-left text-gray-500 table-fixed">
                                 <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
                                     <tr>
                                         {tableHeader.map(h => (
-                                            <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0">
+                                            <th key={h} scope="col" className={`p-0 border-r border-slate-300 last:border-r-0 ${colWidths[h] || ''}`}>
                                                 {h === 'Actions' ? (
                                                     <div className="p-3 font-bold">{h}</div>
                                                 ) : (
                                                     <Dropdown width="64" trigger={
                                                         <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
-                                                            <span className="font-bold">{h}</span>
-                                                            {sortConfig.key === h && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
+                                                            <span className="font-bold truncate">{h}</span>
+                                                            {sortConfig.key === h && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
                                                         </div>
                                                     }>
                                                         <HeaderMenu header={h} onSort={(dir) => handleSort(h, dir)} filterConfig={columnFilters[h]} onFilterChange={handleFilterChange}/>
@@ -277,7 +287,7 @@ const CandidateDetailsPage = () => {
                                                     
                                                     if (headerName === 'Full Name') {
                                                         return (
-                                                            <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 font-medium text-gray-900 align-middle">
+                                                            <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 font-medium text-gray-900 align-middle truncate">
                                                                 <button onClick={() => handleViewProfileClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 hover:underline">
                                                                     {cell}
                                                                 </button>
@@ -287,20 +297,25 @@ const CandidateDetailsPage = () => {
                                                     
                                                     if (headerName === 'Skill Set') {
                                                         return (
-                                                            <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 align-middle" style={{ minWidth: '250px' }}>
+                                                            <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 align-middle">
                                                                 <div className="flex flex-wrap gap-1">
-                                                                    {Array.isArray(cell) && cell.map((skill, i) => (
+                                                                    {Array.isArray(cell) && cell.slice(0, 3).map((skill, i) => (
                                                                         <span key={i} className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-800 rounded-full">
                                                                             {skill}
                                                                         </span>
                                                                     ))}
+                                                                    {Array.isArray(cell) && cell.length > 3 && (
+                                                                        <span className="px-2 py-1 text-xs font-medium bg-gray-300 text-gray-900 rounded-full">
+                                                                            +{cell.length - 3}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                             </td>
                                                         );
                                                     }
 
                                                     return (
-                                                        <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 font-medium text-gray-900 align-middle">
+                                                        <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 font-medium text-gray-900 align-middle truncate">
                                                             {headerName === 'Submission Date' ? formatDate(cell) : cell}
                                                         </td>
                                                     );
