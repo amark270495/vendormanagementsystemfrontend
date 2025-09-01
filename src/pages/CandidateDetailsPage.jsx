@@ -5,6 +5,7 @@ import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
+import CandidateProfileViewModal from '../components/dashboard/CandidateProfileViewModal'; // Import the new modal
 import { formatDate } from '../utils/helpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -25,12 +26,14 @@ const CandidateDetailsPage = () => {
 
     const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
     const [candidateToEdit, setCandidateToEdit] = useState(null);
+    const [isProfileViewModalOpen, setIsProfileViewModalOpen] = useState(false); // State for the new modal
+    const [candidateToView, setCandidateToView] = useState(null); // State for the candidate to view
 
     const tableHeader = useMemo(() => {
         const baseHeaders = [
             'Full Name', 'Email', 'Mobile Number', 'Current Role', 
-            'Current Location', 'Submitted For (Posting ID)', 'Client Info', 
-            'Submitted By', 'Submission Date', 'Remarks', 'Resume Worked By', 'Reference From' // NEW: Added Reference From
+            'Current Location', 'Skill Set', 'Submitted For (Posting ID)', 'Client Info', 
+            'Submitted By', 'Submission Date', 'Remarks', 'Resume Worked By', 'Reference From'
         ];
         if (canEditDashboard) { 
             return [...baseHeaders, 'Actions'];
@@ -74,13 +77,14 @@ const CandidateDetailsPage = () => {
                 c.mobileNumber,
                 c.currentRole,
                 c.currentLocation,
+                c.skillSet || [], // Pass the skillSet array
                 c.postingId,
                 c.clientInfo,
                 c.submittedBy,
                 c.submissionDate,
                 c.remarks,
                 c.resumeWorkedBy,
-                c.referenceFrom // NEW: Map referenceFrom
+                c.referenceFrom
             ]
         }));
     }, [candidates]);
@@ -90,7 +94,12 @@ const CandidateDetailsPage = () => {
         if (generalFilter) {
             const lowercasedFilter = generalFilter.toLowerCase();
             filteredRows = filteredRows.filter(item => 
-                item.display.some(cell => String(cell).toLowerCase().includes(lowercasedFilter))
+                item.display.some(cell => {
+                    if (Array.isArray(cell)) {
+                        return cell.join(', ').toLowerCase().includes(lowercasedFilter);
+                    }
+                    return String(cell).toLowerCase().includes(lowercasedFilter);
+                })
             );
         }
 
@@ -101,7 +110,11 @@ const CandidateDetailsPage = () => {
                     const colIndex = tableHeader.indexOf(header);
                     if (colIndex === -1) return true;
                     
-                    const cellValue = String(item.display[colIndex] || '').toLowerCase();
+                    let cellValue = item.display[colIndex] || '';
+                    if (Array.isArray(cellValue)) {
+                        cellValue = cellValue.join(', ');
+                    }
+                    cellValue = String(cellValue).toLowerCase();
                     const filterValue1 = String(config.value1).toLowerCase();
                     
                     switch (config.type) {
@@ -120,6 +133,9 @@ const CandidateDetailsPage = () => {
                 filteredRows.sort((a, b) => {
                     let valA = a.display[sortIndex] || '';
                     let valB = b.display[sortIndex] || '';
+                    if (Array.isArray(valA)) valA = valA.join(', ');
+                    if (Array.isArray(valB)) valB = valB.join(', ');
+                    
                     if (sortConfig.key === 'Submission Date') {
                         valA = new Date(valA).getTime() || 0;
                         valB = new Date(valB).getTime() || 0;
@@ -146,6 +162,11 @@ const CandidateDetailsPage = () => {
         setIsCandidateModalOpen(true);
     };
 
+    const handleViewProfileClick = (candidateData) => {
+        setCandidateToView(candidateData);
+        setIsProfileViewModalOpen(true);
+    };
+
     const handleSaveCandidate = async (formData) => {
         if (!canEditDashboard) throw new Error("Permission denied to save candidate details.");
         try {
@@ -158,18 +179,24 @@ const CandidateDetailsPage = () => {
 
     const downloadPdf = () => {
         const doc = new jsPDF('landscape');
-        doc.autoTable({
-            head: [tableHeader.filter(h => h !== 'Actions')],
-            body: filteredAndSortedData.map(item => item.display.slice(0, tableHeader.indexOf('Actions'))),
-        });
+        const exportHeaders = tableHeader.filter(h => h !== 'Actions');
+        const body = filteredAndSortedData.map(item => 
+            item.display.slice(0, exportHeaders.length).map(cell => 
+                Array.isArray(cell) ? cell.join(', ') : cell
+            )
+        );
+        doc.autoTable({ head: [exportHeaders], body });
         doc.save(`candidate_details_report.pdf`);
     };
 
     const downloadCsv = () => {
+        const exportHeaders = tableHeader.filter(h => h !== 'Actions');
         const csvContent = [
-            tableHeader.filter(h => h !== 'Actions').join(','),
+            exportHeaders.join(','),
             ...filteredAndSortedData.map(item => 
-                item.display.slice(0, tableHeader.indexOf('Actions')).map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')
+                item.display.slice(0, exportHeaders.length).map(cell => 
+                    `"${String(Array.isArray(cell) ? cell.join('; ') : (cell || '')).replace(/"/g, '""')}"`
+                ).join(',')
             )
         ].join('\n');
 
@@ -219,19 +246,7 @@ const CandidateDetailsPage = () => {
                                 <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
                                     <tr>
                                         {tableHeader.map(h => (
-                                            <th 
-                                                key={h} 
-                                                scope="col" 
-                                                className="p-0 border-r border-slate-300 last:border-r-0"
-                                                style={{ 
-                                                    minWidth: h === 'Email' ? '200px' : 
-                                                              h === 'Submitted For (Posting ID)' ? '150px' : 
-                                                              h === 'Remarks' ? '200px' : 
-                                                              h === 'Resume Worked By' ? '150px' : 
-                                                              h === 'Reference From' ? '150px' : // NEW: Min-width for Reference From
-                                                              'auto' 
-                                                }}
-                                            >
+                                            <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0">
                                                 {h === 'Actions' ? (
                                                     <div className="p-3 font-bold">{h}</div>
                                                 ) : (
@@ -259,30 +274,39 @@ const CandidateDetailsPage = () => {
                                             <tr key={rowIndex} className={`border-b ${isDuplicate ? 'bg-yellow-100 hover:bg-yellow-200' : 'bg-gray-50 hover:bg-gray-100'}`}>
                                                 {displayRow.map((cell, cellIndex) => {
                                                     const headerName = tableHeader[cellIndex];
-                                                    let tdClasses = "px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle";
-                                                    let tdStyle = {};
-
-                                                    if (headerName === 'Email' || headerName === 'Submitted For (Posting ID)') {
-                                                        tdClasses += " break-all";
-                                                        tdStyle.minWidth = headerName === 'Email' ? '200px' : '150px';
+                                                    
+                                                    if (headerName === 'Full Name') {
+                                                        return (
+                                                            <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 font-medium text-gray-900 align-middle">
+                                                                <button onClick={() => handleViewProfileClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 hover:underline">
+                                                                    {cell}
+                                                                </button>
+                                                            </td>
+                                                        );
                                                     }
-                                                    if (headerName === 'Remarks' || headerName === 'Resume Worked By' || headerName === 'Reference From') { // NEW: Added Reference From
-                                                        tdClasses += " whitespace-normal";
-                                                        tdStyle.minWidth = '150px';
+                                                    
+                                                    if (headerName === 'Skill Set') {
+                                                        return (
+                                                            <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 align-middle" style={{ minWidth: '250px' }}>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {Array.isArray(cell) && cell.map((skill, i) => (
+                                                                        <span key={i} className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-800 rounded-full">
+                                                                            {skill}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </td>
+                                                        );
                                                     }
 
                                                     return (
-                                                        <td 
-                                                            key={cellIndex} 
-                                                            className={tdClasses} 
-                                                            style={tdStyle}
-                                                        >
+                                                        <td key={cellIndex} className="px-4 py-3 border-r border-slate-200 font-medium text-gray-900 align-middle">
                                                             {headerName === 'Submission Date' ? formatDate(cell) : cell}
                                                         </td>
                                                     );
                                                 })}
                                                 {canEditDashboard && (
-                                                    <td className="px-4 py-3 border-r border-slate-200 last:border-r-0 flex space-x-2">
+                                                    <td className="px-4 py-3 border-r border-slate-200 last:border-r-0">
                                                         <button onClick={() => handleEditClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 p-1 font-semibold">Edit</button>
                                                     </td>
                                                 )}
@@ -300,6 +324,11 @@ const CandidateDetailsPage = () => {
                 onClose={() => setIsCandidateModalOpen(false)} 
                 onSave={handleSaveCandidate}
                 candidateToEdit={candidateToEdit}
+            />
+            <CandidateProfileViewModal
+                isOpen={isProfileViewModalOpen}
+                onClose={() => setIsProfileViewModalOpen(false)}
+                candidate={candidateToView}
             />
         </>
     );
