@@ -148,9 +148,9 @@ const CandidateDetailsPage = () => {
     
     const colWidths = {
         'Full Name': 'w-[10%]',
-        'Candidate Contact Details': 'w-[12%]',
-        'Current Role': 'w-[12%]',
-        'Skill Set': 'w-[15%]',
+        'Candidate Contact Details': 'w-[10%]',
+        'Current Role': 'w-[10%]',
+        'Skill Set': 'w-[13%]',
         'Submitted By': 'w-[10%]',
         'Actions': 'w-[5%]'
     };
