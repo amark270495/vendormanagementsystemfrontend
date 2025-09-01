@@ -324,7 +324,7 @@ const CandidateDetailsPage = () => {
                                                 ) : (
                                                     <Dropdown width="64" trigger={
                                                         <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
-                                                            <span className="font-bold truncate">{h}</span>
+                                                            <span className="font-bold whitespace-normal">{h}</span>
                                                             {sortConfig.key === h && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
                                                         </div>
                                                     }>
