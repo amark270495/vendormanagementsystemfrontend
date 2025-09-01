@@ -147,8 +147,8 @@ const CandidateDetailsPage = () => {
     }, [tableRows, generalFilter, columnFilters, sortConfig, tableHeader]);
     
     const colWidths = {
-        'Full Name': 'w-[12%]',
-        'Candidate Contact Details': 'w-[15%]',
+        'Full Name': 'w-[10%]',
+        'Candidate Contact Details': 'w-[12%]',
         'Current Role': 'w-[12%]',
         'Skill Set': 'w-[15%]',
         'Submitted By': 'w-[10%]',
