@@ -1,24 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import Modal from '../Modal';
-import Spinner from '../Spinner';
-import { usePermissions } from '../../hooks/usePermissions';
+import Modal from '../Modal.jsx';
+import Spinner from '../Spinner.jsx';
+import { usePermissions } from '../../hooks/usePermissions.js';
 
 const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEdit }) => {
-    const { canEditDashboard } = usePermissions(); 
+    const { canEditDashboard } = usePermissions();
 
     const [formData, setFormData] = useState({});
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const isEditMode = !!candidateToEdit;
 
+    // State for managing skills input
+    const [currentSkill, setCurrentSkill] = useState('');
+    const [skills, setSkills] = useState([]);
+
     useEffect(() => {
         if (isOpen) {
             const initialData = isEditMode ? {
                 ...candidateToEdit,
-                postingId: candidateToEdit.postingId || candidateToEdit.PartitionKey || '', 
+                postingId: candidateToEdit.postingId || candidateToEdit.PartitionKey || '',
                 remarks: candidateToEdit.remarks || '',
                 resumeWorkedBy: candidateToEdit.resumeWorkedBy || '',
-                referenceFrom: candidateToEdit.referenceFrom || '' // NEW: Initialize referenceFrom
+                referenceFrom: candidateToEdit.referenceFrom || ''
             } : {
                 postingId: jobInfo?.postingId || '',
                 clientInfo: jobInfo?.clientInfo || '',
@@ -26,15 +30,45 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                 email: '', mobileNumber: '',
                 currentRole: '', currentLocation: '',
                 remarks: '',
-                resumeWorkedBy: jobInfo?.resumeWorkedBy || '', // For add mode, from Dashboard's workingBy
-                referenceFrom: '' // NEW: Initialize referenceFrom for new candidate
+                resumeWorkedBy: jobInfo?.resumeWorkedBy || '',
+                referenceFrom: ''
             };
             setFormData(initialData);
+
+            // Initialize skills from the candidate data
+            if (isEditMode && candidateToEdit.skillSet) {
+                try {
+                    // Skill set might be a stringified JSON array from the backend
+                    const parsedSkills = typeof candidateToEdit.skillSet === 'string'
+                        ? JSON.parse(candidateToEdit.skillSet)
+                        : candidateToEdit.skillSet;
+                    setSkills(Array.isArray(parsedSkills) ? parsedSkills : []);
+                } catch (e) {
+                    console.error("Failed to parse skills:", e);
+                    setSkills([]);
+                }
+            } else {
+                setSkills([]);
+            }
+
+            setCurrentSkill('');
             setError('');
         }
     }, [isOpen, jobInfo, candidateToEdit, isEditMode]);
 
     const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+    // Handlers for adding and removing skills
+    const handleAddSkill = () => {
+        if (currentSkill && !skills.includes(currentSkill.trim())) {
+            setSkills([...skills, currentSkill.trim()]);
+            setCurrentSkill('');
+        }
+    };
+
+    const handleRemoveSkill = (skillToRemove) => {
+        setSkills(skills.filter(skill => skill !== skillToRemove));
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -46,7 +80,9 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
         setError('');
         setLoading(true);
         try {
-            await onSave(formData, jobInfo?.candidateSlot);
+            // Add the skills array to the form data being saved
+            const finalFormData = { ...formData, skillSet: skills };
+            await onSave(finalFormData, jobInfo?.candidateSlot);
             onClose();
         } catch (err) {
             setError(err.message || "Failed to save candidate details.");
@@ -96,7 +132,6 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                         <label className="block text-sm font-medium text-gray-700">Current Location <span className="text-red-500">*</span></label>
                         <input type="text" name="currentLocation" value={formData.currentLocation || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required disabled={!canEditDashboard} />
                     </div>
-                    {/* Remarks field */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Remarks</label>
                         <select name="remarks" value={formData.remarks || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 h-[42px]" disabled={!canEditDashboard}>
@@ -111,18 +146,49 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                             <option value="Client Rejected Details Not Mentioned">Client Rejected Details Not Mentioned</option>
                         </select>
                     </div>
-                    {/* Resume Worked By field (Read-only) */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Resume Worked By</label>
                         <input type="text" name="resumeWorkedBy" value={formData.resumeWorkedBy || ''} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100" readOnly />
                     </div>
-                    {/* NEW: Reference From field */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Reference From</label>
                         <input type="text" name="referenceFrom" value={formData.referenceFrom || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" disabled={!canEditDashboard} />
                     </div>
                 </div>
-                <div className="flex justify-end space-x-2 pt-4">
+
+                {/* Skill Set Input Section */}
+                <div className="md:col-span-2 space-y-2 pt-4 border-t">
+                    <label className="block text-sm font-medium text-gray-700">Skill Set</label>
+                    <div className="flex items-center space-x-2">
+                        <input
+                            type="text"
+                            value={currentSkill}
+                            onChange={(e) => setCurrentSkill(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSkill(); } }}
+                            className="flex-grow border border-gray-300 rounded-md shadow-sm p-2"
+                            placeholder="e.g., React, Node.js, then press Enter or Add"
+                            disabled={!canEditDashboard}
+                        />
+                        <button type="button" onClick={handleAddSkill} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" disabled={!canEditDashboard}>Add</button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2 p-2 bg-gray-50 min-h-[40px] rounded-md border">
+                        {skills.map(skill => (
+                            <div key={skill} className="flex items-center bg-indigo-100 text-indigo-800 text-sm font-medium px-2.5 py-1 rounded-full">
+                                {skill}
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveSkill(skill)}
+                                    className="ml-2 text-indigo-500 hover:text-indigo-700"
+                                    disabled={!canEditDashboard}
+                                >
+                                    &times;
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-4 border-t">
                     <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
                     <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-28" disabled={loading || !canEditDashboard}>
                         {loading ? <Spinner size="5" /> : 'Save'}
