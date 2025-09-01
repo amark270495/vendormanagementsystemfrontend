@@ -6,13 +6,14 @@ import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
 import CandidateProfileViewModal from '../components/dashboard/CandidateProfileViewModal';
+import ColumnSettingsModal from '../components/dashboard/ColumnSettingsModal';
 import { formatDate } from '../utils/helpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { usePermissions } from '../hooks/usePermissions';
 
 const CandidateDetailsPage = () => {
-    const { user } = useAuth();
+    const { user, updatePreferences } = useAuth();
     const { canViewCandidates, canEditDashboard } = usePermissions(); 
 
     const [candidates, setCandidates] = useState([]);
@@ -28,18 +29,36 @@ const CandidateDetailsPage = () => {
     const [candidateToEdit, setCandidateToEdit] = useState(null);
     const [isProfileViewModalOpen, setIsProfileViewModalOpen] = useState(false);
     const [candidateToView, setCandidateToView] = useState(null);
+    const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
 
-    const tableHeader = useMemo(() => {
+    // Define all possible headers for the table.
+    const allHeaders = useMemo(() => {
         const baseHeaders = [
             'Full Name', 'Candidate Contact Details', 'Current Role', 
             'Current Location', 'Skill Set', 'Submitted For (Posting ID)', 'Client Info', 
             'Submitted By', 'Submission Date', 'Remarks', 'Resume Worked By', 'Reference From'
         ];
-        if (canEditDashboard) { 
-            return [...baseHeaders, 'Actions'];
-        }
+        // The 'Actions' column is not user-configurable, so it's handled separately.
         return baseHeaders;
-    }, [canEditDashboard]); 
+    }, []);
+
+    // Memoize user preferences from AuthContext.
+    const userPrefs = useMemo(() => {
+        const safeParse = (jsonString, def = []) => {
+            try {
+                const parsed = JSON.parse(jsonString);
+                return Array.isArray(parsed) ? parsed : def;
+            } catch (e) {
+                 // Fallback for when the stored value isn't a stringified array.
+                return Array.isArray(jsonString) ? jsonString : def;
+            }
+        };
+        // Use a specific key for this page's preferences to avoid conflicts.
+        return {
+            order: safeParse(user?.dashboardPreferences?.candidateColumnOrder, []),
+            visibility: safeParse(user?.dashboardPreferences?.candidateColumnVisibility, []),
+        };
+    }, [user]);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -68,91 +87,102 @@ const CandidateDetailsPage = () => {
         loadData();
     }, [loadData]);
 
+    // Transform raw candidate data into a display-friendly format.
     const tableRows = useMemo(() => {
         return candidates.map(c => ({
             original: c,
-            // The `display` array now holds JSX for the contact column
-            display: [
-                `${c.firstName} ${c.middleName || ''} ${c.lastName}`.replace(/\s+/g, ' ').trim(),
-                (
+            display: {
+                'Full Name': `${c.firstName} ${c.middleName || ''} ${c.lastName}`.replace(/\s+/g, ' ').trim(),
+                'Candidate Contact Details': (
                     <div>
                         <p className="font-semibold">{c.email}</p>
                         <p className="text-gray-600">{c.mobileNumber}</p>
                     </div>
                 ),
-                c.currentRole,
-                c.currentLocation,
-                c.skillSet || [],
-                c.postingId,
-                c.clientInfo,
-                c.submittedBy,
-                c.submissionDate,
-                c.remarks,
-                c.resumeWorkedBy,
-                c.referenceFrom
-            ],
-            // A raw data representation for filtering/sorting the merged column
-            filterSortData: {
-                'Candidate Contact Details': `${c.email} ${c.mobileNumber}`
+                'Current Role': c.currentRole,
+                'Current Location': c.currentLocation,
+                'Skill Set': c.skillSet || [],
+                'Submitted For (Posting ID)': c.postingId,
+                'Client Info': c.clientInfo,
+                'Submitted By': c.submittedBy,
+                'Submission Date': c.submissionDate,
+                'Remarks': c.remarks,
+                'Resume Worked By': c.resumeWorkedBy,
+                'Reference From': c.referenceFrom
             }
         }));
     }, [candidates]);
 
+    // Determine the final ordered and visible headers based on user preferences.
+    const displayHeader = useMemo(() => {
+        const ordered = userPrefs.order.length > 0
+            ? userPrefs.order.filter(h => allHeaders.includes(h))
+            : allHeaders;
+        
+        const remaining = allHeaders.filter(h => !ordered.includes(h));
+        let finalHeaders = [...ordered, ...remaining];
+
+        if (userPrefs.visibility.length > 0) {
+            finalHeaders = finalHeaders.filter(h => !userPrefs.visibility.includes(h));
+        }
+
+        if (canEditDashboard) {
+            finalHeaders.push('Actions');
+        }
+        
+        return finalHeaders;
+    }, [allHeaders, userPrefs, canEditDashboard]);
+
+    // Filter and sort the data for display.
     const filteredAndSortedData = useMemo(() => {
         let filteredRows = [...tableRows];
+
         if (generalFilter) {
             const lowercasedFilter = generalFilter.toLowerCase();
             filteredRows = filteredRows.filter(item => 
-                Object.values(item.original).some(val => String(val).toLowerCase().includes(lowercasedFilter)) ||
-                item.display.some(cell => {
-                    if (typeof cell === 'string') return cell.toLowerCase().includes(lowercasedFilter);
-                    if (Array.isArray(cell)) return cell.join(', ').toLowerCase().includes(lowercasedFilter);
-                    return false;
-                })
+                Object.values(item.original).some(val => String(val).toLowerCase().includes(lowercasedFilter))
             );
         }
 
         if (sortConfig.key) {
-            const sortIndex = tableHeader.indexOf(sortConfig.key);
-            if (sortIndex !== -1) {
-                filteredRows.sort((a, b) => {
-                    let valA, valB;
-                    if (sortConfig.key === 'Candidate Contact Details') {
-                        valA = a.original.email.toLowerCase();
-                        valB = b.original.email.toLowerCase();
-                    } else {
-                        valA = a.display[sortIndex] || '';
-                        valB = b.display[sortIndex] || '';
-                    }
-                    
-                    if (Array.isArray(valA)) valA = valA.join(', ');
-                    if (Array.isArray(valB)) valB = valB.join(', ');
-                    
-                    if (sortConfig.key === 'Submission Date') {
-                        valA = new Date(valA).getTime() || 0;
-                        valB = new Date(valB).getTime() || 0;
-                    } else {
-                        valA = String(valA).toLowerCase();
-                        valB = String(valB).toLowerCase();
-                    }
+             filteredRows.sort((a, b) => {
+                let valA, valB;
+                 if (sortConfig.key === 'Candidate Contact Details') {
+                    valA = a.original.email;
+                    valB = b.original.email;
+                } else {
+                    valA = a.display[sortConfig.key];
+                    valB = b.display[sortConfig.key];
+                }
+                
+                if (Array.isArray(valA)) valA = valA.join(', ');
+                if (Array.isArray(valB)) valB = valB.join(', ');
+                
+                if (sortConfig.key === 'Submission Date') {
+                    valA = new Date(valA).getTime() || 0;
+                    valB = new Date(valB).getTime() || 0;
+                } else {
+                    valA = String(valA || '').toLowerCase();
+                    valB = String(valB || '').toLowerCase();
+                }
 
-                    if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
-                    if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
-                    return 0;
-                });
-            }
+                if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
+                return 0;
+            });
         }
 
         return filteredRows;
-    }, [tableRows, generalFilter, columnFilters, sortConfig, tableHeader]);
+    }, [tableRows, generalFilter, columnFilters, sortConfig]);
     
+    // Apply specified column widths.
     const colWidths = {
         'Full Name': 'w-[10%]',
         'Candidate Contact Details': 'w-[10%]',
         'Current Role': 'w-[10%]',
         'Skill Set': 'w-[13%]',
         'Submitted By': 'w-[10%]',
-        'Actions': 'w-[4%]'
+        'Actions': 'w-[5%]'
     };
 
     const handleSort = (key, direction) => setSortConfig({ key, direction });
@@ -178,14 +208,37 @@ const CandidateDetailsPage = () => {
             throw error;
         }
     };
+    
+    // Save the new column settings to the backend and update the global state.
+    const handleSaveColumnSettings = async (newPrefs) => {
+        setLoading(true);
+        try {
+            const newPreferences = {
+                ...user.dashboardPreferences,
+                candidateColumnOrder: JSON.stringify(newPrefs.order),
+                candidateColumnVisibility: JSON.stringify(newPrefs.visibility)
+            };
+            await apiService.saveUserDashboardPreferences(user.userIdentifier, newPreferences);
+            updatePreferences(newPreferences);
+        } catch(err) {
+            setError(`Failed to save column settings: ${err.message}`);
+        } finally {
+            setLoading(false);
+            setIsColumnModalOpen(false);
+        }
+    };
 
     const downloadPdf = () => {
         const doc = new jsPDF('landscape');
-        const exportHeaders = tableHeader.filter(h => h !== 'Actions');
+        const exportHeaders = displayHeader.filter(h => h !== 'Actions');
         const body = filteredAndSortedData.map(item => {
-            return item.display.slice(0, exportHeaders.length).map((cell, index) => {
-                if (tableHeader[index] === 'Candidate Contact Details') {
+            return exportHeaders.map(header => {
+                let cell = item.display[header];
+                if (header === 'Candidate Contact Details') {
                     return `${item.original.email}, ${item.original.mobileNumber}`;
+                }
+                if (header === 'Submission Date') {
+                    return formatDate(cell);
                 }
                 return Array.isArray(cell) ? cell.join(', ') : cell;
             });
@@ -195,15 +248,17 @@ const CandidateDetailsPage = () => {
     };
 
     const downloadCsv = () => {
-        const exportHeaders = tableHeader.filter(h => h !== 'Actions');
+        const exportHeaders = displayHeader.filter(h => h !== 'Actions');
         const csvContent = [
             exportHeaders.join(','),
             ...filteredAndSortedData.map(item => 
                 exportHeaders.map(header => {
-                    const cellIndex = tableHeader.indexOf(header);
-                    let cell = item.display[cellIndex];
+                    let cell = item.display[header];
                     if (header === 'Candidate Contact Details') {
                         cell = `${item.original.email}, ${item.original.mobileNumber}`;
+                    }
+                    if (header === 'Submission Date') {
+                        cell = formatDate(cell);
                     }
                     return `"${String(Array.isArray(cell) ? cell.join('; ') : (cell || '')).replace(/"/g, '""')}"`;
                 }).join(',')
@@ -234,8 +289,15 @@ const CandidateDetailsPage = () => {
                         disabled={!canViewCandidates && !loading}
                     />
                      <div className="flex items-center space-x-2">
-                        <button onClick={downloadPdf} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" disabled={!canViewCandidates || loading}>Download PDF</button>
-                        <button onClick={downloadCsv} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" disabled={!canViewCandidates || loading}>Download CSV</button>
+                        <Dropdown
+                            trigger={
+                                <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Options</button>
+                            }
+                        >
+                            <a href="#" onClick={(e) => { e.preventDefault(); setIsColumnModalOpen(true); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Column Settings</a>
+                            <a href="#" onClick={(e) => { e.preventDefault(); downloadPdf(); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Download PDF</a>
+                            <a href="#" onClick={(e) => { e.preventDefault(); downloadCsv(); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Download CSV</a>
+                        </Dropdown>
                     </div>
                 </div>
 
@@ -255,7 +317,7 @@ const CandidateDetailsPage = () => {
                             <table className="w-full text-sm text-left text-gray-500 table-fixed">
                                 <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
                                     <tr>
-                                        {tableHeader.map(h => (
+                                        {displayHeader.map(h => (
                                             <th key={h} scope="col" className={`p-0 border-r border-slate-300 last:border-r-0 ${colWidths[h] || ''}`}>
                                                 {h === 'Actions' ? (
                                                     <div className="p-3 font-bold">{h}</div>
@@ -280,14 +342,13 @@ const CandidateDetailsPage = () => {
                                         const isDuplicate = duplicateEmails.includes(originalCandidate.email);
                                         return (
                                             <tr key={rowIndex} className={`border-b ${isDuplicate ? 'bg-yellow-100 hover:bg-yellow-200' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                                                {displayRow.map((cell, cellIndex) => {
-                                                    const headerName = tableHeader[cellIndex];
-                                                    
+                                                {displayHeader.map((headerName) => {
+                                                    const cell = displayRow[headerName];
                                                     const tdClasses = "px-4 py-3 border-r border-slate-200 align-middle whitespace-normal break-words";
 
                                                     if (headerName === 'Full Name') {
                                                         return (
-                                                            <td key={cellIndex} className={`${tdClasses} font-medium text-gray-900`}>
+                                                            <td key={headerName} className={`${tdClasses} font-medium text-gray-900`}>
                                                                 <button onClick={() => handleViewProfileClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 hover:underline text-left">
                                                                     {cell}
                                                                 </button>
@@ -297,7 +358,7 @@ const CandidateDetailsPage = () => {
                                                     
                                                     if (headerName === 'Skill Set') {
                                                         return (
-                                                            <td key={cellIndex} className={tdClasses}>
+                                                            <td key={headerName} className={tdClasses}>
                                                                 <div className="flex flex-wrap gap-1">
                                                                     {Array.isArray(cell) && cell.slice(0, 3).map((skill, i) => (
                                                                         <span key={i} className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-800 rounded-full">
@@ -313,18 +374,21 @@ const CandidateDetailsPage = () => {
                                                             </td>
                                                         );
                                                     }
+                                                    
+                                                     if (headerName === 'Actions') {
+                                                        return canEditDashboard ? (
+                                                            <td key={headerName} className="px-4 py-3 border-r border-slate-200 last:border-r-0">
+                                                                <button onClick={() => handleEditClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 p-1 font-semibold">Edit</button>
+                                                            </td>
+                                                        ) : null;
+                                                    }
 
                                                     return (
-                                                        <td key={cellIndex} className={`${tdClasses} font-medium text-gray-900`}>
+                                                        <td key={headerName} className={`${tdClasses} font-medium text-gray-900`}>
                                                             {headerName === 'Submission Date' ? formatDate(cell) : cell}
                                                         </td>
                                                     );
                                                 })}
-                                                {canEditDashboard && (
-                                                    <td className="px-4 py-3 border-r border-slate-200 last:border-r-0">
-                                                        <button onClick={() => handleEditClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 p-1 font-semibold">Edit</button>
-                                                    </td>
-                                                )}
                                             </tr>
                                         );
                                     })}
@@ -344,6 +408,13 @@ const CandidateDetailsPage = () => {
                 isOpen={isProfileViewModalOpen}
                 onClose={() => setIsProfileViewModalOpen(false)}
                 candidate={candidateToView}
+            />
+            <ColumnSettingsModal
+                isOpen={isColumnModalOpen}
+                onClose={() => setIsColumnModalOpen(false)}
+                allHeaders={allHeaders}
+                userPrefs={userPrefs}
+                onSave={handleSaveColumnSettings}
             />
         </>
     );
