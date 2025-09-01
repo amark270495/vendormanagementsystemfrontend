@@ -178,11 +178,11 @@ const CandidateDetailsPage = () => {
     // Apply specified column widths.
     const colWidths = {
         'Full Name': 'w-[7.5%]',
-        'Candidate Contact Details': 'w-[12%]',
+        'Candidate Contact Details': 'w-[11%]',
         'Current Role': 'w-[10%]',
-        'Skill Set': 'w-[12%]',
-        'Submitted By': 'w-[10%]',
-        'Actions': 'w-[5%]'
+        'Skill Set': 'w-[16%]',
+        'Submitted By': 'w-[7.5%]',
+        'Actions': 'w-[4%]'
     };
 
     const handleSort = (key, direction) => setSortConfig({ key, direction });
