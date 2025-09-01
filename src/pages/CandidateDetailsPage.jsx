@@ -359,18 +359,7 @@ const CandidateDetailsPage = () => {
                                                     if (headerName === 'Skill Set') {
                                                         return (
                                                             <td key={headerName} className={tdClasses}>
-                                                                <div className="flex flex-wrap gap-1">
-                                                                    {Array.isArray(cell) && cell.slice(0, 3).map((skill, i) => (
-                                                                        <span key={i} className="px-2 py-1 text-sm font-medium border border-gray-300 text-gray-800 rounded-full">
-                                                                            {skill}
-                                                                        </span>
-                                                                    ))}
-                                                                    {Array.isArray(cell) && cell.length > 3 && (
-                                                                        <span className="px-2 py-1 text-sm font-medium border border-gray-400 text-gray-900 rounded-full">
-                                                                            +{cell.length - 3}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
+                                                                {Array.isArray(cell) ? cell.join(', ') : ''}
                                                             </td>
                                                         );
                                                     }
