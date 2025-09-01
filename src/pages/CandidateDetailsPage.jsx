@@ -178,10 +178,10 @@ const CandidateDetailsPage = () => {
     // Apply specified column widths.
     const colWidths = {
         'Full Name': 'w-[7.5%]',
-        'Candidate Contact Details': 'w-[11%]',
-        'Current Role': 'w-[10%]',
+        'Candidate Contact Details': 'w-[9%]',
+        'Current Role': 'w-[7.5%]',
         'Skill Set': 'w-[16%]',
-        'Submitted By': 'w-[7.5%]',
+        'Submitted By': 'w-[9%]',
         'Actions': 'w-[4%]'
     };
 
@@ -361,12 +361,12 @@ const CandidateDetailsPage = () => {
                                                             <td key={headerName} className={tdClasses}>
                                                                 <div className="flex flex-wrap gap-1">
                                                                     {Array.isArray(cell) && cell.slice(0, 3).map((skill, i) => (
-                                                                        <span key={i} className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-800 rounded-full">
+                                                                        <span key={i} className="px-2 py-1 text-xs font-medium border border-gray-300 text-gray-800 rounded-full">
                                                                             {skill}
                                                                         </span>
                                                                     ))}
                                                                     {Array.isArray(cell) && cell.length > 3 && (
-                                                                        <span className="px-2 py-1 text-xs font-medium bg-gray-300 text-gray-900 rounded-full">
+                                                                        <span className="px-2 py-1 text-xs font-medium border border-gray-400 text-gray-900 rounded-full">
                                                                             +{cell.length - 3}
                                                                         </span>
                                                                     )}
@@ -421,3 +421,4 @@ const CandidateDetailsPage = () => {
 };
 
 export default CandidateDetailsPage;
+
