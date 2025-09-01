@@ -152,7 +152,7 @@ const CandidateDetailsPage = () => {
         'Current Role': 'w-[10%]',
         'Skill Set': 'w-[13%]',
         'Submitted By': 'w-[10%]',
-        'Actions': 'w-[5%]'
+        'Actions': 'w-[3%]'
     };
 
     const handleSort = (key, direction) => setSortConfig({ key, direction });
