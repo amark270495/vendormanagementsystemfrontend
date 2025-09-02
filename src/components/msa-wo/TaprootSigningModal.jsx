@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import Modal from '../Modal';
 import Spinner from '../Spinner';
 import { usePermissions } from '../../hooks/usePermissions';
-import { apiService } from '../../api/apiService';
 
-const TaprootSigningModal = ({ isOpen, onClose, onSign, documentData }) => {
-    const { canAddPosting } = usePermissions(); // Placeholder for Taproot Director permission
+const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
+    const { canAddPosting } = usePermissions(); // Using this as a proxy for Taproot Director permission
 
     const [formData, setFormData] = useState({
         signature: ''
@@ -26,7 +25,11 @@ const TaprootSigningModal = ({ isOpen, onClose, onSign, documentData }) => {
         setLoading(true);
 
         try {
-            await onSign(formData, 'taproot', documentData.token);
+            // --- FIX ---
+            // Pass the entire formData object and the signerType 'taproot'
+            // This ensures the backend receives the signature data.
+            await onSign(formData, 'taproot');
+            // --- END FIX ---
             onClose();
         } catch (err) {
             setError(err.message || "An unexpected error occurred.");
