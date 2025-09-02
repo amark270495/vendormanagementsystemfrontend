@@ -8,15 +8,16 @@ import TaprootSigningModal from '../components/msa-wo/TaprootSigningModal';
 import { usePermissions } from '../hooks/usePermissions';
 
 const MSAandWOSigningPage = ({ token }) => {
-    // --- FIX START ---
     // Conditionally get the auth context. If it's not available (for a vendor),
     // provide a default empty object to prevent the destructuring error.
     const auth = useAuth() || {};
     const { user } = auth;
     
+    // --- FIX ---
+    // We must also provide a default for usePermissions for the same reason.
     const permissions = usePermissions() || {};
     const { canAddPosting } = permissions;
-    // --- FIX END ---
+    // --- END FIX ---
 
     const [documentData, setDocumentData] = useState(null);
     const [loading, setLoading] = useState(true);
