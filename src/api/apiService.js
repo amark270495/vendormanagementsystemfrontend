@@ -1,5 +1,3 @@
-// src/api/apiService.js
-
 import axios from 'axios';
 
 const API_BASE_URL = '/api';
@@ -147,6 +145,10 @@ export const apiService = {
 
   accessMSAandWO: (token, tempPassword) =>
     apiClient.post('/accessMSAandWO', { token, tempPassword }),
+
+  // --- NEW: Function for authenticated directors to bypass the password modal ---
+  getMSAandWODetailForSigning: (token, authenticatedUsername) =>
+    apiClient.get('/getMSAandWODetailForSigning', { params: { token, authenticatedUsername } }),
 
   updateSigningStatus: (token, signerData, signerType, authenticatedUsername) =>
     apiClient.post('/updateSigningStatus', { token, signerData, signerType, authenticatedUsername }),
