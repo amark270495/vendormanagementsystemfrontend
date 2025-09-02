@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import Modal from '../Modal';
 import Spinner from '../Spinner';
-import { apiService } from '../../api/apiService';
 
-const VendorSigningModal = ({ isOpen, onClose, onSign, documentData }) => {
+const VendorSigningModal = ({ isOpen, onClose, onSign }) => {
     const [formData, setFormData] = useState({
         signature: '',
         name: '',
@@ -20,7 +19,11 @@ const VendorSigningModal = ({ isOpen, onClose, onSign, documentData }) => {
         setLoading(true);
 
         try {
-            await onSign(formData, 'vendor', documentData.token);
+            // --- FIX ---
+            // Pass the entire formData object and the signerType 'vendor'
+            // This ensures the backend receives the signature, name, and title.
+            await onSign(formData, 'vendor');
+            // --- END FIX ---
             onClose();
         } catch (err) {
             setError(err.message || "An unexpected error occurred.");
