@@ -1,12 +1,10 @@
-// src/hooks/usePermissions.js
-
 import { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-// This function calculates the final boolean permissions based on the user object.
+// This helper function calculates the final boolean permissions.
 const calculatePermissions = (permissions) => {
-    // If no permissions object exists, default all to false for security.
     if (!permissions) {
+        // If no permissions object exists, default all to false for security.
         return {
             canViewCandidates: false,
             canEditUsers: false,
@@ -18,10 +16,9 @@ const calculatePermissions = (permissions) => {
             canMessage: false,
             canManageTimesheets: false,
             canRequestTimesheetApproval: false,
-            canManageMSAWO: false, // Default canManageMSAWO to false
+            canManageMSAWO: false,
         };
     }
-
     // Ensure each permission is treated as a strict boolean `true`.
     return {
         canViewCandidates: permissions.canViewCandidates === true,
@@ -34,14 +31,21 @@ const calculatePermissions = (permissions) => {
         canMessage: permissions.canMessage === true,
         canManageTimesheets: permissions.canManageTimesheets === true,
         canRequestTimesheetApproval: permissions.canRequestTimesheetApproval === true,
-        // *** CHANGE: Correctly map the canManageMSAWO permission from the context. ***
         canManageMSAWO: permissions.canManageMSAWO === true,
     };
 };
 
-// Custom hook to easily access permissions throughout the app.
+/**
+ * Custom hook to safely access permissions throughout the app.
+ */
 export const usePermissions = () => {
-    const { permissions } = useAuth();
-    // useMemo ensures that the permissions object is only recalculated when the source permissions change.
+    // --- FIX ---
+    // Safely get the entire auth context. If it's not available (e.g., for a vendor),
+    // default to an empty object. This prevents the hook from crashing.
+    const auth = useAuth() || {};
+    const { permissions } = auth; // Now this destructuring is safe, even if auth is {}.
+    // --- END FIX ---
+
+    // useMemo ensures the permissions object is only recalculated when the source permissions change.
     return useMemo(() => calculatePermissions(permissions), [permissions]);
 };
