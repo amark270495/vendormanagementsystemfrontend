@@ -108,6 +108,7 @@ const UserManagementPage = () => {
             'Data Entry & Viewer': 'bg-green-100 text-green-800',
             'Data Viewer': 'bg-yellow-100 text-yellow-800',
             'Data Entry': 'bg-teal-100 text-teal-800',
+            'Taproot Director': 'bg-teal-100 text-teal-800',
         }[role] || 'bg-gray-100 text-gray-800';
         return <span className={`px-2 py-1 text-xs font-medium rounded-full ${roleColor}`}>{role}</span>
     };
