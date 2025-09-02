@@ -257,11 +257,21 @@ const MSAandWOSigningPage = ({ token }) => {
             setLoading(false);
             return;
         }
+        
+        // --- THIS IS THE FIX ---
+        // Check session storage as a hint. If a session exists, the AuthProvider is likely just loading.
+        // This prevents the page from flashing the vendor password modal for a logged-in director.
+        const sessionUser = sessionStorage.getItem('vms_user');
 
         if (user && user.userIdentifier) {
+            // Case 1: The AuthProvider is fully loaded and has confirmed an authenticated user.
             fetchDocumentForDirector();
-        } 
-        else {
+        } else if (sessionUser) {
+            // Case 2: No user yet, but a session exists. We wait for the AuthProvider to finish.
+            // The `user` dependency in the useEffect array will trigger a re-render once it's loaded.
+            setLoading(true); 
+        } else {
+            // Case 3: No user and no session. This must be an external vendor.
             setIsAccessModalOpen(true);
             setLoading(false);
         }
