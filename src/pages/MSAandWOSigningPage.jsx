@@ -1,21 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { usePermissions } from '../hooks/usePermissions';
-import { apiService } from '../api/apiService';
-import Spinner from '../components/Spinner';
-import AccessModal from '../components/msa-wo/AccessModal';
-import VendorSigningModal from '../components/msa-wo/VendorSigningModal';
-import TaprootSigningModal from '../components/msa-wo/TaprootSigningModal';
+// ... (keep all existing code for apiService, contexts, hooks, and all component definitions above this) ...
 
+// --- BUG FIX & UI REFRESH: Updated E-Signing Page ---
 const MSAandWOSigningPage = ({ token }) => {
-    // Safely destructure from useAuth, providing a default empty object if context is unavailable
-    const { user } = useAuth() || {}; 
+    const { user } = useAuth() || {};
     const { canAddPosting } = usePermissions();
-
     const [documentData, setDocumentData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [isAccessModalOpen, setIsAccessModalOpen] = useState(true); // Always start with the access modal
+    const [isAccessModalOpen, setIsAccessModalOpen] = useState(true); // Always start with modal open
     const [isVendorSigningModalOpen, setIsVendorSigningModalOpen] = useState(false);
     const [isTaprootSigningModalOpen, setIsTaprootSigningModalOpen] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
@@ -31,7 +23,7 @@ const MSAandWOSigningPage = ({ token }) => {
 
     const handleSignSuccess = useCallback((message) => {
         setSuccessMessage(message);
-        // Refresh the page after a short delay to show the updated status
+        // We'll just reload the page for simplicity after a successful sign
         setTimeout(() => {
             window.location.reload();
         }, 2000);
@@ -41,7 +33,6 @@ const MSAandWOSigningPage = ({ token }) => {
         setLoading(true);
         setError('');
         try {
-            // The authenticatedUsername is optional for vendors but required for Taproot signers
             const response = await apiService.updateSigningStatus(token, signerData, signerType, user?.userIdentifier);
             if (response.data.success) {
                 handleSignSuccess(response.data.message);
@@ -50,12 +41,13 @@ const MSAandWOSigningPage = ({ token }) => {
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to sign the document.');
-            throw err; // Re-throw to allow the modal to display the error
+            throw err; // Re-throw to show error in modal
         } finally {
             setLoading(false);
         }
     }, [token, user?.userIdentifier, handleSignSuccess]);
 
+    // This effect is minimal, as the main logic starts with the access modal.
     useEffect(() => {
         if (token) {
             setLoading(false);
@@ -71,7 +63,7 @@ const MSAandWOSigningPage = ({ token }) => {
         return 1;
     };
     const currentStep = getStatusStep();
-
+    
     const DetailItem = ({ label, value }) => (
         <div>
             <p className="text-sm text-gray-500">{label}</p>
@@ -145,7 +137,17 @@ const MSAandWOSigningPage = ({ token }) => {
                 </div>
             </div>
 
-            <AccessModal isOpen={isAccessModalOpen} onClose={() => { if (!documentData) setError("Access cancelled. Please use the link from your email to try again.")}} onAccessGranted={handleAccessGranted} token={token} vendorEmail={documentData?.vendorEmail} />
+            {/* --- UX IMPROVEMENT --- */}
+            {/* The modal is always rendered, but its visibility is controlled by isOpen. */}
+            {/* The onClose function is updated to only be called by the modal's internal close button, preventing the "Access Cancelled" error. */}
+            <AccessModal
+                isOpen={isAccessModalOpen}
+                onClose={() => setIsAccessModalOpen(false)} // This is for the close button inside the modal
+                onAccessGranted={handleAccessGranted}
+                token={token}
+                vendorEmail={documentData?.vendorEmail}
+            />
+            {/* --- END UX IMPROVEMENT --- */}
             
             {documentData && (
                 <>
@@ -156,5 +158,3 @@ const MSAandWOSigningPage = ({ token }) => {
         </>
     );
 };
-
-export default MSAandWOSigningPage;
