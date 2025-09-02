@@ -172,7 +172,6 @@ const MSAandWODashboardPage = () => {
         }
     };
 
-    // --- UPDATED: Handlers for the Director Signing Modal workflow ---
     const handleDirectorSignClick = (doc) => {
         setDocumentToSign(doc);
         setIsDirectorSigningModalOpen(true);
@@ -181,7 +180,7 @@ const MSAandWODashboardPage = () => {
     const handleSignSuccess = () => {
         setIsDirectorSigningModalOpen(false);
         setSuccess("Document successfully signed and finalized!");
-        loadData(); // Refresh the dashboard to show the "Fully Signed" status
+        loadData(); 
     };
 
     return (
@@ -215,7 +214,6 @@ const MSAandWODashboardPage = () => {
                                     <tr key={item.original.rowKey} className="bg-gray-50 border-b hover:bg-gray-100">
                                         {item.display.map((cell, cellIndex) => (<td key={cellIndex} className="px-4 py-3 border-r last:border-r-0 font-medium text-gray-900">{cell}</td>))}
                                         <td className="px-4 py-3 border-r last:border-r-0 text-center">
-                                            {/* --- THE FIX: This button now opens the new modal --- */}
                                             {item.original.status === 'Vendor Signed' && (
                                                 <button onClick={() => handleDirectorSignClick(item.original)} className="px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-md hover:bg-green-700 mr-2 shadow-sm">
                                                     Sign as Taproot
@@ -241,7 +239,6 @@ const MSAandWODashboardPage = () => {
             <EditMSAandWOModal isOpen={modalState.type === 'edit'} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveChanges} documentToEdit={modalState.data}/>
             <DocumentPreviewModal isOpen={isPreviewModalOpen} onClose={() => setIsPreviewModalOpen(false)} document={documentToPreview} />
             
-            {/* Render the DirectorSigningModal */}
             <DirectorSigningModal
                 isOpen={isDirectorSigningModalOpen}
                 onClose={() => setIsDirectorSigningModalOpen(false)}
