@@ -8,16 +8,12 @@ import TaprootSigningModal from '../components/msa-wo/TaprootSigningModal';
 import { usePermissions } from '../hooks/usePermissions';
 
 const MSAandWOSigningPage = ({ token }) => {
-    // Conditionally get the auth context. If it's not available (for a vendor),
-    // provide a default empty object to prevent the destructuring error.
-    const auth = useAuth() || {};
-    const { user } = auth;
+    // Now that the hooks are safe, we can use them more cleanly.
+    // We still provide a fallback for `useAuth` to safely get the user object.
+    const { user } = useAuth() || {};
     
-    // --- FIX ---
-    // We must also provide a default for usePermissions for the same reason.
-    const permissions = usePermissions() || {};
-    const { canAddPosting } = permissions;
-    // --- END FIX ---
+    // `usePermissions` is now safe to call directly because we fixed the hook itself.
+    const { canAddPosting } = usePermissions();
 
     const [documentData, setDocumentData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -47,7 +43,6 @@ const MSAandWOSigningPage = ({ token }) => {
         setLoading(true);
         setError('');
         try {
-            // Use optional chaining `?.` on `user` in case it's null (for vendors)
             const response = await apiService.updateSigningStatus(docToken, signerData, signerType, user?.userIdentifier);
             if (response.data.success) {
                 handleSignSuccess(response.data.message);
