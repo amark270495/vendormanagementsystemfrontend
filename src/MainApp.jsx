@@ -16,65 +16,58 @@ import ManageCompaniesPage from './pages/ManageCompaniesPage';
 import CreateMSAandWOPage from './pages/CreateMSAandWOPage';
 import MSAandWODashboardPage from './pages/MSAandWODashboardPage';
 
-/**
- * This component is the main layout for authenticated users.
- * It includes the top navigation bar and renders the currently selected page.
- */
 const MainApp = () => {
-    const [currentPage, setCurrentPage] = useState({ page: 'home', params: {} });
+  const [currentPage, setCurrentPage] = useState({ page: 'home', params: {} });
 
-    // This function is passed to the TopNav to handle navigation clicks
-    const handleNavigate = (page, params = {}) => {
-        setCurrentPage({ page, params });
-    };
+  const handleNavigate = (page, params = {}) => {
+    setCurrentPage({ page, params });
+  };
 
-    // This function determines which page component to render based on the state
-    const renderPage = () => {
-        switch (currentPage.page) {
-            case 'home':
-                return <HomePage onNavigate={handleNavigate} />;
-            case 'dashboard':
-                return <DashboardPage sheetKey={currentPage.params.key} />;
-            case 'new_posting':
-                return <JobPostingFormPage onFormSubmit={() => handleNavigate('home')} />;
-            case 'candidate_details':
-                return <CandidateDetailsPage />;
-            case 'reports':
-                return <ReportsPage />;
-            case 'messages':
-                return <MessagesPage />;
-            case 'admin':
-                return <AdminPage />;
-            case 'create_company':
-                return <CreateCompanyPage />;
-            case 'manage_companies':
-                return <ManageCompaniesPage />;
-            case 'create_timesheet_employee':
-                return <CreateTimesheetEmployeePage />;
-            case 'manage_timesheet_employees':
-                return <ManageTimesheetEmployeesPage />;
-            case 'log_hours':
-                return <LogHoursPage />;
-            case 'timesheets_dashboard':
-                return <TimesheetsDashboardPage />;
-            case 'create_msa_wo':
-                return <CreateMSAandWOPage />;
-            case 'msa_wo_dashboard':
-                return <MSAandWODashboardPage />;
-            default:
-                // Default to the home page if the route is unknown
-                return <HomePage onNavigate={handleNavigate} />;
-        }
-    };
+  const renderPage = () => {
+    switch (currentPage.page) {
+      case 'home':
+        return <HomePage onNavigate={handleNavigate} />;
+      case 'dashboard':
+        return <DashboardPage sheetKey={currentPage.params.key} />;
+      case 'new_posting':
+        return <JobPostingFormPage onFormSubmit={() => handleNavigate('home')} />;
+      case 'candidate_details':
+        return <CandidateDetailsPage />;
+      case 'reports':
+        return <ReportsPage />;
+      case 'messages':
+        return <MessagesPage />;
+      case 'admin':
+        return <AdminPage />;
+      case 'create_company':
+        return <CreateCompanyPage />;
+      case 'manage_companies':
+        return <ManageCompaniesPage />;
+      case 'create_timesheet_employee':
+        return <CreateTimesheetEmployeePage />;
+      case 'manage_timesheet_employees':
+        return <ManageTimesheetEmployeesPage />;
+      case 'log_hours':
+        return <LogHoursPage />;
+      case 'timesheets_dashboard':
+        return <TimesheetsDashboardPage />;
+      case 'create_msa_wo':
+        return <CreateMSAandWOPage />;
+      case 'msa_wo_dashboard':
+        return <MSAandWODashboardPage />;
+      default:
+        return <HomePage onNavigate={handleNavigate} />;
+    }
+  };
 
-    return (
-        <div className="min-h-screen bg-gray-50">
-            <TopNav onNavigate={handleNavigate} />
-            <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {renderPage()}
-            </main>
-        </div>
-    );
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <TopNav onNavigate={handleNavigate} />
+      <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {renderPage()}
+      </main>
+    </div>
+  );
 };
 
 export default MainApp;

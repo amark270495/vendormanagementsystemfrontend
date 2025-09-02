@@ -78,5 +78,4 @@ const AuthenticatedApp = () => {
 }
 
 
-// This is the crucial line: We are exporting AppRouter as the default.
 export default AppRouter;
