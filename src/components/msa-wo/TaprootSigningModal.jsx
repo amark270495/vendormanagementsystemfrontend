@@ -3,6 +3,7 @@ import Modal from '../Modal';
 import Spinner from '../Spinner';
 
 const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
+    // The form state now includes a password field
     const [formData, setFormData] = useState({ signature: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -13,10 +14,11 @@ const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
         setError('');
         setLoading(true);
         try {
-            // Pass the entire formData (signature and password) to the onSign handler
+            // Pass the entire formData object (including the password) to the onSign handler
             await onSign(formData, 'taproot');
             onClose();
         } catch (err) {
+            // Display any error from the backend (e.g., "Invalid password")
             setError(err.message || "An unexpected error occurred.");
         } finally {
             setLoading(false);
@@ -33,6 +35,7 @@ const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
                     <input type="text" name="signature" id="signature" value={formData.signature} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
                      <p className="mt-1 text-xs text-gray-500">Typing your name here constitutes a legal signature.</p>
                 </div>
+                {/* This is the new password field */}
                 <div>
                     <label htmlFor="password" className="block text-sm font-medium text-gray-700">Your VMS Password <span className="text-red-500">*</span></label>
                     <input type="password" name="password" id="password" value={formData.password} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
