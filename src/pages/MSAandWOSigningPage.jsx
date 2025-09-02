@@ -146,7 +146,6 @@ const VendorSigningModal = ({ isOpen, onClose, onSign }) => {
     );
 };
 
-// --- UPDATED: TaprootSigningModal now includes a password field ---
 const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
     const [formData, setFormData] = useState({ signature: '', password: '' });
     const [error, setError] = useState('');
@@ -158,7 +157,6 @@ const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
         setError('');
         setLoading(true);
         try {
-            // Pass the entire formData (signature and password) to the onSign handler
             await onSign(formData, 'taproot');
             onClose();
         } catch (err) {
@@ -236,7 +234,7 @@ const MSAandWOSigningPage = ({ token }) => {
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to sign the document.');
-            throw err; // Re-throw error to be displayed in the modal
+            throw err;
         } finally {
             setLoading(false);
         }
@@ -264,13 +262,17 @@ const MSAandWOSigningPage = ({ token }) => {
             return;
         }
         
+        // This logic correctly handles the race condition.
         const sessionUser = sessionStorage.getItem('vms_user');
 
         if (user && user.userIdentifier) {
+            // Case 1: The AuthProvider is fully loaded and has confirmed an authenticated user.
             fetchDocumentForDirector();
         } else if (sessionUser) {
+            // Case 2: No user yet, but a session exists. We wait for the AuthProvider to finish.
             setLoading(true); 
         } else {
+            // Case 3: No user and no session. This must be an external vendor.
             setIsAccessModalOpen(true);
             setLoading(false);
         }
