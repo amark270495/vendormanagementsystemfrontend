@@ -7,9 +7,10 @@ import HeaderMenu from '../components/dashboard/HeaderMenu';
 import ConfirmationModal from '../components/dashboard/ConfirmationModal';
 import EditMSAandWOModal from '../components/msa-wo/EditMSAandWOModal';
 import { usePermissions } from '../hooks/usePermissions';
-import Modal from '../components/Modal'; // Assuming a generic Modal component exists
+import Modal from '../components/Modal';
 
-// --- NEW HELPER COMPONENT: Document Preview Modal ---
+// --- HELPER COMPONENT: Document Preview Modal ---
+// This component provides an embedded PDF viewer for a better user experience.
 const DocumentPreviewModal = ({ isOpen, onClose, document }) => {
     if (!isOpen || !document) return null;
 
@@ -33,6 +34,7 @@ const DocumentPreviewModal = ({ isOpen, onClose, document }) => {
 };
 
 
+// --- MAIN COMPONENT: MSAandWODashboardPage ---
 const MSAandWODashboardPage = () => {
     const { user } = useAuth();
     const { canManageMSAWO } = usePermissions();
@@ -162,10 +164,10 @@ const MSAandWODashboardPage = () => {
         try {
             await apiService.updateMSAandWO(updatedData, user.userIdentifier);
             setSuccess('Document updated successfully.');
-            loadData(); // Refresh data to show changes
+            loadData();
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to update document.');
-            throw err; // Re-throw to allow modal to display error
+            throw err;
         } finally {
             setLoading(false);
         }
@@ -207,7 +209,7 @@ const MSAandWODashboardPage = () => {
                                                     Sign as Taproot
                                                 </button>
                                             )}
-                                            <Dropdown trigger={<button className="text-gray-500 hover:text-gray-700 p-1 rounded-full inline-flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>}>
+                                            <Dropdown trigger={<button className="text-gray-500 hover:text-gray-700 p-1 rounded-full inline-flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>}>
                                                 <a href="#" onClick={(e) => { e.preventDefault(); handlePreview(item.original); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Preview/Review</a>
                                                 <a href="#" onClick={(e) => { e.preventDefault(); handleEdit(item.original); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit / Cancel</a>
                                                 <a href="#" onClick={(e) => { e.preventDefault(); handleResend(item.original); }} className="block px-4 py-2 text-sm text-blue-600 hover:bg-gray-100">Resend Email</a>
