@@ -8,28 +8,26 @@ import ChangePasswordPage from './pages/ChangePasswordPage';
 
 /**
  * This is the root component of the application.
- * It first checks the URL to see if it's a special e-signing link.
- * If so, it shows the signing page.
- * Otherwise, it proceeds with the normal authenticated application flow.
+ * It checks the URL for an e-signing token to decide which view to show.
  */
 const AppRouter = () => {
   const [route, setRoute] = useState({ page: 'loading', params: {} });
 
   useEffect(() => {
     // This effect runs once when the app first loads to check the URL
-    const path = window.location.pathname;
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
 
-    // Check if the URL is specifically for signing a document
-    if (path === '/sign' && token) {
-      // If it is, set the route to show the signing page directly
+    // --- CORRECTION ---
+    // We now check ONLY for the presence of a token in the URL.
+    // If a token exists, we immediately show the signing page.
+    if (token) {
       setRoute({ page: 'sign', params: { token } });
     } else {
-      // Otherwise, proceed to the main application flow
+      // Otherwise, proceed to the main application flow (login/dashboard).
       setRoute({ page: 'main', params: {} });
     }
-  }, []); // The empty dependency array [] ensures this effect runs only once
+  }, []); // The empty dependency array ensures this effect runs only once
 
   // While checking the URL, show a loading indicator
   if (route.page === 'loading') {
@@ -41,13 +39,11 @@ const AppRouter = () => {
   }
 
   // If the route is 'sign', render ONLY the signing page.
-  // This page does not require the user to be logged in.
   if (route.page === 'sign') {
     return <MSAandWOSigningPage token={route.params.token} />;
   }
   
   // For any other URL, render the main, authenticated application.
-  // The AuthProvider will manage the login state for this part of the app.
   return (
     <AuthProvider>
       <AuthenticatedApp />
@@ -58,22 +54,18 @@ const AppRouter = () => {
 
 /**
  * This component contains the logic for the authenticated part of the application.
- * It's only rendered when the URL is not an e-signing link.
  */
 const AuthenticatedApp = () => {
     const { isAuthenticated, isFirstLogin } = useAuth();
 
-    // If the user is not authenticated, show the login page.
     if (!isAuthenticated) {
         return <LoginPage />;
     }
 
-    // If the user is authenticated but it's their first login, force a password change.
     if (isFirstLogin) {
         return <ChangePasswordPage />;
     }
 
-    // If the user is fully authenticated, show the main application dashboard and pages.
     return <MainApp />;
 }
 
