@@ -7,67 +7,59 @@ import LoginPage from './pages/LoginPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 
 /**
- * This is the root component of the application.
- * It checks the URL for an e-signing token to decide which view to show.
+ * This component handles the routing logic AFTER the AuthProvider is available.
+ * It checks the URL and renders the correct top-level page.
  */
-const AppRouter = () => {
-  const [route, setRoute] = useState({ page: 'loading', params: {} });
+const AppContent = () => {
+    const [page, setPage] = useState('loading');
+    const [token, setToken] = useState(null);
+    
+    // This effect runs once to determine the initial page based on the URL.
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const urlToken = params.get('token');
 
-  useEffect(() => {
-    // This effect runs once when the app first loads to check the URL
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
+        if (urlToken) {
+            setToken(urlToken);
+            setPage('sign');
+        } else {
+            setPage('main');
+        }
+    }, []);
 
-    // --- CORRECTION ---
-    // We now check ONLY for the presence of a token in the URL.
-    // If a token exists, we immediately show the signing page.
-    if (token) {
-      setRoute({ page: 'sign', params: { token } });
-    } else {
-      // Otherwise, proceed to the main application flow (login/dashboard).
-      setRoute({ page: 'main', params: {} });
+    const { isAuthenticated, isFirstLogin } = useAuth();
+
+    if (page === 'loading') {
+        return <div className="flex justify-center items-center h-screen"><Spinner size="12" /></div>;
     }
-  }, []); // The empty dependency array ensures this effect runs only once
 
-  // While checking the URL, show a loading indicator
-  if (route.page === 'loading') {
-    return (
-      <div className="flex justify-center items-center h-screen bg-gray-100">
-        <Spinner size="12" />
-      </div>
-    );
-  }
+    if (page === 'sign') {
+        // If the URL has a token, always show the signing page.
+        // This page itself has logic to differentiate between a logged-in director and an external vendor.
+        return <MSAandWOSigningPage token={token} />;
+    }
 
-  // If the route is 'sign', render ONLY the signing page.
-  if (route.page === 'sign') {
-    return <MSAandWOSigningPage token={route.params.token} />;
-  }
-  
-  // For any other URL, render the main, authenticated application.
-  return (
-    <AuthProvider>
-      <AuthenticatedApp />
-    </AuthProvider>
-  );
+    // --- Main Authenticated App Flow ---
+    if (!isAuthenticated) {
+        return <LoginPage />;
+    }
+    if (isFirstLogin) {
+        return <ChangePasswordPage />;
+    }
+    return <MainApp />;
 };
 
 
 /**
- * This component contains the logic for the authenticated part of the application.
+ * This is the root component. Its only job is to provide the
+ * AuthContext to the entire application.
  */
-const AuthenticatedApp = () => {
-    const { isAuthenticated, isFirstLogin } = useAuth();
+const App = () => {
+    return (
+        <AuthProvider>
+            <AppContent />
+        </AuthProvider>
+    );
+};
 
-    if (!isAuthenticated) {
-        return <LoginPage />;
-    }
-
-    if (isFirstLogin) {
-        return <ChangePasswordPage />;
-    }
-
-    return <MainApp />;
-}
-
-
-export default AppRouter;
+export default App;
