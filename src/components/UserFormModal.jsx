@@ -3,8 +3,8 @@ import Modal from './Modal';
 import Spinner from './Spinner';
 
 const UserFormModal = ({ isOpen, onClose, onSave, userToEdit }) => {
-    const userRoles = ['Admin', 'Standard User', 'Data Entry', 'Data Viewer', 'Data Entry & Viewer'];
-    const backendOfficeRoles = ['Operations Admin', 'Operations Manager', 'Development Manager', 'Development Executive', 'Recruitment Manager', 'Recruitment Team'];
+    const userRoles = ['Admin', 'Standard User', 'Data Entry', 'Data Viewer', 'Data Entry & Viewer', 'Director'];
+    const backendOfficeRoles = ['Operations Admin', 'Operations Manager', 'Development Manager', 'Development Executive', 'Recruitment Manager', 'Recruitment Team', 'Taproot Director'];
     
     const [formData, setFormData] = useState({});
     const [error, setError] = useState('');
