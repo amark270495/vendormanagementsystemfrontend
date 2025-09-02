@@ -1,24 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import AccessModal from '../components/msa-wo/AccessModal';
 import VendorSigningModal from '../components/msa-wo/VendorSigningModal';
 import TaprootSigningModal from '../components/msa-wo/TaprootSigningModal';
-import { usePermissions } from '../hooks/usePermissions';
 
 const MSAandWOSigningPage = ({ token }) => {
-    // Now that the hooks are safe, we can use them more cleanly.
-    // We still provide a fallback for `useAuth` to safely get the user object.
-    const { user } = useAuth() || {};
-    
-    // `usePermissions` is now safe to call directly because we fixed the hook itself.
+    // Safely destructure from useAuth, providing a default empty object if context is unavailable
+    const { user } = useAuth() || {}; 
     const { canAddPosting } = usePermissions();
 
     const [documentData, setDocumentData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
+    const [isAccessModalOpen, setIsAccessModalOpen] = useState(true); // Always start with the access modal
     const [isVendorSigningModalOpen, setIsVendorSigningModalOpen] = useState(false);
     const [isTaprootSigningModalOpen, setIsTaprootSigningModalOpen] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
@@ -34,16 +31,18 @@ const MSAandWOSigningPage = ({ token }) => {
 
     const handleSignSuccess = useCallback((message) => {
         setSuccessMessage(message);
+        // Refresh the page after a short delay to show the updated status
         setTimeout(() => {
             window.location.reload();
-        }, 1500);
+        }, 2000);
     }, []);
 
-    const handleSign = useCallback(async (signerData, signerType, docToken) => {
+    const handleSign = useCallback(async (signerData, signerType) => {
         setLoading(true);
         setError('');
         try {
-            const response = await apiService.updateSigningStatus(docToken, signerData, signerType, user?.userIdentifier);
+            // The authenticatedUsername is optional for vendors but required for Taproot signers
+            const response = await apiService.updateSigningStatus(token, signerData, signerType, user?.userIdentifier);
             if (response.data.success) {
                 handleSignSuccess(response.data.message);
             } else {
@@ -51,15 +50,14 @@ const MSAandWOSigningPage = ({ token }) => {
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to sign the document.');
-            throw err;
+            throw err; // Re-throw to allow the modal to display the error
         } finally {
             setLoading(false);
         }
-    }, [user?.userIdentifier, handleSignSuccess]);
+    }, [token, user?.userIdentifier, handleSignSuccess]);
 
     useEffect(() => {
         if (token) {
-            setIsAccessModalOpen(true);
             setLoading(false);
         } else {
             setError("No document token provided in the URL.");
@@ -67,71 +65,95 @@ const MSAandWOSigningPage = ({ token }) => {
         }
     }, [token]);
 
+    const getStatusStep = () => {
+        if (hasTaprootSigned) return 3;
+        if (hasVendorSigned) return 2;
+        return 1;
+    };
+    const currentStep = getStatusStep();
+
+    const DetailItem = ({ label, value }) => (
+        <div>
+            <p className="text-sm text-gray-500">{label}</p>
+            <p className="font-semibold text-gray-800">{value}</p>
+        </div>
+    );
+    
     return (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-6xl">
-                <h1 className="text-2xl font-bold text-gray-800 mb-2">MSA and Work Order</h1>
-                {documentData && (
-                    <p className="text-gray-600">Document for: <span className="font-semibold">{documentData.vendorName}</span></p>
-                )}
-                <div className="mt-6">
-                    {loading && <Spinner />}
-                    {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg mt-4">{error}</div>}
-                    {successMessage && <div className="text-green-500 bg-green-100 p-4 rounded-lg mt-4">{successMessage}</div>}
+        <>
+            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+                <div className="w-full max-w-5xl">
+                    <div className="text-center mb-8">
+                        <svg className="mx-auto h-12 w-auto text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <h1 className="mt-4 text-3xl font-extrabold text-gray-900">Document E-Signing Portal</h1>
+                        <p className="mt-2 text-sm text-gray-600">Securely review and sign your MSA & Work Order.</p>
+                    </div>
 
-                    {documentData && (
-                        <div>
-                            <div className="border rounded-md p-4 bg-gray-50 overflow-y-auto max-h-[600px] mb-4">
-                                <h3 className="font-bold text-xl">Document Preview</h3>
-                                <pre className="whitespace-pre-wrap text-sm">{JSON.stringify(documentData, null, 2)}</pre>
+                    {loading && <div className="flex justify-center py-12"><Spinner size="12" /></div>}
+                    {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md shadow-lg" role="alert"><p className="font-bold">An Error Occurred</p><p>{error}</p></div>}
+                    {successMessage && <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-md shadow-lg" role="alert"><p className="font-bold">Success</p><p>{successMessage}</p></div>}
+
+                    {documentData && !error && (
+                        <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-10 mt-6">
+                            <div className="mb-8">
+                                <h2 className="text-xl font-bold text-gray-800">Signing Status</h2>
+                                <div className="flex items-center mt-4">
+                                    {['Document Ready', 'Vendor Signed', 'Fully Signed'].map((step, index) => (
+                                        <React.Fragment key={step}>
+                                            <div className="flex flex-col items-center">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${index + 1 <= currentStep ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                                                   {index + 1 < currentStep ? '✓' : index + 1}
+                                                </div>
+                                                <p className={`mt-2 text-xs text-center font-semibold ${index + 1 <= currentStep ? 'text-indigo-600' : 'text-gray-600'}`}>{step}</p>
+                                            </div>
+                                            {index < 2 && <div className={`flex-1 h-1 mx-2 ${index + 1 < currentStep ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>}
+                                        </React.Fragment>
+                                    ))}
+                                </div>
                             </div>
-
-                            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mt-6">
-                                {!hasVendorSigned && (
-                                    <button onClick={() => setIsVendorSigningModalOpen(true)} className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                                        Sign as Vendor
-                                    </button>
-                                )}
-                                {hasVendorSigned && !hasTaprootSigned && canAddPosting && (
-                                    <button onClick={() => setIsTaprootSigningModalOpen(true)} className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                        Sign as Taproot Director
-                                    </button>
-                                )}
-                                {hasTaprootSigned && (
-                                    <button onClick={() => alert('Download final PDF not implemented.')} className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                                        Download Final Document
-                                    </button>
-                                )}
+                            
+                            <div className="border-t pt-8">
+                                 <h2 className="text-xl font-bold text-gray-800 mb-6">Document Details</h2>
+                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                     <DetailItem label="Contract Number" value={documentData.contractNumber} />
+                                     <DetailItem label="Vendor Company" value={documentData.vendorName} />
+                                     <DetailItem label="Candidate Name" value={documentData.candidateName} />
+                                     <DetailItem label="Service Type" value={documentData.typeOfServices} />
+                                     <DetailItem label="Rate" value={`$${documentData.rate} ${documentData.perHour}`} />
+                                     <DetailItem label="Status" value={documentData.status} />
+                                 </div>
+                                 <div className="mt-8 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                                    {!hasVendorSigned && (
+                                        <button onClick={() => setIsVendorSigningModalOpen(true)} className="w-full sm:w-auto flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 font-semibold shadow-md transition-transform transform hover:scale-105">
+                                            Sign as Vendor
+                                        </button>
+                                    )}
+                                    {hasVendorSigned && !hasTaprootSigned && canAddPosting && (
+                                        <button onClick={() => setIsTaprootSigningModalOpen(true)} className="w-full sm:w-auto flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold shadow-md transition-transform transform hover:scale-105">
+                                            Sign as Taproot Director
+                                        </button>
+                                    )}
+                                     {hasTaprootSigned && (
+                                        <div className="w-full text-center p-4 bg-green-50 text-green-700 rounded-lg font-semibold">
+                                            This document is fully signed and complete.
+                                        </div>
+                                    )}
+                                 </div>
                             </div>
                         </div>
                     )}
                 </div>
             </div>
 
-            <AccessModal
-                isOpen={isAccessModalOpen}
-                onClose={() => setIsAccessModalOpen(false)}
-                onAccessGranted={handleAccessGranted}
-                token={token}
-                vendorEmail={documentData?.vendorEmail}
-            />
+            <AccessModal isOpen={isAccessModalOpen} onClose={() => { if (!documentData) setError("Access cancelled. Please use the link from your email to try again.")}} onAccessGranted={handleAccessGranted} token={token} vendorEmail={documentData?.vendorEmail} />
+            
             {documentData && (
                 <>
-                    <VendorSigningModal
-                        isOpen={isVendorSigningModalOpen}
-                        onClose={() => setIsVendorSigningModalOpen(false)}
-                        onSign={handleSign}
-                        documentData={documentData}
-                    />
-                    <TaprootSigningModal
-                        isOpen={isTaprootSigningModalOpen}
-                        onClose={() => setIsTaprootSigningModalOpen(false)}
-                        onSign={handleSign}
-                        documentData={documentData}
-                    />
+                    <VendorSigningModal isOpen={isVendorSigningModalOpen} onClose={() => setIsVendorSigningModalOpen(false)} onSign={handleSign} />
+                    <TaprootSigningModal isOpen={isTaprootSigningModalOpen} onClose={() => setIsTaprootSigningModalOpen(false)} onSign={handleSign} />
                 </>
             )}
-        </div>
+        </>
     );
 };
 
