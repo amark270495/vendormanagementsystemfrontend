@@ -99,11 +99,15 @@ const MSAandWODashboardPage = () => {
     const handleEdit = (doc) => setModalState({ type: 'edit', data: doc });
     const handleDelete = (doc) => setModalState({ type: 'delete', data: doc });
     const handleResend = (doc) => setModalState({ type: 'resend', data: doc });
+
+    // --- UPDATED FUNCTION ---
+    // This function now correctly uses the 'pdfUrl' property which contains the secure SAS URL.
     const handlePreview = (doc) => {
-        if (doc.initialPdfUrl) {
-            window.open(doc.initialPdfUrl, '_blank');
+        if (doc.pdfUrl) {
+            window.open(doc.pdfUrl, '_blank', 'noopener,noreferrer');
         } else {
-            setError("No PDF available for preview.");
+            setError("No PDF is available for preview for this document.");
+            setTimeout(() => setError(''), 3000); // Clear error after 3 seconds
         }
     };
     
