@@ -8,9 +8,9 @@ import ConfirmationModal from '../components/dashboard/ConfirmationModal';
 import EditMSAandWOModal from '../components/msa-wo/EditMSAandWOModal';
 import { usePermissions } from '../hooks/usePermissions';
 import Modal from '../components/Modal';
+import DirectorSigningModal from '../components/msa-wo/DirectorSigningModal';
 
 // --- HELPER COMPONENT: Document Preview Modal ---
-// This component provides an embedded PDF viewer for a better user experience.
 const DocumentPreviewModal = ({ isOpen, onClose, document }) => {
     if (!isOpen || !document) return null;
 
@@ -47,6 +47,10 @@ const MSAandWODashboardPage = () => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [documentToPreview, setDocumentToPreview] = useState(null);
+
+    // State for the Director Signing Modal
+    const [isDirectorSigningModalOpen, setIsDirectorSigningModalOpen] = useState(false);
+    const [documentToSign, setDocumentToSign] = useState(null);
 
     const tableHeader = useMemo(() => ['Vendor Name', 'Candidate Name', 'Contract Number', 'Submitted On', 'Status', 'Actions'], []);
 
@@ -123,11 +127,6 @@ const MSAandWODashboardPage = () => {
         }
     };
 
-    const handleSignLink = (doc) => {
-        const signUrl = `${window.location.origin}/?token=${doc.rowKey}`;
-        window.open(signUrl, '_blank', 'noopener,noreferrer');
-    };
-
     const handleConfirmDelete = async () => {
         const docToDelete = modalState.data;
         if (!docToDelete) return;
@@ -173,6 +172,18 @@ const MSAandWODashboardPage = () => {
         }
     };
 
+    // --- UPDATED: Handlers for the Director Signing Modal workflow ---
+    const handleDirectorSignClick = (doc) => {
+        setDocumentToSign(doc);
+        setIsDirectorSigningModalOpen(true);
+    };
+
+    const handleSignSuccess = () => {
+        setIsDirectorSigningModalOpen(false);
+        setSuccess("Document successfully signed and finalized!");
+        loadData(); // Refresh the dashboard to show the "Fully Signed" status
+    };
+
     return (
         <>
             <div className="space-y-4">
@@ -204,8 +215,9 @@ const MSAandWODashboardPage = () => {
                                     <tr key={item.original.rowKey} className="bg-gray-50 border-b hover:bg-gray-100">
                                         {item.display.map((cell, cellIndex) => (<td key={cellIndex} className="px-4 py-3 border-r last:border-r-0 font-medium text-gray-900">{cell}</td>))}
                                         <td className="px-4 py-3 border-r last:border-r-0 text-center">
+                                            {/* --- THE FIX: This button now opens the new modal --- */}
                                             {item.original.status === 'Vendor Signed' && (
-                                                <button onClick={() => handleSignLink(item.original)} className="px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-md hover:bg-green-700 mr-2 shadow-sm">
+                                                <button onClick={() => handleDirectorSignClick(item.original)} className="px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-md hover:bg-green-700 mr-2 shadow-sm">
                                                     Sign as Taproot
                                                 </button>
                                             )}
@@ -224,32 +236,17 @@ const MSAandWODashboardPage = () => {
                 )}
             </div>
             
-            <ConfirmationModal
-                isOpen={modalState.type === 'delete'}
-                onClose={() => setModalState({ type: null, data: null })}
-                onConfirm={handleConfirmDelete}
-                title="Confirm Deletion"
-                message={`Are you sure you want to delete the document for "${modalState.data?.vendorName}"? This action cannot be undone.`}
-                confirmText="Delete"
-            />
-            <ConfirmationModal
-                isOpen={modalState.type === 'resend'}
-                onClose={() => setModalState({ type: null, data: null })}
-                onConfirm={handleConfirmResend}
-                title="Confirm Resend"
-                message={`Are you sure you want to resend the e-sign email to "${modalState.data?.vendorEmail}"? A new temporary password will be generated.`}
-                confirmText="Resend"
-            />
-            <EditMSAandWOModal
-                isOpen={modalState.type === 'edit'}
-                onClose={() => setModalState({ type: null, data: null })}
-                onSave={handleSaveChanges}
-                documentToEdit={modalState.data}
-            />
-            <DocumentPreviewModal
-                isOpen={isPreviewModalOpen}
-                onClose={() => setIsPreviewModalOpen(false)}
-                document={documentToPreview}
+            <ConfirmationModal isOpen={modalState.type === 'delete'} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleConfirmDelete} title="Confirm Deletion" message={`Are you sure you want to delete the document for "${modalState.data?.vendorName}"? This action cannot be undone.`} confirmText="Delete"/>
+            <ConfirmationModal isOpen={modalState.type === 'resend'} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleConfirmResend} title="Confirm Resend" message={`Are you sure you want to resend the e-sign email to "${modalState.data?.vendorEmail}"? A new temporary password will be generated.`} confirmText="Resend"/>
+            <EditMSAandWOModal isOpen={modalState.type === 'edit'} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveChanges} documentToEdit={modalState.data}/>
+            <DocumentPreviewModal isOpen={isPreviewModalOpen} onClose={() => setIsPreviewModalOpen(false)} document={documentToPreview} />
+            
+            {/* Render the DirectorSigningModal */}
+            <DirectorSigningModal
+                isOpen={isDirectorSigningModalOpen}
+                onClose={() => setIsDirectorSigningModalOpen(false)}
+                document={documentToSign}
+                onSuccess={handleSignSuccess}
             />
         </>
     );
