@@ -1,25 +1,26 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, createContext, useReducer, useContext } from 'react';
 import axios from 'axios';
 
-// --- CENTRAL API SERVICE ---
+// --- CENTRAL API SERVICE (Relevant Functions) ---
 const API_BASE_URL = '/api';
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
 });
 const apiService = {
-  // Only including the relevant API calls for this page
   accessMSAandWO: (token, tempPassword) => apiClient.post('/accessMSAandWO', { token, tempPassword }),
+  getMSAandWODetailForSigning: (token, authenticatedUsername) => apiClient.get('/getMSAandWODetailForSigning', { params: { token, authenticatedUsername } }),
   updateSigningStatus: (token, signerData, signerType, authenticatedUsername) => apiClient.post('/updateSigningStatus', { token, signerData, signerType, authenticatedUsername }),
 };
 
-// --- CONTEXT & HOOKS ---
+// --- CONTEXT & HOOKS (Needed for this page) ---
 const AuthContext = createContext();
 const useAuth = () => useContext(AuthContext);
 
 const calculatePermissions = (permissions) => {
     if (!permissions) {
-        return { canAddPosting: false }; // Default permissions for an unauthenticated user
+        // Default permissions for an unauthenticated user (vendor)
+        return { canAddPosting: false }; 
     }
     return {
         canAddPosting: permissions.canAddPosting === true,
@@ -31,8 +32,9 @@ const usePermissions = () => {
     return useMemo(() => calculatePermissions(permissions), [permissions]);
 };
 
-// --- GENERIC COMPONENTS ---
+// --- GENERIC COMPONENTS (Used by this page) ---
 const Spinner = ({ size = '8' }) => (<div className={`animate-spin rounded-full h-${size} w-${size} border-b-2 border-white`}></div>);
+
 const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
     if (!isOpen) return null;
     const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg' };
@@ -52,7 +54,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
 };
 
 // --- E-SIGNING MODALS ---
-const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail }) => {
+const AccessModal = ({ isOpen, onClose, onAccessGranted, token }) => {
     const [tempPassword, setTempPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -188,12 +190,13 @@ const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
 
 // --- MAIN E-SIGNING PAGE COMPONENT ---
 const MSAandWOSigningPage = ({ token }) => {
-    const { user } = useAuth() || {};
+    const { user } = useAuth() || {}; 
     const { canAddPosting } = usePermissions();
+
     const [documentData, setDocumentData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [isAccessModalOpen, setIsAccessModalOpen] = useState(true);
+    const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
     const [isVendorSigningModalOpen, setIsVendorSigningModalOpen] = useState(false);
     const [isTaprootSigningModalOpen, setIsTaprootSigningModalOpen] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
@@ -213,12 +216,13 @@ const MSAandWOSigningPage = ({ token }) => {
             window.location.reload();
         }, 2000);
     }, []);
-
+    
     const handleSign = useCallback(async (signerData, signerType) => {
         setLoading(true);
         setError('');
         try {
-            const response = await apiService.updateSigningStatus(token, signerData, signerType, user?.userIdentifier);
+            const signerUsername = user?.userIdentifier || 'vendor';
+            const response = await apiService.updateSigningStatus(token, signerData, signerType, signerUsername);
             if (response.data.success) {
                 handleSignSuccess(response.data.message);
             } else {
@@ -233,13 +237,35 @@ const MSAandWOSigningPage = ({ token }) => {
     }, [token, user?.userIdentifier, handleSignSuccess]);
 
     useEffect(() => {
-        if (token) {
-            setLoading(false);
-        } else {
+        const fetchDocumentForDirector = async () => {
+            try {
+                const response = await apiService.getMSAandWODetailForSigning(token, user.userIdentifier);
+                if (response.data.success) {
+                    setDocumentData(response.data.documentData);
+                } else {
+                    setError(response.data.message);
+                }
+            } catch (err) {
+                setError(err.response?.data?.message || "Failed to retrieve document for signing.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (!token) {
             setError("No document token provided in the URL.");
             setLoading(false);
+            return;
         }
-    }, [token]);
+
+        if (user && user.userIdentifier) {
+            fetchDocumentForDirector();
+        } 
+        else {
+            setIsAccessModalOpen(true);
+            setLoading(false);
+        }
+    }, [token, user]);
 
     const getStatusStep = () => {
         if (hasTaprootSigned) return 3;
@@ -299,12 +325,12 @@ const MSAandWOSigningPage = ({ token }) => {
                                      <DetailItem label="Status" value={documentData.status} />
                                  </div>
                                  <div className="mt-8 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                                    {!hasVendorSigned && (
+                                    {!hasVendorSigned && !user && (
                                         <button onClick={() => setIsVendorSigningModalOpen(true)} className="w-full sm:w-auto flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 font-semibold shadow-md transition-transform transform hover:scale-105">
                                             Sign as Vendor
                                         </button>
                                     )}
-                                    {hasVendorSigned && !hasTaprootSigned && canAddPosting && (
+                                    {hasVendorSigned && !hasTaprootSigned && canAddPosting && user && (
                                         <button onClick={() => setIsTaprootSigningModalOpen(true)} className="w-full sm:w-auto flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold shadow-md transition-transform transform hover:scale-105">
                                             Sign as Taproot Director
                                         </button>
@@ -324,17 +350,14 @@ const MSAandWOSigningPage = ({ token }) => {
             <AccessModal
                 isOpen={isAccessModalOpen}
                 onClose={() => {
-                    // This onClose is only triggered by the modal's internal close button.
-                    // We prevent the modal from closing if the document hasn't been loaded yet.
                     if (!documentData) {
-                        setError("Access is required to proceed. Please enter the temporary password from your email.");
+                        setError("Access is required. Please enter the temporary password from your email to proceed.");
                     } else {
                         setIsAccessModalOpen(false);
                     }
                 }}
                 onAccessGranted={handleAccessGranted}
                 token={token}
-                vendorEmail={documentData?.vendorEmail}
             />
             
             {documentData && (
@@ -347,5 +370,4 @@ const MSAandWOSigningPage = ({ token }) => {
     );
 };
 
-// Default export for integration into a larger app structure
 export default MSAandWOSigningPage;
