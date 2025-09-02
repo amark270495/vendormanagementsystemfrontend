@@ -1,13 +1,199 @@
-// ... (keep all existing code for apiService, contexts, hooks, and all component definitions above this) ...
+import React, { useState, useEffect, useMemo, useCallback, useRef, createContext, useReducer, useContext } from 'react';
+import axios from 'axios';
 
-// --- BUG FIX & UI REFRESH: Updated E-Signing Page ---
+// --- CENTRAL API SERVICE ---
+const API_BASE_URL = '/api';
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+});
+const apiService = {
+  // Only including the relevant API calls for this page
+  accessMSAandWO: (token, tempPassword) => apiClient.post('/accessMSAandWO', { token, tempPassword }),
+  updateSigningStatus: (token, signerData, signerType, authenticatedUsername) => apiClient.post('/updateSigningStatus', { token, signerData, signerType, authenticatedUsername }),
+};
+
+// --- CONTEXT & HOOKS ---
+const AuthContext = createContext();
+const useAuth = () => useContext(AuthContext);
+
+const calculatePermissions = (permissions) => {
+    if (!permissions) {
+        return { canAddPosting: false }; // Default permissions for an unauthenticated user
+    }
+    return {
+        canAddPosting: permissions.canAddPosting === true,
+    };
+};
+const usePermissions = () => {
+    const auth = useAuth() || {};
+    const { permissions } = auth;
+    return useMemo(() => calculatePermissions(permissions), [permissions]);
+};
+
+// --- GENERIC COMPONENTS ---
+const Spinner = ({ size = '8' }) => (<div className={`animate-spin rounded-full h-${size} w-${size} border-b-2 border-white`}></div>);
+const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+    if (!isOpen) return null;
+    const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg' };
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex justify-center items-center p-4" aria-modal="true" role="dialog">
+            <div className={`bg-white rounded-lg shadow-xl w-full ${sizeClasses[size]} max-h-[90vh] flex flex-col`} onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100" aria-label="Close modal">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+                <div className="p-6 overflow-y-auto">{children}</div>
+            </div>
+        </div>
+    );
+};
+
+// --- E-SIGNING MODALS ---
+const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail }) => {
+    const [tempPassword, setTempPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            const response = await apiService.accessMSAandWO(token, tempPassword);
+            if (response.data.success) {
+                onAccessGranted(response.data.documentData);
+            } else {
+                setError(response.data.message);
+            }
+        } catch (err) {
+            setError(err.response?.data?.message || "An unexpected error occurred.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Secure Document Access" size="md">
+            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <p className="text-gray-700">A temporary password was sent to your email. Please enter it below to securely access the document.</p>
+                <div>
+                    <label htmlFor="tempPassword" className="block text-sm font-medium text-gray-700">Temporary Password <span className="text-red-500">*</span></label>
+                    <input type="password" name="tempPassword" id="tempPassword" value={tempPassword} onChange={(e) => setTempPassword(e.target.value)} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                </div>
+                <div className="flex justify-end space-x-2 pt-4">
+                    <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-28" disabled={loading}>
+                        {loading ? <Spinner size="5" /> : 'Access'}
+                    </button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
+const VendorSigningModal = ({ isOpen, onClose, onSign }) => {
+    const [formData, setFormData] = useState({ signature: '', name: '', title: '' });
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            await onSign(formData, 'vendor');
+            onClose();
+        } catch (err) {
+            setError(err.message || "An unexpected error occurred.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Sign Document as Vendor" size="md">
+            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <p className="text-gray-700">By signing, you agree to the terms of the Master Services Agreement and Work Order.</p>
+                <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">Your Full Name <span className="text-red-500">*</span></label>
+                    <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
+                </div>
+                <div>
+                    <label htmlFor="title" className="block text-sm font-medium text-gray-700">Your Title <span className="text-red-500">*</span></label>
+                    <input type="text" name="title" id="title" value={formData.title} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
+                </div>
+                <div>
+                    <label htmlFor="signature" className="block text-sm font-medium text-gray-700">Digital Signature (Type Full Name) <span className="text-red-500">*</span></label>
+                    <input type="text" name="signature" id="signature" value={formData.signature} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
+                    <p className="mt-1 text-xs text-gray-500">Typing your name here constitutes a legal signature.</p>
+                </div>
+                <div className="flex justify-end space-x-2 pt-4">
+                    <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-28" disabled={loading}>
+                        {loading ? <Spinner size="5" /> : 'Sign'}
+                    </button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
+const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
+    const [formData, setFormData] = useState({ signature: '' });
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            await onSign(formData, 'taproot');
+            onClose();
+        } catch (err) {
+            setError(err.message || "An unexpected error occurred.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Sign Document as Taproot Director" size="md">
+            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <p className="text-gray-700">By signing, you are approving the terms on behalf of Taproot Solutions.</p>
+                <div>
+                    <label htmlFor="signature" className="block text-sm font-medium text-gray-700">Digital Signature (Type Full Name) <span className="text-red-500">*</span></label>
+                    <input type="text" name="signature" id="signature" value={formData.signature} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
+                    <p className="mt-1 text-xs text-gray-500">Typing your name here constitutes a legal signature.</p>
+                </div>
+                <div className="flex justify-end space-x-2 pt-4">
+                    <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-28" disabled={loading}>
+                        {loading ? <Spinner size="5" /> : 'Sign'}
+                    </button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
+
+// --- MAIN E-SIGNING PAGE COMPONENT ---
 const MSAandWOSigningPage = ({ token }) => {
     const { user } = useAuth() || {};
     const { canAddPosting } = usePermissions();
     const [documentData, setDocumentData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [isAccessModalOpen, setIsAccessModalOpen] = useState(true); // Always start with modal open
+    const [isAccessModalOpen, setIsAccessModalOpen] = useState(true);
     const [isVendorSigningModalOpen, setIsVendorSigningModalOpen] = useState(false);
     const [isTaprootSigningModalOpen, setIsTaprootSigningModalOpen] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
@@ -23,7 +209,6 @@ const MSAandWOSigningPage = ({ token }) => {
 
     const handleSignSuccess = useCallback((message) => {
         setSuccessMessage(message);
-        // We'll just reload the page for simplicity after a successful sign
         setTimeout(() => {
             window.location.reload();
         }, 2000);
@@ -41,13 +226,12 @@ const MSAandWOSigningPage = ({ token }) => {
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to sign the document.');
-            throw err; // Re-throw to show error in modal
+            throw err;
         } finally {
             setLoading(false);
         }
     }, [token, user?.userIdentifier, handleSignSuccess]);
 
-    // This effect is minimal, as the main logic starts with the access modal.
     useEffect(() => {
         if (token) {
             setLoading(false);
@@ -137,17 +321,21 @@ const MSAandWOSigningPage = ({ token }) => {
                 </div>
             </div>
 
-            {/* --- UX IMPROVEMENT --- */}
-            {/* The modal is always rendered, but its visibility is controlled by isOpen. */}
-            {/* The onClose function is updated to only be called by the modal's internal close button, preventing the "Access Cancelled" error. */}
             <AccessModal
                 isOpen={isAccessModalOpen}
-                onClose={() => setIsAccessModalOpen(false)} // This is for the close button inside the modal
+                onClose={() => {
+                    // This onClose is only triggered by the modal's internal close button.
+                    // We prevent the modal from closing if the document hasn't been loaded yet.
+                    if (!documentData) {
+                        setError("Access is required to proceed. Please enter the temporary password from your email.");
+                    } else {
+                        setIsAccessModalOpen(false);
+                    }
+                }}
                 onAccessGranted={handleAccessGranted}
                 token={token}
                 vendorEmail={documentData?.vendorEmail}
             />
-            {/* --- END UX IMPROVEMENT --- */}
             
             {documentData && (
                 <>
@@ -158,3 +346,6 @@ const MSAandWOSigningPage = ({ token }) => {
         </>
     );
 };
+
+// Default export for integration into a larger app structure
+export default MSAandWOSigningPage;
