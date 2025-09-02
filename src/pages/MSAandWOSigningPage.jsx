@@ -44,7 +44,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
                 <div className="flex justify-between items-center p-4 border-b">
                     <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100" aria-label="Close modal">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
                 </div>
                 <div className="p-6 overflow-y-auto">{children}</div>
@@ -146,8 +146,9 @@ const VendorSigningModal = ({ isOpen, onClose, onSign }) => {
     );
 };
 
+// --- UPDATED: TaprootSigningModal now includes a password field ---
 const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
-    const [formData, setFormData] = useState({ signature: '' });
+    const [formData, setFormData] = useState({ signature: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -157,6 +158,7 @@ const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
         setError('');
         setLoading(true);
         try {
+            // Pass the entire formData (signature and password) to the onSign handler
             await onSign(formData, 'taproot');
             onClose();
         } catch (err) {
@@ -167,19 +169,23 @@ const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Sign Document as Taproot Director" size="md">
+        <Modal isOpen={isOpen} onClose={onClose} title="Confirm Signature as Taproot Director" size="md">
             {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
             <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-gray-700">By signing, you are approving the terms on behalf of Taproot Solutions.</p>
+                <p className="text-gray-700">To finalize this document, please confirm your identity by entering your VMS portal password.</p>
                 <div>
                     <label htmlFor="signature" className="block text-sm font-medium text-gray-700">Digital Signature (Type Full Name) <span className="text-red-500">*</span></label>
                     <input type="text" name="signature" id="signature" value={formData.signature} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
-                    <p className="mt-1 text-xs text-gray-500">Typing your name here constitutes a legal signature.</p>
+                     <p className="mt-1 text-xs text-gray-500">Typing your name here constitutes a legal signature.</p>
+                </div>
+                <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">Your VMS Password <span className="text-red-500">*</span></label>
+                    <input type="password" name="password" id="password" value={formData.password} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
                 </div>
                 <div className="flex justify-end space-x-2 pt-4">
                     <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-28" disabled={loading}>
-                        {loading ? <Spinner size="5" /> : 'Sign'}
+                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-36" disabled={loading}>
+                        {loading ? <Spinner size="5" /> : 'Confirm & Sign'}
                     </button>
                 </div>
             </form>
@@ -230,7 +236,7 @@ const MSAandWOSigningPage = ({ token }) => {
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to sign the document.');
-            throw err;
+            throw err; // Re-throw error to be displayed in the modal
         } finally {
             setLoading(false);
         }
@@ -258,20 +264,13 @@ const MSAandWOSigningPage = ({ token }) => {
             return;
         }
         
-        // --- THIS IS THE FIX ---
-        // Check session storage as a hint. If a session exists, the AuthProvider is likely just loading.
-        // This prevents the page from flashing the vendor password modal for a logged-in director.
         const sessionUser = sessionStorage.getItem('vms_user');
 
         if (user && user.userIdentifier) {
-            // Case 1: The AuthProvider is fully loaded and has confirmed an authenticated user.
             fetchDocumentForDirector();
         } else if (sessionUser) {
-            // Case 2: No user yet, but a session exists. We wait for the AuthProvider to finish.
-            // The `user` dependency in the useEffect array will trigger a re-render once it's loaded.
             setLoading(true); 
         } else {
-            // Case 3: No user and no session. This must be an external vendor.
             setIsAccessModalOpen(true);
             setLoading(false);
         }

@@ -1,35 +1,20 @@
 import React, { useState } from 'react';
 import Modal from '../Modal';
 import Spinner from '../Spinner';
-import { usePermissions } from '../../hooks/usePermissions';
 
 const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
-    const { canAddPosting } = usePermissions(); // Using this as a proxy for Taproot Director permission
-
-    const [formData, setFormData] = useState({
-        signature: ''
-    });
+    const [formData, setFormData] = useState({ signature: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-
     const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!canAddPosting) {
-            setError("You do not have permission to sign this document.");
-            return;
-        }
-
         setError('');
         setLoading(true);
-
         try {
-            // --- FIX ---
-            // Pass the entire formData object and the signerType 'taproot'
-            // This ensures the backend receives the signature data.
+            // Pass the entire formData (signature and password) to the onSign handler
             await onSign(formData, 'taproot');
-            // --- END FIX ---
             onClose();
         } catch (err) {
             setError(err.message || "An unexpected error occurred.");
@@ -39,35 +24,26 @@ const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Sign Document as Taproot Director" size="md">
+        <Modal isOpen={isOpen} onClose={onClose} title="Confirm Signature as Taproot Director" size="md">
             {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
-            
-            {!canAddPosting && (
-                <div className="text-center text-gray-500 p-4">
-                    <h3 className="text-lg font-medium">Access Denied</h3>
-                    <p className="text-sm">Only authorized personnel can sign on behalf of Taproot Solutions.</p>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <p className="text-gray-700">To finalize this document, please confirm your identity by entering your VMS portal password.</p>
+                <div>
+                    <label htmlFor="signature" className="block text-sm font-medium text-gray-700">Digital Signature (Type Full Name) <span className="text-red-500">*</span></label>
+                    <input type="text" name="signature" id="signature" value={formData.signature} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
+                     <p className="mt-1 text-xs text-gray-500">Typing your name here constitutes a legal signature.</p>
                 </div>
-            )}
-
-            {canAddPosting && (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <p className="text-gray-700">
-                        By signing this document, you are digitally acknowledging and approving the terms on behalf of Taproot Solutions.
-                    </p>
-                    <div>
-                        <label htmlFor="signature" className="block text-sm font-medium text-gray-700">Digital Signature (Name) <span className="text-red-500">*</span></label>
-                        <input type="text" name="signature" id="signature" value={formData.signature} onChange={handleChange} placeholder="e.g., Purnima Govada" required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                        <p className="mt-1 text-xs text-gray-500">Typing your name here constitutes a legal signature.</p>
-                    </div>
-                    
-                    <div className="flex justify-end space-x-2 pt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-28" disabled={loading}>
-                            {loading ? <Spinner size="5" /> : 'Sign'}
-                        </button>
-                    </div>
-                </form>
-            )}
+                <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">Your VMS Password <span className="text-red-500">*</span></label>
+                    <input type="password" name="password" id="password" value={formData.password} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
+                </div>
+                <div className="flex justify-end space-x-2 pt-4">
+                    <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-36" disabled={loading}>
+                        {loading ? <Spinner size="5" /> : 'Confirm & Sign'}
+                    </button>
+                </div>
+            </form>
         </Modal>
     );
 };
