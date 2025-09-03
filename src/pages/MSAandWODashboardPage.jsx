@@ -41,18 +41,18 @@ const DocumentPreviewModal = ({ isOpen, onClose, document }) => {
 // --- MAIN COMPONENT ---
 const MSAandWODashboardPage = () => {
     const { user } = useAuth();
-    const { canManageMSAWO = false } = usePermissions() || {};
+    // Safely destructure the new permission flag with a fallback
+    const { canManageMSAWO = false } = usePermissions();
     const [documents, setDocuments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [generalFilter, setGeneralFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+    
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [documentToPreview, setDocumentToPreview] = useState(null);
-    const [isDirectorSigningModalOpen, setIsDirectorSigningModalOpen] = useState(false);
-    const [documentToSign, setDocumentToSign] = useState(null);
 
     const tableHeader = useMemo(() => [
         'Vendor Name',
@@ -140,6 +140,7 @@ const MSAandWODashboardPage = () => {
     const handleEdit = (doc) => setModalState({ type: 'edit', data: doc });
     const handleDelete = (doc) => setModalState({ type: 'delete', data: doc });
     const handleResend = (doc) => setModalState({ type: 'resend', data: doc });
+    const handleDirectorSignClick = (doc) => setModalState({ type: 'sign', data: doc });
 
     const handlePreview = (doc) => {
         if (doc.pdfUrl) {
@@ -183,7 +184,7 @@ const MSAandWODashboardPage = () => {
             setModalState({ type: null, data: null });
         }
     };
-
+    
     const handleSaveChanges = async (updatedData) => {
         setLoading(true);
         try {
@@ -198,13 +199,8 @@ const MSAandWODashboardPage = () => {
         }
     };
 
-    const handleDirectorSignClick = (doc) => {
-        setDocumentToSign(doc);
-        setIsDirectorSigningModalOpen(true);
-    };
-
     const handleSignSuccess = () => {
-        setIsDirectorSigningModalOpen(false);
+        setModalState({ type: null, data: null });
         setSuccess('Document successfully signed and finalized!');
         loadData();
     };
@@ -231,70 +227,72 @@ const MSAandWODashboardPage = () => {
 
                 {!loading && !error && canManageMSAWO && (
                     <div className="bg-white rounded-lg shadow-lg border" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                                                <table className="w-full text-sm text-left text-gray-500">
-                            <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
-                                <tr>
-                                    {tableHeader.map(h => (
-                                        <th key={h} scope="col" className="p-0 border-r last:border-r-0">
-                                            {h === 'Actions' ? (
-                                                <div className="p-3 font-bold text-center">{h}</div>
-                                            ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
+                                    <tr>
+                                        {tableHeader.map(h => (
+                                            <th key={h} scope="col" className="p-0 border-r last:border-r-0">
+                                                {h === 'Actions' ? (
+                                                    <div className="p-3 font-bold text-center">{h}</div>
+                                                ) : (
+                                                    <Dropdown
+                                                        width="64"
+                                                        trigger={
+                                                            <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
+                                                                <span className="font-bold">{h}</span>
+                                                                {sortConfig.key === h && (
+                                                                    sortConfig.direction === 'ascending' ? ' ▲' : ' ▼'
+                                                                )}
+                                                            </div>
+                                                        }
+                                                    >
+                                                        <HeaderMenu header={h} onSort={(dir) => handleSort(h, dir)} />
+                                                    </Dropdown>
+                                                )}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredAndSortedData.map((item) => (
+                                        <tr key={item.original.rowKey} className="bg-gray-50 border-b hover:bg-gray-100">
+                                            {item.display.map((cell, cellIndex) => (
+                                                <td key={cellIndex} className="px-4 py-3 border-r last:border-r-0 font-medium text-gray-900">
+                                                    {cell}
+                                                </td>
+                                            ))}
+                                            <td className="px-4 py-3 border-r last:border-r-0 text-center">
+                                                {item.original.status === 'Vendor Signed' && (
+                                                    <button
+                                                        onClick={() => handleDirectorSignClick(item.original)}
+                                                        className="px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-md hover:bg-green-700 mr-2 shadow-sm"
+                                                    >
+                                                        Sign as Taproot
+                                                    </button>
+                                                )}
                                                 <Dropdown
-                                                    width="64"
                                                     trigger={
-                                                        <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
-                                                            <span className="font-bold">{h}</span>
-                                                            {sortConfig.key === h && (
-                                                                sortConfig.direction === 'ascending' ? ' ▲' : ' ▼'
-                                                            )}
-                                                        </div>
+                                                        <button className="text-gray-500 hover:text-gray-700 p-1 rounded-full inline-flex items-center justify-center">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                <circle cx="12" cy="12" r="1"></circle>
+                                                                <circle cx="12" cy="5" r="1"></circle>
+                                                                <circle cx="12" cy="19" r="1"></circle>
+                                                            </svg>
+                                                        </button>
                                                     }
                                                 >
-                                                    <HeaderMenu header={h} onSort={(dir) => handleSort(h, dir)} />
+                                                    <a href="#" onClick={(e) => { e.preventDefault(); handlePreview(item.original); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Preview/Review</a>
+                                                    <a href="#" onClick={(e) => { e.preventDefault(); handleEdit(item.original); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit / Cancel</a>
+                                                    <a href="#" onClick={(e) => { e.preventDefault(); handleResend(item.original); }} className="block px-4 py-2 text-sm text-blue-600 hover:bg-gray-100">Resend Email</a>
+                                                    <a href="#" onClick={(e) => { e.preventDefault(); handleDelete(item.original); }} className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Delete</a>
                                                 </Dropdown>
-                                            )}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredAndSortedData.map((item) => (
-                                    <tr key={item.original.rowKey} className="bg-gray-50 border-b hover:bg-gray-100">
-                                        {item.display.map((cell, cellIndex) => (
-                                            <td key={cellIndex} className="px-4 py-3 border-r last:border-r-0 font-medium text-gray-900">
-                                                {cell}
                                             </td>
-                                        ))}
-                                        <td className="px-4 py-3 border-r last:border-r-0 text-center">
-                                            {item.original.status === 'Vendor Signed' && (
-                                                <button
-                                                    onClick={() => handleDirectorSignClick(item.original)}
-                                                    className="px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-md hover:bg-green-700 mr-2 shadow-sm"
-                                                >
-                                                    Sign as Taproot
-                                                </button>
-                                            )}
-                                            <Dropdown
-                                                trigger={
-                                                    <button className="text-gray-500 hover:text-gray-700 p-1 rounded-full inline-flex items-center justify-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                            <circle cx="12" cy="12" r="1"></circle>
-                                                            <circle cx="12" cy="5" r="1"></circle>
-                                                            <circle cx="12" cy="19" r="1"></circle>
-                                                        </svg>
-                                                    </button>
-                                                }
-                                            >
-                                                <a href="#" onClick={(e) => { e.preventDefault(); handlePreview(item.original); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Preview/Review</a>
-                                                <a href="#" onClick={(e) => { e.preventDefault(); handleEdit(item.original); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit / Cancel</a>
-                                                <a href="#" onClick={(e) => { e.preventDefault(); handleResend(item.original); }} className="block px-4 py-2 text-sm text-blue-600 hover:bg-gray-100">Resend Email</a>
-                                                <a href="#" onClick={(e) => { e.preventDefault(); handleDelete(item.original); }} className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Delete</a>
-                                            </Dropdown>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
             </div>
@@ -332,9 +330,9 @@ const MSAandWODashboardPage = () => {
             />
 
             <DirectorSigningModal
-                isOpen={isDirectorSigningModalOpen}
-                onClose={() => setIsDirectorSigningModalOpen(false)}
-                document={documentToSign}
+                isOpen={modalState.type === 'sign'}
+                onClose={() => setModalState({ type: null, data: null })}
+                document={modalState.data}
                 onSuccess={handleSignSuccess}
             />
         </>

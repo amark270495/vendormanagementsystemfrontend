@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Modal from '../Modal.jsx';
+import Spinner from '../Spinner.jsx';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../api/apiService';
-import Modal from '../Modal';
-import Spinner from '../Spinner';
 
 const DirectorSigningModal = ({ isOpen, onClose, document, onSuccess }) => {
     const { user } = useAuth();
@@ -25,6 +25,10 @@ const DirectorSigningModal = ({ isOpen, onClose, document, onSuccess }) => {
         setError('');
         setLoading(true);
         try {
+            // Check if document and its rowKey exist to prevent crash
+            if (!document || !document.rowKey) {
+                throw new Error("Document information is missing.");
+            }
             // The signerData now includes the password for backend verification
             await apiService.updateSigningStatus(document.rowKey, formData, 'taproot', user.userIdentifier);
             onSuccess(); // Trigger the success callback (which will close modal and refresh data)
@@ -35,6 +39,7 @@ const DirectorSigningModal = ({ isOpen, onClose, document, onSuccess }) => {
         }
     };
 
+    // Safely return null if the modal shouldn't be rendered
     if (!isOpen || !document) return null;
 
     return (
