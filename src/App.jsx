@@ -6,7 +6,7 @@ import LoginPage from './pages/LoginPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 
 // --- CONTEXT & AUTH PROVIDER ---
-// Initialize AuthContext with safe defaults so useAuth() never returns undefined
+// Safe defaults so useAuth() never returns undefined
 const AuthContext = createContext({
     isAuthenticated: false,
     user: null,
