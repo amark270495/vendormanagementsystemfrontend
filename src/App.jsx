@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Spinner from './components/Spinner'; 
+import Spinner from './components/Spinner';
 import MSAandWOSigningPage from './pages/MSAandWOSigningPage';
 import MainApp from './MainApp';
 import LoginPage from './pages/LoginPage';
@@ -10,19 +10,19 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 const AppContent = () => {
     const [page, setPage] = useState('loading');
     const [token, setToken] = useState(null);
+    const { isAuthenticated, isFirstLogin } = useAuth();
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const urlToken = params.get('token');
-        if (urlToken) {
+
+        if (urlToken && urlToken.length > 10) {
             setToken(urlToken);
             setPage('sign');
         } else {
             setPage('main');
         }
     }, []);
-
-    const { isAuthenticated, isFirstLogin } = useAuth();
 
     if (page === 'loading') {
         return (
@@ -33,7 +33,7 @@ const AppContent = () => {
     }
 
     if (page === 'sign') {
-        return <MSAandWOSigningPage token={token} />;
+        return token ? <MSAandWOSigningPage token={token} /> : <LoginPage />;
     }
 
     if (!isAuthenticated) {
@@ -48,12 +48,10 @@ const AppContent = () => {
 };
 
 // --- ROOT APP COMPONENT ---
-const App = () => {
-    return (
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
-    );
-};
+const App = () => (
+    <AuthProvider>
+        <AppContent />
+    </AuthProvider>
+);
 
 export default App;
