@@ -1,9 +1,8 @@
-// src/components/msa-wo/EditMSAandWOModal.jsx
-
 import React, { useState, useEffect } from 'react';
 import Modal from '../Modal';
 import Spinner from '../Spinner';
 import { usePermissions } from '../../hooks/usePermissions';
+import { apiService } from '../../api/apiService'; // Added missing import
 
 const EditMSAandWOModal = ({ isOpen, onClose, onSave, documentToEdit }) => {
     const { canManageMSAWO } = usePermissions();
@@ -79,6 +78,18 @@ const EditMSAandWOModal = ({ isOpen, onClose, onSave, documentToEdit }) => {
                         <div>
                             <label htmlFor="candidateName" className="block text-sm font-medium text-gray-700">Candidate Name</label>
                             <input type="text" name="candidateName" value={formData.candidateName || ''} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg p-2" />
+                        </div>
+                        <div>
+                            <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700">Job Title</label>
+                            <input type="text" name="jobTitle" value={formData.jobTitle || ''} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg p-2" />
+                        </div>
+                         <div>
+                            <label htmlFor="clientName" className="block text-sm font-medium text-gray-700">Client Name</label>
+                            <input type="text" name="clientName" value={formData.clientName || ''} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg p-2" />
+                        </div>
+                         <div>
+                            <label htmlFor="clientLocation" className="block text-sm font-medium text-gray-700">Client Location</label>
+                            <input type="text" name="clientLocation" value={formData.clientLocation || ''} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg p-2" />
                         </div>
                         <div>
                             <label htmlFor="typeOfServices" className="block text-sm font-medium text-gray-700">Type Of Service</label>

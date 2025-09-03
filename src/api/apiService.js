@@ -145,12 +145,13 @@ export const apiService = {
 
   accessMSAandWO: (token, tempPassword) =>
     apiClient.post('/accessMSAandWO', { token, tempPassword }),
-  
+
+  // --- NEW: Function for authenticated directors to bypass the password modal ---
   getMSAandWODetailForSigning: (token, authenticatedUsername) =>
     apiClient.get('/getMSAandWODetailForSigning', { params: { token, authenticatedUsername } }),
 
-  updateSigningStatus: (token, signerData, signerType, authenticatedUsername) =>
-    apiClient.post('/updateSigningStatus', { token, signerData, signerType, authenticatedUsername }),
+  updateSigningStatus: (token, signerData, signerType, authenticatedUsername, jobInfo) =>
+    apiClient.post('/updateSigningStatus', { token, signerData, signerType, authenticatedUsername, jobInfo }),
 
   getMSAandWODetail: (partitionKey, rowKey, authenticatedUsername) =>
     apiClient.get('/getMSAandWODetail', { params: { partitionKey, rowKey, authenticatedUsername } }),

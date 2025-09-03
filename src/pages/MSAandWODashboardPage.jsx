@@ -41,7 +41,6 @@ const DocumentPreviewModal = ({ isOpen, onClose, document }) => {
 // --- MAIN COMPONENT ---
 const MSAandWODashboardPage = () => {
     const { user } = useAuth();
-    // Safely destructure the new permission flag with a fallback
     const { canManageMSAWO = false } = usePermissions();
     const [documents, setDocuments] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -57,6 +56,9 @@ const MSAandWODashboardPage = () => {
     const tableHeader = useMemo(() => [
         'Vendor Name',
         'Candidate Name',
+        'Job Title',
+        'Client Name',
+        'Client Location',
         'Contract Number',
         'Submitted On',
         'Status',
@@ -98,6 +100,9 @@ const MSAandWODashboardPage = () => {
             display: [
                 doc.vendorName,
                 doc.candidateName,
+                doc.jobTitle,
+                doc.clientName,
+                doc.clientLocation,
                 doc.contractNumber,
                 new Date(doc.submittedOn).toLocaleDateString(),
                 doc.status

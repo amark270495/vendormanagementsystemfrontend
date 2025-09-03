@@ -10,7 +10,7 @@ const apiClient = axios.create({
 const apiService = {
   accessMSAandWO: (token, tempPassword) => apiClient.post('/accessMSAandWO', { token, tempPassword }),
   getMSAandWODetailForSigning: (token, authenticatedUsername) => apiClient.get('/getMSAandWODetailForSigning', { params: { token, authenticatedUsername } }),
-  updateSigningStatus: (token, signerData, signerType, authenticatedUsername) => apiClient.post('/updateSigningStatus', { token, signerData, signerType, authenticatedUsername }),
+  updateSigningStatus: (token, signerData, signerType, authenticatedUsername, jobInfo) => apiClient.post('/updateSigningStatus', { token, signerData, signerType, authenticatedUsername, jobInfo }),
 };
 
 // --- CONTEXT & HOOKS (Needed for this page) ---
@@ -20,10 +20,10 @@ const useAuth = () => useContext(AuthContext);
 const calculatePermissions = (permissions) => {
     if (!permissions) {
         // Default permissions for an unauthenticated user (vendor)
-        return { canAddPosting: false }; 
+        return { canManageMSAWO: false }; 
     }
     return {
-        canAddPosting: permissions.canAddPosting === true,
+        canManageMSAWO: permissions.canManageMSAWO === true,
     };
 };
 const usePermissions = () => {
@@ -44,7 +44,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
                 <div className="flex justify-between items-center p-4 border-b">
                     <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100" aria-label="Close modal">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
                 </div>
                 <div className="p-6 overflow-y-auto">{children}</div>
@@ -195,7 +195,7 @@ const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
 // --- MAIN E-SIGNING PAGE COMPONENT ---
 const MSAandWOSigningPage = ({ token }) => {
     const { user } = useAuth() || {}; 
-    const { canAddPosting } = usePermissions();
+    const { canManageMSAWO } = usePermissions();
 
     const [documentData, setDocumentData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -226,7 +226,13 @@ const MSAandWOSigningPage = ({ token }) => {
         setError('');
         try {
             const signerUsername = user?.userIdentifier || 'vendor';
-            const response = await apiService.updateSigningStatus(token, signerData, signerType, signerUsername);
+            // Pass the entire documentData object which contains the new job info
+            const jobInfo = {
+                jobTitle: documentData.jobTitle,
+                clientName: documentData.clientName,
+                clientLocation: documentData.clientLocation
+            };
+            const response = await apiService.updateSigningStatus(token, signerData, signerType, signerUsername, jobInfo);
             if (response.data.success) {
                 handleSignSuccess(response.data.message);
             } else {
@@ -238,7 +244,7 @@ const MSAandWOSigningPage = ({ token }) => {
         } finally {
             setLoading(false);
         }
-    }, [token, user?.userIdentifier, handleSignSuccess]);
+    }, [token, user?.userIdentifier, documentData, handleSignSuccess]);
 
     useEffect(() => {
         const fetchDocumentForDirector = async () => {
@@ -331,6 +337,9 @@ const MSAandWOSigningPage = ({ token }) => {
                                      <DetailItem label="Contract Number" value={documentData.contractNumber} />
                                      <DetailItem label="Vendor Company" value={documentData.vendorName} />
                                      <DetailItem label="Candidate Name" value={documentData.candidateName} />
+                                     <DetailItem label="Job Title" value={documentData.jobTitle} />
+                                     <DetailItem label="Client Name" value={documentData.clientName} />
+                                     <DetailItem label="Client Location" value={documentData.clientLocation} />
                                      <DetailItem label="Service Type" value={documentData.typeOfServices} />
                                      <DetailItem label="Rate" value={`$${documentData.rate} ${documentData.perHour}`} />
                                      <DetailItem label="Status" value={documentData.status} />
@@ -341,7 +350,7 @@ const MSAandWOSigningPage = ({ token }) => {
                                             Sign as Vendor
                                         </button>
                                     )}
-                                    {hasVendorSigned && !hasTaprootSigned && canAddPosting && user && (
+                                    {hasVendorSigned && !hasTaprootSigned && canManageMSAWO && user && (
                                         <button onClick={() => setIsTaprootSigningModalOpen(true)} className="w-full sm:w-auto flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold shadow-md transition-transform transform hover:scale-105">
                                             Sign as Taproot Director
                                         </button>

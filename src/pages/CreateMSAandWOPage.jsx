@@ -6,8 +6,7 @@ import { usePermissions } from '../hooks/usePermissions';
 
 const CreateMSAandWOPage = () => {
     const { user } = useAuth();
-    // Placeholder permission for now, to be replaced by a dedicated permission later
-    const canCreateMSAWO = user.permissions.canAddPosting; 
+    const { canManageMSAWO } = usePermissions(); 
 
     const [formData, setFormData] = useState({
         vendorName: '',
@@ -22,7 +21,10 @@ const CreateMSAandWOPage = () => {
         typeOfSubcontract: '',
         rate: '',
         perHour: '',
-        net: ''
+        net: '',
+        jobTitle: '',
+        clientName: '',
+        clientLocation: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -34,7 +36,7 @@ const CreateMSAandWOPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!canCreateMSAWO) {
+        if (!canManageMSAWO) {
             setError("You do not have permission to create MSA and Work Order documents.");
             return;
         }
@@ -60,7 +62,10 @@ const CreateMSAandWOPage = () => {
                     typeOfSubcontract: '',
                     rate: '',
                     perHour: '',
-                    net: ''
+                    net: '',
+                    jobTitle: '',
+                    clientName: '',
+                    clientLocation: ''
                 });
                 setTimeout(() => setSuccess(''), 3000);
             } else {
@@ -79,13 +84,13 @@ const CreateMSAandWOPage = () => {
                 <h1 className="text-3xl font-bold text-gray-900">Create MSA and Work Order</h1>
                 <p className="mt-1 text-gray-600">Enter the details to generate a new Master Services Agreement and Work Order document for e-signing.</p>
             </div>
-            {!canCreateMSAWO && !loading && (
+            {!canManageMSAWO && !loading && (
                 <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
                     <h3 className="text-lg font-medium">Access Denied</h3>
                     <p className="text-sm">You do not have the necessary permissions to create these documents.</p>
                 </div>
             )}
-            {canCreateMSAWO && (
+            {canManageMSAWO && (
                 <form onSubmit={handleSubmit}>
                     <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border">
                         {error && <div className="bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">{error}</div>}
@@ -123,6 +128,18 @@ const CreateMSAandWOPage = () => {
                             <div>
                                 <label htmlFor="candidateName" className="block text-sm font-medium text-gray-700">Candidate Name (Employee Name From Vendor) <span className="text-red-500">*</span></label>
                                 <input type="text" name="candidateName" id="candidateName" value={formData.candidateName} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                            </div>
+                            <div>
+                                <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700">Job Title <span className="text-red-500">*</span></label>
+                                <input type="text" name="jobTitle" id="jobTitle" value={formData.jobTitle} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                            </div>
+                            <div>
+                                <label htmlFor="clientName" className="block text-sm font-medium text-gray-700">Client Name <span className="text-red-500">*</span></label>
+                                <input type="text" name="clientName" id="clientName" value={formData.clientName} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                            </div>
+                            <div>
+                                <label htmlFor="clientLocation" className="block text-sm font-medium text-gray-700">Client Location <span className="text-red-500">*</span></label>
+                                <input type="text" name="clientLocation" id="clientLocation" value={formData.clientLocation} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
                             </div>
                             <div>
                                 <label htmlFor="typeOfServices" className="block text-sm font-medium text-gray-700">Type Of Service <span className="text-red-500">*</span></label>
