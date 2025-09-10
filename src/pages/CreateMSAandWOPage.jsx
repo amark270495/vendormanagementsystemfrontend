@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
@@ -17,14 +17,15 @@ const CreateMSAandWOPage = () => {
         authorizedSignatureName: '',
         authorizedPersonTitle: '',
         candidateName: '',
+        tentativeStartDate: '', // <-- Added state for the new field
+        jobTitle: '',
+        clientName: '',
+        clientLocation: '',
         typeOfServices: '',
         typeOfSubcontract: '',
         rate: '',
         perHour: '',
-        net: '',
-        jobTitle: '',
-        clientName: '',
-        clientLocation: ''
+        net: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -58,14 +59,15 @@ const CreateMSAandWOPage = () => {
                     authorizedSignatureName: '',
                     authorizedPersonTitle: '',
                     candidateName: '',
+                    tentativeStartDate: '', // <-- Clear the new field
+                    jobTitle: '',
+                    clientName: '',
+                    clientLocation: '',
                     typeOfServices: '',
                     typeOfSubcontract: '',
                     rate: '',
                     perHour: '',
-                    net: '',
-                    jobTitle: '',
-                    clientName: '',
-                    clientLocation: ''
+                    net: ''
                 });
                 setTimeout(() => setSuccess(''), 3000);
             } else {
@@ -128,6 +130,11 @@ const CreateMSAandWOPage = () => {
                             <div>
                                 <label htmlFor="candidateName" className="block text-sm font-medium text-gray-700">Candidate Name (Employee Name From Vendor) <span className="text-red-500">*</span></label>
                                 <input type="text" name="candidateName" id="candidateName" value={formData.candidateName} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                            </div>
+                            {/* --- THIS IS THE NEW FIELD --- */}
+                            <div>
+                                <label htmlFor="tentativeStartDate" className="block text-sm font-medium text-gray-700">Tentative Start Date <span className="text-red-500">*</span></label>
+                                <input type="date" name="tentativeStartDate" id="tentativeStartDate" value={formData.tentativeStartDate} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
                             </div>
                             <div>
                                 <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700">Job Title <span className="text-red-500">*</span></label>
