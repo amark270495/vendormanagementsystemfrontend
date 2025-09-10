@@ -61,6 +61,7 @@ const MSAandWODashboardPage = () => {
         'Client Location',
         'Contract Number',
         'Submitted On',
+        'Tentative Start Date',
         'Status',
         'Actions'
     ], []);
@@ -105,6 +106,7 @@ const MSAandWODashboardPage = () => {
                 doc.clientLocation,
                 doc.contractNumber,
                 new Date(doc.submittedOn).toLocaleDateString(),
+                doc.tentativeStartDate ? new Date(doc.tentativeStartDate).toLocaleDateString() : 'N/A',
                 doc.status
             ]
         }));
@@ -123,7 +125,7 @@ const MSAandWODashboardPage = () => {
                     let valA = a.display[index];
                     let valB = b.display[index];
 
-                    if (sortConfig.key === 'Submitted On') {
+                    if (sortConfig.key === 'Submitted On' || sortConfig.key === 'Tentative Start Date') {
                         valA = new Date(valA).getTime();
                         valB = new Date(valB).getTime();
                     } else {

@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef, createContext, useReducer, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, createContext, useReducer, useContext } from 'react';
 import axios from 'axios';
+import SignatureModal from '../components/msa-wo/SignatureModal'; // Import the new signature modal
 
 // --- CENTRAL API SERVICE (Relevant Functions) ---
 const API_BASE_URL = '/api';
@@ -19,7 +20,6 @@ const useAuth = () => useContext(AuthContext);
 
 const calculatePermissions = (permissions) => {
     if (!permissions) {
-        // Default permissions for an unauthenticated user (vendor)
         return { canManageMSAWO: false }; 
     }
     return {
@@ -53,7 +53,6 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
     );
 };
 
-// --- E-SIGNING MODALS ---
 const AccessModal = ({ isOpen, onClose, onAccessGranted, token }) => {
     const [tempPassword, setTempPassword] = useState('');
     const [error, setError] = useState('');
@@ -97,100 +96,6 @@ const AccessModal = ({ isOpen, onClose, onAccessGranted, token }) => {
     );
 };
 
-const VendorSigningModal = ({ isOpen, onClose, onSign }) => {
-    const [formData, setFormData] = useState({ signature: '', name: '', title: '' });
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-    const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-        try {
-            await onSign(formData, 'vendor');
-            onClose();
-        } catch (err) {
-            setError(err.message || "An unexpected error occurred.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Sign Document as Vendor" size="md">
-            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-gray-700">By signing, you agree to the terms of the Master Services Agreement and Work Order.</p>
-                <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">Your Full Name <span className="text-red-500">*</span></label>
-                    <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
-                </div>
-                <div>
-                    <label htmlFor="title" className="block text-sm font-medium text-gray-700">Your Title <span className="text-red-500">*</span></label>
-                    <input type="text" name="title" id="title" value={formData.title} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
-                </div>
-                <div>
-                    <label htmlFor="signature" className="block text-sm font-medium text-gray-700">Digital Signature (Type Full Name) <span className="text-red-500">*</span></label>
-                    <input type="text" name="signature" id="signature" value={formData.signature} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
-                    <p className="mt-1 text-xs text-gray-500">Typing your name here constitutes a legal signature.</p>
-                </div>
-                <div className="flex justify-end space-x-2 pt-4">
-                    <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-28" disabled={loading}>
-                        {loading ? <Spinner size="5" /> : 'Sign'}
-                    </button>
-                </div>
-            </form>
-        </Modal>
-    );
-};
-
-const TaprootSigningModal = ({ isOpen, onClose, onSign }) => {
-    const [formData, setFormData] = useState({ signature: '', password: '' });
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-    const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-        try {
-            await onSign(formData, 'taproot');
-            onClose();
-        } catch (err) {
-            setError(err.message || "An unexpected error occurred.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Confirm Signature as Taproot Director" size="md">
-            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-gray-700">To finalize this document, please confirm your identity by entering your VMS portal password.</p>
-                <div>
-                    <label htmlFor="signature" className="block text-sm font-medium text-gray-700">Digital Signature (Type Full Name) <span className="text-red-500">*</span></label>
-                    <input type="text" name="signature" id="signature" value={formData.signature} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
-                     <p className="mt-1 text-xs text-gray-500">Typing your name here constitutes a legal signature.</p>
-                </div>
-                <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">Your VMS Password <span className="text-red-500">*</span></label>
-                    <input type="password" name="password" id="password" value={formData.password} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
-                </div>
-                <div className="flex justify-end space-x-2 pt-4">
-                    <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-36" disabled={loading}>
-                        {loading ? <Spinner size="5" /> : 'Confirm & Sign'}
-                    </button>
-                </div>
-            </form>
-        </Modal>
-    );
-};
-
 
 // --- MAIN E-SIGNING PAGE COMPONENT ---
 const MSAandWOSigningPage = ({ token }) => {
@@ -201,8 +106,7 @@ const MSAandWOSigningPage = ({ token }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
-    const [isVendorSigningModalOpen, setIsVendorSigningModalOpen] = useState(false);
-    const [isTaprootSigningModalOpen, setIsTaprootSigningModalOpen] = useState(false);
+    const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
 
     const hasVendorSigned = documentData?.status === 'Vendor Signed' || documentData?.status === 'Fully Signed';
@@ -226,7 +130,6 @@ const MSAandWOSigningPage = ({ token }) => {
         setError('');
         try {
             const signerUsername = user?.userIdentifier || 'vendor';
-            // Pass the entire documentData object which contains the new job info
             const jobInfo = {
                 jobTitle: documentData.jobTitle,
                 clientName: documentData.clientName,
@@ -268,17 +171,13 @@ const MSAandWOSigningPage = ({ token }) => {
             return;
         }
         
-        // This logic correctly handles the race condition.
         const sessionUser = sessionStorage.getItem('vms_user');
 
         if (user && user.userIdentifier) {
-            // Case 1: The AuthProvider is fully loaded and has confirmed an authenticated user.
             fetchDocumentForDirector();
         } else if (sessionUser) {
-            // Case 2: No user yet, but a session exists. We wait for the AuthProvider to finish.
             setLoading(true); 
         } else {
-            // Case 3: No user and no session. This must be an external vendor.
             setIsAccessModalOpen(true);
             setLoading(false);
         }
@@ -346,12 +245,12 @@ const MSAandWOSigningPage = ({ token }) => {
                                  </div>
                                  <div className="mt-8 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
                                     {!hasVendorSigned && !user && (
-                                        <button onClick={() => setIsVendorSigningModalOpen(true)} className="w-full sm:w-auto flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 font-semibold shadow-md transition-transform transform hover:scale-105">
+                                        <button onClick={() => setIsSigningModalOpen(true)} className="w-full sm:w-auto flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 font-semibold shadow-md transition-transform transform hover:scale-105">
                                             Sign as Vendor
                                         </button>
                                     )}
                                     {hasVendorSigned && !hasTaprootSigned && canManageMSAWO && user && (
-                                        <button onClick={() => setIsTaprootSigningModalOpen(true)} className="w-full sm:w-auto flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold shadow-md transition-transform transform hover:scale-105">
+                                         <button onClick={() => setIsSigningModalOpen(true)} className="w-full sm:w-auto flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold shadow-md transition-transform transform hover:scale-105">
                                             Sign as Taproot Director
                                         </button>
                                     )}
@@ -381,10 +280,13 @@ const MSAandWOSigningPage = ({ token }) => {
             />
             
             {documentData && (
-                <>
-                    <VendorSigningModal isOpen={isVendorSigningModalOpen} onClose={() => setIsVendorSigningModalOpen(false)} onSign={handleSign} />
-                    <TaprootSigningModal isOpen={isTaprootSigningModalOpen} onClose={() => setIsTaprootSigningModalOpen(false)} onSign={handleSign} />
-                </>
+                <SignatureModal 
+                    isOpen={isSigningModalOpen}
+                    onClose={() => setIsSigningModalOpen(false)}
+                    onSign={handleSign}
+                    signerType={user && canManageMSAWO ? 'taproot' : 'vendor'}
+                    requiresPassword={user && canManageMSAWO}
+                />
             )}
         </>
     );
