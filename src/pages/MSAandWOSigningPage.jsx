@@ -3,8 +3,7 @@ import axios from 'axios';
 
 // Import Modal Components from their own files to ensure stability
 import AccessModal from '../components/msa-wo/AccessModal';
-import VendorSigningModal from '../components/msa-wo/VendorSigningModal';
-import DirectorSigningModal from '../components/msa-wo/DirectorSigningModal';
+import SignatureModal from '../components/msa-wo/SignatureModal'; // The only signing modal needed now
 
 // Import Generic Components
 import Spinner from '../components/Spinner';
@@ -35,8 +34,8 @@ const MSAandWOSigningPage = ({ token }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
-    const [isVendorSigningModalOpen, setIsVendorSigningModalOpen] = useState(false);
-    const [isDirectorSigningModalOpen, setIsDirectorSigningModalOpen] = useState(false);
+    const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
+    const [signerConfig, setSignerConfig] = useState({});
     const [successMessage, setSuccessMessage] = useState('');
 
     const hasVendorSigned = documentData?.status === 'Vendor Signed' || documentData?.status === 'Fully Signed';
@@ -50,6 +49,7 @@ const MSAandWOSigningPage = ({ token }) => {
 
     const handleSignSuccess = useCallback((message) => {
         setSuccessMessage(message);
+        setIsSigningModalOpen(false);
         setTimeout(() => { window.location.reload(); }, 2000);
     }, []);
     
@@ -72,23 +72,24 @@ const MSAandWOSigningPage = ({ token }) => {
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to sign the document.');
-            throw err; // Re-throw to allow modal to display the error
-        } finally {
             setLoading(false);
+            throw err;
         }
     }, [token, user?.userIdentifier, documentData, handleSignSuccess]);
 
     useEffect(() => {
-        const fetchDocumentForDirector = async () => {
+        const fetchDocument = async () => {
+            setLoading(true);
             try {
-                const response = await apiService.getMSAandWODetailForSigning(token, user.userIdentifier);
+                // Use a single endpoint; the backend can differentiate based on authenticatedUsername
+                const response = await apiService.getMSAandWODetailForSigning(token, user?.userIdentifier);
                 if (response.data.success) {
                     setDocumentData(response.data.documentData);
                 } else {
                     setError(response.data.message);
                 }
             } catch (err) {
-                setError(err.response?.data?.message || "Failed to retrieve document for signing.");
+                setError(err.response?.data?.message || "Failed to retrieve document.");
             } finally {
                 setLoading(false);
             }
@@ -102,14 +103,41 @@ const MSAandWOSigningPage = ({ token }) => {
         
         const sessionUser = sessionStorage.getItem('vms_user');
         if (user && user.userIdentifier) {
-            fetchDocumentForDirector();
+            fetchDocument();
         } else if (sessionUser) {
+            // Wait for auth context to initialize from session
             setLoading(true); 
         } else {
+            // This must be an external vendor, prompt for password
             setIsAccessModalOpen(true);
             setLoading(false);
         }
     }, [token, user]);
+
+    // This function configures and opens the single SignatureModal
+    const openSigningModal = (type) => {
+        if (type === 'vendor') {
+            setSignerConfig({
+                signerType: 'vendor',
+                requiresPassword: false,
+                signerInfo: {
+                    name: documentData?.authorizedSignatureName,
+                    title: documentData?.authorizedPersonTitle
+                }
+            });
+        } else if (type === 'taproot') {
+            setSignerConfig({
+                signerType: 'taproot',
+                requiresPassword: true,
+                signerInfo: {
+                    name: user?.userName,
+                    title: 'Director'
+                }
+            });
+        }
+        setIsSigningModalOpen(true);
+    };
+
 
     const getStatusStep = () => {
         if (hasTaprootSigned) return 3;
@@ -121,7 +149,7 @@ const MSAandWOSigningPage = ({ token }) => {
     const DetailItem = ({ label, value }) => (
         <div>
             <p className="text-sm text-gray-500">{label}</p>
-            <p className="font-semibold text-gray-800">{value}</p>
+            <p className="font-semibold text-gray-800">{value || 'N/A'}</p>
         </div>
     );
     
@@ -171,8 +199,8 @@ const MSAandWOSigningPage = ({ token }) => {
                                      <DetailItem label="Status" value={documentData.status} />
                                  </div>
                                  <div className="mt-8 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                                    {!hasVendorSigned && !user && (<button onClick={() => setIsVendorSigningModalOpen(true)} className="w-full sm:w-auto flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold shadow-md">Sign as Vendor</button>)}
-                                    {hasVendorSigned && !hasTaprootSigned && canManageMSAWO && user && (<button onClick={() => setIsDirectorSigningModalOpen(true)} className="w-full sm:w-auto flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold shadow-md">Sign as Taproot Director</button>)}
+                                    {!hasVendorSigned && !user && (<button onClick={() => openSigningModal('vendor')} className="w-full sm:w-auto flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold shadow-md">Sign as Vendor</button>)}
+                                    {hasVendorSigned && !hasTaprootSigned && canManageMSAWO && user && (<button onClick={() => openSigningModal('taproot')} className="w-full sm:w-auto flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold shadow-md">Sign as Taproot Director</button>)}
                                      {hasTaprootSigned && (<div className="w-full text-center p-4 bg-green-50 text-green-700 rounded-lg font-semibold">This document is fully signed and complete.</div>)}
                                  </div>
                             </div>
@@ -181,10 +209,15 @@ const MSAandWOSigningPage = ({ token }) => {
                 </div>
             </div>
             <AccessModal isOpen={isAccessModalOpen} onClose={() => { if (!documentData) { setError("Access is required."); } else { setIsAccessModalOpen(false); } }} onAccessGranted={handleAccessGranted} token={token} />
-            {documentData && (<>
-                <VendorSigningModal isOpen={isVendorSigningModalOpen} onClose={() => setIsVendorSigningModalOpen(false)} onSign={handleSign} signerInfo={documentData} />
-                <DirectorSigningModal isOpen={isDirectorSigningModalOpen} onClose={() => setIsDirectorSigningModalOpen(false)} onSign={handleSign} document={documentData} user={user} />
-            </>)}
+            
+            <SignatureModal 
+                isOpen={isSigningModalOpen}
+                onClose={() => setIsSigningModalOpen(false)}
+                onSign={handleSign}
+                signerType={signerConfig.signerType}
+                signerInfo={signerConfig.signerInfo}
+                requiresPassword={signerConfig.requiresPassword}
+            />
         </>
     );
 };
