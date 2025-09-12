@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef, createContext, useReducer, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, createContext, useContext } from 'react';
 import axios from 'axios';
 import SignatureCanvas from 'react-signature-canvas';
 
@@ -21,7 +21,7 @@ const useAuth = () => useContext(AuthContext);
 
 const calculatePermissions = (permissions) => {
     if (!permissions) {
-        return { canManageMSAWO: false }; 
+        return { canManageMSAWO: false };
     }
     return {
         canManageMSAWO: permissions.canManageMSAWO === true,
@@ -101,10 +101,11 @@ const AccessModal = ({ isOpen, onClose, onAccessGranted, token }) => {
     );
 };
 
-const SignatureModal = ({ isOpen, onClose, onSave, signerName }) => {
+const SignatureModal = ({ isOpen, onClose, onSign, signerType, requiresPassword = false }) => {
     const [activeTab, setActiveTab] = useState('type');
     const [typedSignature, setTypedSignature] = useState('');
     const [selectedFont, setSelectedFont] = useState('font-dancing-script');
+    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const signaturePad = useRef(null);
@@ -140,14 +141,15 @@ const SignatureModal = ({ isOpen, onClose, onSave, signerName }) => {
 
     useEffect(() => {
         if(isOpen) {
-            setTypedSignature(signerName || '');
+            setTypedSignature('');
+            setPassword('');
             setError('');
             setActiveTab('type');
             if(signaturePad.current) {
                 signaturePad.current.clear();
             }
         }
-    }, [isOpen, signerName]);
+    }, [isOpen]);
 
     useEffect(() => {
         if (isOpen && activeTab === 'type') {
@@ -159,7 +161,17 @@ const SignatureModal = ({ isOpen, onClose, onSave, signerName }) => {
         const file = event.target.files[0];
         if (file && (file.type === "image/png" || file.type === "image/jpeg")) {
             const reader = new FileReader();
-            reader.onload = (e) => onSave(e.target.result);
+            reader.onload = async (e) => {
+                setLoading(true);
+                try {
+                    await onSign({ signatureImage: e.target.result, password }, signerType);
+                    onClose();
+                } catch (err) {
+                    setError(err.message || 'Failed to process signature.');
+                } finally {
+                    setLoading(false);
+                }
+            };
             reader.readAsDataURL(file);
             setError('');
         } else {
@@ -167,7 +179,7 @@ const SignatureModal = ({ isOpen, onClose, onSave, signerName }) => {
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         setLoading(true);
         setError('');
         let signatureData = '';
@@ -187,15 +199,19 @@ const SignatureModal = ({ isOpen, onClose, onSave, signerName }) => {
             }
             signatureData = signaturePad.current.getTrimmedCanvas().toDataURL('image/png');
         }
-        onSave(signatureData);
-        setLoading(false);
+
+        try {
+            await onSign({ signatureImage: signatureData, password, name: typedSignature }, signerType);
+            onClose();
+        } catch (err) {
+            setError(err.message || 'Failed to process signature.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const TabButton = ({ id, children }) => (
-        <button
-            onClick={() => setActiveTab(id)}
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${activeTab === id ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
-        >
+        <button onClick={() => setActiveTab(id)} className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${activeTab === id ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
             {children}
         </button>
     );
@@ -204,37 +220,27 @@ const SignatureModal = ({ isOpen, onClose, onSave, signerName }) => {
         <Modal isOpen={isOpen} onClose={onClose} title="Provide Your Signature" size="lg">
             {error && <div className="bg-red-100 border-red-400 text-red-700 px-4 py-2 rounded mb-4">{error}</div>}
             <div className="border-b border-gray-200">
-                <nav className="flex space-x-2" aria-label="Tabs">
-                    <TabButton id="type">Type</TabButton>
-                    <TabButton id="draw">Draw</TabButton>
-                    <TabButton id="upload">Upload</TabButton>
-                </nav>
+                <nav className="flex space-x-2" aria-label="Tabs"><TabButton id="type">Type</TabButton><TabButton id="draw">Draw</TabButton><TabButton id="upload">Upload</TabButton></nav>
             </div>
             <div className="py-4">
                 {activeTab === 'type' && (
                     <div className="space-y-4">
-                        <input
-                            type="text"
-                            value={typedSignature}
-                            onChange={(e) => setTypedSignature(e.target.value)}
-                            className={`w-full p-2 border border-gray-300 rounded-lg text-4xl ${selectedFont}`}
-                            placeholder="Type your signature"
-                        />
-                        <div className="flex space-x-2 flex-wrap gap-2">
-                            {fonts.map(font => (<button key={font.id} onClick={() => setSelectedFont(font.className)} className={`px-3 py-1 rounded-md text-sm ${selectedFont === font.className ? 'bg-indigo-600 text-white' : 'bg-gray-200'} ${font.className}`}>{font.name}</button>))}
-                        </div>
+                        <input type="text" value={typedSignature} onChange={(e) => setTypedSignature(e.target.value)} className={`w-full p-2 border border-gray-300 rounded-lg text-4xl ${selectedFont}`} placeholder="Type your signature" />
+                        <div className="flex space-x-2 flex-wrap gap-2">{fonts.map(font => (<button key={font.id} onClick={() => setSelectedFont(font.className)} className={`px-3 py-1 rounded-md text-sm ${selectedFont === font.className ? 'bg-indigo-600 text-white' : 'bg-gray-200'} ${font.className}`}>{font.name}</button>))}</div>
                         <canvas ref={typeCanvasRef} width="400" height="60" className="hidden"></canvas>
                     </div>
                 )}
-                {activeTab === 'draw' && (
-                    <div className="border border-gray-300 rounded-lg h-48 w-full bg-gray-50">
-                        <SignatureCanvas ref={signaturePad} penColor="black" canvasProps={{ className: 'w-full h-full', willReadFrequently: true }} />
-                    </div>
-                )}
+                {activeTab === 'draw' && (<div className="border border-gray-300 rounded-lg h-48 w-full bg-gray-50"><SignatureCanvas ref={signaturePad} penColor="black" canvasProps={{ className: 'w-full h-full', willReadFrequently: true }} /></div>)}
                 {activeTab === 'upload' && (
                     <div>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg" />
                         <button onClick={() => fileInputRef.current.click()} className="w-full px-4 py-3 bg-gray-100 text-gray-700 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-200">Click to upload an image (PNG or JPG)</button>
+                    </div>
+                )}
+                 {requiresPassword && (
+                    <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700">Confirm with Password</label>
+                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-lg p-2" required />
                     </div>
                 )}
             </div>
@@ -250,154 +256,91 @@ const SignatureModal = ({ isOpen, onClose, onSave, signerName }) => {
     );
 };
 
+
 const VendorSigningModal = ({ isOpen, onClose, onSign, signerInfo }) => {
-    const [formData, setFormData] = useState({ name: '', title: '' });
-    const [signatureImage, setSignatureImage] = useState(null);
     const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-    
-    useEffect(() => {
-        if(isOpen) {
-            setFormData({ name: signerInfo?.authorizedSignatureName || '', title: signerInfo?.authorizedPersonTitle || '' });
-            setSignatureImage(null);
-            setError('');
-        }
-    }, [isOpen, signerInfo]);
 
-    const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-
-    const handleSaveSignature = (image) => {
-        setSignatureImage(image);
+    const handleSignSubmit = async (signerData) => {
+        const finalSignerData = {
+            ...signerData,
+            name: signerInfo?.authorizedSignatureName,
+            title: signerInfo?.authorizedPersonTitle
+        };
+        await onSign(finalSignerData, 'vendor');
         setIsSignatureModalOpen(false);
-    };
-    
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-        if (!signatureImage) {
-            setError("Please provide your signature by clicking the button above.");
-            return;
-        }
-        setLoading(true);
-        try {
-            await onSign({ ...formData, signatureImage }, 'vendor');
-            onClose();
-        } catch (err) {
-            setError(err.message || "An unexpected error occurred.");
-        } finally {
-            setLoading(false);
-        }
     };
 
     return (
-        <>
-            <Modal isOpen={isOpen} onClose={onClose} title="Sign Document as Vendor" size="md">
-                {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <p className="text-gray-700">By signing, you agree to the terms of the Master Services Agreement and Work Order.</p>
-                    <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">Your Full Name <span className="text-red-500">*</span></label>
-                        <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
-                    </div>
-                    <div>
-                        <label htmlFor="title" className="block text-sm font-medium text-gray-700">Your Title <span className="text-red-500">*</span></label>
-                        <input type="text" name="title" id="title" value={formData.title} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Digital Signature <span className="text-red-500">*</span></label>
-                        <div className="mt-1 p-4 border border-gray-300 rounded-lg bg-gray-50 h-28 flex items-center justify-center">
-                            {signatureImage ? <img src={signatureImage} alt="Signature" className="max-h-full max-w-full" /> : <p className="text-gray-500">Signature will appear here</p>}
-                        </div>
-                        <button type="button" onClick={() => setIsSignatureModalOpen(true)} className="mt-2 text-sm text-indigo-600 hover:text-indigo-800">Click to Provide Signature</button>
-                    </div>
-                    <div className="flex justify-end space-x-2 pt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-28" disabled={loading}>{loading ? <Spinner size="5" /> : 'Sign'}</button>
-                    </div>
-                </form>
-            </Modal>
-            <SignatureModal isOpen={isSignatureModalOpen} onClose={() => setIsSignatureModalOpen(false)} onSave={handleSaveSignature} signerName={formData.name} />
-        </>
+        <SignatureModal
+            isOpen={isOpen}
+            onClose={onClose}
+            onSign={handleSignSubmit}
+            signerType="vendor"
+            requiresPassword={false}
+        />
     );
 };
 
 const DirectorSigningModal = ({ isOpen, onClose, onSign, document, user }) => {
-    const [password, setPassword] = useState('');
-    const [signatureImage, setSignatureImage] = useState(null);
     const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+    const { onSuccess } = {onSuccess: () => {}}; // Placeholder for potential future use
 
-    useEffect(() => {
-        if(isOpen) {
-            setPassword('');
-            setSignatureImage(null);
-            setError('');
+    const handleSignClick = () => {
+        setIsSignatureModalOpen(true);
+    };
+
+    const handleSignSubmit = async (signerData) => {
+        if (!document || !document.rowKey) {
+            throw new Error("Document information is missing.");
         }
-    }, [isOpen]);
-    
-    const handleSaveSignature = (image) => {
-        setSignatureImage(image);
+        const finalSignerData = {
+            ...signerData,
+            name: user?.userName || signerData.name,
+            title: 'Director'
+        };
+        await onSign(finalSignerData, 'taproot');
         setIsSignatureModalOpen(false);
+        if (onSuccess) onSuccess();
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-        if (!signatureImage) {
-            setError("Please provide your signature by clicking the button above.");
-            return;
-        }
-        setLoading(true);
-        try {
-            await onSign({ password, signatureImage }, 'taproot');
-            onClose();
-        } catch (err) {
-            setError(err.message || "An unexpected error occurred.");
-        } finally {
-            setLoading(false);
-        }
-    };
+    if (!isOpen || !document) return null;
 
     return (
         <>
-            <Modal isOpen={isOpen} onClose={onClose} title={`Sign Document: ${document?.contractNumber}`} size="6xl">
-                {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
+            <Modal isOpen={isOpen} onClose={onClose} title={`Sign Document: ${document.contractNumber}`} size="6xl">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[75vh]">
                     <div className="lg:col-span-1 h-full bg-gray-200 rounded-lg overflow-hidden">
-                        {document?.pdfUrl ? (<iframe src={document.pdfUrl} title="Document Preview" className="w-full h-full border-0" />) : (<div className="flex items-center justify-center h-full bg-gray-100"><p className="text-gray-500">Could not load document preview.</p></div>)}
+                        {document.pdfUrl ? (
+                            <iframe src={document.pdfUrl} title="Document Preview" className="w-full h-full border-0" />
+                        ) : (
+                            <div className="flex items-center justify-center h-full bg-gray-100"><p className="text-gray-500">Could not load document preview.</p></div>
+                        )}
                     </div>
                     <div className="lg:col-span-1 flex flex-col justify-between bg-gray-50 p-6 rounded-lg border">
                         <div>
                             <h3 className="text-lg font-bold text-gray-800 mb-4">Confirm Signature</h3>
-                            <p className="text-sm text-gray-600 mb-6">Review the document. To finalize and sign, provide your signature and VMS password below.</p>
-                            <form id="director-sign-form" onSubmit={handleSubmit} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Digital Signature <span className="text-red-500">*</span></label>
-                                    <div className="mt-1 p-4 border border-gray-300 rounded-lg bg-white h-28 flex items-center justify-center">
-                                        {signatureImage ? <img src={signatureImage} alt="Signature" className="max-h-full max-w-full" /> : <p className="text-gray-500">Signature will appear here</p>}
-                                    </div>
-                                    <button type="button" onClick={() => setIsSignatureModalOpen(true)} className="mt-2 text-sm text-indigo-600 hover:text-indigo-800">Click to Provide Signature</button>
-                                </div>
-                                <div>
-                                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">Your VMS Password <span className="text-red-500">*</span></label>
-                                    <input type="password" name="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2" />
-                                </div>
-                            </form>
+                            <p className="text-sm text-gray-600 mb-6">Review the document. To finalize and sign on behalf of Taproot Solutions, click the "Proceed to Sign" button.</p>
                         </div>
                         <div className="flex justify-end space-x-2 pt-4 border-t mt-6">
                             <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                            <button type="submit" form="director-sign-form" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-36" disabled={loading}>{loading ? <Spinner size="5" /> : 'Confirm & Sign'}</button>
+                            <button onClick={handleSignClick} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-36">
+                                Proceed to Sign
+                            </button>
                         </div>
                     </div>
                 </div>
             </Modal>
-            <SignatureModal isOpen={isSignatureModalOpen} onClose={() => setIsSignatureModalOpen(false)} onSave={handleSaveSignature} signerName={user?.userName} />
+            
+            <SignatureModal
+                isOpen={isSignatureModalOpen}
+                onClose={() => setIsSignatureModalOpen(false)}
+                onSign={handleSignSubmit}
+                signerType="taproot"
+                requiresPassword={true}
+            />
         </>
     );
 };
-
 
 // --- MAIN E-SIGNING PAGE COMPONENT ---
 const MSAandWOSigningPage = ({ token }) => {
