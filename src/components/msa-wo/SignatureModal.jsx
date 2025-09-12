@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, createContext, useReducer, useContext } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 
-// Assuming Modal and Spinner are in the same directory or correctly pathed
-// For simplicity, including their basic structure here.
+// --- GENERIC COMPONENTS (Used by this component) ---
 const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
     if (!isOpen) return null;
     const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', '2xl': 'max-w-2xl' };
@@ -48,7 +47,6 @@ const SignatureModal = ({ isOpen, onClose, onSave, signerName }) => {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // --- FIX: Adjust font size and style for better rendering ---
         let fontStyle = '30px';
         if (selectedFont === 'font-dancing-script') fontStyle = 'italic 40px "Dancing Script", cursive';
         if (selectedFont === 'font-great-vibes') fontStyle = 'italic 45px "Great Vibes", cursive';
@@ -57,14 +55,12 @@ const SignatureModal = ({ isOpen, onClose, onSave, signerName }) => {
         
         ctx.font = fontStyle;
         ctx.fillStyle = "#000000";
-        // Adjust text position to be centered vertically
         ctx.textBaseline = 'middle'; 
         ctx.fillText(typedSignature, 20, canvas.height / 2);
     }, [typedSignature, selectedFont]);
 
     useEffect(() => {
         if(isOpen) {
-            // Pre-fill with signer's name and reset state
             setTypedSignature(signerName || '');
             setError('');
             setActiveTab('type');
@@ -76,7 +72,6 @@ const SignatureModal = ({ isOpen, onClose, onSave, signerName }) => {
 
     useEffect(() => {
         if (isOpen && activeTab === 'type') {
-            // Delay drawing to ensure font is loaded
             setTimeout(drawSignatureOnCanvas, 100);
         }
     }, [isOpen, activeTab, typedSignature, selectedFont, drawSignatureOnCanvas]);
@@ -149,13 +144,13 @@ const SignatureModal = ({ isOpen, onClose, onSave, signerName }) => {
                         <div className="flex space-x-2 flex-wrap gap-2">
                             {fonts.map(font => (<button key={font.id} onClick={() => setSelectedFont(font.className)} className={`px-3 py-1 rounded-md text-sm ${selectedFont === font.className ? 'bg-indigo-600 text-white' : 'bg-gray-200'} ${font.className}`}>{font.name}</button>))}
                         </div>
-                        {/* --- FIX: Reduced canvas height to create a more compact image --- */}
                         <canvas ref={typeCanvasRef} width="400" height="80" className="hidden"></canvas>
                     </div>
                 )}
                 {activeTab === 'draw' && (
                     <div className="border border-gray-300 rounded-lg h-48 w-full bg-gray-50">
-                        <SignatureCanvas ref={signaturePad} penColor="black" canvasProps={{ className: 'w-full h-full' }} />
+                        {/* --- FIX: Added willReadFrequently to address console warning --- */}
+                        <SignatureCanvas ref={signaturePad} penColor="black" canvasProps={{ className: 'w-full h-full', willReadFrequently: true }} />
                     </div>
                 )}
                 {activeTab === 'upload' && (
