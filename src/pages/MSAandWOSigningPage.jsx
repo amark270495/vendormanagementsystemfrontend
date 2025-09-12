@@ -15,6 +15,7 @@ const apiService = {
 };
 
 // --- CONTEXT & HOOKS (Needed for this page) ---
+// NOTE: In a real app, these would be in separate files (e.g., context/AuthContext.js)
 const AuthContext = createContext();
 const useAuth = () => useContext(AuthContext);
 
@@ -37,7 +38,7 @@ const Spinner = ({ size = '8' }) => (<div className={`animate-spin rounded-full 
 
 const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
     if (!isOpen) return null;
-    const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', '2xl': 'max-w-2xl' };
+    const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', '2xl': 'max-w-2xl', '6xl': 'max-w-6xl' };
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex justify-center items-center p-4" aria-modal="true" role="dialog">
             <div className={`bg-white rounded-lg shadow-xl w-full ${sizeClasses[size]} max-h-[90vh] flex flex-col`} onClick={e => e.stopPropagation()}>
@@ -53,7 +54,9 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
     );
 };
 
-// --- All modal components are now defined at the top level, outside the main page component ---
+// --- MODAL COMPONENT DEFINITIONS ---
+// By defining these outside the main page component, we prevent them from being re-created on every render,
+// which is the root cause of the canvas and function reference errors.
 
 const AccessModal = ({ isOpen, onClose, onAccessGranted, token }) => {
     const [tempPassword, setTempPassword] = useState('');
@@ -120,7 +123,7 @@ const SignatureModal = ({ isOpen, onClose, onSave, signerName }) => {
     const drawSignatureOnCanvas = useCallback(() => {
         const canvas = typeCanvasRef.current;
         if (!canvas) return;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         let fontStyle = '30px';
@@ -220,7 +223,7 @@ const SignatureModal = ({ isOpen, onClose, onSave, signerName }) => {
                         <div className="flex space-x-2 flex-wrap gap-2">
                             {fonts.map(font => (<button key={font.id} onClick={() => setSelectedFont(font.className)} className={`px-3 py-1 rounded-md text-sm ${selectedFont === font.className ? 'bg-indigo-600 text-white' : 'bg-gray-200'} ${font.className}`}>{font.name}</button>))}
                         </div>
-                        <canvas ref={typeCanvasRef} width="400" height="80" className="hidden"></canvas>
+                        <canvas ref={typeCanvasRef} width="400" height="60" className="hidden"></canvas>
                     </div>
                 )}
                 {activeTab === 'draw' && (
@@ -359,7 +362,7 @@ const DirectorSigningModal = ({ isOpen, onClose, onSign, document, user }) => {
 
     return (
         <>
-            <Modal isOpen={isOpen} onClose={onClose} title={`Sign Document: ${document?.contractNumber}`} size="2xl">
+            <Modal isOpen={isOpen} onClose={onClose} title={`Sign Document: ${document?.contractNumber}`} size="6xl">
                 {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[75vh]">
                     <div className="lg:col-span-1 h-full bg-gray-200 rounded-lg overflow-hidden">
