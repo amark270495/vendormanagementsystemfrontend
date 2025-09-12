@@ -4,9 +4,9 @@ import Spinner from '../Spinner';
 import SignatureCanvas from 'react-signature-canvas';
 
 // --- SVG Icons for Tabs ---
-const TypeIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>);
-const DrawIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>);
-const UploadIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>);
+const TypeIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>);
+const DrawIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>);
+const UploadIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>);
 
 const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requiresPassword = false }) => {
     const [activeTab, setActiveTab] = useState('type');
@@ -31,7 +31,7 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
     const drawSignatureOnCanvas = useCallback(() => {
         const canvas = typeCanvasRef.current;
         if (!canvas) return;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         let fontStyle = '30px';
@@ -52,9 +52,7 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
             setPassword('');
             setError('');
             setActiveTab('type');
-            if (signaturePad.current) {
-                signaturePad.current.clear();
-            }
+            if (signaturePad.current) signaturePad.current.clear();
         }
     }, [isOpen, signerInfo]);
 
@@ -122,7 +120,11 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
     const TabButton = ({ id, children }) => (
         <button
             onClick={() => setActiveTab(id)}
-            className={`flex items-center justify-center px-4 py-3 text-sm font-semibold rounded-t-lg transition-colors border-b-2 ${activeTab === id ? 'text-indigo-600 border-indigo-600' : 'text-slate-500 border-transparent hover:text-slate-700 hover:border-slate-300'}`}
+            className={`flex items-center justify-center px-5 py-2.5 text-sm font-semibold rounded-t-lg transition-all border-b-2 ${
+                activeTab === id
+                ? 'text-indigo-600 border-indigo-600 bg-indigo-50'
+                : 'text-slate-500 border-transparent hover:text-slate-700 hover:border-slate-300'
+            }`}
         >
             {children}
         </button>
@@ -131,95 +133,59 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
     if (!isOpen) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Provide Your Signature" size="lg">
-            <div className="flex flex-col">
-                {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded-md mb-4 text-sm">{error}</div>}
+        <Modal isOpen={isOpen} onClose={onClose} title="✍️ Provide Your Signature" size="lg">
+            <div className="flex flex-col space-y-6">
+                {error && <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded-md">{error}</div>}
                 <div className="border-b border-slate-200">
-                    <nav className="flex -mb-px" aria-label="Tabs">
-                        <TabButton id="type"><TypeIcon />Type</TabButton>
-                        <TabButton id="draw"><DrawIcon />Draw</TabButton>
-                        <TabButton id="upload"><UploadIcon />Upload</TabButton>
-                    </nav>
+                    <nav className="flex -mb-px">{['type','draw','upload'].map(tab => (
+                        <TabButton id={tab} key={tab}>
+                          {tab === 'type' && <TypeIcon/>}
+                          {tab === 'draw' && <DrawIcon/>}
+                          {tab === 'upload' && <UploadIcon/>}
+                          {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </TabButton>
+                    ))}</nav>
                 </div>
-                <div className="py-5">
+                <div>
+                    {/* Type */}
                     <div className={activeTab === 'type' ? 'space-y-4' : 'hidden'}>
-                        <input
-                            type="text"
-                            value={typedSignature}
-                            onChange={(e) => setTypedSignature(e.target.value)}
-                            className={`w-full p-3 border border-slate-300 rounded-lg text-4xl shadow-inner bg-white ${selectedFont}`}
-                            placeholder="Type your signature"
-                        />
+                        <input type="text" value={typedSignature} onChange={(e) => setTypedSignature(e.target.value)} className={`w-full p-3 border rounded-lg text-4xl shadow-inner bg-white ${selectedFont}`} placeholder="Type your signature" />
                         <div>
                             <p className="text-xs text-slate-500 mb-2">Choose a style:</p>
                             <div className="flex flex-wrap gap-2">
                                 {fonts.map(font => (
-                                    <button
-                                        key={font.id}
-                                        onClick={() => setSelectedFont(font.className)}
-                                        className={`px-3 py-1.5 rounded-full text-sm transition-all ${selectedFont === font.className ? 'bg-indigo-600 text-white ring-2 ring-offset-2 ring-indigo-500' : 'bg-white hover:bg-slate-100 border'}`}
-                                    >
+                                    <button key={font.id} onClick={() => setSelectedFont(font.className)} className={`px-3 py-1.5 rounded-full text-sm transition-all ${selectedFont === font.className ? 'bg-indigo-600 text-white' : 'bg-white border hover:bg-slate-100'}`}>
                                         {font.name}
                                     </button>
                                 ))}
                             </div>
                         </div>
                     </div>
-                    <div className={activeTab === 'draw' ? 'relative border-2 border-dashed border-slate-300 rounded-lg h-48 w-full bg-white shadow-inner' : 'hidden'}>
-                        <SignatureCanvas
-                            ref={signaturePad}
-                            penColor="black"
-                            canvasProps={{
-                                width: 600,
-                                height: 200,
-                                className: 'w-full h-full'
-                            }}
-                        />
+                    {/* Draw */}
+                    <div className={activeTab === 'draw' ? 'relative border-2 border-dashed border-slate-300 rounded-lg h-48 bg-white shadow-inner' : 'hidden'}>
+                        <SignatureCanvas ref={signaturePad} penColor="black" canvasProps={{ width: 600, height: 200, className: 'w-full h-full' }} />
+                        <button onClick={clearCanvas} className="absolute top-2 right-2 px-3 py-1 text-xs bg-gray-200 rounded hover:bg-gray-300">Clear</button>
                     </div>
+                    {/* Upload */}
                     <div className={activeTab === 'upload' ? '' : 'hidden'}>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg" />
-                        <button
-                            onClick={() => fileInputRef.current.click()}
-                            className="w-full h-48 flex flex-col items-center justify-center bg-white text-slate-600 border-2 border-dashed border-slate-300 rounded-lg hover:bg-slate-50 hover:border-indigo-500 transition-colors"
-                        >
-                            <UploadIcon />
-                            <span>Click to upload an image</span>
-                            <span className="text-xs mt-1">(PNG or JPG)</span>
+                        <button onClick={() => fileInputRef.current.click()} className="w-full h-48 flex flex-col items-center justify-center bg-white text-slate-600 border-2 border-dashed border-slate-300 rounded-lg hover:bg-slate-50">
+                            <UploadIcon /><span>Click to upload an image</span><span className="text-xs">(PNG or JPG)</span>
                         </button>
                     </div>
                     <canvas ref={typeCanvasRef} width="400" height="60" className="hidden"></canvas>
                 </div>
                 {requiresPassword && (
-                    <div className="mt-4">
-                        <label className="block text-sm font-semibold text-slate-700">
-                            Confirm with VMS Password <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="mt-1 block w-full border border-slate-300 rounded-lg p-2.5 shadow-sm"
-                            required
-                        />
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700">Confirm with VMS Password <span className="text-red-500">*</span></label>
+                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full border rounded-lg p-2.5 shadow-sm" required />
                     </div>
                 )}
-                <div className="flex justify-between items-center pt-4 border-t mt-4">
-                    {activeTab === 'draw'
-                        ? (<button onClick={clearCanvas} className="text-sm font-medium text-slate-600 hover:text-slate-900">Clear</button>)
-                        : (<div></div>)
-                    }
-                    <div className="flex space-x-2">
-                        <button onClick={onClose} className="px-5 py-2.5 bg-slate-200 text-slate-800 text-sm font-semibold rounded-lg hover:bg-slate-300">Cancel</button>
-                        {activeTab !== 'upload' && (
-                            <button
-                                onClick={() => handleSave()}
-                                className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 flex items-center justify-center w-36 shadow-sm"
-                                disabled={loading}
-                            >
-                                {loading ? <Spinner size="5" /> : 'Confirm & Sign'}
-                            </button>
-                        )}
-                    </div>
+                <div className="flex justify-end space-x-2 pt-4 border-t">
+                    <button onClick={onClose} className="px-5 py-2.5 bg-slate-200 rounded-lg hover:bg-slate-300">Cancel</button>
+                    <button onClick={() => handleSave()} className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center w-36 shadow-sm" disabled={loading}>
+                        {loading ? <Spinner size="5" /> : 'Confirm & Sign'}
+                    </button>
                 </div>
             </div>
         </Modal>
