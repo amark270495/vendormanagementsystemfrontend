@@ -8,7 +8,6 @@ const TypeIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" width="24" heigh
 const DrawIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>);
 const UploadIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>);
 
-// This is the single, definitive modal for collecting signatures.
 const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requiresPassword = false }) => {
     const [activeTab, setActiveTab] = useState('type');
     const [typedSignature, setTypedSignature] = useState('');
@@ -34,16 +33,16 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
         if (!canvas) return;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         let fontStyle = '30px';
         if (selectedFont === 'font-dancing-script') fontStyle = 'italic 40px "Dancing Script", cursive';
         if (selectedFont === 'font-great-vibes') fontStyle = 'italic 45px "Great Vibes", cursive';
         if (selectedFont === 'font-pacifico') fontStyle = '35px "Pacifico", cursive';
         if (selectedFont === 'font-sacramento') fontStyle = '40px "Sacramento", cursive';
-        
+
         ctx.font = fontStyle;
         ctx.fillStyle = "#111827";
-        ctx.textBaseline = 'middle'; 
+        ctx.textBaseline = 'middle';
         ctx.fillText(typedSignature, 20, canvas.height / 2);
     }, [typedSignature, selectedFont]);
 
@@ -80,11 +79,11 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
     const handleSave = async (uploadedImage = null) => {
         setLoading(true);
         setError('');
-        
+
         let signatureData = uploadedImage;
 
         if (!signatureData) {
-             if (activeTab === 'type') {
+            if (activeTab === 'type') {
                 if (!typedSignature) {
                     setError('Please type your signature.');
                     setLoading(false); return;
@@ -98,7 +97,7 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
                 signatureData = signaturePad.current.getTrimmedCanvas().toDataURL('image/png');
             }
         }
-       
+
         if (requiresPassword && !password) {
             setError('Please enter your password to confirm.');
             setLoading(false); return;
@@ -121,7 +120,10 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
     };
 
     const TabButton = ({ id, children }) => (
-        <button onClick={() => setActiveTab(id)} className={`flex items-center justify-center px-4 py-3 text-sm font-semibold rounded-t-lg transition-colors border-b-2 ${activeTab === id ? 'text-indigo-600 border-indigo-600' : 'text-slate-500 border-transparent hover:text-slate-700 hover:border-slate-300'}`}>
+        <button
+            onClick={() => setActiveTab(id)}
+            className={`flex items-center justify-center px-4 py-3 text-sm font-semibold rounded-t-lg transition-colors border-b-2 ${activeTab === id ? 'text-indigo-600 border-indigo-600' : 'text-slate-500 border-transparent hover:text-slate-700 hover:border-slate-300'}`}
+        >
             {children}
         </button>
     );
@@ -140,39 +142,83 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
                     </nav>
                 </div>
                 <div className="py-5">
-                    {/* FIX: Use CSS to hide/show content instead of conditional rendering to maintain component state */}
                     <div className={activeTab === 'type' ? 'space-y-4' : 'hidden'}>
-                        <input type="text" value={typedSignature} onChange={(e) => setTypedSignature(e.target.value)} className={`w-full p-3 border border-slate-300 rounded-lg text-4xl shadow-inner bg-white ${selectedFont}`} placeholder="Type your signature" />
+                        <input
+                            type="text"
+                            value={typedSignature}
+                            onChange={(e) => setTypedSignature(e.target.value)}
+                            className={`w-full p-3 border border-slate-300 rounded-lg text-4xl shadow-inner bg-white ${selectedFont}`}
+                            placeholder="Type your signature"
+                        />
                         <div>
                             <p className="text-xs text-slate-500 mb-2">Choose a style:</p>
-                            <div className="flex flex-wrap gap-2">{fonts.map(font => (<button key={font.id} onClick={() => setSelectedFont(font.className)} className={`px-3 py-1.5 rounded-full text-sm transition-all ${selectedFont === font.className ? 'bg-indigo-600 text-white ring-2 ring-offset-2 ring-indigo-500' : 'bg-white hover:bg-slate-100 border'}`}>{font.name}</button>))}</div>
+                            <div className="flex flex-wrap gap-2">
+                                {fonts.map(font => (
+                                    <button
+                                        key={font.id}
+                                        onClick={() => setSelectedFont(font.className)}
+                                        className={`px-3 py-1.5 rounded-full text-sm transition-all ${selectedFont === font.className ? 'bg-indigo-600 text-white ring-2 ring-offset-2 ring-indigo-500' : 'bg-white hover:bg-slate-100 border'}`}
+                                    >
+                                        {font.name}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                     <div className={activeTab === 'draw' ? 'relative border-2 border-dashed border-slate-300 rounded-lg h-48 w-full bg-white shadow-inner' : 'hidden'}>
-                        <SignatureCanvas ref={signaturePad} penColor="black" canvasProps={{ className: 'w-full h-full' }} />
+                        <SignatureCanvas
+                            ref={signaturePad}
+                            penColor="black"
+                            canvasProps={{
+                                width: 600,
+                                height: 200,
+                                className: 'w-full h-full'
+                            }}
+                        />
                     </div>
                     <div className={activeTab === 'upload' ? '' : 'hidden'}>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg" />
-                        <button onClick={() => fileInputRef.current.click()} className="w-full h-48 flex flex-col items-center justify-center bg-white text-slate-600 border-2 border-dashed border-slate-300 rounded-lg hover:bg-slate-50 hover:border-indigo-500 transition-colors">
+                        <button
+                            onClick={() => fileInputRef.current.click()}
+                            className="w-full h-48 flex flex-col items-center justify-center bg-white text-slate-600 border-2 border-dashed border-slate-300 rounded-lg hover:bg-slate-50 hover:border-indigo-500 transition-colors"
+                        >
                             <UploadIcon />
                             <span>Click to upload an image</span>
                             <span className="text-xs mt-1">(PNG or JPG)</span>
                         </button>
                     </div>
-                    {/* This canvas is now always rendered but hidden, keeping its state */}
                     <canvas ref={typeCanvasRef} width="400" height="60" className="hidden"></canvas>
                 </div>
-                 {requiresPassword && (
+                {requiresPassword && (
                     <div className="mt-4">
-                        <label className="block text-sm font-semibold text-slate-700">Confirm with VMS Password <span className="text-red-500">*</span></label>
-                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full border border-slate-300 rounded-lg p-2.5 shadow-sm" required />
+                        <label className="block text-sm font-semibold text-slate-700">
+                            Confirm with VMS Password <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="mt-1 block w-full border border-slate-300 rounded-lg p-2.5 shadow-sm"
+                            required
+                        />
                     </div>
                 )}
                 <div className="flex justify-between items-center pt-4 border-t mt-4">
-                    {activeTab === 'draw' ? (<button onClick={clearCanvas} className="text-sm font-medium text-slate-600 hover:text-slate-900">Clear</button>) : (<div></div>)}
+                    {activeTab === 'draw'
+                        ? (<button onClick={clearCanvas} className="text-sm font-medium text-slate-600 hover:text-slate-900">Clear</button>)
+                        : (<div></div>)
+                    }
                     <div className="flex space-x-2">
                         <button onClick={onClose} className="px-5 py-2.5 bg-slate-200 text-slate-800 text-sm font-semibold rounded-lg hover:bg-slate-300">Cancel</button>
-                        {activeTab !== 'upload' && (<button onClick={() => handleSave()} className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 flex items-center justify-center w-36 shadow-sm" disabled={loading}>{loading ? <Spinner size="5" /> : 'Confirm & Sign'}</button>)}
+                        {activeTab !== 'upload' && (
+                            <button
+                                onClick={() => handleSave()}
+                                className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 flex items-center justify-center w-36 shadow-sm"
+                                disabled={loading}
+                            >
+                                {loading ? <Spinner size="5" /> : 'Confirm & Sign'}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
