@@ -8,9 +8,10 @@ import ConfirmationModal from '../components/dashboard/ConfirmationModal';
 import EditMSAandWOModal from '../components/msa-wo/EditMSAandWOModal';
 import { usePermissions } from '../hooks/usePermissions';
 import Modal from '../components/Modal';
-import DirectorSigningModal from '../components/msa-wo/DirectorSigningModal';
+import SignatureModal from '../components/msa-wo/SignatureModal'; // FIX: Use the universal SignatureModal
 
 // --- HELPER COMPONENT: Document Preview Modal ---
+// FIX: Moved outside the main component to prevent re-rendering issues.
 const DocumentPreviewModal = ({ isOpen, onClose, document }) => {
     if (!isOpen || !document) return null;
 
@@ -52,6 +53,11 @@ const MSAandWODashboardPage = () => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [documentToPreview, setDocumentToPreview] = useState(null);
+    
+    // FIX: State for the universal signing modal
+    const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
+    const [signerConfig, setSignerConfig] = useState({});
+
 
     const tableHeader = useMemo(() => [
         'Vendor Name',
@@ -126,8 +132,8 @@ const MSAandWODashboardPage = () => {
                     let valB = b.display[index];
 
                     if (sortConfig.key === 'Submitted On' || sortConfig.key === 'Tentative Start Date') {
-                        valA = new Date(valA).getTime();
-                        valB = new Date(valB).getTime();
+                        valA = new Date(valA).getTime() || 0;
+                        valB = new Date(valB).getTime() || 0;
                     } else {
                         valA = String(valA || '').toLowerCase();
                         valB = String(valB || '').toLowerCase();
@@ -147,7 +153,17 @@ const MSAandWODashboardPage = () => {
     const handleEdit = (doc) => setModalState({ type: 'edit', data: doc });
     const handleDelete = (doc) => setModalState({ type: 'delete', data: doc });
     const handleResend = (doc) => setModalState({ type: 'resend', data: doc });
-    const handleDirectorSignClick = (doc) => setModalState({ type: 'sign', data: doc });
+    
+    // FIX: This now opens the universal signing modal with director config
+    const handleDirectorSignClick = (doc) => {
+        setSignerConfig({
+            signerType: 'taproot',
+            requiresPassword: true,
+            signerInfo: { name: user?.userName, title: 'Director' },
+            document: doc // Pass the document to be signed
+        });
+        setIsSigningModalOpen(true);
+    };
 
     const handlePreview = (doc) => {
         if (doc.pdfUrl) {
@@ -206,11 +222,33 @@ const MSAandWODashboardPage = () => {
         }
     };
 
-    const handleSignSuccess = () => {
-        setModalState({ type: null, data: null });
-        setSuccess('Document successfully signed and finalized!');
-        loadData();
-    };
+    const handleSign = useCallback(async (signerData, signerType) => {
+        setLoading(true);
+        setError('');
+        const docToSign = signerConfig.document;
+
+        try {
+            const signerUsername = user?.userIdentifier;
+            const jobInfo = {
+                jobTitle: docToSign.jobTitle,
+                clientName: docToSign.clientName,
+                clientLocation: docToSign.clientLocation,
+                tentativeStartDate: docToSign.tentativeStartDate
+            };
+            const response = await apiService.updateSigningStatus(docToSign.rowKey, signerData, signerType, signerUsername, jobInfo);
+            if (response.data.success) {
+                setSuccess('Document successfully signed and finalized!');
+                setIsSigningModalOpen(false);
+                loadData();
+            } else {
+                throw new Error(response.data.message);
+            }
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to sign the document.');
+            setLoading(false);
+            throw err;
+        }
+    }, [signerConfig.document, user?.userIdentifier, loadData]);
 
     return (
         <>
@@ -248,9 +286,7 @@ const MSAandWODashboardPage = () => {
                                                         trigger={
                                                             <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
                                                                 <span className="font-bold">{h}</span>
-                                                                {sortConfig.key === h && (
-                                                                    sortConfig.direction === 'ascending' ? ' ▲' : ' ▼'
-                                                                )}
+                                                                {sortConfig.key === h && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
                                                             </div>
                                                         }
                                                     >
@@ -335,12 +371,15 @@ const MSAandWODashboardPage = () => {
                 onClose={() => setIsPreviewModalOpen(false)}
                 document={documentToPreview}
             />
-
-            <DirectorSigningModal
-                isOpen={modalState.type === 'sign'}
-                onClose={() => setModalState({ type: null, data: null })}
-                document={modalState.data}
-                onSuccess={handleSignSuccess}
+            
+            {/* FIX: Render the single, universal SignatureModal with the correct configuration */}
+            <SignatureModal
+                isOpen={isSigningModalOpen}
+                onClose={() => setIsSigningModalOpen(false)}
+                onSign={handleSign}
+                signerType={signerConfig.signerType}
+                signerInfo={signerConfig.signerInfo}
+                requiresPassword={signerConfig.requiresPassword}
             />
         </>
     );

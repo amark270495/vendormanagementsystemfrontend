@@ -140,6 +140,7 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
                     </nav>
                 </div>
                 <div className="py-5">
+                    {/* FIX: Use CSS to hide/show content instead of conditional rendering to maintain component state */}
                     <div className={activeTab === 'type' ? 'space-y-4' : 'hidden'}>
                         <input type="text" value={typedSignature} onChange={(e) => setTypedSignature(e.target.value)} className={`w-full p-3 border border-slate-300 rounded-lg text-4xl shadow-inner bg-white ${selectedFont}`} placeholder="Type your signature" />
                         <div>
@@ -158,6 +159,7 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
                             <span className="text-xs mt-1">(PNG or JPG)</span>
                         </button>
                     </div>
+                    {/* This canvas is now always rendered but hidden, keeping its state */}
                     <canvas ref={typeCanvasRef} width="400" height="60" className="hidden"></canvas>
                 </div>
                  {requiresPassword && (

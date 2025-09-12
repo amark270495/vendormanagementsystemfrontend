@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 
-// Import Modal Components from their own files to ensure stability
+// --- FIX: Import all modal components from their separate files ---
 import AccessModal from '../components/msa-wo/AccessModal';
-import SignatureModal from '../components/msa-wo/SignatureModal'; // The only signing modal needed now
+import SignatureModal from '../components/msa-wo/SignatureModal';
 
 // Import Generic Components
 import Spinner from '../components/Spinner';
@@ -81,7 +81,6 @@ const MSAandWOSigningPage = ({ token }) => {
         const fetchDocument = async () => {
             setLoading(true);
             try {
-                // Use a single endpoint; the backend can differentiate based on authenticatedUsername
                 const response = await apiService.getMSAandWODetailForSigning(token, user?.userIdentifier);
                 if (response.data.success) {
                     setDocumentData(response.data.documentData);
@@ -105,16 +104,14 @@ const MSAandWOSigningPage = ({ token }) => {
         if (user && user.userIdentifier) {
             fetchDocument();
         } else if (sessionUser) {
-            // Wait for auth context to initialize from session
             setLoading(true); 
         } else {
-            // This must be an external vendor, prompt for password
             setIsAccessModalOpen(true);
             setLoading(false);
         }
     }, [token, user]);
 
-    // This function configures and opens the single SignatureModal
+    // This function now correctly configures and opens the single, imported SignatureModal
     const openSigningModal = (type) => {
         if (type === 'vendor') {
             setSignerConfig({
