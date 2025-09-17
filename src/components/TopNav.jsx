@@ -93,7 +93,7 @@ const TopNav = ({ onNavigate }) => {
                             )}
 
                             {(canManageMSAWO || canManageOfferLetters) && (
-                                <Dropdown trigger={<button className="px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text-base">Wait For E-Sign's</button>}>
+                                <Dropdown trigger={<button className="px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text-base">E-Sign's</button>}>
                                      {canManageMSAWO && (
                                         <>
                                             <div className="px-4 pt-2 pb-1 text-xs font-bold text-gray-500 uppercase">MSA & WO</div>
