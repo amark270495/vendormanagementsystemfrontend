@@ -2,7 +2,32 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../Modal';
 import Spinner from '../Spinner';
 import { usePermissions } from '../../hooks/usePermissions';
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
+
+// Inline SVG icons (no external dependency)
+const CheckCircleIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" {...props}>
+    <path
+      fillRule="evenodd"
+      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.707a1 1 0 00-1.414-1.414L9 10.586 
+      7.707 9.293a1 1 0 00-1.414 1.414L9 13.414l4.707-4.707z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
+const XCircleIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" {...props}>
+    <path
+      fillRule="evenodd"
+      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 
+      7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 
+      101.414 1.414L10 11.414l1.293 1.293a1 1 0 
+      001.414-1.414L11.414 10l1.293-1.293a1 1 0 
+      00-1.414-1.414L10 8.586 8.707 7.293z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
 
 const EditMSAWOVendorCompanyModal = ({ isOpen, onClose, onSave, companyToEdit }) => {
   const { canManageMSAWO } = usePermissions();
@@ -51,14 +76,14 @@ const EditMSAWOVendorCompanyModal = ({ isOpen, onClose, onSave, companyToEdit })
         {/* Notifications */}
         {error && (
           <div className="flex items-center bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4">
-            <XCircleIcon className="h-5 w-5 mr-2" />
+            <XCircleIcon className="h-5 w-5 mr-2 text-red-600" />
             <span className="flex-1">{error}</span>
             <button onClick={() => setError('')} className="ml-2 text-red-500 hover:text-red-700">✕</button>
           </div>
         )}
         {success && (
           <div className="flex items-center bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4">
-            <CheckCircleIcon className="h-5 w-5 mr-2" />
+            <CheckCircleIcon className="h-5 w-5 mr-2 text-green-600" />
             <span className="flex-1">{success}</span>
             <button onClick={() => setSuccess('')} className="ml-2 text-green-600 hover:text-green-800">✕</button>
           </div>
@@ -178,4 +203,4 @@ const EditMSAWOVendorCompanyModal = ({ isOpen, onClose, onSave, companyToEdit })
   );
 };
 
-export default EditMSAWOVendorCompanyModal
+export default EditMSAWOVendorCompanyModal;
