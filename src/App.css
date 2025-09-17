@@ -1,42 +1,66 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* Import Google Fonts for a modern look */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Roboto:wght@400;500;700&display=swap');
+
+/* Define a modern color palette using CSS variables */
+:root {
+  --color-primary: #4f46e5; /* Indigo 600 */
+  --color-primary-hover: #4338ca; /* Indigo 700 */
+  --color-secondary: #10b981; /* Emerald 500 */
+  --color-text-base: #374151; /* Gray 700 */
+  --color-text-muted: #6b7280; /* Gray 500 */
+  --color-bg-base: #f9fafb; /* Gray 50 */
+  --color-bg-surface: #ffffff; /* White */
+  --color-border: #e5e7eb; /* Gray 200 */
+  --color-danger: #ef4444; /* Red 500 */
+  --color-warning: #f59e0b; /* Amber 500 */
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
+/* Apply Tailwind CSS base styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+/* Apply custom base styles using the new theme */
+@layer base {
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--color-bg-base);
+    color: var(--color-text-base);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  to {
-    transform: rotate(360deg);
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Roboto', sans-serif;
+    font-weight: 700;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+/* Custom component styles */
+@layer components {
+  /* Main Button Style */
+  .btn-primary {
+    @apply px-4 py-2 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200;
+  }
+  
+  /* Input and Select Styling */
+  .form-input {
+    @apply block w-full border border-border rounded-lg shadow-sm p-2.5 focus:ring-2 focus:ring-primary focus:border-primary transition;
   }
 }
 
-.card {
-  padding: 2em;
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
 }
-
-.read-the-docs {
-  color: #888;
+::-webkit-scrollbar-track {
+    background: #f1f5f9; /* slate-100 */
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1; /* slate-300 */
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; /* slate-400 */
 }

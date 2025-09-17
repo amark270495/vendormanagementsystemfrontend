@@ -15,6 +15,8 @@ import ManageTimesheetEmployeesPage from './pages/ManageTimesheetEmployeesPage';
 import ManageCompaniesPage from './pages/ManageCompaniesPage';
 import CreateMSAandWOPage from './pages/CreateMSAandWOPage';
 import MSAandWODashboardPage from './pages/MSAandWODashboardPage';
+import CreateOfferLetterPage from './pages/CreateOfferLetterPage';
+import OfferLetterDashboardPage from './pages/OfferLetterDashboardPage';
 
 const MainApp = () => {
   const [currentPage, setCurrentPage] = useState({ page: 'home', params: {} });
@@ -55,13 +57,17 @@ const MainApp = () => {
         return <CreateMSAandWOPage />;
       case 'msa_wo_dashboard':
         return <MSAandWODashboardPage />;
+      case 'create_offer_letter':
+        return <CreateOfferLetterPage />;
+      case 'offer_letter_dashboard':
+        return <OfferLetterDashboardPage />;
       default:
         return <HomePage onNavigate={handleNavigate} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-bg-base">
       <TopNav onNavigate={handleNavigate} />
       <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {renderPage()}

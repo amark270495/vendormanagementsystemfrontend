@@ -146,7 +146,6 @@ export const apiService = {
   accessMSAandWO: (token, tempPassword) =>
     apiClient.post('/accessMSAandWO', { token, tempPassword }),
 
-  // --- NEW: Function for authenticated directors to bypass the password modal ---
   getMSAandWODetailForSigning: (token, authenticatedUsername) =>
     apiClient.get('/getMSAandWODetailForSigning', { params: { token, authenticatedUsername } }),
 
@@ -164,4 +163,11 @@ export const apiService = {
 
   resendMSAWOEmail: (partitionKey, rowKey, authenticatedUsername) =>
     apiClient.post('/resendMSAWOEmail', { partitionKey, rowKey, authenticatedUsername }),
+
+  // --- Offer Letter Functions (NEW) ---
+  createOfferLetter: (formData, authenticatedUsername) =>
+      apiClient.post('/createOfferLetter', { formData, authenticatedUsername }),
+
+  getOfferLetterDashboardData: (authenticatedUsername) =>
+      apiClient.get('/getOfferLetterDashboardData', { params: { authenticatedUsername } }),
 };
