@@ -32,7 +32,7 @@ const MessageInputForm = memo(({ onSendMessage, disabled }) => {
                 disabled={!newMessage.trim() || disabled}
                 aria-label="Send Message"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
         </form>
     );
@@ -50,6 +50,12 @@ const MessagesPage = () => {
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [error, setError] = useState('');
     const messagesEndRef = useRef(null);
+
+    // Helper function to play notification sounds
+    const playSound = (soundFile) => {
+        const audio = new Audio(`/sounds/${soundFile}`);
+        audio.play().catch(e => console.error("Error playing sound:", e));
+    };
 
     // Fetch the list of users to chat with
     useEffect(() => {
@@ -87,13 +93,23 @@ const MessagesPage = () => {
             if (!isMounted) return;
             setLoadingMessages(true);
             try {
-                // Mark messages from this sender as read
                 await apiService.markMessagesAsRead(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
                 
-                // Then fetch the latest messages for the conversation
                 const response = await apiService.getMessages(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
+                
                 if (isMounted && response.data.success) {
-                    setMessages(response.data.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
+                    const newMessages = response.data.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                    
+                    setMessages(prevMessages => {
+                        // Check if a new message has arrived from the other user
+                        if (newMessages.length > prevMessages.length) {
+                            const latestMessage = newMessages[newMessages.length - 1];
+                            if (latestMessage.sender !== user.userIdentifier) {
+                                playSound('message.mp3');
+                            }
+                        }
+                        return newMessages;
+                    });
                 }
             } catch (err) {
                 if (isMounted) setError(`Failed to fetch messages: ${err.response?.data?.message || err.message}`);
@@ -103,7 +119,7 @@ const MessagesPage = () => {
         };
 
         fetchAndMarkMessages();
-        const interval = setInterval(fetchAndMarkMessages, 5000); // Poll for new messages
+        const interval = setInterval(fetchAndMarkMessages, 5000);
         
         return () => {
             isMounted = false;
@@ -124,18 +140,15 @@ const MessagesPage = () => {
             recipient: selectedRecipient.username,
             messageContent: messageContent,
             timestamp: new Date().toISOString(),
-            id: Date.now() // Temporary ID for optimistic UI update
+            id: Date.now()
         };
         
-        // Optimistically add the new message to the UI
         setMessages(prev => [...prev, tempMessage]);
 
         try {
             await apiService.saveMessage(user.userIdentifier, selectedRecipient.username, messageContent, user.userIdentifier);
-            // On success, the next poll will fetch the real message from the server
         } catch (err) {
             setError(`Failed to send message: ${err.response?.data?.message || err.message}`);
-            // If sending fails, remove the optimistic message
             setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
         }
     }, [selectedRecipient, user.userIdentifier]);
