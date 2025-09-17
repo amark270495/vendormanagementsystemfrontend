@@ -7,16 +7,18 @@ import ReportsPage from './pages/ReportsPage';
 import MessagesPage from './pages/MessagesPage';
 import DashboardPage from './pages/DashboardPage';
 import CandidateDetailsPage from './pages/CandidateDetailsPage';
-import CreateCompanyPage from './pages/CreateCompanyPage';
+import ManageCompaniesPage from './pages/ManageCompaniesPage';
 import LogHoursPage from './pages/LogHoursPage';
 import TimesheetsDashboardPage from './pages/TimesheetsDashboardPage';
 import CreateTimesheetEmployeePage from './pages/CreateTimesheetEmployeePage';
 import ManageTimesheetEmployeesPage from './pages/ManageTimesheetEmployeesPage';
-import ManageCompaniesPage from './pages/ManageCompaniesPage';
 import CreateMSAandWOPage from './pages/CreateMSAandWOPage';
 import MSAandWODashboardPage from './pages/MSAandWODashboardPage';
 import CreateOfferLetterPage from './pages/CreateOfferLetterPage';
 import OfferLetterDashboardPage from './pages/OfferLetterDashboardPage';
+import CreateTimesheetCompanyPage from './pages/CreateTimesheetCompanyPage';
+import CreateMSAWOVendorCompanyPage from './pages/CreateMSAWOVendorCompanyPage';
+import ManageMSAWOVendorCompaniesPage from './pages/ManageMSAWOVendorCompaniesPage';
 
 const MainApp = () => {
   const [currentPage, setCurrentPage] = useState({ page: 'home', params: {} });
@@ -41,8 +43,10 @@ const MainApp = () => {
         return <MessagesPage />;
       case 'admin':
         return <AdminPage />;
-      case 'create_company':
-        return <CreateCompanyPage />;
+      
+      // Timesheet routes
+      case 'create_timesheet_company':
+        return <CreateTimesheetCompanyPage />;
       case 'manage_companies':
         return <ManageCompaniesPage />;
       case 'create_timesheet_employee':
@@ -53,21 +57,28 @@ const MainApp = () => {
         return <LogHoursPage />;
       case 'timesheets_dashboard':
         return <TimesheetsDashboardPage />;
+
+      // E-Sign routes
+      case 'create_msawo_vendor_company':
+        return <CreateMSAWOVendorCompanyPage />;
+      case 'manage_msawo_vendor_companies':
+        return <ManageMSAWOVendorCompaniesPage />;
       case 'create_msa_wo':
-        return <CreateMSAandWOPage />;
+        return <CreateMSAandWOPage onNavigate={handleNavigate} />;
       case 'msa_wo_dashboard':
         return <MSAandWODashboardPage />;
       case 'create_offer_letter':
         return <CreateOfferLetterPage />;
       case 'offer_letter_dashboard':
         return <OfferLetterDashboardPage />;
+      
       default:
         return <HomePage onNavigate={handleNavigate} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-bg-base">
+    <div className="min-h-screen bg-gray-50">
       <TopNav onNavigate={handleNavigate} />
       <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {renderPage()}
