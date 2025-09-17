@@ -3,204 +3,108 @@ import Modal from '../Modal';
 import Spinner from '../Spinner';
 import { usePermissions } from '../../hooks/usePermissions';
 
-// Inline SVG icons (no external dependency)
-const CheckCircleIcon = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" {...props}>
-    <path
-      fillRule="evenodd"
-      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.707a1 1 0 00-1.414-1.414L9 10.586 
-      7.707 9.293a1 1 0 00-1.414 1.414L9 13.414l4.707-4.707z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
-
-const XCircleIcon = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" {...props}>
-    <path
-      fillRule="evenodd"
-      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 
-      7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 
-      101.414 1.414L10 11.414l1.293 1.293a1 1 0 
-      001.414-1.414L11.414 10l1.293-1.293a1 1 0 
-      00-1.414-1.414L10 8.586 8.707 7.293z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
-
 const EditMSAWOVendorCompanyModal = ({ isOpen, onClose, onSave, companyToEdit }) => {
-  const { canManageMSAWO } = usePermissions();
-  const [formData, setFormData] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+    const { canManageMSAWO } = usePermissions();
 
-  useEffect(() => {
-    if (isOpen && companyToEdit) {
-      setFormData(companyToEdit);
-      setError('');
-      setSuccess('');
-    }
-  }, [isOpen, companyToEdit]);
+    const [formData, setFormData] = useState({});
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
-  const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+    useEffect(() => {
+        // Initialize form data when the modal is opened with a company to edit
+        if (isOpen && companyToEdit) {
+            setFormData({
+                vendorName: companyToEdit.vendorName || '',
+                state: companyToEdit.state || '',
+                federalId: companyToEdit.federalId || '',
+                companyAddress: companyToEdit.companyAddress || '',
+                vendorEmail: companyToEdit.vendorEmail || '',
+                authorizedSignatureName: companyToEdit.authorizedSignatureName || '',
+                authorizedPersonTitle: companyToEdit.authorizedPersonTitle || '',
+            });
+            // Reset status messages
+            setError('');
+            setSuccess('');
+        }
+    }, [isOpen, companyToEdit]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!canManageMSAWO) {
-      setError("Permission denied.");
-      return;
-    }
-    setError('');
-    setSuccess('');
-    setLoading(true);
-    try {
-      await onSave(formData);
-      setSuccess("Vendor company updated successfully!");
-      setTimeout(() => {
-        onClose();
-      }, 1200);
-    } catch (err) {
-      setError(err.message || "Failed to save details.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const handleChange = (e) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
 
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit Vendor Company" size="lg">
-      <div className="relative p-6">
-        {/* Notifications */}
-        {error && (
-          <div className="flex items-center bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4">
-            <XCircleIcon className="h-5 w-5 mr-2 text-red-600" />
-            <span className="flex-1">{error}</span>
-            <button onClick={() => setError('')} className="ml-2 text-red-500 hover:text-red-700">✕</button>
-          </div>
-        )}
-        {success && (
-          <div className="flex items-center bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4">
-            <CheckCircleIcon className="h-5 w-5 mr-2 text-green-600" />
-            <span className="flex-1">{success}</span>
-            <button onClick={() => setSuccess('')} className="ml-2 text-green-600 hover:text-green-800">✕</button>
-          </div>
-        )}
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!canManageMSAWO) {
+            setError("Permission denied. You do not have the rights to edit vendor companies.");
+            return;
+        }
 
-        {/* Form */}
-        {canManageMSAWO && companyToEdit && (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">Vendor Company Name</label>
-                <input
-                  type="text"
-                  name="companyName"
-                  value={formData.companyName || ''}
-                  readOnly
-                  className="w-full rounded-lg border-gray-300 bg-gray-100 px-3 py-2 shadow-sm focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">
-                  State <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="state"
-                  value={formData.state || ''}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-lg border-gray-300 px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Federal Id/EIN <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="federalId"
-                  value={formData.federalId || ''}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-lg border-gray-300 px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Vendor Company Address <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  name="companyAddress"
-                  value={formData.companyAddress || ''}
-                  onChange={handleChange}
-                  required
-                  rows="3"
-                  className="w-full rounded-lg border-gray-300 px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Vendor Email Id <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  name="companyEmail"
-                  value={formData.companyEmail || ''}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-lg border-gray-300 px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Vendor Authorized Person Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="authorizedSignatureName"
-                  value={formData.authorizedSignatureName || ''}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-lg border-gray-300 px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Vendor Authorized Person Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="authorizedPersonTitle"
-                  value={formData.authorizedPersonTitle || ''}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-lg border-gray-300 px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-            </div>
+        setError('');
+        setSuccess('');
+        setLoading(true);
 
-            {/* Actions */}
-            <div className="sticky bottom-0 bg-white pt-4 flex justify-end space-x-3 border-t">
-              <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border hover:bg-gray-100">
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-6 py-2 rounded-lg bg-indigo-600 text-white shadow hover:bg-indigo-700 flex items-center justify-center w-28"
-                disabled={loading}
-              >
-                {loading ? <Spinner size="5" /> : 'Save'}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </Modal>
-  );
+        try {
+            // The onSave prop is expected to be an async function that handles the API call
+            await onSave(formData);
+            setSuccess("Vendor company updated successfully!");
+            // Close the modal after a short delay to show the success message
+            setTimeout(() => {
+                onClose();
+            }, 1500);
+        } catch (err) {
+            setError(err.message || "Failed to save vendor company details.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Edit Vendor Company" size="2xl">
+            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
+            {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">{success}</div>}
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                    <div>
+                        <label htmlFor="vendorName" className="block text-sm font-medium text-gray-700">Vendor Company Name</label>
+                        <input type="text" name="vendorName" id="vendorName" value={formData.vendorName || ''} readOnly className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5 bg-gray-100" />
+                    </div>
+                    <div>
+                        <label htmlFor="state" className="block text-sm font-medium text-gray-700">State <span className="text-red-500">*</span></label>
+                        <input type="text" name="state" id="state" value={formData.state || ''} onChange={handleChange} required disabled={!canManageMSAWO} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5" />
+                    </div>
+                    <div>
+                        <label htmlFor="federalId" className="block text-sm font-medium text-gray-700">Federal ID/EIN <span className="text-red-500">*</span></label>
+                        <input type="text" name="federalId" id="federalId" value={formData.federalId || ''} onChange={handleChange} required disabled={!canManageMSAWO} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5" />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label htmlFor="companyAddress" className="block text-sm font-medium text-gray-700">Vendor Company Address <span className="text-red-500">*</span></label>
+                        <textarea name="companyAddress" id="companyAddress" value={formData.companyAddress || ''} onChange={handleChange} required disabled={!canManageMSAWO} rows="3" className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5"></textarea>
+                    </div>
+                    <div>
+                        <label htmlFor="vendorEmail" className="block text-sm font-medium text-gray-700">Vendor Email ID <span className="text-red-500">*</span></label>
+                        <input type="email" name="vendorEmail" id="vendorEmail" value={formData.vendorEmail || ''} onChange={handleChange} required disabled={!canManageMSAWO} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5" />
+                    </div>
+                    <div>
+                        <label htmlFor="authorizedSignatureName" className="block text-sm font-medium text-gray-700">Authorized Person Name <span className="text-red-500">*</span></label>
+                        <input type="text" name="authorizedSignatureName" id="authorizedSignatureName" value={formData.authorizedSignatureName || ''} onChange={handleChange} required disabled={!canManageMSAWO} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5" />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label htmlFor="authorizedPersonTitle" className="block text-sm font-medium text-gray-700">Authorized Person Title <span className="text-red-500">*</span></label>
+                        <input type="text" name="authorizedPersonTitle" id="authorizedPersonTitle" value={formData.authorizedPersonTitle || ''} onChange={handleChange} required disabled={!canManageMSAWO} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2.5" />
+                    </div>
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-4 border-t">
+                    <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-28" disabled={loading || !canManageMSAWO}>
+                        {loading ? <Spinner size="5" /> : 'Save'}
+                    </button>
+                </div>
+            </form>
+        </Modal>
+    );
 };
 
 export default EditMSAWOVendorCompanyModal;
