@@ -1,18 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-
-// --- Import modal components ---
 import AccessModal from '../components/msa-wo/AccessModal';
 import SignatureModal from '../components/msa-wo/SignatureModal';
-
-// Import Generic Components
 import Spinner from '../components/Spinner';
-
-// Import Context and Hooks
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 
-// --- CENTRAL API SERVICE ---
 const API_BASE_URL = '/api';
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -41,7 +34,6 @@ const apiService = {
     }),
 };
 
-// --- MAIN E-SIGNING PAGE COMPONENT ---
 const MSAandWOSigningPage = ({ token }) => {
   const { user } = useAuth() || {};
   const { canManageMSAWO } = usePermissions();
@@ -59,7 +51,31 @@ const MSAandWOSigningPage = ({ token }) => {
     documentData?.status === 'Fully Signed';
   const hasTaprootSigned = documentData?.status === 'Fully Signed';
 
-  // Called when AccessModal validates successfully
+  const fetchDocument = useCallback(async (isPolling = false) => {
+      if (!isPolling) setLoading(true);
+      setError('');
+      try {
+        const response = await apiService.getMSAandWODetailForSigning(
+          token,
+          user?.userIdentifier
+        );
+        if (response.data.success) {
+          setDocumentData(response.data.documentData);
+        } else if (!isPolling) {
+          setError(response.data.message);
+        }
+      } catch (err) {
+        if (!isPolling) {
+          setError(err.response?.data?.message || 'Failed to retrieve document.');
+        } else {
+            console.error("Polling failed:", err);
+        }
+      } finally {
+        if (!isPolling) setLoading(false);
+      }
+    }, [token, user?.userIdentifier]);
+
+
   const handleAccessGranted = useCallback((data) => {
     if (!data) {
       setError('Access denied. Please check your credentials.');
@@ -75,9 +91,10 @@ const MSAandWOSigningPage = ({ token }) => {
     setSuccessMessage(message);
     setIsSigningModalOpen(false);
     setTimeout(() => {
-      window.location.reload();
+        setSuccessMessage('');
+        fetchDocument(); // Refetch after signing
     }, 2000);
-  }, []);
+  }, [fetchDocument]);
 
   const handleSign = useCallback(
     async (signerData, signerType) => {
@@ -113,25 +130,6 @@ const MSAandWOSigningPage = ({ token }) => {
   );
 
   useEffect(() => {
-    const fetchDocument = async () => {
-      setLoading(true);
-      try {
-        const response = await apiService.getMSAandWODetailForSigning(
-          token,
-          user?.userIdentifier
-        );
-        if (response.data.success) {
-          setDocumentData(response.data.documentData);
-        } else {
-          setError(response.data.message);
-        }
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to retrieve document.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (!token) {
       setError('No document token provided in the URL.');
       setLoading(false);
@@ -140,16 +138,24 @@ const MSAandWOSigningPage = ({ token }) => {
 
     const sessionUser = sessionStorage.getItem('vms_user');
     if (user && user.userIdentifier) {
-      fetchDocument();
+      fetchDocument(false); // Initial fetch
     } else if (sessionUser) {
       setLoading(true);
     } else {
       setIsAccessModalOpen(true);
       setLoading(false);
     }
-  }, [token, user]);
 
-  // Configure and open Signature Modal
+    // Set up polling for directors viewing the page
+    const interval = setInterval(() => {
+        if (user && user.userIdentifier && documentData && documentData.status !== 'Fully Signed') {
+            fetchDocument(true); // Silent polling fetch
+        }
+    }, 10000); // Poll every 10 seconds
+
+    return () => clearInterval(interval); // Cleanup interval on unmount
+  }, [token, user, fetchDocument, documentData]);
+
   const openSigningModal = (type) => {
     if (type === 'vendor') {
       setSignerConfig({
@@ -189,7 +195,7 @@ const MSAandWOSigningPage = ({ token }) => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-5xl">
           <div className="text-center mb-8">
             <svg
@@ -361,7 +367,6 @@ const MSAandWOSigningPage = ({ token }) => {
         </div>
       </div>
 
-      {/* Access Modal */}
       <AccessModal
         isOpen={isAccessModalOpen}
         onClose={() => setIsAccessModalOpen(false)}
@@ -369,7 +374,6 @@ const MSAandWOSigningPage = ({ token }) => {
         token={token}
       />
 
-      {/* Signature Modal */}
       <SignatureModal
         isOpen={isSigningModalOpen}
         onClose={() => setIsSigningModalOpen(false)}
