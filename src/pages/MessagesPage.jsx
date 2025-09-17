@@ -2,12 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
-import { usePermissions } from '../hooks/usePermissions'; // <-- Import usePermissions
+import { usePermissions } from '../hooks/usePermissions';
 
 const MessagesPage = () => {
     const { user } = useAuth();
-    // NEW: Destructure canMessage from usePermissions
-    const { canMessage } = usePermissions(); 
+    const { canMessage } = usePermissions();
 
     const [users, setUsers] = useState([]);
     const [selectedRecipient, setSelectedRecipient] = useState(null);
@@ -18,25 +17,26 @@ const MessagesPage = () => {
     const [error, setError] = useState('');
     const messagesEndRef = useRef(null);
 
-    // Fetch the list of users to chat with
+    // --- FIX: Mark messages as read when the page is viewed ---
+    useEffect(() => {
+        if (user?.userIdentifier) {
+            sessionStorage.setItem(`lastRead_${user.userIdentifier}`, new Date().getTime());
+        }
+    }, [user?.userIdentifier, messages]);
+
     useEffect(() => {
         const fetchUsers = async () => {
             if (!user?.userIdentifier) return;
             setLoadingUsers(true);
-            setError(''); // Clear previous errors
-            // Only attempt to fetch users if the user has permission
-            if (!canMessage) { // NEW: Check canMessage permission
+            setError('');
+            if (!canMessage) {
                 setLoadingUsers(false);
                 setError("You do not have permission to view messages.");
                 return;
             }
             try {
-                // Note: getUsers backend function still requires canEditUsers permission.
-                // If you want all users with canMessage to see the user list,
-                // you'd need to modify getUsers.js backend to check canMessage or a less restrictive permission.
                 const response = await apiService.getUsers(user.userIdentifier); 
                 if (response.data.success) {
-                    // Filter out the current user from the list
                     setUsers(response.data.users.filter(u => u.username !== user.userIdentifier));
                 } else {
                     setError(response.data.message);
@@ -48,9 +48,8 @@ const MessagesPage = () => {
             }
         };
         fetchUsers();
-    }, [user?.userIdentifier, canMessage]); // Add canMessage to dependencies
+    }, [user?.userIdentifier, canMessage]);
 
-    // Fetch messages for the selected conversation and poll for new ones
     useEffect(() => {
         if (!selectedRecipient) {
             setMessages([]);
@@ -59,9 +58,8 @@ const MessagesPage = () => {
         
         const fetchMessages = async () => {
             setLoadingMessages(true);
-            setError(''); // Clear previous errors
-            // Only attempt to fetch messages if the user has permission
-            if (!canMessage) { // NEW: Check canMessage permission
+            setError('');
+            if (!canMessage) {
                 setLoadingMessages(false);
                 setError("You do not have permission to view messages.");
                 return;
@@ -70,6 +68,8 @@ const MessagesPage = () => {
                 const response = await apiService.getMessages(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
                 if (response.data.success) {
                     setMessages(response.data.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
+                    // Mark as read after fetching
+                    sessionStorage.setItem(`lastRead_${user.userIdentifier}`, new Date().getTime());
                 } else {
                     setError(response.data.message);
                 }
@@ -81,11 +81,10 @@ const MessagesPage = () => {
         };
 
         fetchMessages();
-        const interval = setInterval(fetchMessages, 5000); // Poll every 5 seconds
-        return () => clearInterval(interval); // Cleanup on component unmount or recipient change
-    }, [selectedRecipient, user.userIdentifier, canMessage]); // Add canMessage to dependencies
+        const interval = setInterval(fetchMessages, 5000);
+        return () => clearInterval(interval);
+    }, [selectedRecipient, user.userIdentifier, canMessage]);
 
-    // Auto-scroll to the latest message
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
@@ -93,8 +92,7 @@ const MessagesPage = () => {
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if (!newMessage.trim() || !selectedRecipient) return;
-        // Only allow sending message if the user has permission
-        if (!canMessage) { // NEW: Check canMessage permission
+        if (!canMessage) {
             setError("You do not have permission to send messages.");
             return;
         }
@@ -108,21 +106,18 @@ const MessagesPage = () => {
             id: tempMessageId
         };
         
-        // Optimistically update the UI
         setMessages(prev => [...prev, tempMessage]);
         setNewMessage('');
-        setError(''); // Clear any previous errors before sending
+        setError('');
 
         try {
             const response = await apiService.saveMessage(user.userIdentifier, selectedRecipient.username, tempMessage.messageContent, user.userIdentifier);
             if (!response.data.success) {
                 setError(response.data.message);
-                // Revert optimistic update on failure
                 setMessages(prev => prev.filter(msg => msg.id !== tempMessageId));
             }
         } catch (err) {
             setError(`Failed to send message: ${err.response?.data?.message || err.message}`);
-            // Revert optimistic update on failure
             setMessages(prev => prev.filter(msg => msg.id !== tempMessageId));
         }
     };
@@ -138,16 +133,15 @@ const MessagesPage = () => {
 
             {loadingUsers && <div className="flex justify-center items-center h-64"><Spinner /></div>}
             
-            {!loadingUsers && !error && !canMessage && ( // NEW: Access Denied message if no view permission
+            {!loadingUsers && !error && !canMessage && (
                 <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border flex-grow flex flex-col justify-center items-center">
                     <h3 className="text-lg font-medium">Access Denied</h3>
                     <p className="mt-1 text-sm text-gray-500">You do not have the necessary permissions to view messages.</p>
                 </div>
             )}
 
-            {!loadingUsers && !error && canMessage && ( // NEW: Render content only if canMessage
+            {!loadingUsers && !error && canMessage && (
                 <div className="flex flex-col md:flex-row bg-white rounded-xl shadow-sm border border-gray-200 flex-grow" style={{ minHeight: '70vh' }}>
-                    {/* User List Panel */}
                     <div className="w-full md:w-1/3 lg:w-1/4 border-r border-gray-200 flex flex-col">
                         <div className="p-4 border-b border-gray-200">
                             <h2 className="text-lg font-bold text-gray-800">Users</h2>
@@ -170,7 +164,6 @@ const MessagesPage = () => {
                         </div>
                     </div>
 
-                    {/* Chat Panel */}
                     <div className="flex-1 flex flex-col bg-gray-50">
                         {selectedRecipient ? (
                             <>
@@ -178,7 +171,7 @@ const MessagesPage = () => {
                                     <span className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center font-bold text-indigo-600">{selectedRecipient.displayName.charAt(0)}</span>
                                     <div>
                                         <h2 className="text-lg font-bold text-gray-900">{selectedRecipient.displayName}</h2>
-                                        <p className="text-sm text-gray-500">Online</p> {/* Placeholder for status */}
+                                        <p className="text-sm text-gray-500">Online</p>
                                     </div>
                                 </div>
                                 <div className="flex-1 p-6 overflow-y-auto space-y-4">
@@ -195,8 +188,8 @@ const MessagesPage = () => {
                                     <div ref={messagesEndRef} />
                                 </div>
                                 <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 bg-white flex items-center space-x-3">
-                                    <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={loadingMessages || !canMessage}/> {/* NEW: Disable input if no permission */}
-                                    <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg disabled:bg-gray-400 flex-shrink-0" disabled={!newMessage.trim() || loadingMessages || !canMessage}> {/* NEW: Disable button if no permission */}
+                                    <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={loadingMessages || !canMessage}/>
+                                    <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg disabled:bg-gray-400 flex-shrink-0" disabled={!newMessage.trim() || loadingMessages || !canMessage}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                                     </button>
                                 </form>
