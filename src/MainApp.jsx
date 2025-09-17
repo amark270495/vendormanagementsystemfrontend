@@ -8,33 +8,37 @@ import MessagesPage from './pages/MessagesPage';
 import DashboardPage from './pages/DashboardPage';
 import CandidateDetailsPage from './pages/CandidateDetailsPage';
 import CreateTimesheetCompanyPage from './pages/CreateTimesheetCompanyPage';
-import ManageCompaniesPage from './pages/ManageCompaniesPage';
-import CreateTimesheetEmployeePage from './pages/CreateTimesheetEmployeePage';
-import ManageTimesheetEmployeesPage from './pages/ManageTimesheetEmployeesPage';
 import LogHoursPage from './pages/LogHoursPage';
 import TimesheetsDashboardPage from './pages/TimesheetsDashboardPage';
-import CreateMSAWOVendorCompanyPage from './pages/CreateMSAWOVendorCompanyPage';
-import ManageMSAWOVendorCompaniesPage from './pages/ManageMSAWOVendorCompaniesPage';
+import CreateTimesheetEmployeePage from './pages/CreateTimesheetEmployeePage';
+import ManageTimesheetEmployeesPage from './pages/ManageTimesheetEmployeesPage';
+import ManageCompaniesPage from './pages/ManageCompaniesPage';
 import CreateMSAandWOPage from './pages/CreateMSAandWOPage';
 import MSAandWODashboardPage from './pages/MSAandWODashboardPage';
-import CreateOfferLetterPage from './pages/CreateOfferLetterPage';
-import OfferLetterDashboardPage from './pages/OfferLetterDashboardPage';
+import ManageMSAWOVendorCompaniesPage from './pages/ManageMSAWOVendorCompaniesPage';
+import CreateMSAWOVendorCompanyPage from './pages/CreateMSAWOVendorCompanyPage';
+import CreateOfferLetterPage from './pages/CreateOfferLetterPage'; // <-- Import new page
+import OfferLetterDashboardPage from './pages/OfferLetterDashboardPage'; // <-- Import new page
 
 const MainApp = () => {
-  // Restore page from sessionStorage on initial load, or default to home
-  const [currentPage, setCurrentPage] = useState(() => {
-    try {
-      const savedPage = sessionStorage.getItem('vms_currentPage');
-      return savedPage ? JSON.parse(savedPage) : { page: 'home', params: {} };
-    } catch (e) {
-      return { page: 'home', params: {} };
-    }
-  });
+  const [currentPage, setCurrentPage] = useState({ page: 'home', params: {} });
 
-  // Save page to sessionStorage whenever it changes
+  // On initial load, try to get the last page from session storage
+  useEffect(() => {
+    const savedPage = sessionStorage.getItem('vms_currentPage');
+    if (savedPage) {
+      try {
+        setCurrentPage(JSON.parse(savedPage));
+      } catch (e) {
+        setCurrentPage({ page: 'home', params: {} });
+      }
+    }
+  }, []);
+
   const handleNavigate = (page, params = {}) => {
     const newPage = { page, params };
     setCurrentPage(newPage);
+    // Save the new page to session storage whenever navigation occurs
     sessionStorage.setItem('vms_currentPage', JSON.stringify(newPage));
   };
 
@@ -54,11 +58,10 @@ const MainApp = () => {
         return <MessagesPage />;
       case 'admin':
         return <AdminPage />;
-      // Timesheets
       case 'create_timesheet_company':
-        return <CreateTimesheetCompanyPage />;
+        return <CreateTimesheetCompanyPage onNavigate={handleNavigate} />;
       case 'manage_companies':
-        return <ManageCompaniesPage />;
+        return <ManageCompaniesPage onNavigate={handleNavigate} />;
       case 'create_timesheet_employee':
         return <CreateTimesheetEmployeePage />;
       case 'manage_timesheet_employees':
@@ -67,15 +70,15 @@ const MainApp = () => {
         return <LogHoursPage />;
       case 'timesheets_dashboard':
         return <TimesheetsDashboardPage />;
-      // E-Sign's
-      case 'create_msawo_vendor_company':
-        return <CreateMSAWOVendorCompanyPage />;
-      case 'manage_msawo_vendor_companies':
-        return <ManageMSAWOVendorCompaniesPage />;
+      case 'create_msa_wo_vendor_company':
+          return <CreateMSAWOVendorCompanyPage onNavigate={handleNavigate} />;
+      case 'manage_msa_wo_vendor_companies':
+          return <ManageMSAWOVendorCompaniesPage onNavigate={handleNavigate} />;
       case 'create_msa_wo':
         return <CreateMSAandWOPage onNavigate={handleNavigate} />;
       case 'msa_wo_dashboard':
         return <MSAandWODashboardPage />;
+      // --- Add cases for the new Offer Letter pages ---
       case 'create_offer_letter':
         return <CreateOfferLetterPage />;
       case 'offer_letter_dashboard':
@@ -87,7 +90,7 @@ const MainApp = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <TopNav onNavigate={handleNavigate} currentPage={currentPage} />
+      <TopNav onNavigate={handleNavigate} currentPage={currentPage.page} />
       <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {renderPage()}
       </main>

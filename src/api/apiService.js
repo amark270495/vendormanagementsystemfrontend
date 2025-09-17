@@ -96,7 +96,7 @@ export const apiService = {
   updateUserPermissions: (username, permissions, authenticatedUsername) =>
     apiClient.post('/updateUserPermissions', { username, permissions, authenticatedUsername }),
 
-  // --- Timesheet & Company Functions ---
+  // --- Timesheet & Company Management ---
   createCompany: (companyData, authenticatedUsername) =>
     apiClient.post('/createCompany', { companyData, authenticatedUsername }),
 
@@ -192,4 +192,10 @@ export const apiService = {
 
   deleteOfferLetter: (rowKey, pdfUrl, authenticatedUsername) =>
     apiClient.post('/deleteOfferLetter', { rowKey, pdfUrl, authenticatedUsername }),
+    
+  employeeSignIn: (token, tempPassword) =>
+    apiClient.post('/employeeSignIn', { token, tempPassword }),
+    
+  updateOfferLetterStatus: (token, signerData) =>
+    apiClient.post('/updateOfferLetterStatus', { token, signerData }),
 };
