@@ -93,9 +93,12 @@ export const apiService = {
   updateUserPermissions: (username, permissions, authenticatedUsername) =>
     apiClient.post('/updateUserPermissions', { username, permissions, authenticatedUsername }),
 
-  // --- Timesheet & Company Functions ---
+  // --- Timesheet Company Functions ---
   createCompany: (companyData, authenticatedUsername) =>
     apiClient.post('/createCompany', { companyData, authenticatedUsername }),
+
+  getCompanies: (authenticatedUsername) => 
+    apiClient.get('/getCompanies', { params: { authenticatedUsername } }),
 
   updateCompany: (originalCompanyName, updatedCompanyData, authenticatedUsername) =>
     apiClient.post('/updateCompany', { originalCompanyName, updatedCompanyData, authenticatedUsername }),
@@ -103,6 +106,7 @@ export const apiService = {
   deleteCompany: (companyNameToDelete, authenticatedUsername) => 
     apiClient.post('/deleteCompany', { companyNameToDelete, authenticatedUsername }),
 
+  // --- Timesheet Employee Functions ---
   saveEmployeeLogHours: (timesheetData, authenticatedUsername) =>
     apiClient.post('/saveEmployeeLogHours', { timesheetData, authenticatedUsername }),
 
@@ -114,9 +118,6 @@ export const apiService = {
 
   deleteEmployeeLogHours: (partitionKey, rowKey, authenticatedUsername) => 
     apiClient.post('/deleteEmployeeLogHours', { partitionKey, rowKey, authenticatedUsername }),
-
-  getCompanies: (authenticatedUsername) => 
-    apiClient.get('/getCompanies', { params: { authenticatedUsername } }),
 
   createTimesheetEmployee: (employeeData, authenticatedUsername) => 
     apiClient.post('/createTimesheetEmployee', { employeeData, authenticatedUsername }),
@@ -135,6 +136,19 @@ export const apiService = {
 
   sendBulkTimesheetApprovalRequest: (employeeIds, month, year, deadlineDate, companyName, authenticatedUsername) => 
     apiClient.post('/sendBulkTimesheetApprovalRequest', { employeeIds, month, year, deadlineDate, companyName, authenticatedUsername }),
+
+  // --- MSA/WO Vendor Company Functions ---
+  createMSAWOVendorCompany: (companyData, authenticatedUsername) =>
+    apiClient.post('/createMSAWOVendorCompany', { companyData, authenticatedUsername }),
+
+  getMSAWOVendorCompanies: (authenticatedUsername) =>
+    apiClient.get('/getMSAWOVendorCompanies', { params: { authenticatedUsername } }),
+  
+  updateMSAWOVendorCompany: (originalCompanyName, updatedCompanyData, authenticatedUsername) =>
+    apiClient.post('/updateMSAWOVendorCompany', { originalCompanyName, updatedCompanyData, authenticatedUsername }),
+
+  deleteMSAWOVendorCompany: (companyNameToDelete, authenticatedUsername) =>
+    apiClient.post('/deleteMSAWOVendorCompany', { companyNameToDelete, authenticatedUsername }),
 
   // --- MSA and WO e-signing project API calls ---
   createMSAandWO: (formData, authenticatedUsername) =>
@@ -164,10 +178,10 @@ export const apiService = {
   resendMSAWOEmail: (partitionKey, rowKey, authenticatedUsername) =>
     apiClient.post('/resendMSAWOEmail', { partitionKey, rowKey, authenticatedUsername }),
 
-  // --- Offer Letter Functions (NEW) ---
+  // --- Offer Letter Functions (Placeholders) ---
   createOfferLetter: (formData, authenticatedUsername) =>
-      apiClient.post('/createOfferLetter', { formData, authenticatedUsername }),
+    apiClient.post('/createOfferLetter', { formData, authenticatedUsername }),
 
   getOfferLetterDashboardData: (authenticatedUsername) =>
-      apiClient.get('/getOfferLetterDashboardData', { params: { authenticatedUsername } }),
+    apiClient.get('/getOfferLetterDashboardData', { params: { authenticatedUsername } }),
 };
