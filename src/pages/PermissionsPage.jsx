@@ -4,11 +4,20 @@ import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 
+/**
+ * An interactive toggle component that displays a tick or a cross.
+ * @param {object} props
+ * @param {boolean} props.allowed - The current permission state (true or false).
+ * @param {function} props.onChange - The function to call when the button is clicked.
+ * @param {boolean} props.disabled - Whether the button should be disabled.
+ */
 const PermissionToggle = ({ allowed, onChange, disabled }) => {
     const baseClasses = "flex justify-center items-center w-6 h-6 rounded-full transition-colors";
     const disabledClasses = "cursor-not-allowed opacity-50";
     const allowedClasses = "bg-green-100 hover:bg-green-200";
     const deniedClasses = "bg-red-100 hover:bg-red-200";
+
+    // This wrapper ensures the button is centered in the table cell.
     const wrapperClasses = "flex justify-center items-center";
 
     return (
@@ -21,10 +30,12 @@ const PermissionToggle = ({ allowed, onChange, disabled }) => {
                 aria-label={allowed ? 'Revoke permission' : 'Grant permission'}
             >
                 {allowed ? (
+                    // Tick mark SVG for TRUE
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                 ) : (
+                    // Cross mark SVG for FALSE
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -33,6 +44,7 @@ const PermissionToggle = ({ allowed, onChange, disabled }) => {
         </div>
     );
 };
+
 
 const PermissionsPage = () => {
     const { user, updatePermissions: updateAuthContextPermissions } = useAuth();
@@ -44,6 +56,7 @@ const PermissionsPage = () => {
     const [saving, setSaving] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
 
+    // Define the granular permission keys that will be displayed and editable
     const permissionKeys = [
         { key: 'canViewDashboards', name: 'View Dashboards' },
         { key: 'canAddPosting', name: 'Add/Edit Jobs' },
@@ -55,7 +68,6 @@ const PermissionsPage = () => {
         { key: 'canManageTimesheets', name: 'Manage Timesheets' },
         { key: 'canRequestTimesheetApproval', name: 'Request Timesheet Approval' },
         { key: 'canManageMSAWO', name: 'Manage MSA/WO' },
-        { key: 'canManageOfferLetters', name: 'Manage Offer Letters' }, // <-- FIX: Added Offer Letter permission
         { key: 'canEditUsers', name: 'Edit Users & Permissions' },
     ];
 
