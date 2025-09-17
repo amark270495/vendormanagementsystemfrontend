@@ -61,6 +61,9 @@ export const apiService = {
   getCandidateDetailsPageData: (authenticatedUsername) =>
     apiClient.get('/getCandidateDetailsPageData', { params: { authenticatedUsername } }),
 
+  getCandidateDetail: (postingId, email, authenticatedUsername) =>
+    apiClient.get('/getCandidateDetail', { params: { postingId, email, authenticatedUsername } }),
+
   // --- Report & Notification Functions ---
   getHomePageData: (authenticatedUsername) => 
     apiClient.get('/getHomePageData', { params: { authenticatedUsername } }),
@@ -85,6 +88,9 @@ export const apiService = {
 
   sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) => 
     apiClient.post('/sendAssignmentEmail', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
+  
+  getOpenJobPostings: (authenticatedUsername) =>
+    apiClient.get('/getOpenJobPostings', { params: { authenticatedUsername } }),
 
   // --- Permissions Functions ---
   getUserPermissionsList: (authenticatedUsername) =>
@@ -178,10 +184,9 @@ export const apiService = {
   resendMSAWOEmail: (partitionKey, rowKey, authenticatedUsername) =>
     apiClient.post('/resendMSAWOEmail', { partitionKey, rowKey, authenticatedUsername }),
 
-  // --- Offer Letter Functions (Placeholders) ---
-  createOfferLetter: (formData, authenticatedUsername) =>
-    apiClient.post('/createOfferLetter', { formData, authenticatedUsername }),
-
+  // --- Offer Letter Management (Placeholders) ---
+  createOfferLetter: (offerData, authenticatedUsername) =>
+    apiClient.post('/createOfferLetter', { offerData, authenticatedUsername }),
   getOfferLetterDashboardData: (authenticatedUsername) =>
     apiClient.get('/getOfferLetterDashboardData', { params: { authenticatedUsername } }),
 };
