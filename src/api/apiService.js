@@ -11,46 +11,46 @@ const apiClient = axios.create({
 
 export const apiService = {
   // --- User & Auth Functions ---
-  authenticateUser: (username, password) => 
+  authenticateUser: (username, password) =>
     apiClient.post('/authenticateUser', { username, password }),
 
-  changePassword: (targetUsername, newPassword, authenticatedUsername) => 
+  changePassword: (targetUsername, newPassword, authenticatedUsername) =>
     apiClient.post('/changePassword', { targetUsername, newPassword, authenticatedUsername }),
 
-  requestPasswordReset: (username) => 
+  requestPasswordReset: (username) =>
     apiClient.post('/requestPasswordReset', { username }),
 
-  getUsers: (authenticatedUsername) => 
+  getUsers: (authenticatedUsername) =>
     apiClient.get('/getUsers', { params: { authenticatedUsername } }),
 
-  addUser: (userData, authenticatedUsername) => 
+  addUser: (userData, authenticatedUsername) =>
     apiClient.post('/addUser', { ...userData, authenticatedUsername }),
 
-  updateUser: (originalUsername, userData, authenticatedUsername) => 
+  updateUser: (originalUsername, userData, authenticatedUsername) =>
     apiClient.post('/updateUser', { originalUsername, userData, authenticatedUsername }),
 
-  deleteUser: (usernameToDelete, authenticatedUsername) => 
+  deleteUser: (usernameToDelete, authenticatedUsername) =>
     apiClient.post('/deleteUser', { usernameToDelete, authenticatedUsername }),
 
   // --- Job & Dashboard Functions ---
-  getDashboardData: (sheetKey, authenticatedUsername) => 
+  getDashboardData: (sheetKey, authenticatedUsername) =>
     apiClient.get('/getDashboardData', { params: { sheetKey, authenticatedUsername } }),
 
-  updateJobPosting: (updates, authenticatedUsername) => 
+  updateJobPosting: (updates, authenticatedUsername) =>
     apiClient.post('/updateJobPosting', { updates, authenticatedUsername }),
 
-  updateJobStatus: (postingIds, newStatus, authenticatedUsername) => 
+  updateJobStatus: (postingIds, newStatus, authenticatedUsername) =>
     apiClient.post('/updateJobStatus', { postingIds, newStatus, authenticatedUsername }),
 
-  archiveOrDeleteJob: (postingIds, actionType, authenticatedUsername) => 
+  archiveOrDeleteJob: (postingIds, actionType, authenticatedUsername) =>
     apiClient.post('/archiveOrDeleteJob', { postingIds, actionType, authenticatedUsername }),
 
-  saveUserDashboardPreferences: (authenticatedUsername, preferences) => 
+  saveUserDashboardPreferences: (authenticatedUsername, preferences) =>
     apiClient.post('/saveUserDashboardPreferences', { authenticatedUsername, preferences }),
 
-  processJobPosting: (formData, authenticatedUsername) => 
+  processJobPosting: (formData, authenticatedUsername) =>
     apiClient.post('/processJobPosting', { formData, authenticatedUsername }),
-    
+
   // --- Candidate Functions ---
   addCandidateDetails: (candidateData, authenticatedUsername) =>
     apiClient.post('/addCandidateDetails', { candidateData, authenticatedUsername }),
@@ -61,36 +61,33 @@ export const apiService = {
   getCandidateDetailsPageData: (authenticatedUsername) =>
     apiClient.get('/getCandidateDetailsPageData', { params: { authenticatedUsername } }),
 
-  getCandidateDetail: (postingId, email, authenticatedUsername) =>
-    apiClient.get('/getCandidateDetail', { params: { postingId, email, authenticatedUsername } }),
-
   // --- Report & Notification Functions ---
-  getHomePageData: (authenticatedUsername) => 
+  getHomePageData: (authenticatedUsername) =>
     apiClient.get('/getHomePageData', { params: { authenticatedUsername } }),
 
-  getReportData: (params) => 
+  getReportData: (params) =>
     apiClient.get('/getReportData', { params }),
 
-  generateAndSendJobReport: (sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername) => 
+  generateAndSendJobReport: (sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername) =>
     apiClient.post('/generateAndSendJobReport', { sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername }),
 
-  getNotifications: (authenticatedUsername) => 
+  getNotifications: (authenticatedUsername) =>
     apiClient.get('/getNotifications', { params: { authenticatedUsername } }),
 
-  markNotificationsAsRead: (notificationIds, authenticatedUsername) => 
+  markNotificationsAsRead: (notificationIds, authenticatedUsername) =>
     apiClient.post('/markNotificationsAsRead', { notificationIds, authenticatedUsername }),
 
-  getMessages: (user1, user2, authenticatedUsername) => 
+  getUnreadMessages: (authenticatedUsername) =>
+    apiClient.get('/getUnreadMessages', { params: { authenticatedUsername } }),
+
+  getMessages: (user1, user2, authenticatedUsername) =>
     apiClient.get('/getMessages', { params: { user1, user2, authenticatedUsername } }),
 
-  saveMessage: (sender, recipient, messageContent, authenticatedUsername) => 
+  saveMessage: (sender, recipient, messageContent, authenticatedUsername) =>
     apiClient.post('/saveMessage', { sender, recipient, messageContent, authenticatedUsername }),
 
-  sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) => 
+  sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) =>
     apiClient.post('/sendAssignmentEmail', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
-  
-  getOpenJobPostings: (authenticatedUsername) =>
-    apiClient.get('/getOpenJobPostings', { params: { authenticatedUsername } }),
 
   // --- Permissions Functions ---
   getUserPermissionsList: (authenticatedUsername) =>
@@ -99,20 +96,16 @@ export const apiService = {
   updateUserPermissions: (username, permissions, authenticatedUsername) =>
     apiClient.post('/updateUserPermissions', { username, permissions, authenticatedUsername }),
 
-  // --- Timesheet Company Functions ---
+  // --- Timesheet & Company Functions ---
   createCompany: (companyData, authenticatedUsername) =>
     apiClient.post('/createCompany', { companyData, authenticatedUsername }),
-
-  getCompanies: (authenticatedUsername) => 
-    apiClient.get('/getCompanies', { params: { authenticatedUsername } }),
 
   updateCompany: (originalCompanyName, updatedCompanyData, authenticatedUsername) =>
     apiClient.post('/updateCompany', { originalCompanyName, updatedCompanyData, authenticatedUsername }),
 
-  deleteCompany: (companyNameToDelete, authenticatedUsername) => 
+  deleteCompany: (companyNameToDelete, authenticatedUsername) =>
     apiClient.post('/deleteCompany', { companyNameToDelete, authenticatedUsername }),
 
-  // --- Timesheet Employee Functions ---
   saveEmployeeLogHours: (timesheetData, authenticatedUsername) =>
     apiClient.post('/saveEmployeeLogHours', { timesheetData, authenticatedUsername }),
 
@@ -122,39 +115,42 @@ export const apiService = {
   updateEmployeeLogHours: (originalRowKey, updatedTimesheetData, authenticatedUsername) =>
     apiClient.post('/updateEmployeeLogHours', { originalRowKey, updatedTimesheetData, authenticatedUsername }),
 
-  deleteEmployeeLogHours: (partitionKey, rowKey, authenticatedUsername) => 
+  deleteEmployeeLogHours: (partitionKey, rowKey, authenticatedUsername) =>
     apiClient.post('/deleteEmployeeLogHours', { partitionKey, rowKey, authenticatedUsername }),
 
-  createTimesheetEmployee: (employeeData, authenticatedUsername) => 
+  getCompanies: (authenticatedUsername) =>
+    apiClient.get('/getCompanies', { params: { authenticatedUsername } }),
+
+  createTimesheetEmployee: (employeeData, authenticatedUsername) =>
     apiClient.post('/createTimesheetEmployee', { employeeData, authenticatedUsername }),
 
-  updateTimesheetEmployee: (originalEmployeeId, updatedEmployeeData, authenticatedUsername) => 
+  updateTimesheetEmployee: (originalEmployeeId, updatedEmployeeData, authenticatedUsername) =>
     apiClient.post('/updateTimesheetEmployee', { originalEmployeeId, updatedEmployeeData, authenticatedUsername }),
 
-  deleteTimesheetEmployee: (employeeIdToDelete, authenticatedUsername) => 
+  deleteTimesheetEmployee: (employeeIdToDelete, authenticatedUsername) =>
     apiClient.post('/deleteTimesheetEmployee', { employeeIdToDelete, authenticatedUsername }),
 
-  getTimesheetEmployees: (authenticatedUsername) => 
+  getTimesheetEmployees: (authenticatedUsername) =>
     apiClient.get('/getTimesheetEmployees', { params: { authenticatedUsername } }),
 
   sendTimesheetApprovalRequest: (employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername) =>
     apiClient.post('/sendTimesheetApprovalRequest', { employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername }),
 
-  sendBulkTimesheetApprovalRequest: (employeeIds, month, year, deadlineDate, companyName, authenticatedUsername) => 
+  sendBulkTimesheetApprovalRequest: (employeeIds, month, year, deadlineDate, companyName, authenticatedUsername) =>
     apiClient.post('/sendBulkTimesheetApprovalRequest', { employeeIds, month, year, deadlineDate, companyName, authenticatedUsername }),
 
-  // --- MSA/WO Vendor Company Functions ---
+  // --- MSA & WO Vendor Company Management ---
   createMSAWOVendorCompany: (companyData, authenticatedUsername) =>
     apiClient.post('/createMSAWOVendorCompany', { companyData, authenticatedUsername }),
 
   getMSAWOVendorCompanies: (authenticatedUsername) =>
     apiClient.get('/getMSAWOVendorCompanies', { params: { authenticatedUsername } }),
-  
-  updateMSAWOVendorCompany: (originalCompanyName, updatedCompanyData, authenticatedUsername) =>
-    apiClient.post('/updateMSAWOVendorCompany', { originalCompanyName, updatedCompanyData, authenticatedUsername }),
 
-  deleteMSAWOVendorCompany: (companyNameToDelete, authenticatedUsername) =>
-    apiClient.post('/deleteMSAWOVendorCompany', { companyNameToDelete, authenticatedUsername }),
+  updateMSAWOVendorCompany: (originalVendorName, companyData, authenticatedUsername) =>
+    apiClient.post('/updateMSAWOVendorCompany', { originalVendorName, companyData, authenticatedUsername }),
+
+  deleteMSAWOVendorCompany: (vendorNameToDelete, authenticatedUsername) =>
+    apiClient.post('/deleteMSAWOVendorCompany', { vendorNameToDelete, authenticatedUsername }),
 
   // --- MSA and WO e-signing project API calls ---
   createMSAandWO: (formData, authenticatedUsername) =>
@@ -184,9 +180,16 @@ export const apiService = {
   resendMSAWOEmail: (partitionKey, rowKey, authenticatedUsername) =>
     apiClient.post('/resendMSAWOEmail', { partitionKey, rowKey, authenticatedUsername }),
 
-  // --- Offer Letter Management (Placeholders) ---
-  createOfferLetter: (offerData, authenticatedUsername) =>
-    apiClient.post('/createOfferLetter', { offerData, authenticatedUsername }),
+  // --- Offer Letter Management ---
+  createOfferLetter: (formData, authenticatedUsername) =>
+    apiClient.post('/createOfferLetter', { formData, authenticatedUsername }),
+
   getOfferLetterDashboardData: (authenticatedUsername) =>
     apiClient.get('/getOfferLetterDashboardData', { params: { authenticatedUsername } }),
+    
+  updateOfferLetter: (documentData, authenticatedUsername) =>
+    apiClient.post('/updateOfferLetter', { documentData, authenticatedUsername }),
+
+  deleteOfferLetter: (rowKey, pdfUrl, authenticatedUsername) =>
+    apiClient.post('/deleteOfferLetter', { rowKey, pdfUrl, authenticatedUsername }),
 };
