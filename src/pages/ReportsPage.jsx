@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
@@ -20,7 +20,7 @@ const ReportsPage = () => {
     const { user } = useAuth();
     const { canViewReports, canEmailReports } = usePermissions();
     
-    const [reportType, setReportType] = useState('jobPostings'); // 'jobPostings' or 'candidates'
+    const [reportType, setReportType] = useState('jobPostings');
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -30,6 +30,9 @@ const ReportsPage = () => {
         endDate: '' 
     });
     const [isEmailModalOpen, setEmailModalOpen] = useState(false);
+    
+    // --- NEW: State for the search bar ---
+    const [searchTerm, setSearchTerm] = useState('');
 
     const generateReport = useCallback(async () => {
         if (!canViewReports) {
@@ -51,7 +54,7 @@ const ReportsPage = () => {
             if (reportType === 'jobPostings') {
                 params.sheetKey = filters.sheetKey;
                 response = await apiService.getReportData(params);
-            } else { // reportType === 'candidates'
+            } else {
                 response = await apiService.getCandidateReportData(params);
             }
 
@@ -81,45 +84,79 @@ const ReportsPage = () => {
         datasets: [{ label, data, backgroundColor: chartColors.slice(0, labels.length), borderWidth: 1 }]
     });
 
-    const renderJobReport = () => (
-        <div className="space-y-8">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 text-center">
-                <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-gray-800">{reportData.totalJobs}</p><p className="text-sm text-gray-500 mt-1">Total Jobs</p></div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-green-600">{reportData.openJobs}</p><p className="text-sm text-gray-500 mt-1">Open</p></div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-red-600">{reportData.closedJobs}</p><p className="text-sm text-gray-500 mt-1">Closed</p></div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-blue-600">{reportData.totalResumesSubmitted}</p><p className="text-sm text-gray-500 mt-1">Submitted</p></div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-gray-800">{reportData.totalMaxSubmissions}</p><p className="text-sm text-gray-500 mt-1">Max Allowed</p></div>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Jobs by Client</h3><div className="relative flex-grow"><ChartComponent type='bar' options={chartOptions} data={getChartData(Object.keys(reportData.clientJobCounts), Object.values(reportData.clientJobCounts), '# of Jobs')} /></div></div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Jobs by Position Type</h3><div className="relative flex-grow"><ChartComponent type='pie' options={chartOptions} data={getChartData(Object.keys(reportData.positionTypeCounts), Object.values(reportData.positionTypeCounts), '# of Jobs')} /></div></div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border lg:col-span-2 h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Jobs by Assignee</h3><div className="relative flex-grow"><ChartComponent type='doughnut' options={chartOptions} data={getChartData(Object.keys(reportData.workingByCounts), Object.values(reportData.workingByCounts), '# of Jobs')} /></div></div>
-            </div>
-        </div>
-    );
-    
-    const renderCandidateReport = () => (
-         <div className="space-y-8">
-            <div className="grid grid-cols-1 text-center">
-                 <div className="bg-white p-5 rounded-xl shadow-sm border w-1/3 mx-auto">
-                    <p className="text-4xl font-extrabold text-gray-800">{reportData.totalCandidates}</p>
-                    <p className="text-sm text-gray-500 mt-1">Total Candidates Processed</p>
+    // --- NEW: Filtered chart data based on search term ---
+    const filteredChartData = (chartLabels, chartValues) => {
+        if (!searchTerm) {
+            return { labels: chartLabels, values: chartValues };
+        }
+        const lowercasedFilter = searchTerm.toLowerCase();
+        const filteredLabels = [];
+        const filteredValues = [];
+        chartLabels.forEach((label, index) => {
+            if (label.toLowerCase().includes(lowercasedFilter)) {
+                filteredLabels.push(label);
+                filteredValues.push(chartValues[index]);
+            }
+        });
+        return { labels: filteredLabels, values: filteredValues };
+    };
+
+    const renderJobReport = () => {
+        const clientData = filteredChartData(Object.keys(reportData.clientJobCounts), Object.values(reportData.clientJobCounts));
+        const positionData = filteredChartData(Object.keys(reportData.positionTypeCounts), Object.values(reportData.positionTypeCounts));
+        const assigneeData = filteredChartData(Object.keys(reportData.workingByCounts), Object.values(reportData.workingByCounts));
+
+        return (
+            <div className="space-y-8">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 text-center">
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-gray-800">{reportData.totalJobs}</p><p className="text-sm text-gray-500 mt-1">Total Jobs</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-green-600">{reportData.openJobs}</p><p className="text-sm text-gray-500 mt-1">Open</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-red-600">{reportData.closedJobs}</p><p className="text-sm text-gray-500 mt-1">Closed</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-blue-600">{reportData.totalResumesSubmitted}</p><p className="text-sm text-gray-500 mt-1">Submitted</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-gray-800">{reportData.totalMaxSubmissions}</p><p className="text-sm text-gray-500 mt-1">Max Allowed</p></div>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Jobs by Client</h3><div className="relative flex-grow"><ChartComponent type='bar' options={chartOptions} data={getChartData(clientData.labels, clientData.values, '# of Jobs')} /></div></div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Jobs by Position Type</h3><div className="relative flex-grow"><ChartComponent type='pie' options={chartOptions} data={getChartData(positionData.labels, positionData.values, '# of Jobs')} /></div></div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border lg:col-span-2 h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Jobs by Assignee</h3><div className="relative flex-grow"><ChartComponent type='doughnut' options={chartOptions} data={getChartData(assigneeData.labels, assigneeData.values, '# of Jobs')} /></div></div>
                 </div>
             </div>
-            <div className="grid grid-cols-1">
-                <div className="bg-white p-6 rounded-xl shadow-sm border h-[500px] flex flex-col">
-                    <h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Candidate Pipeline by Status</h3>
-                    <div className="relative flex-grow">
-                        <ChartComponent 
-                            type='bar' 
-                            options={{...chartOptions, indexAxis: 'y' }} // Horizontal bar chart
-                            data={getChartData(Object.keys(reportData.remarksCount), Object.values(reportData.remarksCount), '# of Candidates')} 
-                        />
+        );
+    };
+    
+    const renderCandidateReport = () => {
+        const remarksData = filteredChartData(Object.keys(reportData.remarksCount), Object.values(reportData.remarksCount));
+
+        return (
+             <div className="space-y-8">
+                <div className="grid grid-cols-1 text-center">
+                     <div className="bg-white p-5 rounded-xl shadow-sm border w-full md:w-1/3 mx-auto">
+                        <p className="text-4xl font-extrabold text-gray-800">{reportData.totalCandidates}</p>
+                        <p className="text-sm text-gray-500 mt-1">Total Candidates Processed</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[500px] flex flex-col">
+                        <h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Candidate Pipeline by Status</h3>
+                        <div className="relative flex-grow">
+                            <ChartComponent 
+                                type='bar' 
+                                options={{...chartOptions, indexAxis: 'y' }}
+                                data={getChartData(remarksData.labels, remarksData.values, '# of Candidates')} 
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
+
+    const shouldRenderReport = () => {
+        if (!reportData || !canViewReports) return false;
+        if (reportType === 'jobPostings' && reportData.totalJobs !== undefined) return true;
+        if (reportType === 'candidates' && reportData.totalCandidates !== undefined) return true;
+        return false;
+    };
 
     return (
         <>
@@ -131,21 +168,31 @@ const ReportsPage = () => {
 
                 <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-4">
-                        <select name="reportType" value={reportType} onChange={handleReportTypeChange} className="shadow-sm border-gray-300 rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports}>
+                        {/* --- NEW: Search bar --- */}
+                        <input
+                            type="text"
+                            placeholder="Search chart data..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="shadow-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
+                            disabled={!canViewReports || loading}
+                        />
+
+                        <select name="reportType" value={reportType} onChange={handleReportTypeChange} className="shadow-sm border-gray-300 rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading}>
                             <option value="jobPostings">Job Postings Report</option>
                             <option value="candidates">Candidate Pipeline Report</option>
                         </select>
                         
                         {reportType === 'jobPostings' && (
-                             <select name="sheetKey" value={filters.sheetKey} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports}>
+                             <select name="sheetKey" value={filters.sheetKey} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading}>
                                 {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
                                     <option key={key} value={key}>{config.title}</option>
                                 ))}
                             </select>
                         )}
 
-                        <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports}/>
-                        <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports}/>
+                        <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading}/>
+                        <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading}/>
                     </div>
                     <div className="flex items-center space-x-3">
                         <button onClick={generateReport} className="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 flex items-center h-10 disabled:bg-indigo-400" disabled={loading || !canViewReports}>
@@ -167,7 +214,7 @@ const ReportsPage = () => {
                     </div>
                 )}
                 
-                {reportData && canViewReports && (
+                {shouldRenderReport() && (
                     reportType === 'jobPostings' ? renderJobReport() : renderCandidateReport()
                 )}
 
