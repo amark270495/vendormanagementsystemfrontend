@@ -88,13 +88,19 @@ const TopNav = ({ onNavigate, currentPage }) => {
             console.error('Failed to mark notifications as read', err);
         }
     };
-
-    const getLinkClass = (pageName) => {
+    
+    // --- FIX: Simplified and corrected active state logic ---
+    const getLinkClass = (pageNameOrCondition) => {
         const base = "px-3 py-2 rounded-md text-sm font-medium transition-colors";
         const active = "bg-slate-200 text-slate-900";
         const inactive = "text-slate-500 hover:bg-slate-100 hover:text-slate-800";
-        // FIX: Check if the currentPage string matches the pageName for highlighting
-        return `${base} ${currentPage === pageName ? active : inactive}`;
+        
+        // If a boolean is passed, use it directly. Otherwise, compare strings.
+        const isActive = typeof pageNameOrCondition === 'boolean' 
+            ? pageNameOrCondition 
+            : currentPage === pageNameOrCondition;
+
+        return `${base} ${isActive ? active : inactive}`;
     };
 
     const isDropdownActive = (pages) => pages.includes(currentPage);
@@ -108,9 +114,9 @@ const TopNav = ({ onNavigate, currentPage }) => {
                         <nav className="hidden md:flex space-x-1">
                             <a href="#" onClick={() => onNavigate('home')} className={getLinkClass('home')}>Home</a>
                             
-                            {/* FIX: Simplified the className logic for the Dashboards dropdown trigger */}
+                            {/* FIX: The className now correctly checks if the current page is 'dashboard' */}
                             {canViewDashboards && (
-                                <Dropdown trigger={<button className={getLinkClass('dashboard')}>Dashboards</button>}>
+                                <Dropdown trigger={<button className={getLinkClass(currentPage === 'dashboard')}>Dashboards</button>}>
                                     {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
                                         <a href="#" key={key} onClick={() => onNavigate('dashboard', { key })} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">{config.title}</a>
                                     ))}
@@ -129,7 +135,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                             }
 
                             {canManageTimesheets && (
-                                <Dropdown trigger={<button className={getLinkClass(isDropdownActive(['create_timesheet_company', 'manage_companies', 'create_timesheet_employee', 'manage_timesheet_employees', 'log_hours', 'timesheets_dashboard']) ? 'timesheets-active' : 'timesheets')}>Timesheets</button>}>
+                                <Dropdown trigger={<button className={getLinkClass(isDropdownActive(['create_timesheet_company', 'manage_companies', 'create_timesheet_employee', 'manage_timesheet_employees', 'log_hours', 'timesheets_dashboard']))}>Timesheets</button>}>
                                     <a href="#" onClick={() => onNavigate('create_timesheet_company')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Create Company</a>
                                     <a href="#" onClick={() => onNavigate('manage_companies')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Manage Companies</a>
                                     <a href="#" onClick={() => onNavigate('create_timesheet_employee')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Create Timesheet Employee</a>
@@ -140,7 +146,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                             )}
 
                              {(canManageMSAWO || canManageOfferLetters) && (
-                                <Dropdown trigger={<button className={getLinkClass(isDropdownActive(['create_msa_wo_vendor_company', 'manage_msa_wo_vendor_companies', 'create_msa_wo', 'msa_wo_dashboard', 'create_offer_letter', 'offer_letter_dashboard']) ? 'e-sign-active' : 'e-sign')}>E-Sign's</button>}>
+                                <Dropdown trigger={<button className={getLinkClass(isDropdownActive(['create_msa_wo_vendor_company', 'manage_msa_wo_vendor_companies', 'create_msa_wo', 'msa_wo_dashboard', 'create_offer_letter', 'offer_letter_dashboard']))}>E-Sign's</button>}>
                                     <div className="px-4 py-2 text-xs font-bold text-slate-400 uppercase">MSA & WO</div>
                                     {canManageMSAWO && <a href="#" onClick={() => onNavigate('create_msa_wo_vendor_company')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Create Vendor Company</a>}
                                     {canManageMSAWO && <a href="#" onClick={() => onNavigate('manage_msa_wo_vendor_companies')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Manage Vendor Companies</a>}
