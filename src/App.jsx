@@ -1,39 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import Spinner from './components/Spinner';
-import MSAandWOSigningPage from './pages/MSAandWOSigningPage';
 import MainApp from './MainApp';
 import LoginPage from './pages/LoginPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import MSAandWOSigningPage from './pages/MSAandWOSigningPage';
+import OfferLetterSigningPage from './pages/OfferLetterSigningPage';
 
-// --- APPLICATION ROUTING LOGIC ---
 const AppContent = () => {
+    const { isAuthenticated, isFirstLogin } = useAuth();
     const [page, setPage] = useState('loading');
     const [token, setToken] = useState(null);
-    const { isAuthenticated, isFirstLogin } = useAuth();
 
     useEffect(() => {
+        const path = window.location.pathname;
         const params = new URLSearchParams(window.location.search);
-        const urlToken = params.get('token');
-
-        if (urlToken && urlToken.length > 10) {
-            setToken(urlToken);
-            setPage('sign');
+        
+        // --- FIX: Logic now correctly handles both URL formats ---
+        if (path.startsWith('/offer-letter/')) {
+            // New routing for Offer Letters (e.g., /offer-letter/TOKEN)
+            setToken(path.split('/offer-letter/')[1]);
+            setPage('offer_letter_sign');
         } else {
-            setPage('main');
+            // Fallback to check for the old query parameter style for MSA/WO
+            const urlToken = params.get('token');
+            if (urlToken) {
+                 setToken(urlToken);
+                 setPage('msa_sign');
+            } else {
+                 setPage('main');
+            }
         }
     }, []);
 
     if (page === 'loading') {
-        return (
-            <div className="flex justify-center items-center h-screen">
-                <Spinner size="12" />
-            </div>
-        );
+        return <div className="flex justify-center items-center h-screen"><Spinner size="12" /></div>;
     }
 
-    if (page === 'sign') {
-        return token ? <MSAandWOSigningPage token={token} /> : <LoginPage />;
+    if (page === 'msa_sign') {
+        return <MSAandWOSigningPage token={token} />;
+    }
+    
+    if (page === 'offer_letter_sign') {
+        // The token is now correctly read from the path and passed implicitly
+        return <OfferLetterSigningPage />;
     }
 
     if (!isAuthenticated) {
@@ -47,7 +57,6 @@ const AppContent = () => {
     return <MainApp />;
 };
 
-// --- ROOT APP COMPONENT ---
 const App = () => (
     <AuthProvider>
         <AppContent />

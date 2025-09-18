@@ -6,7 +6,7 @@ import SignatureModal from '../components/msa-wo/SignatureModal';
 import { useAuth } from '../context/AuthContext';
 
 const OfferLetterSigningPage = () => {
-    const { user } = useAuth() || {}; // Use auth context to check for logged-in admin/director
+    const { user } = useAuth() || {};
     const [token, setToken] = useState(null);
     const [documentData, setDocumentData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -19,7 +19,6 @@ const OfferLetterSigningPage = () => {
     
     const hasBeenSigned = documentData?.status === 'Signed';
 
-    // Effect to extract token from URL
     useEffect(() => {
         const pathParts = window.location.pathname.split('/');
         const urlToken = pathParts[pathParts.length - 1];
@@ -31,25 +30,13 @@ const OfferLetterSigningPage = () => {
         }
     }, []);
 
-    // Effect to fetch document data once token is available
     useEffect(() => {
-        const fetchAsAdmin = async () => {
-            // This is a placeholder for a potential future feature where an admin can view the signing page.
-            // For now, we assume only candidates access this.
-            setIsAccessModalOpen(true); // Default to password modal for non-admins
-            setLoading(false);
-        };
-
         if (token) {
-            if (user && user.userIdentifier) {
-                // If an admin is somehow on this page, they should still use the password flow for now.
-                fetchAsAdmin();
-            } else {
-                setIsAccessModalOpen(true);
-                setLoading(false);
-            }
+            // For public offer letter links, always show the access modal.
+            setIsAccessModalOpen(true);
+            setLoading(false);
         }
-    }, [token, user]);
+    }, [token]);
 
     const handleAccessGranted = useCallback(async (data) => {
         if (!data) {
@@ -67,20 +54,19 @@ const OfferLetterSigningPage = () => {
         // Reload the document data to show the "Signed" status
         const fetchSignedDoc = async () => {
              try {
-                // Re-fetch using the passwordless admin route after signing to get updated status
-                const response = await apiService.employeeSignIn(token, 'admin_bypass');
+                // This re-fetches the document data after signing to update the status on the page.
+                const response = await apiService.employeeSignIn(token, 'post_sign_refresh');
                 if (response.data.success) {
                     setDocumentData(response.data.documentData);
                 }
             } catch (err) {
-                // If it fails, just show success message
                 console.error("Could not refresh document status.", err);
             }
         };
         fetchSignedDoc();
     }, [token]);
 
-    const handleSign = useCallback(async (signerData, signerType) => {
+    const handleSign = useCallback(async (signerData) => {
         setLoading(true);
         setError('');
         try {
@@ -93,7 +79,7 @@ const OfferLetterSigningPage = () => {
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to process signature.');
             setLoading(false);
-            throw err; // Re-throw to show error in modal
+            throw err;
         } finally {
             setLoading(false);
         }
@@ -102,7 +88,7 @@ const OfferLetterSigningPage = () => {
     const openSigningModal = () => {
         setSignerConfig({
             signerType: 'employee',
-            requiresPassword: false, // Candidates don't need to re-enter a password
+            requiresPassword: false,
             signerInfo: { name: documentData?.employeeName, title: 'Candidate' },
         });
         setIsSigningModalOpen(true);
@@ -131,7 +117,6 @@ const OfferLetterSigningPage = () => {
 
                     {documentData && !error && (
                         <div className="bg-white rounded-2xl shadow-2xl mt-6">
-                            {/* Document Details Section */}
                             <div className="p-6 sm:p-10">
                                 <h2 className="text-xl font-bold text-slate-800 mb-6">Offer Details</h2>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -144,12 +129,10 @@ const OfferLetterSigningPage = () => {
                                 </div>
                             </div>
                             
-                            {/* PDF Preview Section */}
                             <div className="border-t">
                                 <iframe src={documentData.pdfUrl} title="Offer Letter Preview" className="w-full h-[80vh] border-0" />
                             </div>
 
-                            {/* Signing Action Section */}
                             <div className="p-6 sm:p-10 border-t">
                                 {!hasBeenSigned ? (
                                     <button onClick={openSigningModal} className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold shadow-md transition-all">
@@ -171,6 +154,7 @@ const OfferLetterSigningPage = () => {
                 onClose={() => { if (!documentData) setError("Access is required to view this document.") }}
                 onAccessGranted={handleAccessGranted}
                 token={token}
+                // --- FIX: Pass the correct API method for offer letters ---
                 apiServiceMethod={apiService.employeeSignIn}
                 vendorEmail={"the email address on file"}
             />
