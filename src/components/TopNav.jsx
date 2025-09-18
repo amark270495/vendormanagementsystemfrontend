@@ -89,20 +89,14 @@ const TopNav = ({ onNavigate, currentPage }) => {
         }
     };
     
-    // --- FIX: Simplified and corrected active state logic ---
-    const getLinkClass = (pageNameOrCondition) => {
+    const getLinkClass = (pageName) => {
         const base = "px-3 py-2 rounded-md text-sm font-medium transition-colors";
         const active = "bg-slate-200 text-slate-900";
         const inactive = "text-slate-500 hover:bg-slate-100 hover:text-slate-800";
-        
-        // If a boolean is passed, use it directly. Otherwise, compare strings.
-        const isActive = typeof pageNameOrCondition === 'boolean' 
-            ? pageNameOrCondition 
-            : currentPage === pageNameOrCondition;
-
-        return `${base} ${isActive ? active : inactive}`;
+        return `${base} ${currentPage === pageName ? active : inactive}`;
     };
 
+    // This function remains for other dropdowns that might need it.
     const isDropdownActive = (pages) => pages.includes(currentPage);
 
     return (
@@ -114,9 +108,9 @@ const TopNav = ({ onNavigate, currentPage }) => {
                         <nav className="hidden md:flex space-x-1">
                             <a href="#" onClick={() => onNavigate('home')} className={getLinkClass('home')}>Home</a>
                             
-                            {/* FIX: The className now correctly checks if the current page is 'dashboard' */}
+                            {/* FIX: Reverted to a simpler button and ensured onClick is correct */}
                             {canViewDashboards && (
-                                <Dropdown trigger={<button className={getLinkClass(currentPage === 'dashboard')}>Dashboards</button>}>
+                                <Dropdown trigger={<button className="px-3 py-2 rounded-md text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800">Dashboards</button>}>
                                     {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
                                         <a href="#" key={key} onClick={() => onNavigate('dashboard', { key })} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">{config.title}</a>
                                     ))}
