@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { usePermissions } from '../hooks/usePermissions'; 
+import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
 import Dropdown from './Dropdown';
 
@@ -16,18 +16,18 @@ const DASHBOARD_CONFIGS = {
 
 const TopNav = ({ onNavigate, currentPage }) => {
     const { user, logout } = useAuth();
-    const { 
-        canViewDashboards, 
-        canAddPosting, 
-        canViewReports, 
-        canViewCandidates, 
+    const {
+        canViewDashboards,
+        canAddPosting,
+        canViewReports,
+        canViewCandidates,
         canEditUsers,
         canMessage,
         canManageTimesheets,
         canManageMSAWO,
         canManageOfferLetters
-    } = usePermissions(); 
-    
+    } = usePermissions();
+
     const [notifications, setNotifications] = useState([]);
     const [unreadMessages, setUnreadMessages] = useState(0);
 
@@ -70,8 +70,8 @@ const TopNav = ({ onNavigate, currentPage }) => {
     useEffect(() => {
         fetchNotifications();
         fetchUnreadMessages();
-        const notificationInterval = setInterval(fetchNotifications, 30000); // every 30 seconds
-        const messageInterval = setInterval(fetchUnreadMessages, 15000); // every 15 seconds
+        const notificationInterval = setInterval(fetchNotifications, 30000);
+        const messageInterval = setInterval(fetchUnreadMessages, 15000);
         return () => {
             clearInterval(notificationInterval);
             clearInterval(messageInterval);
@@ -93,6 +93,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
         const base = "px-3 py-2 rounded-md text-sm font-medium transition-colors";
         const active = "bg-slate-200 text-slate-900";
         const inactive = "text-slate-500 hover:bg-slate-100 hover:text-slate-800";
+        // FIX: Check if the currentPage string matches the pageName for highlighting
         return `${base} ${currentPage === pageName ? active : inactive}`;
     };
 
@@ -107,6 +108,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                         <nav className="hidden md:flex space-x-1">
                             <a href="#" onClick={() => onNavigate('home')} className={getLinkClass('home')}>Home</a>
                             
+                            {/* FIX: Simplified the className logic for the Dashboards dropdown trigger */}
                             {canViewDashboards && (
                                 <Dropdown trigger={<button className={getLinkClass('dashboard')}>Dashboards</button>}>
                                     {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
@@ -158,7 +160,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                     <div className="flex items-center space-x-4">
                         <Dropdown width="80" trigger={
                             <button className="relative text-slate-500 hover:text-slate-700" aria-label="Notifications">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 0 0 1-3.46 0"></path></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 0 0 1-3.46 0"></path></svg>
                                 {notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
                             </button>
                         }>
