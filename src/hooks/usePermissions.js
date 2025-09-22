@@ -46,4 +46,3 @@ export const usePermissions = () => {
     
     return useMemo(() => calculatePermissions(permissions), [permissions]);
 };
-
