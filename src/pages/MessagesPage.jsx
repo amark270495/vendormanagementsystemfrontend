@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { apiService } from '../api/apiService';
+import Spinner from '../components/Spinner';
+import { usePermissions } from '../hooks/usePermissions';
 
 // Memoized component for the message input form to prevent re-renders
 const MessageInputForm = memo(({ onSendMessage, disabled }) => {
@@ -37,8 +41,8 @@ const MessageInputForm = memo(({ onSendMessage, disabled }) => {
 
 // Main MessagesPage component
 const MessagesPage = () => {
-    const [user, setUser] = useState({ userIdentifier: 'user1', userName: 'John Doe' });
-    const [canMessage, setCanMessage] = useState(true);
+    const { user } = useAuth();
+    const { canMessage } = usePermissions();
     const [users, setUsers] = useState([]);
     const [selectedRecipient, setSelectedRecipient] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -47,44 +51,6 @@ const MessagesPage = () => {
     const [error, setError] = useState('');
     const messagesEndRef = useRef(null);
 
-    // API Service mock for demonstration purposes
-    const apiService = {
-        getUsers: async (authenticatedUsername) => {
-            console.log("Mock API Call: getUsers");
-            return new Promise(resolve => setTimeout(() => resolve({
-                data: {
-                    success: true,
-                    users: [
-                        { username: 'user1', displayName: 'John Doe', userRole: 'admin', backendOfficeRole: 'manager' },
-                        { username: 'user2', displayName: 'Jane Smith', userRole: 'user', backendOfficeRole: 'staff' },
-                        { username: 'user3', displayName: 'Peter Jones', userRole: 'user', backendOfficeRole: 'staff' }
-                    ]
-                }
-            }), 500));
-        },
-        getMessages: async (user1, user2, authenticatedUsername) => {
-            console.log(`Mock API Call: getMessages for ${user2}`);
-            return new Promise(resolve => setTimeout(() => resolve({
-                data: {
-                    success: true,
-                    messages: [
-                        { id: 1, sender: 'user2', recipient: 'user1', messageContent: 'Hey John, got a moment?', timestamp: '2023-10-27T10:00:00Z' },
-                        { id: 2, sender: 'user1', recipient: 'user2', messageContent: 'Sure, what\'s up?', timestamp: '2023-10-27T10:01:00Z' },
-                        { id: 3, sender: 'user2', recipient: 'user1', messageContent: 'Just a quick question about the new project.', timestamp: '2023-10-27T10:02:00Z' },
-                    ]
-                }
-            }), 500));
-        },
-        saveMessage: async (sender, recipient, messageContent, authenticatedUsername) => {
-            console.log("Mock API Call: saveMessage");
-            return new Promise(resolve => setTimeout(() => resolve({ data: { success: true } }), 500));
-        },
-        markMessagesAsRead: async (recipient, sender, authenticatedUsername) => {
-             console.log(`Mock API Call: markMessagesAsRead from ${sender} to ${recipient}`);
-             return new Promise(resolve => setTimeout(() => resolve({ data: { success: true } }), 500));
-        }
-    };
-    
     // Helper function to play notification sounds
     const playSound = (soundFile) => {
         const audio = new Audio(`/sounds/${soundFile}`);
@@ -113,7 +79,7 @@ const MessagesPage = () => {
             }
         };
         fetchUsers();
-    }, [user?.userIdentifier, canMessage, apiService]);
+    }, [user?.userIdentifier, canMessage]);
 
     // Fetch messages for the selected conversation and poll for new ones
     useEffect(() => {
@@ -135,10 +101,11 @@ const MessagesPage = () => {
                     const newMessages = response.data.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
                     
                     setMessages(prevMessages => {
+                        // Check if a new message has arrived from the other user
                         if (newMessages.length > prevMessages.length) {
                             const latestMessage = newMessages[newMessages.length - 1];
                             if (latestMessage.sender !== user.userIdentifier) {
-                                // playSound('message.mp3'); // Sound functionality
+                                playSound('message.mp3');
                             }
                         }
                         return newMessages;
@@ -158,7 +125,7 @@ const MessagesPage = () => {
             isMounted = false;
             clearInterval(interval);
         };
-    }, [selectedRecipient, user.userIdentifier, canMessage, apiService]);
+    }, [selectedRecipient, user.userIdentifier, canMessage]);
 
     // Auto-scroll to the latest message
     useEffect(() => {
@@ -184,7 +151,7 @@ const MessagesPage = () => {
             setError(`Failed to send message: ${err.response?.data?.message || err.message}`);
             setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
         }
-    }, [selectedRecipient, user.userIdentifier, apiService]);
+    }, [selectedRecipient, user.userIdentifier]);
 
     return (
         <div className="space-y-6 h-full flex flex-col">
@@ -262,7 +229,7 @@ const MessagesPage = () => {
                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-16 h-16 text-slate-300 mb-4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                                <h3 className="text-lg font-semibold text-slate-800">Select a Conversation</h3>
                                <p>Choose a user from the list to start messaging.</p>
-                             </div>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -272,7 +239,3 @@ const MessagesPage = () => {
 };
 
 export default MessagesPage;
-
-const Spinner = ({ size = "10" }) => (
-    <div className={`w-${size} h-${size} rounded-full animate-spin border-4 border-solid border-indigo-500 border-t-transparent`}></div>
-);
