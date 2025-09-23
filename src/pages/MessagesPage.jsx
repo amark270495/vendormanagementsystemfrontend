@@ -4,6 +4,7 @@ import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
 import { useMediaQuery } from 'react-responsive';
+import messageSound from '../sounds/message.mp3'; // ✅ import sound from src/sounds
 
 // Message input
 const MessageInputForm = memo(({ onSendMessage, disabled }) => {
@@ -60,7 +61,7 @@ const MessagesPage = () => {
     // 🔊 Messenger-like sound preload
     const messageSoundRef = useRef(null);
     useEffect(() => {
-        messageSoundRef.current = new Audio('/sounds/message.mp3');
+        messageSoundRef.current = new Audio(messageSound); // ✅ use imported file
         messageSoundRef.current.preload = 'auto';
     }, []);
     const playSound = () => {
@@ -70,7 +71,7 @@ const MessagesPage = () => {
         }
     };
 
-    // Fetch users
+    // fetch users
     const fetchUsers = useCallback(async () => {
         if (!user?.userIdentifier || !canMessage) {
             setLoadingUsers(false);
@@ -90,7 +91,7 @@ const MessagesPage = () => {
     }, [user?.userIdentifier, canMessage]);
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-    // Fetch messages (with polling)
+    // fetch messages (with polling)
     const fetchAndMarkMessages = useCallback(async (isPolling = false) => {
         if (!selectedRecipient || !canMessage || !user?.userIdentifier) return;
         try {
@@ -122,12 +123,12 @@ const MessagesPage = () => {
         return () => clearInterval(interval);
     }, [fetchAndMarkMessages, selectedRecipient]);
 
-    // Auto-scroll
+    // auto-scroll
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // Send
+    // send
     const handleSendMessage = useCallback(async (msgContent) => {
         if (!selectedRecipient) return;
         const temp = {
@@ -158,11 +159,6 @@ const MessagesPage = () => {
                     <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
                     <p className="text-gray-600">Chat with colleagues in real-time</p>
                 </div>
-                {isMobile && selectedRecipient && (
-                    <button onClick={() => setUserListVisible(true)} className="md:hidden text-indigo-600 hover:text-indigo-800 font-semibold flex items-center space-x-1">
-                        ← Back
-                    </button>
-                )}
             </div>
 
             {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg">{error}</div>}
@@ -206,18 +202,18 @@ const MessagesPage = () => {
                                 </div>
 
                                 {/* Messages */}
-                                <div className="flex-1 p-6 space-y-3 overflow-y-auto">
+                                <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto h-[60vh]">
                                     {loadingMessages && <div className="flex justify-center"><Spinner size="6" /></div>}
                                     {!loadingMessages && messages.map((m, i) => {
                                         const isMe = m.sender === user.userIdentifier;
                                         return (
-                                            <div key={m.id || i} className={`flex items-end space-x-2 ${isMe ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
+                                            <div key={m.id || i} className={`flex items-end space-x-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
                                                 {!isMe && (
                                                     <span className="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center text-sm font-bold text-slate-700">
                                                         {selectedRecipient.displayName.charAt(0)}
                                                     </span>
                                                 )}
-                                                <div className={`max-w-xs px-4 py-2 rounded-2xl shadow-sm text-sm
+                                                <div className={`max-w-sm px-4 py-2 rounded-2xl shadow-sm text-sm
                                                     ${isMe
                                                         ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-none'
                                                         : 'bg-white border text-slate-800 rounded-bl-none'}`}>
@@ -234,12 +230,6 @@ const MessagesPage = () => {
                             </>
                         ) : (
                             <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                                    className="text-slate-300 mb-4">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                                </svg>
                                 <h3 className="font-semibold text-slate-800">Select a Conversation</h3>
                                 <p>Choose a user to start chatting</p>
                             </div>
