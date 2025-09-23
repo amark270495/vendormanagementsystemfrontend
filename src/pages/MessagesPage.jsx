@@ -4,9 +4,9 @@ import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
 import { useMediaQuery } from 'react-responsive';
-import messageSound from '../sounds/message.mp3'; // ✅ import sound from src/sounds
+import messageSound from '../sounds/message.mp3'; // ✅ imported mp3
 
-// Message input
+// Input form
 const MessageInputForm = memo(({ onSendMessage, disabled }) => {
     const [newMessage, setNewMessage] = useState('');
     const handleSubmit = (e) => {
@@ -15,7 +15,6 @@ const MessageInputForm = memo(({ onSendMessage, disabled }) => {
         onSendMessage(newMessage.trim());
         setNewMessage('');
     };
-
     return (
         <form onSubmit={handleSubmit} className="p-4 border-t border-slate-200 bg-white flex items-center space-x-3">
             <input
@@ -29,16 +28,15 @@ const MessageInputForm = memo(({ onSendMessage, disabled }) => {
             />
             <button
                 type="submit"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full disabled:bg-slate-400 flex-shrink-0 transition-colors"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full disabled:bg-slate-400 transition-colors"
                 disabled={!newMessage.trim() || disabled}
-                aria-label="Send Message"
+                aria-label="Send"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    className="w-5 h-5">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
             </button>
         </form>
@@ -49,6 +47,7 @@ const MessagesPage = () => {
     const { user } = useAuth();
     const { canMessage } = usePermissions();
     const [users, setUsers] = useState([]);
+    const [search, setSearch] = useState('');
     const [selectedRecipient, setSelectedRecipient] = useState(null);
     const [messages, setMessages] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
@@ -58,16 +57,16 @@ const MessagesPage = () => {
     const isMobile = useMediaQuery({ maxWidth: 768 });
     const [isUserListVisible, setUserListVisible] = useState(!isMobile);
 
-    // 🔊 Messenger-like sound preload
+    // 🔊 sound
     const messageSoundRef = useRef(null);
     useEffect(() => {
-        messageSoundRef.current = new Audio(messageSound); // ✅ use imported file
+        messageSoundRef.current = new Audio(messageSound);
         messageSoundRef.current.preload = 'auto';
     }, []);
     const playSound = () => {
         if (messageSoundRef.current) {
             messageSoundRef.current.currentTime = 0;
-            messageSoundRef.current.play().catch(err => console.error("Sound play error:", err));
+            messageSoundRef.current.play().catch(err => console.error("Sound error:", err));
         }
     };
 
@@ -91,7 +90,7 @@ const MessagesPage = () => {
     }, [user?.userIdentifier, canMessage]);
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-    // fetch messages (with polling)
+    // fetch messages (polling)
     const fetchAndMarkMessages = useCallback(async (isPolling = false) => {
         if (!selectedRecipient || !canMessage || !user?.userIdentifier) return;
         try {
@@ -153,8 +152,8 @@ const MessagesPage = () => {
     };
 
     return (
-        <div className="space-y-6 h-full flex flex-col">
-            <div className="flex justify-between items-center">
+        <div className="h-[80vh] md:h-[85vh] flex flex-col space-y-4">
+            <div className="flex justify-between items-center px-2 md:px-0">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
                     <p className="text-gray-600">Chat with colleagues in real-time</p>
@@ -162,27 +161,37 @@ const MessagesPage = () => {
             </div>
 
             {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg">{error}</div>}
-            {loadingUsers && <div className="flex justify-center h-64"><Spinner /></div>}
+            {loadingUsers && <div className="flex justify-center items-center h-64"><Spinner /></div>}
 
             {!loadingUsers && canMessage && (
-                <div className="flex flex-col md:flex-row bg-white rounded-xl shadow-sm border flex-grow min-h-[70vh]">
+                <div className="flex flex-1 bg-white rounded-xl shadow-sm border overflow-hidden">
                     {/* User list */}
-                    <div className={`w-full md:w-1/3 lg:w-1/4 border-r ${isMobile && !isUserListVisible ? 'hidden' : 'flex'} flex-col`}>
-                        <div className="p-4 border-b font-semibold text-slate-800">Users</div>
+                    <div className={`w-full md:w-1/3 lg:w-1/4 border-r flex flex-col ${isMobile && !isUserListVisible ? 'hidden' : 'flex'}`}>
+                        <div className="p-3 border-b">
+                            <input
+                                type="text"
+                                placeholder="Search users..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                            />
+                        </div>
                         <div className="flex-1 overflow-y-auto">
-                            {users.map(u => (
-                                <button key={u.username}
-                                    onClick={() => handleRecipientSelect(u)}
-                                    className={`w-full flex items-center p-3 space-x-3 hover:bg-slate-100 transition ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : ''}`}>
-                                    <span className="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center font-bold text-indigo-800">
-                                        {u.displayName.charAt(0)}
-                                    </span>
-                                    <div className="text-left">
-                                        <p className="font-semibold">{u.displayName}</p>
-                                        <p className="text-xs text-slate-500">{u.username}</p>
-                                    </div>
-                                </button>
-                            ))}
+                            {users
+                                .filter(u => u.displayName.toLowerCase().includes(search.toLowerCase()))
+                                .map(u => (
+                                    <button key={u.username}
+                                        onClick={() => handleRecipientSelect(u)}
+                                        className={`w-full flex items-center p-3 space-x-3 hover:bg-slate-100 transition ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : ''}`}>
+                                        <span className="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center font-bold text-indigo-800">
+                                            {u.displayName.charAt(0)}
+                                        </span>
+                                        <div className="text-left truncate">
+                                            <p className="font-semibold">{u.displayName}</p>
+                                            <p className="text-xs text-slate-500">{u.username}</p>
+                                        </div>
+                                    </button>
+                                ))}
                         </div>
                     </div>
 
@@ -202,23 +211,25 @@ const MessagesPage = () => {
                                 </div>
 
                                 {/* Messages */}
-                                <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto">
+                                <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto overflow-x-hidden h-[65vh]">
                                     {loadingMessages && <div className="flex justify-center"><Spinner size="6" /></div>}
                                     {!loadingMessages && messages.map((m, i) => {
                                         const isMe = m.sender === user.userIdentifier;
                                         return (
-                                            <div key={m.id || i} className={`flex items-end space-x-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                            <div key={m.id || i} className={`flex items-end space-x-2 ${isMe ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
                                                 {!isMe && (
                                                     <span className="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center text-sm font-bold text-slate-700">
                                                         {selectedRecipient.displayName.charAt(0)}
                                                     </span>
                                                 )}
-                                                <div className={`max-w-sm px-4 py-2 rounded-2xl shadow-sm text-sm
+                                                <div className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm text-sm
                                                     ${isMe
                                                         ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-none'
                                                         : 'bg-white border text-slate-800 rounded-bl-none'}`}>
                                                     <p>{m.messageContent}</p>
-                                                    <p className="text-[10px] mt-1 opacity-70">{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                    <p className="text-[10px] mt-1 opacity-70">
+                                                        {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
                                                 </div>
                                             </div>
                                         );
