@@ -47,6 +47,8 @@ export const apiService = {
     apiClient.post('/updateCandidateDetails', { originalEmail, candidateData, authenticatedUsername }),
   getCandidateDetailsPageData: (authenticatedUsername) =>
     apiClient.get('/getCandidateDetailsPageData', { params: { authenticatedUsername } }),
+  getCandidateDetail: (postingId, email, authenticatedUsername) =>
+    apiClient.get('/getCandidateDetail', { params: { postingId, email, authenticatedUsername } }),
 
   // --- Report & Notification Functions ---
   getHomePageData: (authenticatedUsername) => 
@@ -148,4 +150,3 @@ export const apiService = {
   updateOfferLetterStatus: (token, signerData) =>
     apiClient.post('/updateOfferLetterStatus', { token, signerData }),
 };
-

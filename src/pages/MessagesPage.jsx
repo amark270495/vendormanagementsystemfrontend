@@ -153,6 +153,10 @@ const MessagesPage = () => {
         }
     }, [selectedRecipient, user.userIdentifier]);
 
+    const handleRecipientSelect = (recipient) => {
+        setSelectedRecipient(recipient);
+    };
+
     return (
         <div className="space-y-6 h-full flex flex-col">
             <div>
@@ -179,23 +183,36 @@ const MessagesPage = () => {
                             <h2 className="text-lg font-bold text-slate-800">Users</h2>
                         </div>
                         <div className="p-2 overflow-y-auto flex-grow">
-                            {users.length > 0 ? (
-                                <ul className="space-y-1">
-                                    {users.map(u => (
+                             <ul className="space-y-1">
+                                <li key="broadcast">
+                                    <button
+                                        onClick={() => handleRecipientSelect({ username: 'all', displayName: 'All Users (Broadcast)' })}
+                                        className={`w-full text-left p-3 rounded-lg transition-colors flex items-center space-x-3 ${selectedRecipient?.username === 'all' ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-100 text-slate-700'}`}
+                                    >
+                                        <span className="flex-shrink-0 w-10 h-10 bg-indigo-200 rounded-full flex items-center justify-center font-bold text-indigo-800">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M12 2a5 5 0 1 0 5 5 5 5 0 0 0-5-5zM12 14a7 7 0 0 0-7 7 2 2 0 0 0 2 2h10a2 2 0 0 0 2-2 7 7 0 0 0-7-7zM22 17h-2a2 2 0 0 1-2-2 5 5 0 0 0-5-5h-1"/><path d="M2 17h2a2 2 0 0 0 2-2 5 5 0 0 1 5-5h1"/></svg>
+                                        </span>
+                                        <div className="flex-grow overflow-hidden">
+                                            <p className="font-semibold truncate">All Users (Broadcast)</p>
+                                        </div>
+                                    </button>
+                                </li>
+                                {users.length > 0 ? (
+                                    users.map(u => (
                                         <li key={u.username}>
-                                            <button onClick={() => setSelectedRecipient(u)} className={`w-full text-left p-3 rounded-lg transition-colors flex items-center space-x-3 ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-100 text-slate-700'}`}>
+                                            <button onClick={() => handleRecipientSelect(u)} className={`w-full text-left p-3 rounded-lg transition-colors flex items-center space-x-3 ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-100 text-slate-700'}`}>
                                                 <span className="flex-shrink-0 w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center font-bold text-slate-600">{u.displayName.charAt(0)}</span>
                                                 <div className="flex-grow overflow-hidden">
-                                                     <p className="font-semibold truncate">{u.displayName}</p>
-                                                     <p className="text-xs text-slate-500 truncate">{u.username}</p>
+                                                    <p className="font-semibold truncate">{u.displayName}</p>
+                                                    <p className="text-xs text-slate-500 truncate">{u.username}</p>
                                                 </div>
                                             </button>
                                         </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p className="text-slate-500 text-sm text-center p-4">No other users found.</p>
-                            )}
+                                    ))
+                                ) : (
+                                    <p className="text-slate-500 text-sm text-center p-4">No other users found.</p>
+                                )}
+                            </ul>
                         </div>
                     </div>
 
@@ -204,7 +221,7 @@ const MessagesPage = () => {
                         {selectedRecipient ? (
                             <>
                                 <div className="p-4 border-b border-slate-200 bg-white flex items-center space-x-3">
-                                    <span className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center font-bold text-indigo-600">{selectedRecipient.displayName.charAt(0)}</span>
+                                    <span className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${selectedRecipient.username === 'all' ? 'bg-indigo-600' : 'bg-slate-600'}`}>{selectedRecipient.displayName.charAt(0)}</span>
                                     <div>
                                         <h2 className="text-lg font-bold text-slate-900">{selectedRecipient.displayName}</h2>
                                     </div>
@@ -226,7 +243,7 @@ const MessagesPage = () => {
                             </>
                         ) : (
                             <div className="flex-1 flex flex-col items-center justify-center text-center text-slate-500 p-4">
-                               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-16 h-16 text-slate-300 mb-4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-16 h-16 text-slate-300 mb-4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                                <h3 className="text-lg font-semibold text-slate-800">Select a Conversation</h3>
                                <p>Choose a user from the list to start messaging.</p>
                             </div>
