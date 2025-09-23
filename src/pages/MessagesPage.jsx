@@ -202,7 +202,7 @@ const MessagesPage = () => {
                                 </div>
 
                                 {/* Messages */}
-                                <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto h-[60vh]">
+                                <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto">
                                     {loadingMessages && <div className="flex justify-center"><Spinner size="6" /></div>}
                                     {!loadingMessages && messages.map((m, i) => {
                                         const isMe = m.sender === user.userIdentifier;
