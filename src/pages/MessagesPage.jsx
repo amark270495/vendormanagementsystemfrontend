@@ -4,7 +4,7 @@ import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
 import { useMediaQuery } from 'react-responsive';
-import messageSound from '../sounds/message.mp3';
+import messageSound from '../sounds/message.mp3'; // ✅ import sound from src/sounds
 
 // Message input
 const MessageInputForm = memo(({ onSendMessage, disabled }) => {
@@ -108,7 +108,7 @@ const MessagesPage = () => {
         try {
             if (!isPolling) setLoadingMessages(true);
             if (!isPolling) {
-                // FIX: Corrected param order
+                // FIX: Corrected param order in API call
                 await apiService.markMessagesAsRead(selectedRecipient.username, user.userIdentifier, user.userIdentifier);
                 setUnreadCounts(prev => ({ ...prev, [selectedRecipient.username]: 0 }));
             }
