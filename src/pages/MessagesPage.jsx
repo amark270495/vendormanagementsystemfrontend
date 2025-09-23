@@ -109,7 +109,7 @@ const MessagesPage = () => {
             if (!isPolling) setLoadingMessages(true);
             if (!isPolling) {
                 // FIX: Corrected param order in API call
-                await apiService.markMessagesAsRead(selectedRecipient.username, user.userIdentifier, user.userIdentifier);
+                await apiService.markMessagesAsRead(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
                 setUnreadCounts(prev => ({ ...prev, [selectedRecipient.username]: 0 }));
             }
             const res = await apiService.getMessages(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
@@ -205,7 +205,7 @@ const MessagesPage = () => {
                                 .map(u => (
                                     <button key={u.username}
                                         onClick={() => handleRecipientSelect(u)}
-                                        className={`w-full flex items-center justify-between p-3 hover:bg-slate-100 transition ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : ''}`}>
+                                        className={`w-full flex items-center justify-between p-3 hover:bg-slate-100 transition relative ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : ''}`}>
                                         <div className="flex items-center space-x-3">
                                             <span className="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center font-bold text-indigo-800">
                                                 {u.displayName.charAt(0)}
