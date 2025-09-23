@@ -58,6 +58,7 @@ const MessagesPage = () => {
     const messagesEndRef = useRef(null);
     const isMobile = useMediaQuery({ maxWidth: 768 });
     const [isUserListVisible, setUserListVisible] = useState(!isMobile);
+    const [unreadCounts, setUnreadCounts] = useState({});
 
     // 🔊 Messenger-like sound preload
     const messageSoundRef = useRef(null);
