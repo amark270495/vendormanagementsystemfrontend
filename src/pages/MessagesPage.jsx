@@ -4,9 +4,8 @@ import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
 import { useMediaQuery } from 'react-responsive';
-import messageSound from '../sounds/message.mp3'; // ✅ import sound from src/sounds
+import messageSound from '../sounds/message.mp3';
 
-// Message input
 const MessageInputForm = memo(({ onSendMessage, disabled }) => {
     const [newMessage, setNewMessage] = useState('');
     const handleSubmit = (e) => {
@@ -15,7 +14,6 @@ const MessageInputForm = memo(({ onSendMessage, disabled }) => {
         onSendMessage(newMessage.trim());
         setNewMessage('');
     };
-
     return (
         <form onSubmit={handleSubmit} className="p-4 border-t border-slate-200 bg-white flex items-center space-x-3">
             <input
@@ -33,10 +31,9 @@ const MessageInputForm = memo(({ onSendMessage, disabled }) => {
                 disabled={!newMessage.trim() || disabled}
                 aria-label="Send Message"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    className="w-5 h-5">
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                 </svg>
@@ -55,15 +52,15 @@ const MessagesPage = () => {
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [error, setError] = useState('');
+    const [unreadCounts, setUnreadCounts] = useState({});
     const messagesEndRef = useRef(null);
     const isMobile = useMediaQuery({ maxWidth: 768 });
     const [isUserListVisible, setUserListVisible] = useState(!isMobile);
-    const [unreadCounts, setUnreadCounts] = useState({});
 
-    // 🔊 Messenger-like sound preload
+    // 🔊 notification sound
     const messageSoundRef = useRef(null);
     useEffect(() => {
-        messageSoundRef.current = new Audio(messageSound); // ✅ use imported file
+        messageSoundRef.current = new Audio(messageSound);
         messageSoundRef.current.preload = 'auto';
     }, []);
     const playSound = () => {
@@ -93,21 +90,32 @@ const MessagesPage = () => {
     }, [user?.userIdentifier, canMessage]);
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-    // fetch messages (with polling)
+    // fetch messages with polling
     const fetchAndMarkMessages = useCallback(async (isPolling = false) => {
         if (!selectedRecipient || !canMessage || !user?.userIdentifier) return;
         try {
             if (!isPolling) setLoadingMessages(true);
+
+            // mark all as read
             if (!isPolling) {
                 await apiService.markMessagesAsRead(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
+                setUnreadCounts(prev => ({ ...prev, [selectedRecipient.username]: 0 }));
             }
+
             const res = await apiService.getMessages(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
             if (res.data.success) {
                 const newMessages = res.data.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
                 setMessages(prev => {
                     if (newMessages.length > prev.length) {
                         const latest = newMessages[newMessages.length - 1];
-                        if (latest.sender !== user.userIdentifier) playSound();
+                        if (latest.sender !== user.userIdentifier) {
+                            playSound();
+                            // increment unread if not active
+                            if (!isPolling) {
+                                setUnreadCounts(p => ({ ...p, [selectedRecipient.username]: 0 }));
+                            }
+                        }
                     }
                     return newMessages;
                 });
@@ -118,6 +126,20 @@ const MessagesPage = () => {
             if (!isPolling) setLoadingMessages(false);
         }
     }, [selectedRecipient, user?.userIdentifier, canMessage]);
+
+    // background polling for all users to update unread counts
+    const pollUnreadCounts = useCallback(async () => {
+        if (!user?.userIdentifier || !canMessage) return;
+        try {
+            const res = await apiService.getUnreadCounts(user.userIdentifier);
+            if (res.data.success) {
+                setUnreadCounts(res.data.unreadCounts); // { username: count }
+            }
+        } catch (err) {
+            console.error("Failed to poll unread counts:", err);
+        }
+    }, [user?.userIdentifier, canMessage]);
+
     useEffect(() => {
         if (!selectedRecipient) { setMessages([]); return; }
         fetchAndMarkMessages(false);
@@ -125,12 +147,17 @@ const MessagesPage = () => {
         return () => clearInterval(interval);
     }, [fetchAndMarkMessages, selectedRecipient]);
 
+    useEffect(() => {
+        const interval = setInterval(() => pollUnreadCounts(), 7000);
+        return () => clearInterval(interval);
+    }, [pollUnreadCounts]);
+
     // auto-scroll
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // send
+    // send message
     const handleSendMessage = useCallback(async (msgContent) => {
         if (!selectedRecipient) return;
         const temp = {
@@ -138,7 +165,8 @@ const MessagesPage = () => {
             recipient: selectedRecipient.username,
             messageContent: msgContent,
             timestamp: new Date().toISOString(),
-            id: Date.now()
+            id: Date.now(),
+            read: false
         };
         setMessages(prev => [...prev, temp]);
         try {
@@ -152,6 +180,7 @@ const MessagesPage = () => {
     const handleRecipientSelect = (recipient) => {
         setSelectedRecipient(recipient);
         if (isMobile) setUserListVisible(false);
+        setUnreadCounts(prev => ({ ...prev, [recipient.username]: 0 }));
     };
 
     return (
@@ -185,14 +214,21 @@ const MessagesPage = () => {
                                 .map(u => (
                                     <button key={u.username}
                                         onClick={() => handleRecipientSelect(u)}
-                                        className={`w-full flex items-center p-3 space-x-3 hover:bg-slate-100 transition ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : ''}`}>
-                                        <span className="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center font-bold text-indigo-800">
-                                            {u.displayName.charAt(0)}
-                                        </span>
-                                        <div className="text-left truncate">
-                                            <p className="font-semibold">{u.displayName}</p>
-                                            <p className="text-xs text-slate-500">{u.username}</p>
+                                        className={`w-full flex items-center justify-between p-3 hover:bg-slate-100 transition ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : ''}`}>
+                                        <div className="flex items-center space-x-3">
+                                            <span className="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center font-bold text-indigo-800">
+                                                {u.displayName.charAt(0)}
+                                            </span>
+                                            <div className="text-left truncate">
+                                                <p className="font-semibold">{u.displayName}</p>
+                                                <p className="text-xs text-slate-500">{u.username}</p>
+                                            </div>
                                         </div>
+                                        {unreadCounts[u.username] > 0 && (
+                                            <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                                                {unreadCounts[u.username]}
+                                            </span>
+                                        )}
                                     </button>
                                 ))}
                         </div>
@@ -230,9 +266,14 @@ const MessagesPage = () => {
                                                         ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-none'
                                                         : 'bg-white border text-slate-800 rounded-bl-none'}`}>
                                                     <p>{m.messageContent}</p>
-                                                    <p className="text-[10px] mt-1 opacity-70">
-                                                        {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </p>
+                                                    <div className="flex justify-end items-center space-x-1 mt-1">
+                                                        <p className="text-[10px] opacity-70">{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                        {isMe && (
+                                                            <span className="text-[10px]">
+                                                                {m.read ? "✓✓" : "✓"}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
