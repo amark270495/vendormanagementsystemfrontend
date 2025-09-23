@@ -3,16 +3,20 @@ import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
+import { useMediaQuery } from 'react-responsive';
 
 // Memoized component for the message input form to prevent re-renders
 const MessageInputForm = memo(({ onSendMessage, disabled }) => {
     const [newMessage, setNewMessage] = useState('');
+    const [sending, setSending] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim()) return;
-        onSendMessage(newMessage.trim());
+        if (!newMessage.trim() || sending) return;
+        setSending(true);
+        await onSendMessage(newMessage.trim());
         setNewMessage('');
+        setSending(false);
     };
 
     return (
@@ -23,16 +27,16 @@ const MessageInputForm = memo(({ onSendMessage, disabled }) => {
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Type a message..."
                 className="flex-1 border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
-                disabled={disabled}
+                disabled={disabled || sending}
                 autoComplete="off"
             />
             <button
                 type="submit"
                 className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg disabled:bg-slate-400 flex-shrink-0 transition-colors"
-                disabled={!newMessage.trim() || disabled}
+                disabled={!newMessage.trim() || disabled || sending}
                 aria-label="Send Message"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                {sending ? <Spinner size="5" /> : <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>}
             </button>
         </form>
     );
@@ -43,6 +47,8 @@ const MessageInputForm = memo(({ onSendMessage, disabled }) => {
 const MessagesPage = () => {
     const { user } = useAuth();
     const { canMessage } = usePermissions();
+    const isMobile = useMediaQuery({ maxWidth: 767 });
+    
     const [users, setUsers] = useState([]);
     const [selectedRecipient, setSelectedRecipient] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -101,7 +107,6 @@ const MessagesPage = () => {
                     const newMessages = response.data.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
                     
                     setMessages(prevMessages => {
-                        // Check if a new message has arrived from the other user
                         if (newMessages.length > prevMessages.length) {
                             const latestMessage = newMessages[newMessages.length - 1];
                             if (latestMessage.sender !== user.userIdentifier) {
@@ -178,7 +183,7 @@ const MessagesPage = () => {
             {!loadingUsers && canMessage && (
                 <div className="flex flex-col md:flex-row bg-white rounded-xl shadow-sm border border-slate-200 flex-grow" style={{ minHeight: '70vh' }}>
                     {/* User List Panel */}
-                    <div className="w-full md:w-1/3 lg:w-1/4 border-r border-slate-200 flex flex-col">
+                    <div className={`${isMobile && selectedRecipient ? 'hidden' : 'w-full md:w-1/3 lg:w-1/4'} border-r border-slate-200 flex flex-col`}>
                         <div className="p-4 border-b border-slate-200">
                             <h2 className="text-lg font-bold text-slate-800">Users</h2>
                         </div>
@@ -217,10 +222,15 @@ const MessagesPage = () => {
                     </div>
 
                     {/* Chat Panel */}
-                    <div className="flex-1 flex flex-col bg-slate-50">
+                    <div className={`${isMobile && !selectedRecipient ? 'hidden' : 'flex-1'} flex flex-col bg-slate-50`}>
                         {selectedRecipient ? (
                             <>
                                 <div className="p-4 border-b border-slate-200 bg-white flex items-center space-x-3">
+                                    {isMobile && (
+                                        <button onClick={() => setSelectedRecipient(null)} className="md:hidden text-slate-500 hover:text-slate-700 p-2 -ml-2 rounded-full">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H6M12 5l-7 7 7 7"/></svg>
+                                        </button>
+                                    )}
                                     <span className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${selectedRecipient.username === 'all' ? 'bg-indigo-600' : 'bg-slate-600'}`}>{selectedRecipient.displayName.charAt(0)}</span>
                                     <div>
                                         <h2 className="text-lg font-bold text-slate-900">{selectedRecipient.displayName}</h2>
