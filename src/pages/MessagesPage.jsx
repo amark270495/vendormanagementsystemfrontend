@@ -49,6 +49,7 @@ const MessagesPage = () => {
     const { user } = useAuth();
     const { canMessage } = usePermissions();
     const [users, setUsers] = useState([]);
+    const [search, setSearch] = useState('');
     const [selectedRecipient, setSelectedRecipient] = useState(null);
     const [messages, setMessages] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
