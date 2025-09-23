@@ -4,9 +4,9 @@ import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
 import { useMediaQuery } from 'react-responsive';
-import messageSound from '../sounds/message.mp3'; // ✅ imported mp3
+import messageSound from '../sounds/message.mp3'; // ✅ import sound from src/sounds
 
-// Input form
+// Message input
 const MessageInputForm = memo(({ onSendMessage, disabled }) => {
     const [newMessage, setNewMessage] = useState('');
     const handleSubmit = (e) => {
@@ -15,6 +15,7 @@ const MessageInputForm = memo(({ onSendMessage, disabled }) => {
         onSendMessage(newMessage.trim());
         setNewMessage('');
     };
+
     return (
         <form onSubmit={handleSubmit} className="p-4 border-t border-slate-200 bg-white flex items-center space-x-3">
             <input
@@ -30,13 +31,14 @@ const MessageInputForm = memo(({ onSendMessage, disabled }) => {
                 type="submit"
                 className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full disabled:bg-slate-400 transition-colors"
                 disabled={!newMessage.trim() || disabled}
-                aria-label="Send"
+                aria-label="Send Message"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    className="w-5 h-5">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                 </svg>
             </button>
         </form>
@@ -47,7 +49,6 @@ const MessagesPage = () => {
     const { user } = useAuth();
     const { canMessage } = usePermissions();
     const [users, setUsers] = useState([]);
-    const [search, setSearch] = useState('');
     const [selectedRecipient, setSelectedRecipient] = useState(null);
     const [messages, setMessages] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
@@ -57,16 +58,16 @@ const MessagesPage = () => {
     const isMobile = useMediaQuery({ maxWidth: 768 });
     const [isUserListVisible, setUserListVisible] = useState(!isMobile);
 
-    // 🔊 sound
+    // 🔊 Messenger-like sound preload
     const messageSoundRef = useRef(null);
     useEffect(() => {
-        messageSoundRef.current = new Audio(messageSound);
+        messageSoundRef.current = new Audio(messageSound); // ✅ use imported file
         messageSoundRef.current.preload = 'auto';
     }, []);
     const playSound = () => {
         if (messageSoundRef.current) {
             messageSoundRef.current.currentTime = 0;
-            messageSoundRef.current.play().catch(err => console.error("Sound error:", err));
+            messageSoundRef.current.play().catch(err => console.error("Sound play error:", err));
         }
     };
 
@@ -90,7 +91,7 @@ const MessagesPage = () => {
     }, [user?.userIdentifier, canMessage]);
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-    // fetch messages (polling)
+    // fetch messages (with polling)
     const fetchAndMarkMessages = useCallback(async (isPolling = false) => {
         if (!selectedRecipient || !canMessage || !user?.userIdentifier) return;
         try {
@@ -211,7 +212,7 @@ const MessagesPage = () => {
                                 </div>
 
                                 {/* Messages */}
-                                <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto overflow-x-hidden h-[65vh]">
+                                <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto overflow-x-hidden">
                                     {loadingMessages && <div className="flex justify-center"><Spinner size="6" /></div>}
                                     {!loadingMessages && messages.map((m, i) => {
                                         const isMe = m.sender === user.userIdentifier;
