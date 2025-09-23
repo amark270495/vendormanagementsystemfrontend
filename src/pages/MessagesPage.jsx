@@ -6,6 +6,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useMediaQuery } from 'react-responsive';
 import messageSound from '../sounds/message.mp3';
 
+// Message input
 const MessageInputForm = memo(({ onSendMessage, disabled }) => {
     const [newMessage, setNewMessage] = useState('');
     const handleSubmit = (e) => {
@@ -14,6 +15,7 @@ const MessageInputForm = memo(({ onSendMessage, disabled }) => {
         onSendMessage(newMessage.trim());
         setNewMessage('');
     };
+
     return (
         <form onSubmit={handleSubmit} className="p-4 border-t border-slate-200 bg-white flex items-center space-x-3">
             <input
@@ -31,9 +33,10 @@ const MessageInputForm = memo(({ onSendMessage, disabled }) => {
                 disabled={!newMessage.trim() || disabled}
                 aria-label="Send Message"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    className="w-5 h-5">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                 </svg>
@@ -57,7 +60,6 @@ const MessagesPage = () => {
     const isMobile = useMediaQuery({ maxWidth: 768 });
     const [isUserListVisible, setUserListVisible] = useState(!isMobile);
 
-    // 🔊 notification sound
     const messageSoundRef = useRef(null);
     useEffect(() => {
         messageSoundRef.current = new Audio(messageSound);
@@ -70,7 +72,6 @@ const MessagesPage = () => {
         }
     };
 
-    // fetch users
     const fetchUsers = useCallback(async () => {
         if (!user?.userIdentifier || !canMessage) {
             setLoadingUsers(false);
@@ -90,32 +91,34 @@ const MessagesPage = () => {
     }, [user?.userIdentifier, canMessage]);
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-    // fetch messages with polling
+    const fetchUnreadCounts = useCallback(async () => {
+        if (!user?.userIdentifier || !canMessage) return;
+        try {
+            const res = await apiService.getUnreadMessages(user.userIdentifier);
+            if (res.data.success) {
+                setUnreadCounts(res.data.unreadCounts || {});
+            }
+        } catch (err) {
+            console.error("Failed to poll unread counts:", err);
+        }
+    }, [user?.userIdentifier, canMessage]);
+
     const fetchAndMarkMessages = useCallback(async (isPolling = false) => {
         if (!selectedRecipient || !canMessage || !user?.userIdentifier) return;
         try {
             if (!isPolling) setLoadingMessages(true);
-
-            // mark all as read
             if (!isPolling) {
-                await apiService.markMessagesAsRead(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
+                // FIX: Corrected param order
+                await apiService.markMessagesAsRead(selectedRecipient.username, user.userIdentifier, user.userIdentifier);
                 setUnreadCounts(prev => ({ ...prev, [selectedRecipient.username]: 0 }));
             }
-
             const res = await apiService.getMessages(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
             if (res.data.success) {
                 const newMessages = res.data.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
                 setMessages(prev => {
                     if (newMessages.length > prev.length) {
                         const latest = newMessages[newMessages.length - 1];
-                        if (latest.sender !== user.userIdentifier) {
-                            playSound();
-                            // increment unread if not active
-                            if (!isPolling) {
-                                setUnreadCounts(p => ({ ...p, [selectedRecipient.username]: 0 }));
-                            }
-                        }
+                        if (latest.sender !== user.userIdentifier) playSound();
                     }
                     return newMessages;
                 });
@@ -127,37 +130,27 @@ const MessagesPage = () => {
         }
     }, [selectedRecipient, user?.userIdentifier, canMessage]);
 
-    // background polling for all users to update unread counts
-    const pollUnreadCounts = useCallback(async () => {
-        if (!user?.userIdentifier || !canMessage) return;
-        try {
-            const res = await apiService.getUnreadCounts(user.userIdentifier);
-            if (res.data.success) {
-                setUnreadCounts(res.data.unreadCounts); // { username: count }
-            }
-        } catch (err) {
-            console.error("Failed to poll unread counts:", err);
-        }
-    }, [user?.userIdentifier, canMessage]);
-
     useEffect(() => {
-        if (!selectedRecipient) { setMessages([]); return; }
+        if (!selectedRecipient) {
+            setMessages([]);
+            return;
+        }
+        
         fetchAndMarkMessages(false);
         const interval = setInterval(() => fetchAndMarkMessages(true), 5000);
         return () => clearInterval(interval);
     }, [fetchAndMarkMessages, selectedRecipient]);
 
     useEffect(() => {
-        const interval = setInterval(() => pollUnreadCounts(), 7000);
-        return () => clearInterval(interval);
-    }, [pollUnreadCounts]);
+        fetchUnreadCounts();
+        const unreadInterval = setInterval(fetchUnreadCounts, 15000);
+        return () => clearInterval(unreadInterval);
+    }, [fetchUnreadCounts]);
 
-    // auto-scroll
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // send message
     const handleSendMessage = useCallback(async (msgContent) => {
         if (!selectedRecipient) return;
         const temp = {
@@ -166,7 +159,7 @@ const MessagesPage = () => {
             messageContent: msgContent,
             timestamp: new Date().toISOString(),
             id: Date.now(),
-            read: false
+            isRead: false
         };
         setMessages(prev => [...prev, temp]);
         try {
@@ -180,7 +173,6 @@ const MessagesPage = () => {
     const handleRecipientSelect = (recipient) => {
         setSelectedRecipient(recipient);
         if (isMobile) setUserListVisible(false);
-        setUnreadCounts(prev => ({ ...prev, [recipient.username]: 0 }));
     };
 
     return (
@@ -197,7 +189,6 @@ const MessagesPage = () => {
 
             {!loadingUsers && canMessage && (
                 <div className="flex flex-1 bg-white rounded-xl shadow-sm border overflow-hidden">
-                    {/* User list */}
                     <div className={`w-full md:w-1/3 lg:w-1/4 border-r flex flex-col ${isMobile && !isUserListVisible ? 'hidden' : 'flex'}`}>
                         <div className="p-3 border-b">
                             <input
@@ -224,7 +215,7 @@ const MessagesPage = () => {
                                                 <p className="text-xs text-slate-500">{u.username}</p>
                                             </div>
                                         </div>
-                                        {unreadCounts[u.username] > 0 && (
+                                         {unreadCounts[u.username] > 0 && (
                                             <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
                                                 {unreadCounts[u.username]}
                                             </span>
@@ -234,13 +225,11 @@ const MessagesPage = () => {
                         </div>
                     </div>
 
-                    {/* Chat panel */}
                     <div className={`flex-1 flex flex-col bg-slate-50 ${isMobile && isUserListVisible ? 'hidden' : 'flex'}`}>
                         {selectedRecipient ? (
                             <>
-                                {/* Header */}
                                 <div className="p-4 border-b bg-white flex items-center space-x-3">
-                                    <span className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center font-bold text-indigo-600">
+                                    <span className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600">
                                         {selectedRecipient.displayName.charAt(0)}
                                     </span>
                                     <div>
@@ -249,7 +238,6 @@ const MessagesPage = () => {
                                     </div>
                                 </div>
 
-                                {/* Messages */}
                                 <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto overflow-x-hidden">
                                     {loadingMessages && <div className="flex justify-center"><Spinner size="6" /></div>}
                                     {!loadingMessages && messages.map((m, i) => {
@@ -267,10 +255,12 @@ const MessagesPage = () => {
                                                         : 'bg-white border text-slate-800 rounded-bl-none'}`}>
                                                     <p>{m.messageContent}</p>
                                                     <div className="flex justify-end items-center space-x-1 mt-1">
-                                                        <p className="text-[10px] opacity-70">{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                        <p className="text-[10px] opacity-70">
+                                                            {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </p>
                                                         {isMe && (
                                                             <span className="text-[10px]">
-                                                                {m.read ? "✓✓" : "✓"}
+                                                                {m.isRead ? '✓✓' : '✓'}
                                                             </span>
                                                         )}
                                                     </div>
