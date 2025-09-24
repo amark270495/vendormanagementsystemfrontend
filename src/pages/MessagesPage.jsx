@@ -70,16 +70,22 @@ const MessagesPage = () => {
     const [isUserListVisible, setUserListVisible] = useState(!isMobile);
     const messageSoundRef = useRef(null);
     const privateKeyRef = useRef(null);
-    const messagesRef = useRef(messages);
-
-    useEffect(() => {
-        messagesRef.current = messages;
-    }, [messages]);
+    const sentMessagesCache = useRef({});
 
     useEffect(() => {
         messageSoundRef.current = new Audio(messageSound);
         messageSoundRef.current.preload = 'auto';
     }, []);
+    
+    // Load sent messages cache from localStorage on user login
+    useEffect(() => {
+        if (user?.userIdentifier) {
+            const storedCache = localStorage.getItem(`sentMessagesCache_${user.userIdentifier}`);
+            if (storedCache) {
+                sentMessagesCache.current = JSON.parse(storedCache);
+            }
+        }
+    }, [user?.userIdentifier]);
 
     const playSound = () => {
         if (messageSoundRef.current) {
@@ -137,7 +143,8 @@ const MessagesPage = () => {
                     })));
                 setUsers(allUsers);
             } else setError(res.data.message);
-        } catch (err) {
+        } catch (err)
+ {
             setError(`Failed to fetch users: ${err.response?.data?.message || err.message}`);
         } finally {
             setLoadingUsers(false);
@@ -162,43 +169,21 @@ const MessagesPage = () => {
         if (!selectedRecipient || !canMessage || !user?.userIdentifier || !privateKeyRef.current) return;
         try {
             if (!isPolling) setLoadingMessages(true);
-            if (!isPolling) {
-                await apiService.markMessagesAsRead(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
-                setUnreadCounts(prev => ({ ...prev, [selectedRecipient.username]: 0 }));
-            }
+            
             const res = await apiService.getMessages(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
     
             if (res.data.success) {
                 const serverMessages = res.data.messages;
-                const localMessages = messagesRef.current;
-                const unprocessedTempMessages = new Map(
-                    localMessages
-                        .filter(m => m.isTemp)
-                        .map(m => [m.id, m])
-                );
-    
-                const processedMessages = await Promise.all(serverMessages.map(async serverMsg => {
+                
+                const processedMessages = await Promise.all(serverMessages.map(async (serverMsg) => {
                     let content = serverMsg.messageContent;
-    
+                    
                     if (serverMsg.sender === user.userIdentifier) {
-                        let match = null;
-                        let matchId = null;
-    
-                        for (const [id, tempMsg] of unprocessedTempMessages.entries()) {
-                            if (tempMsg.encryptedContent === serverMsg.messageContent) {
-                                match = tempMsg;
-                                matchId = id;
-                                break;
-                            }
-                        }
-    
-                        if (match) {
-                            content = match.messageContent;
-                            unprocessedTempMessages.delete(matchId);
-                        } else {
-                            content = "••••••••••";
-                        }
+                        // For our own messages, find the plaintext in the cache
+                        const plainText = sentMessagesCache.current[serverMsg.messageContent];
+                        content = plainText || "••••••••••"; // Fallback if not in cache (e.g., from another session)
                     } else {
+                        // For incoming messages, decrypt them
                         try {
                             content = await decrypt(privateKeyRef.current, serverMsg.messageContent);
                         } catch (decryptErr) {
@@ -209,18 +194,22 @@ const MessagesPage = () => {
                     return { ...serverMsg, messageContent: content };
                 }));
     
-                const finalMessages = [...processedMessages, ...Array.from(unprocessedTempMessages.values())];
-                finalMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    
+                processedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                
                 setMessages(prev => {
-                    if (finalMessages.length > prev.length) {
-                        const latest = finalMessages[finalMessages.length - 1];
-                        if (latest.sender !== user.userIdentifier && !latest.isTemp) {
+                    if (processedMessages.length > prev.length) {
+                        const latest = processedMessages[processedMessages.length - 1];
+                        if (latest.sender !== user.userIdentifier) {
                             playSound();
                         }
                     }
-                    return finalMessages;
+                    return processedMessages;
                 });
+
+                if (!isPolling) {
+                    await apiService.markMessagesAsRead(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
+                    setUnreadCounts(prev => ({ ...prev, [selectedRecipient.username]: 0 }));
+                }
     
             } else if (!isPolling) {
                 setError(res.data.message);
@@ -258,7 +247,7 @@ const MessagesPage = () => {
             return;
         }
         
-        const timestamp = new Date().toISOString();
+        const tempId = `client_${Date.now()}`;
 
         try {
             let recipientPublicKey = selectedRecipient.publicKey ? await selectedRecipient.publicKey : null;
@@ -286,15 +275,18 @@ const MessagesPage = () => {
 
             const encryptedContent = await encrypt(recipientPublicKey, msgContent);
             
+            // Add to cache and save to localStorage
+            sentMessagesCache.current[encryptedContent] = msgContent;
+            localStorage.setItem(`sentMessagesCache_${user.userIdentifier}`, JSON.stringify(sentMessagesCache.current));
+            
+            // Add temporary message to UI for immediate feedback
             const temp = {
                 sender: user.userIdentifier,
                 recipient: selectedRecipient.username,
                 messageContent: msgContent,
-                encryptedContent: encryptedContent, // Store encrypted content for matching
-                timestamp: timestamp,
-                id: `client_${Date.now()}`,
+                timestamp: new Date().toISOString(),
+                id: tempId,
                 isRead: false,
-                isTemp: true
             };
             setMessages(prev => [...prev, temp]);
 
@@ -303,7 +295,7 @@ const MessagesPage = () => {
         } catch (err) {
             setError(`Failed to send: ${err.response?.data?.message || err.message}`);
             // Remove the temp message on failure
-            setMessages(prev => prev.filter(m => m.id !== `client_${timestamp}`));
+            setMessages(prev => prev.filter(m => m.id !== tempId));
         }
     }, [selectedRecipient, user?.userIdentifier]);
 
@@ -377,7 +369,7 @@ const MessagesPage = () => {
 
                                     <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto overflow-x-hidden">
                                         {loadingMessages && <div className="flex justify-center"><Spinner size="6" /></div>}
-                                        {!loadingMessages && messages.map((m, i) => {
+                                        {!loadingMessages && messages.map((m) => {
                                             const isMe = m.sender === user.userIdentifier;
                                             return (
                                                 <div key={m.id || m.timestamp} className={`flex items-end space-x-2 ${isMe ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
