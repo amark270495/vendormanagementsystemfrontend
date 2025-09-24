@@ -212,8 +212,8 @@ const MessagesPage = () => {
     }, [messages]);
 
     const handleSendMessage = useCallback(async (msgContent) => {
-        if (!selectedRecipient || !privateKeyRef.current) {
-            setError("Cannot send message: Keys are not set up.");
+        if (!selectedRecipient || !privateKeyRef.current || !user?.userIdentifier) {
+            setError("Cannot send message: User or keys are not set up.");
             return;
         }
         
@@ -228,15 +228,14 @@ const MessagesPage = () => {
         setMessages(prev => [...prev, temp]);
 
         try {
-            // FIX START: On-demand public key fetching
             let recipientPublicKey = selectedRecipient.publicKey ? await selectedRecipient.publicKey : null;
 
             if (!recipientPublicKey) {
                 try {
-                    const res = await apiService.getPublicKey(selectedRecipient.username);
+                    // FIX: Pass the authenticated user's identifier along with the recipient's username
+                    const res = await apiService.getPublicKey(selectedRecipient.username, user.userIdentifier);
                     if (res.data.success && res.data.publicKey) {
                         recipientPublicKey = await importPublicKey(res.data.publicKey);
-                        // Update the user in state so we don't have to fetch again
                         setUsers(prevUsers => prevUsers.map(u =>
                             u.username === selectedRecipient.username
                                 ? { ...u, publicKey: Promise.resolve(recipientPublicKey) }
@@ -245,7 +244,6 @@ const MessagesPage = () => {
                     }
                 } catch (fetchErr) {
                     console.error("Failed to fetch public key on demand:", fetchErr);
-                    // Let the final check handle the error message
                 }
             }
 
@@ -254,7 +252,6 @@ const MessagesPage = () => {
                 setMessages(prev => prev.filter(m => m.id !== temp.id));
                 return;
             }
-            // FIX END
 
             const encryptedContent = await encrypt(recipientPublicKey, msgContent);
             await apiService.saveMessage(user.userIdentifier, selectedRecipient.username, encryptedContent, user.userIdentifier);
@@ -263,7 +260,7 @@ const MessagesPage = () => {
             setError(`Failed to send: ${err.response?.data?.message || err.message}`);
             setMessages(prev => prev.filter(m => m.id !== temp.id));
         }
-    }, [selectedRecipient, user.userIdentifier]);
+    }, [selectedRecipient, user?.userIdentifier]);
 
     const handleRecipientSelect = async (recipient) => {
         setSelectedRecipient(recipient);

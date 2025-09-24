@@ -11,33 +11,33 @@ const apiClient = axios.create({
 
 export const apiService = {
   // --- User & Auth Functions ---
-  authenticateUser: (username, password) => 
+  authenticateUser: (username, password) =>
     apiClient.post('/authenticateUser', { username, password }),
-  changePassword: (targetUsername, newPassword, authenticatedUsername) => 
+  changePassword: (targetUsername, newPassword, authenticatedUsername) =>
     apiClient.post('/changePassword', { targetUsername, newPassword, authenticatedUsername }),
-  requestPasswordReset: (username) => 
+  requestPasswordReset: (username) =>
     apiClient.post('/requestPasswordReset', { username }),
-  getUsers: (authenticatedUsername) => 
+  getUsers: (authenticatedUsername) =>
     apiClient.get('/getUsers', { params: { authenticatedUsername } }),
-  addUser: (userData, authenticatedUsername) => 
+  addUser: (userData, authenticatedUsername) =>
     apiClient.post('/addUser', { ...userData, authenticatedUsername }),
-  updateUser: (originalUsername, userData, authenticatedUsername) => 
+  updateUser: (originalUsername, userData, authenticatedUsername) =>
     apiClient.post('/updateUser', { originalUsername, userData, authenticatedUsername }),
-  deleteUser: (usernameToDelete, authenticatedUsername) => 
+  deleteUser: (usernameToDelete, authenticatedUsername) =>
     apiClient.post('/deleteUser', { usernameToDelete, authenticatedUsername }),
 
   // --- Job & Dashboard Functions ---
-  getDashboardData: (sheetKey, authenticatedUsername) => 
+  getDashboardData: (sheetKey, authenticatedUsername) =>
     apiClient.get('/getDashboardData', { params: { sheetKey, authenticatedUsername } }),
-  updateJobPosting: (updates, authenticatedUsername) => 
+  updateJobPosting: (updates, authenticatedUsername) =>
     apiClient.post('/updateJobPosting', { updates, authenticatedUsername }),
-  updateJobStatus: (postingIds, newStatus, authenticatedUsername) => 
+  updateJobStatus: (postingIds, newStatus, authenticatedUsername) =>
     apiClient.post('/updateJobStatus', { postingIds, newStatus, authenticatedUsername }),
-  archiveOrDeleteJob: (postingIds, actionType, authenticatedUsername) => 
+  archiveOrDeleteJob: (postingIds, actionType, authenticatedUsername) =>
     apiClient.post('/archiveOrDeleteJob', { postingIds, actionType, authenticatedUsername }),
-  saveUserDashboardPreferences: (authenticatedUsername, preferences) => 
+  saveUserDashboardPreferences: (authenticatedUsername, preferences) =>
     apiClient.post('/saveUserDashboardPreferences', { authenticatedUsername, preferences }),
-  processJobPosting: (formData, authenticatedUsername) => 
+  processJobPosting: (formData, authenticatedUsername) =>
     apiClient.post('/processJobPosting', { formData, authenticatedUsername }),
     
   // --- Candidate Functions ---
@@ -51,25 +51,25 @@ export const apiService = {
     apiClient.get('/getCandidateDetail', { params: { postingId, email, authenticatedUsername } }),
 
   // --- Report & Notification Functions ---
-  getHomePageData: (authenticatedUsername) => 
+  getHomePageData: (authenticatedUsername) =>
     apiClient.get('/getHomePageData', { params: { authenticatedUsername } }),
-  getReportData: (params) => 
+  getReportData: (params) =>
     apiClient.get('/getReportData', { params }),
-  generateAndSendJobReport: (sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername) => 
+  generateAndSendJobReport: (sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername) =>
     apiClient.post('/generateAndSendJobReport', { sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername }),
-  getNotifications: (authenticatedUsername) => 
+  getNotifications: (authenticatedUsername) =>
     apiClient.get('/getNotifications', { params: { authenticatedUsername } }),
-  markNotificationsAsRead: (notificationIds, authenticatedUsername) => 
+  markNotificationsAsRead: (notificationIds, authenticatedUsername) =>
     apiClient.post('/markNotificationsAsRead', { notificationIds, authenticatedUsername }),
-  getMessages: (user1, user2, authenticatedUsername) => 
+  getMessages: (user1, user2, authenticatedUsername) =>
     apiClient.get('/getMessages', { params: { user1, user2, authenticatedUsername } }),
-  saveMessage: (sender, recipient, messageContent, authenticatedUsername) => 
+  saveMessage: (sender, recipient, messageContent, authenticatedUsername) =>
     apiClient.post('/saveMessage', { sender, recipient, messageContent, authenticatedUsername }),
   getUnreadMessages: (authenticatedUsername) =>
     apiClient.get('/getUnreadMessages', { params: { authenticatedUsername } }),
   markMessagesAsRead: (recipient, sender, authenticatedUsername) =>
     apiClient.post('/markMessagesAsRead', { recipient, sender, authenticatedUsername }),
-  sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) => 
+  sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) =>
     apiClient.post('/sendAssignmentEmail', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
 
   // --- Permissions Functions ---
@@ -83,7 +83,7 @@ export const apiService = {
     apiClient.post('/createCompany', { companyData, authenticatedUsername }),
   updateCompany: (originalCompanyName, updatedCompanyData, authenticatedUsername) =>
     apiClient.post('/updateCompany', { originalCompanyName, updatedCompanyData, authenticatedUsername }),
-  deleteCompany: (companyNameToDelete, authenticatedUsername) => 
+  deleteCompany: (companyNameToDelete, authenticatedUsername) =>
     apiClient.post('/deleteCompany', { companyNameToDelete, authenticatedUsername }),
   saveEmployeeLogHours: (timesheetData, authenticatedUsername) =>
     apiClient.post('/saveEmployeeLogHours', { timesheetData, authenticatedUsername }),
@@ -91,21 +91,21 @@ export const apiService = {
     apiClient.get('/getEmployeeLogHours', { params }),
   updateEmployeeLogHours: (originalRowKey, updatedTimesheetData, authenticatedUsername) =>
     apiClient.post('/updateEmployeeLogHours', { originalRowKey, updatedTimesheetData, authenticatedUsername }),
-  deleteEmployeeLogHours: (partitionKey, rowKey, authenticatedUsername) => 
+  deleteEmployeeLogHours: (partitionKey, rowKey, authenticatedUsername) =>
     apiClient.post('/deleteEmployeeLogHours', { partitionKey, rowKey, authenticatedUsername }),
-  getCompanies: (authenticatedUsername) => 
+  getCompanies: (authenticatedUsername) =>
     apiClient.get('/getCompanies', { params: { authenticatedUsername } }),
-  createTimesheetEmployee: (employeeData, authenticatedUsername) => 
+  createTimesheetEmployee: (employeeData, authenticatedUsername) =>
     apiClient.post('/createTimesheetEmployee', { employeeData, authenticatedUsername }),
-  updateTimesheetEmployee: (originalEmployeeId, updatedEmployeeData, authenticatedUsername) => 
+  updateTimesheetEmployee: (originalEmployeeId, updatedEmployeeData, authenticatedUsername) =>
     apiClient.post('/updateTimesheetEmployee', { originalEmployeeId, updatedEmployeeData, authenticatedUsername }),
-  deleteTimesheetEmployee: (employeeIdToDelete, authenticatedUsername) => 
+  deleteTimesheetEmployee: (employeeIdToDelete, authenticatedUsername) =>
     apiClient.post('/deleteTimesheetEmployee', { employeeIdToDelete, authenticatedUsername }),
-  getTimesheetEmployees: (authenticatedUsername) => 
+  getTimesheetEmployees: (authenticatedUsername) =>
     apiClient.get('/getTimesheetEmployees', { params: { authenticatedUsername } }),
   sendTimesheetApprovalRequest: (employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername) =>
     apiClient.post('/sendTimesheetApprovalRequest', { employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername }),
-  sendBulkTimesheetApprovalRequest: (employeeIds, month, year, deadlineDate, companyName, authenticatedUsername) => 
+  sendBulkTimesheetApprovalRequest: (employeeIds, month, year, deadlineDate, companyName, authenticatedUsername) =>
     apiClient.post('/sendBulkTimesheetApprovalRequest', { employeeIds, month, year, deadlineDate, companyName, authenticatedUsername }),
 
   // --- MSA and WO Functions ---
@@ -153,6 +153,7 @@ export const apiService = {
   // --- New functions for Public Key management ---
   savePublicKey: (authenticatedUsername, publicKey) => 
     apiClient.post('/savePublicKey', { authenticatedUsername, publicKey }),
-  getPublicKey: (username) => 
-    apiClient.get('/getPublicKey', { params: { username } }),
+  // FIX: Added authenticatedUsername to the function definition and params
+  getPublicKey: (username, authenticatedUsername) => 
+    apiClient.get('/getPublicKey', { params: { username, authenticatedUsername } }),
 };
