@@ -87,9 +87,7 @@ const MessagesPage = () => {
     useEffect(() => {
         const setupKeys = async () => {
             if (!user?.userIdentifier) return;
-
             let privateKeyString = localStorage.getItem(`privateKey_${user.userIdentifier}`);
-
             if (privateKeyString) {
                 try {
                     privateKeyRef.current = await importPrivateKey(privateKeyString);
@@ -103,9 +101,7 @@ const MessagesPage = () => {
                 privateKeyRef.current = keyPair.privateKey;
                 const publicKeyString = await exportPublicKey(keyPair.publicKey);
                 privateKeyString = await exportPrivateKey(keyPair.privateKey);
-
                 localStorage.setItem(`privateKey_${user.userIdentifier}`, privateKeyString);
-
                 try {
                     await apiService.savePublicKey(user.userIdentifier, publicKeyString);
                 } catch (err) {
@@ -114,7 +110,6 @@ const MessagesPage = () => {
                 }
             }
         };
-
         if (canMessage) {
             setupKeys();
         }
@@ -133,7 +128,7 @@ const MessagesPage = () => {
                     .filter(u => u.username !== user.userIdentifier)
                     .map(async u => ({
                         ...u,
-                        publicKey: u.publicKey ? await importPublicKey(u.publicKey) : null
+                        publicKey: u.publicKey ? importPublicKey(u.publicKey) : null // Keep as a promise
                     })));
                 setUsers(allUsers);
             } else setError(res.data.message);
@@ -143,6 +138,7 @@ const MessagesPage = () => {
             setLoadingUsers(false);
         }
     }, [user?.userIdentifier, canMessage]);
+
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
     const fetchUnreadCounts = useCallback(async () => {
@@ -179,9 +175,7 @@ const MessagesPage = () => {
                     }
                     return { ...m, messageContent: content };
                 }));
-
                 const newMessages = decryptedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
                 setMessages(prev => {
                     if (newMessages.length > prev.length) {
                         const latest = newMessages[newMessages.length - 1];
@@ -202,7 +196,6 @@ const MessagesPage = () => {
             setMessages([]);
             return;
         }
-
         fetchAndMarkMessages(false);
         const interval = setInterval(() => fetchAndMarkMessages(true), 5000);
         return () => clearInterval(interval);
@@ -235,16 +228,37 @@ const MessagesPage = () => {
         setMessages(prev => [...prev, temp]);
 
         try {
-            const recipientPublicKey = await selectedRecipient.publicKey;
+            // FIX START: On-demand public key fetching
+            let recipientPublicKey = selectedRecipient.publicKey ? await selectedRecipient.publicKey : null;
+
             if (!recipientPublicKey) {
-                setError("Recipient's public key is not available.");
+                try {
+                    const res = await apiService.getPublicKey(selectedRecipient.username);
+                    if (res.data.success && res.data.publicKey) {
+                        recipientPublicKey = await importPublicKey(res.data.publicKey);
+                        // Update the user in state so we don't have to fetch again
+                        setUsers(prevUsers => prevUsers.map(u =>
+                            u.username === selectedRecipient.username
+                                ? { ...u, publicKey: Promise.resolve(recipientPublicKey) }
+                                : u
+                        ));
+                    }
+                } catch (fetchErr) {
+                    console.error("Failed to fetch public key on demand:", fetchErr);
+                    // Let the final check handle the error message
+                }
+            }
+
+            if (!recipientPublicKey) {
+                setError("Recipient's public key is not available. They may need to open the chat page once to generate it.");
                 setMessages(prev => prev.filter(m => m.id !== temp.id));
                 return;
             }
+            // FIX END
 
             const encryptedContent = await encrypt(recipientPublicKey, msgContent);
-
             await apiService.saveMessage(user.userIdentifier, selectedRecipient.username, encryptedContent, user.userIdentifier);
+
         } catch (err) {
             setError(`Failed to send: ${err.response?.data?.message || err.message}`);
             setMessages(prev => prev.filter(m => m.id !== temp.id));
@@ -266,9 +280,8 @@ const MessagesPage = () => {
             </div>
             {user && (
               <>
-                {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg">{error}</div>}
+                {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg" onClick={() => setError('')}>{error}</div>}
                 {loadingUsers && <div className="flex justify-center items-center h-64"><Spinner /></div>}
-
                 {!loadingUsers && canMessage && (
                     <div className="flex flex-1 bg-white rounded-xl shadow-sm border overflow-hidden">
                         <div className={`w-full md:w-1/3 lg:w-1/4 border-r flex flex-col ${isMobile && !isUserListVisible ? 'hidden' : 'flex'}`}>
@@ -297,7 +310,7 @@ const MessagesPage = () => {
                                                     <p className="text-xs text-slate-500">{u.username}</p>
                                                 </div>
                                             </div>
-                                             {unreadCounts[u.username] > 0 && (
+                                            {unreadCounts[u.username] > 0 && (
                                                 <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
                                                     {unreadCounts[u.username]}
                                                 </span>
@@ -331,10 +344,7 @@ const MessagesPage = () => {
                                                             {selectedRecipient.displayName.charAt(0)}
                                                         </span>
                                                     )}
-                                                    <div className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm text-sm
-                                                        ${isMe
-                                                            ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-none'
-                                                            : 'bg-white border text-slate-800 rounded-bl-none'}`}>
+                                                    <div className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm text-sm ${isMe ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-none' : 'bg-white border text-slate-800 rounded-bl-none'}`}>
                                                         <p>{m.messageContent}</p>
                                                         <div className="flex justify-end items-center space-x-1 mt-1">
                                                             <p className="text-[10px] opacity-70">
@@ -352,7 +362,6 @@ const MessagesPage = () => {
                                         })}
                                         <div ref={messagesEndRef} />
                                     </div>
-
                                     <MessageInputForm onSendMessage={handleSendMessage} disabled={loadingMessages || !canMessage} />
                                 </>
                             ) : (
