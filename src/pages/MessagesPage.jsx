@@ -91,19 +91,21 @@ const MessagesPage = () => {
             let privateKeyString = localStorage.getItem(`privateKey_${user.userIdentifier}`);
 
             if (privateKeyString) {
-                // If a private key exists, import it
-                privateKeyRef.current = await importPrivateKey(privateKeyString);
+                try {
+                    privateKeyRef.current = await importPrivateKey(privateKeyString);
+                } catch (e) {
+                    console.error("Failed to import private key from local storage:", e);
+                    localStorage.removeItem(`privateKey_${user.userIdentifier}`);
+                    setError("Failed to load your private key. Please refresh to generate a new one.");
+                }
             } else {
-                // If no private key, generate a new key pair
                 const keyPair = await generateKeyPair();
                 privateKeyRef.current = keyPair.privateKey;
                 const publicKeyString = await exportPublicKey(keyPair.publicKey);
                 privateKeyString = await exportPrivateKey(keyPair.privateKey);
 
-                // Save to local storage for persistence
                 localStorage.setItem(`privateKey_${user.userIdentifier}`, privateKeyString);
 
-                // Save public key to the backend
                 try {
                     await apiService.savePublicKey(user.userIdentifier, publicKeyString);
                 } catch (err) {
@@ -125,16 +127,14 @@ const MessagesPage = () => {
             return;
         }
         try {
-            // Fetch users and their public keys
             const res = await apiService.getUsers(user.userIdentifier);
             if (res.data.success) {
-                // Filter out current user and map to include public keys
-                const allUsers = res.data.users
+                const allUsers = await Promise.all(res.data.users
                     .filter(u => u.username !== user.userIdentifier)
-                    .map(u => ({
+                    .map(async u => ({
                         ...u,
-                        publicKey: u.publicKey ? importPublicKey(u.publicKey) : null // Import and cache the public key
-                    }));
+                        publicKey: u.publicKey ? await importPublicKey(u.publicKey) : null
+                    })));
                 setUsers(allUsers);
             } else setError(res.data.message);
         } catch (err) {
@@ -167,16 +167,13 @@ const MessagesPage = () => {
             }
             const res = await apiService.getMessages(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
             if (res.data.success) {
-                // Decrypt messages before displaying
                 const decryptedMessages = await Promise.all(res.data.messages.map(async m => {
                     let content = m.messageContent;
-                    // Only decrypt messages that are not from the current user
                     if (m.sender !== user.userIdentifier) {
                         try {
                             content = await decrypt(privateKeyRef.current, m.messageContent);
                         } catch (decryptErr) {
                             console.error("Failed to decrypt message:", decryptErr);
-                            // Set content to a readable error message
                             content = "❌ Message failed to decrypt.";
                         }
                     }
@@ -226,8 +223,7 @@ const MessagesPage = () => {
             setError("Cannot send message: Keys are not set up.");
             return;
         }
-
-        // Optimistic UI update with plaintext
+        
         const temp = {
             sender: user.userIdentifier,
             recipient: selectedRecipient.username,
@@ -239,15 +235,13 @@ const MessagesPage = () => {
         setMessages(prev => [...prev, temp]);
 
         try {
-            // Fetch recipient's public key (or use cached key)
             const recipientPublicKey = await selectedRecipient.publicKey;
             if (!recipientPublicKey) {
                 setError("Recipient's public key is not available.");
-                setMessages(prev => prev.filter(m => m.id !== temp.id)); // Rollback
+                setMessages(prev => prev.filter(m => m.id !== temp.id));
                 return;
             }
 
-            // Encrypt message content before sending
             const encryptedContent = await encrypt(recipientPublicKey, msgContent);
 
             await apiService.saveMessage(user.userIdentifier, selectedRecipient.username, encryptedContent, user.userIdentifier);
@@ -270,105 +264,108 @@ const MessagesPage = () => {
                     <p className="text-gray-600">Chat with colleagues in real-time</p>
                 </div>
             </div>
+            {user && (
+              <>
+                {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg">{error}</div>}
+                {loadingUsers && <div className="flex justify-center items-center h-64"><Spinner /></div>}
 
-            {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg">{error}</div>}
-            {loadingUsers && <div className="flex justify-center items-center h-64"><Spinner /></div>}
-
-            {!loadingUsers && canMessage && (
-                <div className="flex flex-1 bg-white rounded-xl shadow-sm border overflow-hidden">
-                    <div className={`w-full md:w-1/3 lg:w-1/4 border-r flex flex-col ${isMobile && !isUserListVisible ? 'hidden' : 'flex'}`}>
-                        <div className="p-3 border-b">
-                            <input
-                                type="text"
-                                placeholder="Search users..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
-                            />
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                            {users
-                                .filter(u => u.displayName.toLowerCase().includes(search.toLowerCase()))
-                                .map(u => (
-                                    <button key={u.username}
-                                        onClick={() => handleRecipientSelect(u)}
-                                        className={`w-full flex items-center justify-between p-3 hover:bg-slate-100 transition relative ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : ''}`}>
-                                        <div className="flex items-center space-x-3">
-                                            <span className="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center font-bold text-indigo-800">
-                                                {u.displayName.charAt(0)}
-                                            </span>
-                                            <div className="text-left truncate">
-                                                <p className="font-semibold">{u.displayName}</p>
-                                                <p className="text-xs text-slate-500">{u.username}</p>
-                                            </div>
-                                        </div>
-                                         {unreadCounts[u.username] > 0 && (
-                                            <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
-                                                {unreadCounts[u.username]}
-                                            </span>
-                                        )}
-                                    </button>
-                                ))}
-                        </div>
-                    </div>
-
-                    <div className={`flex-1 flex flex-col bg-slate-50 ${isMobile && isUserListVisible ? 'hidden' : 'flex'}`}>
-                        {selectedRecipient ? (
-                            <>
-                                <div className="p-4 border-b bg-white flex items-center space-x-3">
-                                    <span className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600">
-                                        {selectedRecipient.displayName.charAt(0)}
-                                    </span>
-                                    <div>
-                                        <h2 className="font-bold">{selectedRecipient.displayName}</h2>
-                                        <p className="text-xs text-green-500">Online</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto overflow-x-hidden">
-                                    {loadingMessages && <div className="flex justify-center"><Spinner size="6" /></div>}
-                                    {!loadingMessages && messages.map((m, i) => {
-                                        const isMe = m.sender === user.userIdentifier;
-                                        return (
-                                            <div key={m.id || i} className={`flex items-end space-x-2 ${isMe ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
-                                                {!isMe && (
-                                                    <span className="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center text-sm font-bold text-slate-700">
-                                                        {selectedRecipient.displayName.charAt(0)}
-                                                    </span>
-                                                )}
-                                                <div className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm text-sm
-                                                    ${isMe
-                                                        ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-none'
-                                                        : 'bg-white border text-slate-800 rounded-bl-none'}`}>
-                                                    <p>{m.messageContent}</p>
-                                                    <div className="flex justify-end items-center space-x-1 mt-1">
-                                                        <p className="text-[10px] opacity-70">
-                                                            {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </p>
-                                                        {isMe && (
-                                                            <span className="text-[10px]">
-                                                                {m.isRead ? '✓✓' : '✓'}
-                                                            </span>
-                                                        )}
-                                                    </div>
+                {!loadingUsers && canMessage && (
+                    <div className="flex flex-1 bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div className={`w-full md:w-1/3 lg:w-1/4 border-r flex flex-col ${isMobile && !isUserListVisible ? 'hidden' : 'flex'}`}>
+                            <div className="p-3 border-b">
+                                <input
+                                    type="text"
+                                    placeholder="Search users..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+                            <div className="flex-1 overflow-y-auto">
+                                {users
+                                    .filter(u => u.displayName.toLowerCase().includes(search.toLowerCase()))
+                                    .map(u => (
+                                        <button key={u.username}
+                                            onClick={() => handleRecipientSelect(u)}
+                                            className={`w-full flex items-center justify-between p-3 hover:bg-slate-100 transition relative ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : ''}`}>
+                                            <div className="flex items-center space-x-3">
+                                                <span className="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center font-bold text-indigo-800">
+                                                    {u.displayName.charAt(0)}
+                                                </span>
+                                                <div className="text-left truncate">
+                                                    <p className="font-semibold">{u.displayName}</p>
+                                                    <p className="text-xs text-slate-500">{u.username}</p>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                    <div ref={messagesEndRef} />
-                                </div>
-
-                                <MessageInputForm onSendMessage={handleSendMessage} disabled={loadingMessages || !canMessage} />
-                            </>
-                        ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
-                                <h3 className="font-semibold text-slate-800">Select a Conversation</h3>
-                                <p>Choose a user to start chatting</p>
+                                             {unreadCounts[u.username] > 0 && (
+                                                <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                                                    {unreadCounts[u.username]}
+                                                </span>
+                                            )}
+                                        </button>
+                                    ))}
                             </div>
-                        )}
+                        </div>
+
+                        <div className={`flex-1 flex flex-col bg-slate-50 ${isMobile && isUserListVisible ? 'hidden' : 'flex'}`}>
+                            {selectedRecipient ? (
+                                <>
+                                    <div className="p-4 border-b bg-white flex items-center space-x-3">
+                                        <span className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600">
+                                            {selectedRecipient.displayName.charAt(0)}
+                                        </span>
+                                        <div>
+                                            <h2 className="font-bold">{selectedRecipient.displayName}</h2>
+                                            <p className="text-xs text-green-500">Online</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto overflow-x-hidden">
+                                        {loadingMessages && <div className="flex justify-center"><Spinner size="6" /></div>}
+                                        {!loadingMessages && messages.map((m, i) => {
+                                            const isMe = m.sender === user.userIdentifier;
+                                            return (
+                                                <div key={m.id || i} className={`flex items-end space-x-2 ${isMe ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
+                                                    {!isMe && (
+                                                        <span className="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center text-sm font-bold text-slate-700">
+                                                            {selectedRecipient.displayName.charAt(0)}
+                                                        </span>
+                                                    )}
+                                                    <div className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm text-sm
+                                                        ${isMe
+                                                            ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-none'
+                                                            : 'bg-white border text-slate-800 rounded-bl-none'}`}>
+                                                        <p>{m.messageContent}</p>
+                                                        <div className="flex justify-end items-center space-x-1 mt-1">
+                                                            <p className="text-[10px] opacity-70">
+                                                                {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </p>
+                                                            {isMe && (
+                                                                <span className="text-[10px]">
+                                                                    {m.isRead ? '✓✓' : '✓'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        <div ref={messagesEndRef} />
+                                    </div>
+
+                                    <MessageInputForm onSendMessage={handleSendMessage} disabled={loadingMessages || !canMessage} />
+                                </>
+                            ) : (
+                                <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
+                                    <h3 className="font-semibold text-slate-800">Select a Conversation</h3>
+                                    <p>Choose a user to start chatting</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </>
+          )}
         </div>
     );
 };
