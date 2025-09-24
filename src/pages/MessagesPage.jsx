@@ -185,10 +185,7 @@ const MessagesPage = () => {
                         let matchId = null;
     
                         for (const [id, tempMsg] of unprocessedTempMessages.entries()) {
-                            if (
-                                tempMsg.recipient === serverMsg.recipient &&
-                                Math.abs(new Date(tempMsg.timestamp).getTime() - new Date(serverMsg.timestamp).getTime()) < 30000 // 30-second window
-                            ) {
+                            if (tempMsg.encryptedContent === serverMsg.messageContent) {
                                 match = tempMsg;
                                 matchId = id;
                                 break;
@@ -262,16 +259,6 @@ const MessagesPage = () => {
         }
         
         const timestamp = new Date().toISOString();
-        const temp = {
-            sender: user.userIdentifier,
-            recipient: selectedRecipient.username,
-            messageContent: msgContent,
-            timestamp: timestamp,
-            id: `client_${Date.now()}`,
-            isRead: false,
-            isTemp: true // Flag to identify as a temporary client-side message
-        };
-        setMessages(prev => [...prev, temp]);
 
         try {
             let recipientPublicKey = selectedRecipient.publicKey ? await selectedRecipient.publicKey : null;
@@ -294,17 +281,29 @@ const MessagesPage = () => {
 
             if (!recipientPublicKey) {
                 setError("Recipient's public key is not available. They may need to open the chat page once to generate it.");
-                setMessages(prev => prev.filter(m => m.id !== temp.id));
                 return;
             }
 
             const encryptedContent = await encrypt(recipientPublicKey, msgContent);
             
+            const temp = {
+                sender: user.userIdentifier,
+                recipient: selectedRecipient.username,
+                messageContent: msgContent,
+                encryptedContent: encryptedContent, // Store encrypted content for matching
+                timestamp: timestamp,
+                id: `client_${Date.now()}`,
+                isRead: false,
+                isTemp: true
+            };
+            setMessages(prev => [...prev, temp]);
+
             await apiService.saveMessage(user.userIdentifier, selectedRecipient.username, encryptedContent, user.userIdentifier);
 
         } catch (err) {
             setError(`Failed to send: ${err.response?.data?.message || err.message}`);
-            setMessages(prev => prev.filter(m => m.id !== temp.id));
+            // Remove the temp message on failure
+            setMessages(prev => prev.filter(m => m.id !== `client_${timestamp}`));
         }
     }, [selectedRecipient, user?.userIdentifier]);
 
