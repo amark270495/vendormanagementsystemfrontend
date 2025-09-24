@@ -149,4 +149,10 @@ export const apiService = {
     apiClient.post('/employeeSignIn', { token, tempPassword }),
   updateOfferLetterStatus: (token, signerData) =>
     apiClient.post('/updateOfferLetterStatus', { token, signerData }),
+  
+  // --- New functions for Public Key management ---
+  savePublicKey: (authenticatedUsername, publicKey) => 
+    apiClient.post('/savePublicKey', { authenticatedUsername, publicKey }),
+  getPublicKey: (username) => 
+    apiClient.get('/getPublicKey', { params: { username } }),
 };

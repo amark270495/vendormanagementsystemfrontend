@@ -4,7 +4,16 @@ import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
 import { useMediaQuery } from 'react-responsive';
-import messageSound from '../sounds/message.mp3'; // ✅ import sound from src/sounds
+import messageSound from '../sounds/message.mp3';
+import {
+    generateKeyPair,
+    importPrivateKey,
+    importPublicKey,
+    exportPrivateKey,
+    exportPublicKey,
+    encrypt,
+    decrypt
+} from '../utils/webCrypto';
 
 // Message input
 const MessageInputForm = memo(({ onSendMessage, disabled }) => {
@@ -59,18 +68,55 @@ const MessagesPage = () => {
     const messagesEndRef = useRef(null);
     const isMobile = useMediaQuery({ maxWidth: 768 });
     const [isUserListVisible, setUserListVisible] = useState(!isMobile);
-
     const messageSoundRef = useRef(null);
+    const privateKeyRef = useRef(null);
+
     useEffect(() => {
         messageSoundRef.current = new Audio(messageSound);
         messageSoundRef.current.preload = 'auto';
     }, []);
+
     const playSound = () => {
         if (messageSoundRef.current) {
             messageSoundRef.current.currentTime = 0;
             messageSoundRef.current.play().catch(err => console.error("Sound play error:", err));
         }
     };
+
+    // Key management on component mount
+    useEffect(() => {
+        const setupKeys = async () => {
+            if (!user?.userIdentifier) return;
+
+            let privateKeyString = localStorage.getItem(`privateKey_${user.userIdentifier}`);
+
+            if (privateKeyString) {
+                // If a private key exists, import it
+                privateKeyRef.current = await importPrivateKey(privateKeyString);
+            } else {
+                // If no private key, generate a new key pair
+                const keyPair = await generateKeyPair();
+                privateKeyRef.current = keyPair.privateKey;
+                const publicKeyString = await exportPublicKey(keyPair.publicKey);
+                privateKeyString = await exportPrivateKey(keyPair.privateKey);
+
+                // Save to local storage for persistence
+                localStorage.setItem(`privateKey_${user.userIdentifier}`, privateKeyString);
+
+                // Save public key to the backend
+                try {
+                    await apiService.savePublicKey(user.userIdentifier, publicKeyString);
+                } catch (err) {
+                    console.error("Failed to save public key to backend:", err);
+                    setError("Failed to save public key. Messaging may not work correctly.");
+                }
+            }
+        };
+
+        if (canMessage) {
+            setupKeys();
+        }
+    }, [user?.userIdentifier, canMessage]);
 
     const fetchUsers = useCallback(async () => {
         if (!user?.userIdentifier || !canMessage) {
@@ -79,9 +125,17 @@ const MessagesPage = () => {
             return;
         }
         try {
+            // Fetch users and their public keys
             const res = await apiService.getUsers(user.userIdentifier);
             if (res.data.success) {
-                setUsers(res.data.users.filter(u => u.username !== user.userIdentifier));
+                // Filter out current user and map to include public keys
+                const allUsers = res.data.users
+                    .filter(u => u.username !== user.userIdentifier)
+                    .map(u => ({
+                        ...u,
+                        publicKey: u.publicKey ? importPublicKey(u.publicKey) : null // Import and cache the public key
+                    }));
+                setUsers(allUsers);
             } else setError(res.data.message);
         } catch (err) {
             setError(`Failed to fetch users: ${err.response?.data?.message || err.message}`);
@@ -104,17 +158,33 @@ const MessagesPage = () => {
     }, [user?.userIdentifier, canMessage]);
 
     const fetchAndMarkMessages = useCallback(async (isPolling = false) => {
-        if (!selectedRecipient || !canMessage || !user?.userIdentifier) return;
+        if (!selectedRecipient || !canMessage || !user?.userIdentifier || !privateKeyRef.current) return;
         try {
             if (!isPolling) setLoadingMessages(true);
             if (!isPolling) {
-                // FIX: Corrected param order in API call
                 await apiService.markMessagesAsRead(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
                 setUnreadCounts(prev => ({ ...prev, [selectedRecipient.username]: 0 }));
             }
             const res = await apiService.getMessages(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
             if (res.data.success) {
-                const newMessages = res.data.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                // Decrypt messages before displaying
+                const decryptedMessages = await Promise.all(res.data.messages.map(async m => {
+                    let content = m.messageContent;
+                    // Only decrypt messages that are not from the current user
+                    if (m.sender !== user.userIdentifier) {
+                        try {
+                            content = await decrypt(privateKeyRef.current, m.messageContent);
+                        } catch (decryptErr) {
+                            console.error("Failed to decrypt message:", decryptErr);
+                            // Set content to a readable error message
+                            content = "❌ Message failed to decrypt.";
+                        }
+                    }
+                    return { ...m, messageContent: content };
+                }));
+
+                const newMessages = decryptedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
                 setMessages(prev => {
                     if (newMessages.length > prev.length) {
                         const latest = newMessages[newMessages.length - 1];
@@ -135,7 +205,7 @@ const MessagesPage = () => {
             setMessages([]);
             return;
         }
-        
+
         fetchAndMarkMessages(false);
         const interval = setInterval(() => fetchAndMarkMessages(true), 5000);
         return () => clearInterval(interval);
@@ -152,7 +222,12 @@ const MessagesPage = () => {
     }, [messages]);
 
     const handleSendMessage = useCallback(async (msgContent) => {
-        if (!selectedRecipient) return;
+        if (!selectedRecipient || !privateKeyRef.current) {
+            setError("Cannot send message: Keys are not set up.");
+            return;
+        }
+
+        // Optimistic UI update with plaintext
         const temp = {
             sender: user.userIdentifier,
             recipient: selectedRecipient.username,
@@ -162,15 +237,27 @@ const MessagesPage = () => {
             isRead: false
         };
         setMessages(prev => [...prev, temp]);
+
         try {
-            await apiService.saveMessage(user.userIdentifier, selectedRecipient.username, msgContent, user.userIdentifier);
+            // Fetch recipient's public key (or use cached key)
+            const recipientPublicKey = await selectedRecipient.publicKey;
+            if (!recipientPublicKey) {
+                setError("Recipient's public key is not available.");
+                setMessages(prev => prev.filter(m => m.id !== temp.id)); // Rollback
+                return;
+            }
+
+            // Encrypt message content before sending
+            const encryptedContent = await encrypt(recipientPublicKey, msgContent);
+
+            await apiService.saveMessage(user.userIdentifier, selectedRecipient.username, encryptedContent, user.userIdentifier);
         } catch (err) {
             setError(`Failed to send: ${err.response?.data?.message || err.message}`);
             setMessages(prev => prev.filter(m => m.id !== temp.id));
         }
     }, [selectedRecipient, user.userIdentifier]);
 
-    const handleRecipientSelect = (recipient) => {
+    const handleRecipientSelect = async (recipient) => {
         setSelectedRecipient(recipient);
         if (isMobile) setUserListVisible(false);
     };
