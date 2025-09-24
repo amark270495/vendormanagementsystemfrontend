@@ -70,6 +70,11 @@ const MessagesPage = () => {
     const [isUserListVisible, setUserListVisible] = useState(!isMobile);
     const messageSoundRef = useRef(null);
     const privateKeyRef = useRef(null);
+    const messagesRef = useRef(messages);
+
+    useEffect(() => {
+        messagesRef.current = messages;
+    }, [messages]);
 
     useEffect(() => {
         messageSoundRef.current = new Audio(messageSound);
@@ -163,20 +168,22 @@ const MessagesPage = () => {
             }
             const res = await apiService.getMessages(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
             if (res.data.success) {
+                const currentMessages = messagesRef.current;
                 const processedMessages = await Promise.all(res.data.messages.map(async m => {
                     let content = m.messageContent;
-                    // FIX START: Logic to handle sent vs. received messages
                     if (m.sender === user.userIdentifier) {
-                        // This is a message I sent. Try to get plaintext from localStorage.
-                        const storedPlaintext = localStorage.getItem(`msg_${m.timestamp}_${m.recipient}`);
-                        if (storedPlaintext) {
-                            content = storedPlaintext;
+                        const tempMatch = currentMessages.find(
+                            localMsg => localMsg.isTemp &&
+                                        localMsg.recipient === m.recipient &&
+                                        Math.abs(new Date(localMsg.timestamp).getTime() - new Date(m.timestamp).getTime()) < 10000 // 10-second window
+                        );
+
+                        if (tempMatch) {
+                            content = tempMatch.messageContent;
                         } else {
-                            // Fallback for messages sent from another device or if localStorage was cleared
                             content = "••••••••••";
                         }
                     } else {
-                        // This is an incoming message. Decrypt it with my private key.
                         try {
                             content = await decrypt(privateKeyRef.current, m.messageContent);
                         } catch (decryptErr) {
@@ -184,7 +191,6 @@ const MessagesPage = () => {
                             content = "❌ Message failed to decrypt.";
                         }
                     }
-                    // FIX END
                     return { ...m, messageContent: content };
                 }));
 
@@ -231,14 +237,15 @@ const MessagesPage = () => {
             return;
         }
         
-        const timestamp = new Date().toISOString(); // Define timestamp to use for both UI and storage key
+        const timestamp = new Date().toISOString();
         const temp = {
             sender: user.userIdentifier,
             recipient: selectedRecipient.username,
             messageContent: msgContent,
             timestamp: timestamp,
             id: Date.now(),
-            isRead: false
+            isRead: false,
+            isTemp: true // Flag to identify as a temporary client-side message
         };
         setMessages(prev => [...prev, temp]);
 
@@ -269,9 +276,6 @@ const MessagesPage = () => {
 
             const encryptedContent = await encrypt(recipientPublicKey, msgContent);
             
-            // FIX: Save the plaintext message to localStorage before sending
-            localStorage.setItem(`msg_${timestamp}_${selectedRecipient.username}`, msgContent);
-
             await apiService.saveMessage(user.userIdentifier, selectedRecipient.username, encryptedContent, user.userIdentifier);
 
         } catch (err) {
