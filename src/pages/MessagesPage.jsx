@@ -167,43 +167,67 @@ const MessagesPage = () => {
                 setUnreadCounts(prev => ({ ...prev, [selectedRecipient.username]: 0 }));
             }
             const res = await apiService.getMessages(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
+    
             if (res.data.success) {
-                const currentMessages = messagesRef.current;
-                const processedMessages = await Promise.all(res.data.messages.map(async m => {
-                    let content = m.messageContent;
-                    if (m.sender === user.userIdentifier) {
-                        const tempMatch = currentMessages.find(
-                            localMsg => localMsg.isTemp &&
-                                        localMsg.recipient === m.recipient &&
-                                        Math.abs(new Date(localMsg.timestamp).getTime() - new Date(m.timestamp).getTime()) < 10000 // 10-second window
-                        );
-
-                        if (tempMatch) {
-                            content = tempMatch.messageContent;
+                const serverMessages = res.data.messages;
+                const localMessages = messagesRef.current;
+                const unprocessedTempMessages = new Map(
+                    localMessages
+                        .filter(m => m.isTemp)
+                        .map(m => [m.id, m])
+                );
+    
+                const processedMessages = await Promise.all(serverMessages.map(async serverMsg => {
+                    let content = serverMsg.messageContent;
+    
+                    if (serverMsg.sender === user.userIdentifier) {
+                        let match = null;
+                        let matchId = null;
+    
+                        for (const [id, tempMsg] of unprocessedTempMessages.entries()) {
+                            if (
+                                tempMsg.recipient === serverMsg.recipient &&
+                                Math.abs(new Date(tempMsg.timestamp).getTime() - new Date(serverMsg.timestamp).getTime()) < 30000 // 30-second window
+                            ) {
+                                match = tempMsg;
+                                matchId = id;
+                                break;
+                            }
+                        }
+    
+                        if (match) {
+                            content = match.messageContent;
+                            unprocessedTempMessages.delete(matchId);
                         } else {
                             content = "••••••••••";
                         }
                     } else {
                         try {
-                            content = await decrypt(privateKeyRef.current, m.messageContent);
+                            content = await decrypt(privateKeyRef.current, serverMsg.messageContent);
                         } catch (decryptErr) {
                             console.error("Failed to decrypt message:", decryptErr);
                             content = "❌ Message failed to decrypt.";
                         }
                     }
-                    return { ...m, messageContent: content };
+                    return { ...serverMsg, messageContent: content };
                 }));
-
-                const newMessages = processedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
+    
+                const finalMessages = [...processedMessages, ...Array.from(unprocessedTempMessages.values())];
+                finalMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
                 setMessages(prev => {
-                    if (newMessages.length > prev.length) {
-                        const latest = newMessages[newMessages.length - 1];
-                        if (latest.sender !== user.userIdentifier) playSound();
+                    if (finalMessages.length > prev.length) {
+                        const latest = finalMessages[finalMessages.length - 1];
+                        if (latest.sender !== user.userIdentifier && !latest.isTemp) {
+                            playSound();
+                        }
                     }
-                    return newMessages;
+                    return finalMessages;
                 });
-            } else if (!isPolling) setError(res.data.message);
+    
+            } else if (!isPolling) {
+                setError(res.data.message);
+            }
         } catch (err) {
             if (!isPolling) setError(`Failed to fetch messages: ${err.response?.data?.message || err.message}`);
         } finally {
@@ -243,7 +267,7 @@ const MessagesPage = () => {
             recipient: selectedRecipient.username,
             messageContent: msgContent,
             timestamp: timestamp,
-            id: Date.now(),
+            id: `client_${Date.now()}`,
             isRead: false,
             isTemp: true // Flag to identify as a temporary client-side message
         };
@@ -357,7 +381,7 @@ const MessagesPage = () => {
                                         {!loadingMessages && messages.map((m, i) => {
                                             const isMe = m.sender === user.userIdentifier;
                                             return (
-                                                <div key={m.id || i} className={`flex items-end space-x-2 ${isMe ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
+                                                <div key={m.id || m.timestamp} className={`flex items-end space-x-2 ${isMe ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
                                                     {!isMe && (
                                                         <span className="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center text-sm font-bold text-slate-700">
                                                             {selectedRecipient.displayName.charAt(0)}
