@@ -6,70 +6,104 @@ import axios from 'axios';
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
 // --- Standalone Component Definitions ---
-// The following are self-contained implementations of the components 
-// your ReportsPage depends on, removing the need for external imports.
 
-/**
- * Spinner Component: A simple loading indicator.
- */
 const Spinner = ({ size = '8' }) => (
     <div className="flex justify-center items-center">
         <div className={`w-${size} h-${size} border-4 border-t-transparent border-indigo-600 rounded-full animate-spin`}></div>
     </div>
 );
 
-/**
- * ChartComponent: A wrapper around react-chartjs-2 to render different chart types.
- */
 const ChartComponent = ({ type, options, data }) => {
     if (!data) return <div className="flex justify-center items-center h-full text-gray-500">No data to display.</div>;
-    
-    const commonOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        ...options,
-    };
-
+    const commonOptions = { responsive: true, maintainAspectRatio: false, ...options };
     if (type === 'bar') return <Bar options={commonOptions} data={data} />;
     if (type === 'pie') return <Pie options={commonOptions} data={data} />;
     if (type === 'doughnut') return <Doughnut options={commonOptions} data={data} />;
-    
     return <div className="text-red-500">Unknown chart type: {type}</div>;
 };
 
 /**
- * EmailReportModal Component: A modal dialog for emailing reports.
+ * EmailReportModal Component: A modal dialog for emailing reports with full functionality.
  */
-const EmailReportModal = ({ isOpen, onClose, sheetKey }) => {
-  if (!isOpen) return null;
+const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) => {
+    const [toEmails, setToEmails] = useState('');
+    const [ccEmails, setCcEmails] = useState('');
+    const [isSending, setIsSending] = useState(false);
+    const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-      <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md transform transition-all" role="dialog" aria-modal="true">
-        <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Email Report</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">&times;</button>
+    useEffect(() => {
+        if (isOpen) {
+            setToEmails('');
+            setCcEmails('');
+            setError('');
+            setSuccessMessage('');
+            setIsSending(false);
+        }
+    }, [isOpen]);
+
+    const handleSendEmail = async () => {
+        if (!toEmails.trim()) {
+            setError('Please enter at least one recipient email.');
+            return;
+        }
+        setIsSending(true);
+        setError('');
+        setSuccessMessage('');
+        try {
+            // This function is now defined in the global apiService object
+            await apiService.generateAndSendJobReport(sheetKey, toEmails, ccEmails, authenticatedUsername);
+            setSuccessMessage('Report has been sent successfully!');
+            setTimeout(() => {
+                onClose();
+            }, 2000);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to send the report.');
+        } finally {
+            setIsSending(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
+            <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md transform transition-all" role="dialog" aria-modal="true">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-gray-800">Email Report</h2>
+                    <button onClick={onClose} disabled={isSending} className="text-gray-400 hover:text-gray-600 disabled:opacity-50">&times;</button>
+                </div>
+                
+                {!successMessage && (
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="toEmails" className="block text-sm font-medium text-gray-700">To:</label>
+                            <textarea id="toEmails" value={toEmails} onChange={(e) => setToEmails(e.target.value)} rows="2" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="user1@example.com, user2@example.com"></textarea>
+                        </div>
+                        <div>
+                            <label htmlFor="ccEmails" className="block text-sm font-medium text-gray-700">CC:</label>
+                            <textarea id="ccEmails" value={ccEmails} onChange={(e) => setCcEmails(e.target.value)} rows="2" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="manager@example.com"></textarea>
+                        </div>
+                    </div>
+                )}
+
+                {error && <div className="mt-4 text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</div>}
+                {successMessage && <div className="mt-4 text-sm text-green-600 bg-green-50 p-3 rounded-md">{successMessage}</div>}
+
+                <div className="flex justify-end gap-3 mt-6">
+                    <button onClick={onClose} disabled={isSending} className="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50">
+                        Cancel
+                    </button>
+                    <button onClick={handleSendEmail} disabled={isSending} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 w-28 flex justify-center">
+                        {isSending ? <Spinner size="5" /> : 'Send Email'}
+                    </button>
+                </div>
+            </div>
         </div>
-        <p className="mb-4 text-gray-600">This feature would send a report for the selected VMS.</p>
-        <p className="mb-6 text-sm text-gray-500">
-            Selected VMS: <span className="font-semibold text-gray-900">{sheetKey}</span>
-        </p>
-        <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">
-            Cancel
-          </button>
-           <button onClick={() => alert('Sending report... (simulation)')} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700">
-            Send Email
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
-
 // --- API Service and Authentication Hooks ---
-// These are based on the code you previously provided.
 
 const apiClient = axios.create({
     baseURL: '/api',
@@ -79,6 +113,9 @@ const apiClient = axios.create({
 const apiService = {
     getReportData: (params) => apiClient.get('/getReportData', { params }),
     getCandidateReportData: (params) => apiClient.get('/getCandidateReportData', { params }),
+    // Added the email sending function
+    generateAndSendJobReport: (sheetKey, toEmails, ccEmails, authenticatedUsername) => 
+        apiClient.post('/generateAndSendJobReport', { sheetKey, toEmails, ccEmails, authenticatedUsername }),
 };
 
 const useAuth = () => {
@@ -356,7 +393,12 @@ const ReportsPage = () => {
                 </div>
             </div>
             {canEmailReports && (
-                <EmailReportModal isOpen={isEmailModalOpen} onClose={() => setEmailModalOpen(false)} sheetKey={filters.sheetKey}/>
+                <EmailReportModal 
+                    isOpen={isEmailModalOpen} 
+                    onClose={() => setEmailModalOpen(false)} 
+                    sheetKey={filters.sheetKey}
+                    authenticatedUsername={user.userIdentifier}
+                />
             )}
         </>
     );
