@@ -230,18 +230,42 @@ const ReportsPage = () => {
     
     const renderCandidateReport = () => {
         const remarksData = filteredChartData(Object.keys(reportData.remarksCount), Object.values(reportData.remarksCount));
+        
+        const hiredCount = reportData.remarksCount['Hired'] || 0;
+        const inProcessCount = (reportData.remarksCount['Interview Scheduled'] || 0) + 
+                               (reportData.remarksCount['Offer Extended'] || 0) + 
+                               (reportData.remarksCount['Screening'] || 0);
 
         return (
              <div className="space-y-8">
-                <div className="grid grid-cols-1 text-center">
-                     <div className="bg-white p-5 rounded-xl shadow-sm border w-full md:w-1/3 mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-center">
+                     <div className="bg-white p-5 rounded-xl shadow-sm border">
                          <p className="text-4xl font-extrabold text-gray-800">{reportData.totalCandidates}</p>
-                         <p className="text-sm text-gray-500 mt-1">Total Candidates Processed</p>
+                         <p className="text-sm text-gray-500 mt-1">Total Candidates</p>
+                     </div>
+                     <div className="bg-white p-5 rounded-xl shadow-sm border">
+                         <p className="text-4xl font-extrabold text-green-600">{hiredCount}</p>
+                         <p className="text-sm text-gray-500 mt-1">Hired</p>
+                     </div>
+                     <div className="bg-white p-5 rounded-xl shadow-sm border">
+                         <p className="text-4xl font-extrabold text-blue-600">{inProcessCount}</p>
+                         <p className="text-sm text-gray-500 mt-1">In Process</p>
                      </div>
                 </div>
-                <div className="grid grid-cols-1">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[500px] flex flex-col">
-                        <h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Candidate Pipeline by Status</h3>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col">
+                        <h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Candidate Status Distribution</h3>
+                        <div className="relative flex-grow">
+                            <ChartComponent 
+                                type='pie' 
+                                options={chartOptions}
+                                data={getChartData(remarksData.labels, remarksData.values, '# of Candidates')} 
+                            />
+                        </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col">
+                        <h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Pipeline Breakdown</h3>
                         <div className="relative flex-grow">
                             <ChartComponent 
                                 type='bar' 
