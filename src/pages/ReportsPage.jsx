@@ -28,14 +28,17 @@ const ChartComponent = ({ type, options, data }) => {
 const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) => {
     const [toEmails, setToEmails] = useState('');
     const [ccEmails, setCcEmails] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
     const [isSending, setIsSending] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+    const { canEmailReports } = usePermissions();
 
     useEffect(() => {
         if (isOpen) {
             setToEmails('');
             setCcEmails('');
+            setStatusFilter('all');
             setError('');
             setSuccessMessage('');
             setIsSending(false);
@@ -43,20 +46,33 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
     }, [isOpen]);
 
     const handleSendEmail = async () => {
-        if (!toEmails.trim()) {
-            setError('Please enter at least one recipient email.');
+        if (!canEmailReports) {
+            setError("You do not have permission to send email reports.");
             return;
         }
+
+        const toEmailArray = toEmails.split(',').map(e => e.trim()).filter(Boolean);
+        const ccEmailArray = ccEmails.split(',').map(e => e.trim()).filter(Boolean);
+
+        if (toEmailArray.length === 0) {
+            setError("Please provide at least one recipient email in the 'To' field.");
+            return;
+        }
+
         setIsSending(true);
         setError('');
         setSuccessMessage('');
+
         try {
-            // This function is now defined in the global apiService object
-            await apiService.generateAndSendJobReport(sheetKey, toEmails, ccEmails, authenticatedUsername);
-            setSuccessMessage('Report has been sent successfully!');
-            setTimeout(() => {
-                onClose();
-            }, 2000);
+            const response = await apiService.generateAndSendJobReport(sheetKey, statusFilter, toEmailArray, ccEmailArray, authenticatedUsername);
+            if (response.data.success) {
+                setSuccessMessage(response.data.message || 'Report has been sent successfully!');
+                setTimeout(() => {
+                    onClose();
+                }, 2000);
+            } else {
+                 setError(response.data.message || 'An unknown error occurred while sending the report.');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to send the report.');
         } finally {
@@ -68,35 +84,50 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-            <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md transform transition-all" role="dialog" aria-modal="true">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-800">Email Report</h2>
-                    <button onClick={onClose} disabled={isSending} className="text-gray-400 hover:text-gray-600 disabled:opacity-50">&times;</button>
+            <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg transform transition-all" role="dialog" aria-modal="true">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold text-gray-800">Email Job Report</h2>
+                    <button onClick={onClose} disabled={isSending} className="text-gray-400 hover:text-gray-600 disabled:opacity-50 text-2xl">&times;</button>
                 </div>
                 
-                {!successMessage && (
+                {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
+                {successMessage && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">{successMessage}</div>}
+
+                {!canEmailReports ? (
+                    <div className="text-center text-gray-500 p-4">
+                        <h3 className="text-lg font-medium">Access Denied</h3>
+                        <p className="text-sm">You do not have the necessary permissions to send email reports.</p>
+                    </div>
+                ) : (
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="toEmails" className="block text-sm font-medium text-gray-700">To:</label>
-                            <textarea id="toEmails" value={toEmails} onChange={(e) => setToEmails(e.target.value)} rows="2" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="user1@example.com, user2@example.com"></textarea>
+                            <label htmlFor="toEmails" className="block text-sm font-medium text-gray-700">To (comma-separated)</label>
+                            <input id="toEmails" type="text" value={toEmails} onChange={e => setToEmails(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required />
                         </div>
                         <div>
-                            <label htmlFor="ccEmails" className="block text-sm font-medium text-gray-700">CC:</label>
-                            <textarea id="ccEmails" value={ccEmails} onChange={(e) => setCcEmails(e.target.value)} rows="2" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="manager@example.com"></textarea>
+                            <label htmlFor="ccEmails" className="block text-sm font-medium text-gray-700">CC (comma-separated)</label>
+                            <input id="ccEmails" type="text" value={ccEmails} onChange={e => setCcEmails(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                        </div>
+                        <div>
+                            <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700">Job Status to Include</label>
+                            <select id="statusFilter" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="all">All</option>
+                                <option value="Open">Open</option>
+                                <option value="Closed">Closed</option>
+                            </select>
                         </div>
                     </div>
                 )}
 
-                {error && <div className="mt-4 text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</div>}
-                {successMessage && <div className="mt-4 text-sm text-green-600 bg-green-50 p-3 rounded-md">{successMessage}</div>}
-
-                <div className="flex justify-end gap-3 mt-6">
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
                     <button onClick={onClose} disabled={isSending} className="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50">
                         Cancel
                     </button>
-                    <button onClick={handleSendEmail} disabled={isSending} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 w-28 flex justify-center">
-                        {isSending ? <Spinner size="5" /> : 'Send Email'}
-                    </button>
+                    {canEmailReports && (
+                        <button onClick={handleSendEmail} disabled={isSending} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 w-32 flex justify-center items-center">
+                            {isSending ? <Spinner size="5" /> : 'Send Email'}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
@@ -113,12 +144,12 @@ const apiClient = axios.create({
 const apiService = {
     getReportData: (params) => apiClient.get('/getReportData', { params }),
     getCandidateReportData: (params) => apiClient.get('/getCandidateReportData', { params }),
-    // Added the email sending function
-    generateAndSendJobReport: (sheetKey, toEmails, ccEmails, authenticatedUsername) => 
-        apiClient.post('/generateAndSendJobReport', { sheetKey, toEmails, ccEmails, authenticatedUsername }),
+    generateAndSendJobReport: (sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername) => 
+        apiClient.post('/generateAndSendJobReport', { sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername }),
 };
 
 const useAuth = () => {
+    // This is a simplified mock. In a real app, this would come from React Context.
     const savedUser = sessionStorage.getItem('vms_user');
     return {
         user: savedUser ? JSON.parse(savedUser) : { userIdentifier: 'previewUser', permissions: {} }
@@ -126,7 +157,9 @@ const useAuth = () => {
 };
 
 const usePermissions = () => {
+    // This is a simplified mock. In a real app, this logic would be more robust.
     const { user } = useAuth();
+    // For preview, we'll default to true.
     return {
         canViewReports: user?.permissions?.canViewReports ?? true,
         canEmailReports: user?.permissions?.canEmailReports ?? true,
@@ -369,7 +402,7 @@ const ReportsPage = () => {
                         </div>
                     </div>
 
-                    {loading && <div className="h-96"><Spinner /></div>}
+                    {loading && <div className="h-96 flex justify-center items-center"><Spinner /></div>}
                     {error && <div className="text-red-600 bg-red-50 p-4 rounded-lg border border-red-200">{error}</div>}
                     
                     {!loading && !error && !canViewReports && (
