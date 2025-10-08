@@ -5,8 +5,8 @@ import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu';
 import RequestTimesheetApprovalModal from '../components/timesheets/RequestTimesheetApprovalModal';
-import EditLoggedHoursModal from '../components/timesheets/EditLoggedHoursModal'; // NEW: Import EditLoggedHoursModal
-import ConfirmationModal from '../components/dashboard/ConfirmationModal'; // NEW: Import ConfirmationModal
+import EditLoggedHoursModal from '../components/timesheets/EditLoggedHoursModal';
+import ConfirmationModal from '../components/dashboard/ConfirmationModal';
 import { usePermissions } from '../hooks/usePermissions';
 
 const TimesheetsDashboardPage = () => {
@@ -24,11 +24,11 @@ const TimesheetsDashboardPage = () => {
     const [isApprovalModalOpen, setApprovalModalOpen] = useState(false);
     const [timesheetToApprove, setTimesheetToApprove] = useState(null);
 
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false); // NEW: State for Edit Modal
-    const [timesheetToEdit, setTimesheetToEdit] = useState(null); // NEW: State for timesheet being edited
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [timesheetToEdit, setTimesheetToEdit] = useState(null);
 
-    const [isDeleteModalOpen, setDeleteModalOpen] = useState(false); // NEW: State for Delete Modal
-    const [timesheetToDelete, setTimesheetToDelete] = useState(null); // NEW: State for timesheet being deleted
+    const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [timesheetToDelete, setTimesheetToDelete] = useState(null);
 
     const tableHeader = useMemo(() => [
         'Employee Name', 'Client Name', 'Month', 'Year', 'Logged Hours',
@@ -71,12 +71,12 @@ const TimesheetsDashboardPage = () => {
     }, [loadTimesheets]);
 
     const filteredAndSortedData = useMemo(() => {
-        let data = timesheets.map(ts => ({ // Map to objects to easily access original properties
-            original: ts, // Store original object for edit/delete
+        let data = timesheets.map(ts => ({
+            original: ts,
             display: [
                 ts.employeeName,
                 ts.clientName,
-                months.find(m => m.value === ts.month)?.name || ts.month, // Display month name
+                months.find(m => m.value === ts.month)?.name || ts.month,
                 ts.year,
                 ts.loggedHoursPerMonth,
                 ts.companyName,
@@ -87,15 +87,13 @@ const TimesheetsDashboardPage = () => {
             ]
         }));
 
-        // General search filter
         if (generalFilter) {
             const lowercasedFilter = generalFilter.toLowerCase();
-            data = data.filter(item => 
+            data = data.filter(item =>
                 item.display.some(cell => String(cell).toLowerCase().includes(lowercasedFilter))
             );
         }
 
-        // Column-specific filters (reusing HeaderMenu logic)
         if (Object.keys(columnFilters).length > 0) {
             data = data.filter(item => {
                 return Object.entries(columnFilters).every(([header, config]) => {
@@ -116,7 +114,6 @@ const TimesheetsDashboardPage = () => {
             });
         }
 
-        // Sorting
         if (sortConfig.key) {
             const sortIndex = tableHeader.indexOf(sortConfig.key);
             if (sortIndex !== -1) {
@@ -124,7 +121,6 @@ const TimesheetsDashboardPage = () => {
                     let valA = a.display[sortIndex];
                     let valB = b.display[sortIndex];
 
-                    // Special handling for numeric/date columns if necessary
                     if (sortConfig.key === 'Logged Hours') {
                         valA = parseFloat(valA) || 0;
                         valB = parseFloat(valB) || 0;
@@ -168,13 +164,14 @@ const TimesheetsDashboardPage = () => {
         if (!canManageTimesheets || !timesheetToEdit) return;
         setLoading(true);
         try {
-            await apiService.updateEmployeeLogHours(timesheetToEdit.RowKey, updatedData, user.userIdentifier);
-            loadTimesheets(); // Reload data after successful update
+            // FIX: Use camelCase 'rowKey'
+            await apiService.updateEmployeeLogHours(timesheetToEdit.rowKey, updatedData, user.userIdentifier);
+            loadTimesheets();
             setIsEditModalOpen(false);
             setTimesheetToEdit(null);
         } catch (err) {
             setError(err.message || `Failed to update timesheet for ${timesheetToEdit.employeeName}.`);
-            throw err; // Re-throw to allow modal to display error
+            throw err;
         } finally {
             setLoading(false);
         }
@@ -190,8 +187,9 @@ const TimesheetsDashboardPage = () => {
         if (!canManageTimesheets || !timesheetToDelete) return;
         setLoading(true);
         try {
-            await apiService.deleteEmployeeLogHours(timesheetToDelete.PartitionKey, timesheetToDelete.RowKey, user.userIdentifier);
-            loadTimesheets(); // Reload data after successful deletion
+            // FIX: Use camelCase 'partitionKey' and 'rowKey'
+            await apiService.deleteEmployeeLogHours(timesheetToDelete.partitionKey, timesheetToDelete.rowKey, user.userIdentifier);
+            loadTimesheets();
             setDeleteModalOpen(false);
             setTimesheetToDelete(null);
         } catch (err) {
@@ -259,8 +257,8 @@ const TimesheetsDashboardPage = () => {
                                 <tbody>
                                     {filteredAndSortedData.length > 0 ? (
                                         filteredAndSortedData.map((item, rowIndex) => {
-                                            const originalTimesheet = item.original; // Access the original object
-                                            const displayRow = item.display; // Access the display array
+                                            const originalTimesheet = item.original;
+                                            const displayRow = item.display;
                                             return (
                                                 <tr key={rowIndex} className="bg-gray-50 border-b hover:bg-gray-100">
                                                     {displayRow.map((cell, cellIndex) => (
@@ -269,7 +267,7 @@ const TimesheetsDashboardPage = () => {
                                                         </td>
                                                     ))}
                                                     <td className="px-4 py-3 border-r border-slate-200 last:border-r-0 flex space-x-2 justify-center">
-                                                        {canManageTimesheets && ( // NEW: Edit button
+                                                        {canManageTimesheets && (
                                                             <button
                                                                 onClick={() => handleEditClick(originalTimesheet)}
                                                                 className="text-gray-500 hover:text-indigo-600 p-1 rounded-md"
@@ -278,7 +276,7 @@ const TimesheetsDashboardPage = () => {
                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                                                             </button>
                                                         )}
-                                                        {canManageTimesheets && ( // NEW: Delete button
+                                                        {canManageTimesheets && (
                                                             <button
                                                                 onClick={() => handleDeleteClick(originalTimesheet)}
                                                                 className="text-gray-500 hover:text-red-600 p-1 rounded-md"
@@ -319,7 +317,7 @@ const TimesheetsDashboardPage = () => {
                     timesheet={timesheetToApprove}
                 />
             )}
-            {timesheetToEdit && ( // NEW: Render EditLoggedHoursModal
+            {timesheetToEdit && (
                 <EditLoggedHoursModal
                     isOpen={isEditModalOpen}
                     onClose={() => setIsEditModalOpen(false)}
@@ -327,7 +325,7 @@ const TimesheetsDashboardPage = () => {
                     timesheetToEdit={timesheetToEdit}
                 />
             )}
-            {timesheetToDelete && ( // NEW: Render ConfirmationModal for delete
+            {timesheetToDelete && (
                 <ConfirmationModal
                     isOpen={isDeleteModalOpen}
                     onClose={() => setDeleteModalOpen(false)}
