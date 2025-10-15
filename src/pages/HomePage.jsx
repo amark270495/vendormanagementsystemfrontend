@@ -135,7 +135,7 @@ const HomePage = () => {
                             <p className="mt-1 text-sm text-gray-500">There are currently no active job postings assigned to the team.</p>
                         </div>
                     )
-                )}
+                }
                 </>
             )}
             
