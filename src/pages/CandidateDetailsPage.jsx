@@ -7,6 +7,7 @@ import HeaderMenu from '../components/dashboard/HeaderMenu';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
 import CandidateProfileViewModal from '../components/dashboard/CandidateProfileViewModal';
 import ColumnSettingsModal from '../components/dashboard/ColumnSettingsModal';
+// Removed: import RequestCandidateTimesheetApprovalModal
 import { formatDate } from '../utils/helpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -14,6 +15,7 @@ import { usePermissions } from '../hooks/usePermissions';
 
 const CandidateDetailsPage = () => {
     const { user, updatePreferences } = useAuth();
+    // Removed canRequestTimesheetApproval since the modal is gone
     const { canViewCandidates, canEditDashboard } = usePermissions(); 
 
     const [candidates, setCandidates] = useState([]);
@@ -30,6 +32,9 @@ const CandidateDetailsPage = () => {
     const [isProfileViewModalOpen, setIsProfileViewModalOpen] = useState(false);
     const [candidateToView, setCandidateToView] = useState(null);
     const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
+    
+    // Removed state related to timesheet approval modal
+    const [candidateForApproval, setCandidateForApproval] = useState(null);
 
     // Define all possible headers for the table.
     const allHeaders = useMemo(() => {
@@ -38,7 +43,6 @@ const CandidateDetailsPage = () => {
             'Current Location', 'Skill Set', 'Submitted For (Posting ID)', 'Client Info', 
             'Submitted By', 'Submission Date', 'Remarks', 'Resume Worked By', 'Reference From'
         ];
-        // The 'Actions' column is not user-configurable, so it's handled separately.
         return baseHeaders;
     }, []);
 
@@ -49,7 +53,6 @@ const CandidateDetailsPage = () => {
                 const parsed = JSON.parse(jsonString);
                 return Array.isArray(parsed) ? parsed : def;
             } catch (e) {
-                 // Fallback for when the stored value isn't a stringified array.
                 return Array.isArray(jsonString) ? jsonString : def;
             }
         };
@@ -126,6 +129,7 @@ const CandidateDetailsPage = () => {
             finalHeaders = finalHeaders.filter(h => !userPrefs.visibility.includes(h));
         }
 
+        // Only include "Actions" if the user can perform *any* action
         if (canEditDashboard) {
             finalHeaders.push('Actions');
         }
@@ -175,7 +179,7 @@ const CandidateDetailsPage = () => {
         return filteredRows;
     }, [tableRows, generalFilter, columnFilters, sortConfig]);
     
-    // Apply specified column widths.
+    // Apply specified column widths. (Not needed in card view but kept for PDF/CSV)
     const colWidths = {
         'Full Name': 'w-[7.5%]',
         'Candidate Contact Details': 'w-[9%]',
@@ -198,6 +202,8 @@ const CandidateDetailsPage = () => {
         setCandidateToView(candidateData);
         setIsProfileViewModalOpen(true);
     };
+
+    // Removed handleApprovalRequestClick since the modal is gone
 
     const handleSaveCandidate = async (formData) => {
         if (!canEditDashboard) throw new Error("Permission denied to save candidate details.");
@@ -230,7 +236,7 @@ const CandidateDetailsPage = () => {
 
     const downloadPdf = () => {
         const doc = new jsPDF('landscape');
-        const exportHeaders = displayHeader.filter(h => h !== 'Actions');
+        const exportHeaders = allHeaders; // Use all headers for export simplicity
         const body = filteredAndSortedData.map(item => {
             return exportHeaders.map(header => {
                 let cell = item.display[header];
@@ -248,7 +254,7 @@ const CandidateDetailsPage = () => {
     };
 
     const downloadCsv = () => {
-        const exportHeaders = displayHeader.filter(h => h !== 'Actions');
+        const exportHeaders = allHeaders; // Use all headers for export simplicity
         const csvContent = [
             exportHeaders.join(','),
             ...filteredAndSortedData.map(item => 
@@ -274,29 +280,53 @@ const CandidateDetailsPage = () => {
         document.body.removeChild(link);
     };
 
+    const getStatusBadge = (remarks) => {
+        const colorMap = {
+            'Submitted To Client': 'bg-blue-100 text-blue-700',
+            'Resume Shortlisted For Interview': 'bg-green-100 text-green-700',
+            'Candidate Selected': 'bg-teal-100 text-teal-700',
+            'Client Reject Due To Candidate Not Up To Mark': 'bg-red-100 text-red-700',
+            'Rejected Due To Some Other Reasons': 'bg-red-100 text-red-700',
+            'Resume Is Under View': 'bg-yellow-100 text-yellow-700',
+        };
+        const defaultColor = 'bg-gray-100 text-gray-700';
+        const text = remarks || 'No Update';
+        return (
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${colorMap[text] || defaultColor}`}>
+                {text.length > 25 ? text.substring(0, 25) + '...' : text}
+            </span>
+        );
+    };
+
     return (
         <>
-            <div className="space-y-4">
+            <div className="space-y-6">
                 <h1 className="text-3xl font-bold text-gray-800">Candidate Details</h1>
                 
-                <div className="bg-white p-4 rounded-lg shadow-sm border flex flex-wrap items-center justify-between gap-4">
+                <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap items-center justify-between gap-4">
                     <input 
                         type="text" 
-                        placeholder="Search all columns..." 
+                        placeholder="Search all candidates..." 
                         value={generalFilter} 
                         onChange={(e) => setGeneralFilter(e.target.value)} 
-                        className="shadow-sm border-gray-300 rounded-md px-3 py-2"
+                        className="shadow-sm border-gray-300 rounded-md px-3 py-2 w-full md:w-1/3"
                         disabled={!canViewCandidates && !loading}
                     />
                      <div className="flex items-center space-x-2">
+                        <button 
+                            onClick={loadData}
+                            className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600"
+                            disabled={loading}
+                        >
+                            {loading ? 'Refreshing...' : 'Refresh Data'}
+                        </button>
                         <Dropdown
                             trigger={
                                 <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Options</button>
                             }
                         >
-                            <a href="#" onClick={(e) => { e.preventDefault(); setIsColumnModalOpen(true); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Column Settings</a>
-                            <a href="#" onClick={(e) => { e.preventDefault(); downloadPdf(); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Download PDF</a>
-                            <a href="#" onClick={(e) => { e.preventDefault(); downloadCsv(); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Download CSV</a>
+                            <a href="#" onClick={(e) => { e.preventDefault(); downloadPdf(); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export PDF</a>
+                            <a href="#" onClick={(e) => { e.preventDefault(); downloadCsv(); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export CSV</a>
                         </Dropdown>
                     </div>
                 </div>
@@ -311,81 +341,74 @@ const CandidateDetailsPage = () => {
                     </div>
                 )}
 
-                {!loading && !error && canViewCandidates && (
-                    <div className="bg-white rounded-lg shadow-lg border border-gray-200" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left text-gray-500 table-fixed">
-                                <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
-                                    <tr>
-                                        {displayHeader.map(h => (
-                                            <th key={h} scope="col" className={`p-0 border-r border-slate-300 last:border-r-0 ${colWidths[h] || ''}`}>
-                                                {h === 'Actions' ? (
-                                                    <div className="p-3 font-bold">{h}</div>
-                                                ) : (
-                                                    <Dropdown width="64" trigger={
-                                                        <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
-                                                            <span className="font-bold whitespace-normal">{h}</span>
-                                                            {sortConfig.key === h && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                                                        </div>
-                                                    }>
-                                                        <HeaderMenu header={h} onSort={(dir) => handleSort(h, dir)} filterConfig={columnFilters[h]} onFilterChange={handleFilterChange}/>
-                                                    </Dropdown>
-                                                )}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredAndSortedData.map((item, rowIndex) => {
-                                        const originalCandidate = item.original;
-                                        const displayRow = item.display;
-                                        const isDuplicate = duplicateEmails.includes(originalCandidate.email);
-                                        return (
-                                            <tr key={rowIndex} className={`border-b ${isDuplicate ? 'bg-yellow-100 hover:bg-yellow-200' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                                                {displayHeader.map((headerName) => {
-                                                    const cell = displayRow[headerName];
-                                                    const tdClasses = "px-4 py-3 border-r border-slate-200 align-middle whitespace-normal break-words";
+                {/* NEW: Card-Based Grid Display */}
+                {!loading && !error && canViewCandidates && filteredAndSortedData.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {filteredAndSortedData.map((item, index) => {
+                            const c = item.original;
+                            const isDuplicate = duplicateEmails.includes(c.email);
+                            return (
+                                <div 
+                                    key={index} 
+                                    className={`relative bg-white p-5 rounded-xl shadow-md border ${isDuplicate ? 'border-yellow-500 ring-1 ring-yellow-500' : 'border-gray-200 hover:shadow-lg transition'}`}
+                                >
+                                    {isDuplicate && (
+                                        <div className="absolute top-0 right-0 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-bl-lg rounded-tr-xl">Duplicate</div>
+                                    )}
+                                    <h2 className="text-lg font-bold text-gray-900 mb-2 truncate">
+                                        {item.display['Full Name']}
+                                    </h2>
+                                    
+                                    <div className="space-y-2 text-sm">
+                                        <p className="text-gray-700">
+                                            <span className="font-semibold text-gray-500 mr-2">Role:</span> {c.currentRole || 'N/A'}
+                                        </p>
+                                        <p className="text-gray-700">
+                                            <span className="font-semibold text-gray-500 mr-2">Location:</span> {c.currentLocation || 'N/A'}
+                                        </p>
+                                        <p className="text-gray-700 truncate">
+                                            <span className="font-semibold text-gray-500 mr-2">Email:</span> {c.email}
+                                        </p>
+                                        <p className="text-gray-700">
+                                            <span className="font-semibold text-gray-500 mr-2">Posting ID:</span> {c.postingId}
+                                        </p>
+                                        <p className="text-gray-700">
+                                            <span className="font-semibold text-gray-500 mr-2">Submitted By:</span> {c.submittedBy}
+                                        </p>
+                                        <div className="pt-2">
+                                            <span className="font-semibold text-gray-500 block mb-1">Status:</span>
+                                            {getStatusBadge(c.remarks)}
+                                        </div>
+                                    </div>
 
-                                                    if (headerName === 'Full Name') {
-                                                        return (
-                                                            <td key={headerName} className={`${tdClasses} font-medium text-gray-900`}>
-                                                                <button onClick={() => handleViewProfileClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 hover:underline text-left">
-                                                                    {cell}
-                                                                </button>
-                                                            </td>
-                                                        );
-                                                    }
-                                                    
-                                                    if (headerName === 'Skill Set') {
-                                                        return (
-                                                            <td key={headerName} className={tdClasses}>
-                                                                {Array.isArray(cell) ? cell.join(', ') : ''}
-                                                            </td>
-                                                        );
-                                                    }
-                                                    
-                                                     if (headerName === 'Actions') {
-                                                        return canEditDashboard ? (
-                                                            <td key={headerName} className="px-4 py-3 border-r border-slate-200 last:border-r-0">
-                                                                <button onClick={() => handleEditClick(originalCandidate)} className="text-indigo-600 hover:text-indigo-900 p-1 font-semibold">Edit</button>
-                                                            </td>
-                                                        ) : null;
-                                                    }
-
-                                                    return (
-                                                        <td key={headerName} className={`${tdClasses} font-medium text-gray-900`}>
-                                                            {headerName === 'Submission Date' ? formatDate(cell) : cell}
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                                    <div className="mt-4 pt-3 border-t flex justify-between space-x-2">
+                                        <button 
+                                            onClick={() => handleViewProfileClick(c)} 
+                                            className="px-3 py-1 text-sm text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition"
+                                        >
+                                            View Profile
+                                        </button>
+                                        {canEditDashboard && (
+                                            <button 
+                                                onClick={() => handleEditClick(c)} 
+                                                className="px-3 py-1 text-sm text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50 transition"
+                                            >
+                                                Edit Details
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
+                 {!loading && !error && canViewCandidates && filteredAndSortedData.length === 0 && (
+                     <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7h16M4 7L12 4l8 3M12 4v17M4 11h16M4 15h16" /></svg>
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">No Candidates Found</h3>
+                        <p className="mt-1 text-sm text-gray-500">Try adjusting your search filter.</p>
+                    </div>
+                 )}
             </div>
             <CandidateDetailsModal 
                 isOpen={isCandidateModalOpen} 
