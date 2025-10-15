@@ -7,7 +7,6 @@ import HeaderMenu from '../components/dashboard/HeaderMenu';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
 import CandidateProfileViewModal from '../components/dashboard/CandidateProfileViewModal';
 import ColumnSettingsModal from '../components/dashboard/ColumnSettingsModal';
-// Removed: import RequestCandidateTimesheetApprovalModal
 import { formatDate } from '../utils/helpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -24,7 +23,8 @@ const CandidateDetailsPage = () => {
     const [error, setError] = useState('');
     
     const [generalFilter, setGeneralFilter] = useState('');
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+    // Kept sortConfig state for front-end sorting logic
+    const [sortConfig, setSortConfig] = useState({ key: 'Submission Date', direction: 'descending' });
     const [columnFilters, setColumnFilters] = useState({});
 
     const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
@@ -37,6 +37,7 @@ const CandidateDetailsPage = () => {
     const [candidateForApproval, setCandidateForApproval] = useState(null);
 
     // Define all possible headers for the table.
+    // NOTE: This list is used for export/config, not for displaying every column in the card grid.
     const allHeaders = useMemo(() => {
         const baseHeaders = [
             'Full Name', 'Candidate Contact Details', 'Current Role', 
@@ -141,35 +142,40 @@ const CandidateDetailsPage = () => {
     const filteredAndSortedData = useMemo(() => {
         let filteredRows = [...tableRows];
 
+        // --- 1. General Search Filter (Updated to look at specific key fields) ---
         if (generalFilter) {
             const lowercasedFilter = generalFilter.toLowerCase();
-            filteredRows = filteredRows.filter(item => 
-                Object.values(item.original).some(val => String(val).toLowerCase().includes(lowercasedFilter))
-            );
+            filteredRows = filteredRows.filter(item => {
+                const c = item.original;
+                const skillSetString = Array.isArray(c.skillSet) ? c.skillSet.join(' ').toLowerCase() : '';
+
+                // Search across Name, Role, Location, Posting ID, Skills, and Remarks
+                return (
+                    item.display['Full Name'].toLowerCase().includes(lowercasedFilter) ||
+                    (c.currentRole && c.currentRole.toLowerCase().includes(lowercasedFilter)) ||
+                    (c.currentLocation && c.currentLocation.toLowerCase().includes(lowercasedFilter)) ||
+                    (c.referenceFrom && c.referenceFrom.toLowerCase().includes(lowercasedFilter)) ||
+                    (c.remarks && c.remarks.toLowerCase().includes(lowercasedFilter)) ||
+                    skillSetString.includes(lowercasedFilter)
+                );
+            });
         }
 
+        // --- 2. Sorting Logic ---
         if (sortConfig.key) {
              filteredRows.sort((a, b) => {
                 let valA, valB;
-                 if (sortConfig.key === 'Candidate Contact Details') {
-                    valA = a.original.email;
-                    valB = b.original.email;
-                } else {
-                    valA = a.display[sortConfig.key];
-                    valB = b.display[sortConfig.key];
-                }
                 
-                if (Array.isArray(valA)) valA = valA.join(', ');
-                if (Array.isArray(valB)) valB = valB.join(', ');
-                
+                // Determine the values to compare based on the sort key
                 if (sortConfig.key === 'Submission Date') {
-                    valA = new Date(valA).getTime() || 0;
-                    valB = new Date(valB).getTime() || 0;
-                } else {
-                    valA = String(valA || '').toLowerCase();
-                    valB = String(valB || '').toLowerCase();
+                    valA = new Date(a.original.submissionDate).getTime() || 0;
+                    valB = new Date(b.original.submissionDate).getTime() || 0;
+                } else { // Sort by Full Name (default for all other text fields)
+                    valA = a.display['Full Name'].toLowerCase();
+                    valB = b.display['Full Name'].toLowerCase();
                 }
 
+                // Apply ascending/descending order
                 if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
                 if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
                 return 0;
@@ -177,7 +183,7 @@ const CandidateDetailsPage = () => {
         }
 
         return filteredRows;
-    }, [tableRows, generalFilter, columnFilters, sortConfig]);
+    }, [tableRows, generalFilter, sortConfig]);
     
     // Apply specified column widths. (Not needed in card view but kept for PDF/CSV)
     const colWidths = {
@@ -202,8 +208,6 @@ const CandidateDetailsPage = () => {
         setCandidateToView(candidateData);
         setIsProfileViewModalOpen(true);
     };
-
-    // Removed handleApprovalRequestClick since the modal is gone
 
     const handleSaveCandidate = async (formData) => {
         if (!canEditDashboard) throw new Error("Permission denied to save candidate details.");
@@ -303,7 +307,7 @@ const CandidateDetailsPage = () => {
             <div className="space-y-6">
                 <h1 className="text-3xl font-bold text-gray-800">Candidate Details</h1>
                 
-                <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap items-center justify-between gap-4">
+                <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-col md:flex-row items-center justify-between gap-4">
                     <input 
                         type="text" 
                         placeholder="Search all candidates..." 
@@ -312,17 +316,32 @@ const CandidateDetailsPage = () => {
                         className="shadow-sm border-gray-300 rounded-md px-3 py-2 w-full md:w-1/3"
                         disabled={!canViewCandidates && !loading}
                     />
-                     <div className="flex items-center space-x-2">
-                        <button 
-                            onClick={loadData}
-                            className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600"
-                            disabled={loading}
-                        >
-                            {loading ? 'Refreshing...' : 'Refresh Data'}
-                        </button>
+                     <div className="flex items-center space-x-2 w-full md:w-auto">
+                        {/* Quick Sort Options */}
                         <Dropdown
                             trigger={
-                                <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Options</button>
+                                <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 w-full md:w-auto">
+                                    Sort By: {sortConfig.key === 'Submission Date' ? 'Date' : 'Name'} {sortConfig.direction === 'ascending' ? '▲' : '▼'}
+                                </button>
+                            }
+                        >
+                            <a href="#" onClick={(e) => { e.preventDefault(); handleSort('Submission Date', 'descending'); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Date (Newest)</a>
+                            <a href="#" onClick={(e) => { e.preventDefault(); handleSort('Submission Date', 'ascending'); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Date (Oldest)</a>
+                            <a href="#" onClick={(e) => { e.preventDefault(); handleSort('Full Name', 'ascending'); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Name (A-Z)</a>
+                            <a href="#" onClick={(e) => { e.preventDefault(); handleSort('Full Name', 'descending'); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Name (Z-A)</a>
+                        </Dropdown>
+
+                        <button 
+                            onClick={loadData}
+                            className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 w-full md:w-auto"
+                            disabled={loading}
+                        >
+                            {loading ? <Spinner size="4" /> : 'Refresh'}
+                        </button>
+                        
+                        <Dropdown
+                            trigger={
+                                <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 w-full md:w-auto">Options</button>
                             }
                         >
                             <a href="#" onClick={(e) => { e.preventDefault(); downloadPdf(); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export PDF</a>
@@ -360,20 +379,17 @@ const CandidateDetailsPage = () => {
                                     </h2>
                                     
                                     <div className="space-y-2 text-sm">
-                                        <p className="text-gray-700">
-                                            <span className="font-semibold text-gray-500 mr-2">Role:</span> {c.currentRole || 'N/A'}
+                                        <p className="text-gray-700 flex justify-between">
+                                            <span className="font-semibold text-gray-500">Role:</span> <span className="text-right truncate max-w-[65%]">{c.currentRole || 'N/A'}</span>
                                         </p>
-                                        <p className="text-gray-700">
-                                            <span className="font-semibold text-gray-500 mr-2">Location:</span> {c.currentLocation || 'N/A'}
+                                        <p className="text-gray-700 flex justify-between">
+                                            <span className="font-semibold text-gray-500">Location:</span> <span className="text-right truncate max-w-[65%]">{c.currentLocation || 'N/A'}</span>
                                         </p>
-                                        <p className="text-gray-700 truncate">
-                                            <span className="font-semibold text-gray-500 mr-2">Email:</span> {c.email}
+                                        <p className="text-gray-700 flex justify-between">
+                                            <span className="font-semibold text-gray-500">Submitted:</span> <span className="text-right truncate max-w-[65%]">{formatDate(c.submissionDate)}</span>
                                         </p>
-                                        <p className="text-gray-700">
-                                            <span className="font-semibold text-gray-500 mr-2">Posting ID:</span> {c.postingId}
-                                        </p>
-                                        <p className="text-gray-700">
-                                            <span className="font-semibold text-gray-500 mr-2">Submitted By:</span> {c.submittedBy}
+                                        <p className="text-gray-700 flex justify-between">
+                                            <span className="font-semibold text-gray-500">Posting ID:</span> <span className="text-right truncate max-w-[65%]">{c.postingId}</span>
                                         </p>
                                         <div className="pt-2">
                                             <span className="font-semibold text-gray-500 block mb-1">Status:</span>
