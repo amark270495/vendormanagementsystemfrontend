@@ -366,6 +366,9 @@ const CandidateDetailsPage = () => {
                         {filteredAndSortedData.map((item, index) => {
                             const c = item.original;
                             const isDuplicate = duplicateEmails.includes(c.email);
+                            // Extract first 3 skills for tags
+                            const skillTags = Array.isArray(c.skillSet) ? c.skillSet.slice(0, 3) : [];
+
                             return (
                                 <div 
                                     key={index} 
@@ -374,22 +377,48 @@ const CandidateDetailsPage = () => {
                                     {isDuplicate && (
                                         <div className="absolute top-0 right-0 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-bl-lg rounded-tr-xl">Duplicate</div>
                                     )}
-                                    <h2 className="text-lg font-bold text-gray-900 mb-2 truncate">
-                                        {item.display['Full Name']}
-                                    </h2>
                                     
-                                    <div className="space-y-2 text-sm">
-                                        <p className="text-gray-700 flex justify-between">
-                                            <span className="font-semibold text-gray-500">Role:</span> <span className="text-right truncate max-w-[65%]">{c.currentRole || 'N/A'}</span>
+                                    <div className="flex items-center space-x-3 mb-2">
+                                        <span className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700 text-xl">
+                                            {c.firstName.charAt(0)}{c.lastName.charAt(0)}
+                                        </span>
+                                        <h2 className="text-lg font-bold text-gray-900 truncate">
+                                            {item.display['Full Name']}
+                                        </h2>
+                                    </div>
+                                    
+                                    <div className="flex flex-wrap gap-1.5 mb-3">
+                                        {skillTags.map((skill, i) => (
+                                            <span key={i} className="px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-800 rounded-full">
+                                                {skill}
+                                            </span>
+                                        ))}
+                                        {c.skillSet.length > 3 && (
+                                            <span className="px-2 py-0.5 text-xs font-medium text-indigo-500">+{c.skillSet.length - 3} more</span>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2 text-sm border-t pt-3">
+                                        <p className="text-gray-700 flex justify-between items-center">
+                                            <span className="font-semibold text-gray-500 flex items-center space-x-1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707l-.707-.707V8a6 6 0 00-6-6zm-6 9.586V8a6 6 0 0112 0v3.586l-1 1H5l-1-1zM9 17h2a1 1 0 00-2 0z" clipRule="evenodd" fillRule="evenodd"></path></svg>
+                                                Role:
+                                            </span> 
+                                            <span className="text-right truncate max-w-[65%]">{c.currentRole || 'N/A'}</span>
                                         </p>
-                                        <p className="text-gray-700 flex justify-between">
-                                            <span className="font-semibold text-gray-500">Location:</span> <span className="text-right truncate max-w-[65%]">{c.currentLocation || 'N/A'}</span>
+                                        <p className="text-gray-700 flex justify-between items-center">
+                                            <span className="font-semibold text-gray-500 flex items-center space-x-1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd"></path></svg>
+                                                Location:
+                                            </span> 
+                                            <span className="text-right truncate max-w-[65%]">{c.currentLocation || 'N/A'}</span>
                                         </p>
-                                        <p className="text-gray-700 flex justify-between">
-                                            <span className="font-semibold text-gray-500">Submitted:</span> <span className="text-right truncate max-w-[65%]">{formatDate(c.submissionDate)}</span>
-                                        </p>
-                                        <p className="text-gray-700 flex justify-between">
-                                            <span className="font-semibold text-gray-500">Posting ID:</span> <span className="text-right truncate max-w-[65%]">{c.postingId}</span>
+                                        <p className="text-gray-700 flex justify-between items-center">
+                                            <span className="font-semibold text-gray-500 flex items-center space-x-1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"></path></svg>
+                                                Submitted:
+                                            </span> 
+                                            <span className="text-right truncate max-w-[65%]">{formatDate(c.submissionDate)}</span>
                                         </p>
                                         <div className="pt-2">
                                             <span className="font-semibold text-gray-500 block mb-1">Status:</span>
@@ -400,14 +429,14 @@ const CandidateDetailsPage = () => {
                                     <div className="mt-4 pt-3 border-t flex justify-between space-x-2">
                                         <button 
                                             onClick={() => handleViewProfileClick(c)} 
-                                            className="px-3 py-1 text-sm text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition"
+                                            className="w-1/2 px-3 py-1.5 text-sm font-semibold text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition"
                                         >
                                             View Profile
                                         </button>
                                         {canEditDashboard && (
                                             <button 
                                                 onClick={() => handleEditClick(c)} 
-                                                className="px-3 py-1 text-sm text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50 transition"
+                                                className="w-1/2 px-3 py-1.5 text-sm font-semibold text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50 transition"
                                             >
                                                 Edit Details
                                             </button>
