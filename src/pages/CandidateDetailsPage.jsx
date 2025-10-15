@@ -12,6 +12,13 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { usePermissions } from '../hooks/usePermissions';
 
+// Component to handle the collapsible skill display
+const SkillPill = ({ skill, index }) => (
+    <span key={index} className="px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-800 rounded-lg">
+        {skill}
+    </span>
+);
+
 const CandidateDetailsPage = () => {
     const { user, updatePreferences } = useAuth();
     // Removed canRequestTimesheetApproval since the modal is gone
@@ -35,6 +42,9 @@ const CandidateDetailsPage = () => {
     
     // Removed state related to timesheet approval modal
     const [candidateForApproval, setCandidateForApproval] = useState(null);
+
+    // State for tracking which card's skills are expanded
+    const [expandedCardId, setExpandedCardId] = useState(null); 
 
     // Define all possible headers for the table.
     // NOTE: This list is used for export/config, not for displaying every column in the card grid.
@@ -372,7 +382,7 @@ const CandidateDetailsPage = () => {
                             return (
                                 <div 
                                     key={index} 
-                                    className={`relative bg-white p-5 rounded-xl shadow-md border ${isDuplicate ? 'border-yellow-500 ring-1 ring-yellow-500' : 'border-gray-200 hover:shadow-lg transition'}`}
+                                    className={`relative bg-white p-5 rounded-xl shadow-md border flex flex-col h-full ${isDuplicate ? 'border-yellow-500 ring-1 ring-yellow-500' : 'border-gray-200 hover:shadow-lg transition'}`}
                                 >
                                     {isDuplicate && (
                                         <div className="absolute top-0 right-0 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-bl-lg rounded-tr-xl">Duplicate</div>
@@ -387,21 +397,20 @@ const CandidateDetailsPage = () => {
                                         </h2>
                                     </div>
                                     
+                                    {/* Skills Preview Section (Visible by default) */}
                                     <div className="flex flex-wrap gap-1.5 mb-3">
                                         {skillTags.map((skill, i) => (
-                                            <span key={i} className="px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-800 rounded-full">
-                                                {skill}
-                                            </span>
+                                            <SkillPill key={i} skill={skill} />
                                         ))}
                                         {c.skillSet.length > 3 && (
                                             <span className="px-2 py-0.5 text-xs font-medium text-indigo-500">+{c.skillSet.length - 3} more</span>
                                         )}
                                     </div>
 
-                                    <div className="space-y-2 text-sm border-t pt-3">
+                                    <div className="space-y-2 text-sm border-t pt-3 flex-grow">
                                         <p className="text-gray-700 flex justify-between items-center">
                                             <span className="font-semibold text-gray-500 flex items-center space-x-1">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707l-.707-.707V8a6 6 0 00-6-6zm-6 9.586V8a6 6 0 0112 0v3.586l-1 1H5l-1-1zM9 17h2a1 1 0 00-2 0z" clipRule="evenodd" fillRule="evenodd"></path></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707l-.707-.707V8a6 6 0 00-6-6zm-6 9.586V8a6 6 0 0112 0v3.586l-1 1H5l-1-1zM9 17h2a1 1 0 00-2 0z" clipRule="evenodd" fillRule="evenodd"></path></svg>
                                                 Role:
                                             </span> 
                                             <span className="text-right truncate max-w-[65%]">{c.currentRole || 'N/A'}</span>
@@ -426,7 +435,8 @@ const CandidateDetailsPage = () => {
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 pt-3 border-t flex justify-between space-x-2">
+                                    {/* Action buttons are pushed to the bottom via mt-auto */}
+                                    <div className="mt-4 pt-3 border-t flex justify-between space-x-2 w-full">
                                         <button 
                                             onClick={() => handleViewProfileClick(c)} 
                                             className="w-1/2 px-3 py-1.5 text-sm font-semibold text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition"
