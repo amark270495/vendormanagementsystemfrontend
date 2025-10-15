@@ -7,7 +7,7 @@ const CandidateProfileViewModal = ({ isOpen, onClose, candidate }) => {
     }
 
     const DetailItem = ({ label, value, large = false, icon }) => (
-        <div className={`flex flex-col ${large ? 'md:col-span-2' : ''}`}>
+        <div className={`flex flex-col p-3 bg-gray-50 rounded-lg ${large ? 'md:col-span-2' : ''}`}>
             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center space-x-1">
                 {icon}
                 <span>{label}</span>
@@ -30,67 +30,85 @@ const CandidateProfileViewModal = ({ isOpen, onClose, candidate }) => {
         </svg>
     );
     
-    const skillSet = Array.isArray(candidate.skillSet) ? candidate.skillSet : (candidate.skillSet ? JSON.parse(candidate.skillSet) : []);
+    // Ensure skillSet is an array, parsing if necessary
+    const skillSet = Array.isArray(candidate.skillSet) ? candidate.skillSet : (candidate.skillSet && typeof candidate.skillSet === 'string' ? JSON.parse(candidate.skillSet) : []);
+    const submissionDate = new Date(candidate.submissionDate).toLocaleDateString();
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Profile: ${candidate.firstName} ${candidate.lastName}`} size="4xl">
+        <Modal isOpen={isOpen} onClose={onClose} title={`Candidate Profile`} size="4xl">
             <div className="space-y-8">
-                {/* --- HEADER SECTION --- */}
+                {/* --- HEADER SECTION: NAME & ROLE --- */}
                 <div className="flex items-center space-x-4 pb-4 border-b border-indigo-100">
-                    <span className="w-16 h-16 rounded-full bg-indigo-500 flex items-center justify-center text-3xl font-bold text-white shadow-lg">
+                    <span className="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center text-3xl font-bold text-white shadow-xl">
                         {candidate.firstName.charAt(0)}{candidate.lastName.charAt(0)}
                     </span>
                     <div>
                         <h2 className="text-2xl font-extrabold text-gray-900">{`${candidate.firstName} ${candidate.middleName || ''} ${candidate.lastName}`.trim()}</h2>
-                        <p className="text-md text-indigo-600">{candidate.currentRole}</p>
+                        <p className="text-md text-indigo-700 font-semibold">{candidate.currentRole} at {candidate.currentLocation}</p>
                     </div>
                 </div>
 
-                {/* --- CONTACT & GENERAL INFO --- */}
+                {/* --- SECTION 1: CORE CONTACT DETAILS --- */}
                 <div className="space-y-4">
-                    <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Contact & Submission Details</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <DetailItem icon={getIcon('email')} label="Email" value={candidate.email} />
+                    <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Primary Contact Information</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <DetailItem icon={getIcon('email')} label="Email Address" value={candidate.email} />
                         <DetailItem icon={getIcon('phone')} label="Mobile Number" value={candidate.mobileNumber} />
                         <DetailItem icon={getIcon('location')} label="Current Location" value={candidate.currentLocation} />
+                        <DetailItem icon={getIcon('role')} label="Current Role" value={candidate.currentRole} />
+                    </div>
+                </div>
+
+                {/* --- SECTION 2: SUBMISSION CONTEXT --- */}
+                <div className="space-y-4 pt-4 border-t">
+                    <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Submission Context</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <DetailItem icon={getIcon('post')} label="Submitted For (Posting ID)" value={candidate.postingId} />
-                        
-                        <DetailItem icon={getIcon('date')} label="Submission Date" value={new Date(candidate.submissionDate).toLocaleDateString()} />
+                        <DetailItem icon={getIcon('date')} label="Submission Date" value={submissionDate} />
                         <DetailItem icon={getIcon('user')} label="Submitted By" value={candidate.submittedBy} />
                         <DetailItem icon={getIcon('user')} label="Resume Worked By" value={candidate.resumeWorkedBy} />
-                        <DetailItem icon={getIcon('user')} label="Reference From" value={candidate.referenceFrom} />
                         
                         <DetailItem large icon={getIcon('role')} label="Client/Agency Info" value={candidate.clientInfo} />
+                        <DetailItem large icon={getIcon('user')} label="Reference From" value={candidate.referenceFrom} />
                     </div>
                 </div>
 
-                {/* --- REMARKS & STATUS --- */}
+                {/* --- SECTION 3: REMARKS, STATUS & SKILLS --- */}
                 <div className="space-y-4 pt-4 border-t">
-                    <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Status & Notes</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <DetailItem label="Current Status / Remarks" value={candidate.remarks} large />
-                        <div className="flex flex-col">
-                            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Candidate Status:</h4>
+                    <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Status, Remarks, & Skill Set</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Status Badge */}
+                        <div className="flex flex-col p-3 bg-indigo-50 rounded-lg">
+                            <h4 className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">Current Status:</h4>
                             <span className={`mt-1 inline-block px-3 py-1 text-sm font-bold rounded-full ${candidate.remarks ? 'bg-teal-100 text-teal-800' : 'bg-gray-100 text-gray-700'}`}>
-                                {candidate.remarks || 'No Update'}
+                                {candidate.remarks || 'Pending Review'}
                             </span>
                         </div>
+                        
+                        {/* Remarks Detail */}
+                        <div className="md:col-span-2 flex flex-col p-3 bg-gray-50 rounded-lg">
+                            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Detailed Remarks:</h4>
+                            <p className="text-gray-800 font-medium pt-1">{candidate.remarks || 'No detailed remarks provided.'}</p>
+                        </div>
                     </div>
-                </div>
 
-                {/* --- SKILLS SECTION --- */}
-                <div className="space-y-4 pt-4 border-t">
-                    <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Comprehensive Skill Set</h3>
-                    <div className="flex flex-wrap gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200" style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                        {skillSet.length > 0 ? (
-                            skillSet.map((skill, index) => (
-                                <span key={index} className="px-3 py-1 text-sm font-medium bg-indigo-100 text-indigo-800 rounded-full shadow-sm hover:bg-indigo-200 transition">
-                                    {skill}
-                                </span>
-                            ))
-                        ) : (
-                            <p className="text-gray-500 text-sm">No detailed skill list available.</p>
-                        )}
+                    {/* Skills List */}
+                    <div className="space-y-2 pt-4">
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center space-x-1">
+                            {getIcon('tag')}
+                            <span>Skill Set</span>
+                        </h4>
+                        <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                            {skillSet.length > 0 ? (
+                                skillSet.map((skill, index) => (
+                                    <span key={index} className="px-3 py-1 text-xs font-semibold bg-indigo-50 text-indigo-700 rounded-full shadow-sm">
+                                        {skill}
+                                    </span>
+                                ))
+                            ) : (
+                                <p className="text-gray-500 text-sm">No detailed skill list available.</p>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
