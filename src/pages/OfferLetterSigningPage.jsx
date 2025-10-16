@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { apiService } from '../api/apiService';
-import Spinner from '../components/Spinner';
-import AccessModal from '../components/msa-wo/AccessModal';
-import SignatureModal from '../components/msa-wo/SignatureModal';
-import { useAuth } from '../context/AuthContext';
+import { apiService } from '../api/apiService.js';
+import Spinner from '../components/Spinner.jsx';
+import AccessModal from '../components/msa-wo/AccessModal.jsx';
+import SignatureModal from '../components/msa-wo/SignatureModal.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const OfferLetterSigningPage = () => {
     const { user } = useAuth() || {};
@@ -20,9 +20,8 @@ const OfferLetterSigningPage = () => {
     const hasBeenSigned = documentData?.status === 'Signed';
 
     useEffect(() => {
-        const pathParts = window.location.pathname.split('/');
-        const urlToken = pathParts[pathParts.length - 1];
-        if (urlToken && urlToken.length > 10) {
+        const urlToken = new URLSearchParams(window.location.search).get('token');
+        if (urlToken) {
             setToken(urlToken);
         } else {
             setError('Invalid or missing document token in the URL.');
@@ -32,13 +31,12 @@ const OfferLetterSigningPage = () => {
 
     useEffect(() => {
         if (token) {
-            // For public offer letter links, always show the access modal.
             setIsAccessModalOpen(true);
             setLoading(false);
         }
     }, [token]);
 
-    const handleAccessGranted = useCallback(async (data) => {
+    const handleAccessGranted = useCallback((data) => {
         if (!data) {
             setError('Access denied. Please check your credentials.');
             return;
@@ -51,16 +49,16 @@ const OfferLetterSigningPage = () => {
     const handleSignSuccess = useCallback((message) => {
         setSuccessMessage(message);
         setIsSigningModalOpen(false);
-        // Reload the document data to show the "Signed" status
         const fetchSignedDoc = async () => {
              try {
-                // This re-fetches the document data after signing to update the status on the page.
+                // Re-fetch document using a dummy password since access is already granted
                 const response = await apiService.employeeSignIn(token, 'post_sign_refresh');
                 if (response.data.success) {
                     setDocumentData(response.data.documentData);
                 }
             } catch (err) {
-                console.error("Could not refresh document status.", err);
+                // If refresh fails, just show success and don't update UI further
+                console.error("Could not refresh document status after signing.", err);
             }
         };
         fetchSignedDoc();
@@ -90,6 +88,7 @@ const OfferLetterSigningPage = () => {
             signerType: 'employee',
             requiresPassword: false,
             signerInfo: { name: documentData?.employeeName, title: 'Candidate' },
+            documentUrl: documentData?.pdfUrl
         });
         setIsSigningModalOpen(true);
     };
@@ -154,7 +153,6 @@ const OfferLetterSigningPage = () => {
                 onClose={() => { if (!documentData) setError("Access is required to view this document.") }}
                 onAccessGranted={handleAccessGranted}
                 token={token}
-                // --- FIX: Pass the correct API method for offer letters ---
                 apiServiceMethod={apiService.employeeSignIn}
                 vendorEmail={"the email address on file"}
             />
@@ -166,6 +164,7 @@ const OfferLetterSigningPage = () => {
                 signerType={signerConfig.signerType}
                 signerInfo={signerConfig.signerInfo}
                 requiresPassword={signerConfig.requiresPassword}
+                documentUrl={signerConfig.documentUrl}
             />
         </>
     );

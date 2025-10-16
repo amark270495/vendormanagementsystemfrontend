@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import Modal from '../Modal';
-import Spinner from '../Spinner';
-import { apiService } from '../../api/apiService';
+import Modal from '../Modal.jsx';
+import Spinner from '../Spinner.jsx';
 
-const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail }) => {
+const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail, apiServiceMethod }) => {
     const [tempPassword, setTempPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -14,7 +13,8 @@ const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail }) =
         setLoading(true);
 
         try {
-            const response = await apiService.accessMSAandWO(token, tempPassword);
+            // Use the passed-in API service method
+            const response = await apiServiceMethod(token, tempPassword);
             if (response.data.success) {
                 onAccessGranted(response.data.documentData);
                 onClose();
@@ -33,7 +33,7 @@ const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail }) =
             {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
             <form onSubmit={handleSubmit} className="space-y-4">
                 <p className="text-gray-700">
-                    A temporary password has been sent to your email ({vendorEmail}). Please enter it below to securely access the document.
+                    A temporary password has been sent to {vendorEmail}. Please enter it below to securely access the document.
                 </p>
                 <div>
                     <label htmlFor="tempPassword" className="block text-sm font-medium text-gray-700">Temporary Password <span className="text-red-500">*</span></label>
