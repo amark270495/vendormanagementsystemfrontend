@@ -54,7 +54,7 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
             setCurrentSkill('');
             setError('');
         }
-    }, [isOpen, jobInfo?.postingId, candidateToEdit?.email]);
+    }, [isOpen, candidateToEdit]);
 
     const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
