@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Modal from '../Modal.jsx';
 import Spinner from '../Spinner.jsx';
+import { apiService } from '../../api/apiService.js'; // Import apiService
 
 const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail, apiServiceMethod }) => {
     const [tempPassword, setTempPassword] = useState('');
@@ -13,7 +14,7 @@ const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail, api
         setLoading(true);
 
         try {
-            // Use the passed-in API service method
+            // The passed-in API service method is a function from the apiService object
             const response = await apiServiceMethod(token, tempPassword);
             if (response.data.success) {
                 onAccessGranted(response.data.documentData);
@@ -22,6 +23,7 @@ const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail, api
                 setError(response.data.message);
             }
         } catch (err) {
+            console.error("Error in AccessModal:", err); // Log the full error to the console
             setError(err.response?.data?.message || "An unexpected error occurred.");
         } finally {
             setLoading(false);
