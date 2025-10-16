@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import Modal from '../Modal.jsx';
-import Spinner from '../Spinner.jsx';
-import { apiService } from '../../api/apiService.js'; // Import apiService
+import Modal from '../Modal';
+import Spinner from '../Spinner';
+import { apiService } from '../../api/apiService'; // Import apiService
 
 const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail, apiServiceMethod }) => {
     const [tempPassword, setTempPassword] = useState('');
@@ -14,8 +14,15 @@ const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail, api
         setLoading(true);
 
         try {
-            // The passed-in API service method is a function from the apiService object
-            const response = await apiServiceMethod(token, tempPassword);
+            // Determine which API function to call. Fallback to the original MSA/WO function for backward compatibility.
+            const methodToCall = apiServiceMethod || apiService.accessMSAandWO;
+            
+            if (typeof methodToCall !== 'function') {
+                throw new Error("A required API function was not provided to the modal.");
+            }
+
+            const response = await methodToCall(token, tempPassword);
+            
             if (response.data.success) {
                 onAccessGranted(response.data.documentData);
                 onClose();
