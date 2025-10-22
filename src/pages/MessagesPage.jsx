@@ -4,7 +4,9 @@ import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
 import { useMediaQuery } from 'react-responsive';
+// --- Sound Import (using original relative path) ---
 import messageSound from '../sounds/message.mp3';
+// --- End Sound Import ---
 import {
     generateKeyPair,
     importPrivateKey,
@@ -13,7 +15,7 @@ import {
     exportPublicKey,
     encrypt,
     decrypt
-} from '../utils/webCrypto';
+} from '../utils/webCrypto'; // Assuming webCrypto utils exist
 
 // A simple modal for confirming the key reset action.
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => {
@@ -127,7 +129,7 @@ const MessagesPage = () => {
     useEffect(() => {
         const setupKeys = async () => {
             if (!user?.userIdentifier) return;
-            
+
             // This function regenerates and saves a new key pair.
             const regenerateAndSaveKeys = async () => {
                 console.log("Regenerating and saving new encryption keys.");
@@ -196,7 +198,8 @@ const MessagesPage = () => {
                     .filter(u => u.username !== user.userIdentifier)
                     .map(async u => ({
                         ...u,
-                        publicKey: u.publicKey ? importPublicKey(u.publicKey) : null
+                        // Attempt to load public key if needed later, handle potential errors
+                        publicKey: u.publicKey ? importPublicKey(u.publicKey).catch(e => { console.error(`Failed to import key for ${u.username}`, e); return null; }) : null
                     })));
                 setUsers(allUsers);
             } else setError(res.data.message);
@@ -206,6 +209,7 @@ const MessagesPage = () => {
             setLoadingUsers(false);
         }
     }, [user?.userIdentifier, canMessage]);
+
 
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
@@ -226,12 +230,12 @@ const MessagesPage = () => {
         try {
             if (!isPolling) setLoadingMessages(true);
             const res = await apiService.getMessages(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
-    
+
             if (res.data.success) {
                 const serverMessages = res.data.messages;
                 const processedMessages = await Promise.all(serverMessages.map(async (serverMsg) => {
                     let content = serverMsg.messageContent;
-                    
+
                     if (serverMsg.sender === user.userIdentifier) {
                         const plainText = sentMessagesCache.current[serverMsg.messageContent];
                         // --- MODIFIED: Improved fallback text ---
@@ -246,9 +250,9 @@ const MessagesPage = () => {
                     }
                     return { ...serverMsg, messageContent: content };
                 }));
-    
+
                 processedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-                
+
                 setMessages(prev => {
                     if (processedMessages.length > prev.length) {
                         const latest = processedMessages[processedMessages.length - 1];
@@ -263,7 +267,7 @@ const MessagesPage = () => {
                     await apiService.markMessagesAsRead(user.userIdentifier, selectedRecipient.username, user.userIdentifier);
                     setUnreadCounts(prev => ({ ...prev, [selectedRecipient.username]: 0 }));
                 }
-    
+
             } else if (!isPolling) {
                 setError(res.data.message);
             }
@@ -299,7 +303,7 @@ const MessagesPage = () => {
             setError("Cannot send message: User or keys are not set up.");
             return;
         }
-        
+
         const tempId = `client_${Date.now()}`;
 
         try {
@@ -310,6 +314,7 @@ const MessagesPage = () => {
                     const res = await apiService.getPublicKey(selectedRecipient.username, user.userIdentifier);
                     if (res.data.success && res.data.publicKey) {
                         recipientPublicKey = await importPublicKey(res.data.publicKey);
+                        // Update the state with the resolved public key promise
                         setUsers(prevUsers => prevUsers.map(u =>
                             u.username === selectedRecipient.username
                                 ? { ...u, publicKey: Promise.resolve(recipientPublicKey) }
@@ -327,10 +332,10 @@ const MessagesPage = () => {
             }
 
             const encryptedContent = await encrypt(recipientPublicKey, msgContent);
-            
+
             sentMessagesCache.current[encryptedContent] = msgContent;
             localStorage.setItem(`sentMessagesCache_${user.userIdentifier}`, JSON.stringify(sentMessagesCache.current));
-            
+
             const temp = {
                 sender: user.userIdentifier,
                 recipient: selectedRecipient.username,
@@ -348,6 +353,7 @@ const MessagesPage = () => {
             setMessages(prev => prev.filter(m => m.id !== tempId));
         }
     }, [selectedRecipient, user?.userIdentifier]);
+
 
     // --- NEW: Handler to perform the key reset ---
     const handleConfirmResetKeys = useCallback(async () => {
@@ -368,7 +374,7 @@ const MessagesPage = () => {
             localStorage.setItem(`privateKey_${user.userIdentifier}`, privateKeyString);
             await apiService.savePublicKey(user.userIdentifier, publicKeyString);
 
-            setMessages([]);
+            setMessages([]); // Clear potentially unreadable messages
             setError("Keys reset successfully. Your old messages can no longer be decrypted.");
             setTimeout(() => setError(""), 5000); // Clear message after 5s
         } catch (err) {
@@ -418,16 +424,18 @@ const MessagesPage = () => {
                 <>
                     {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg cursor-pointer" onClick={() => setError('')}>{error}</div>}
                     {loadingUsers && <div className="flex justify-center items-center h-64"><Spinner /></div>}
+                    {!loadingUsers && !canMessage && <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border"><h3 className="text-lg font-medium">Access Denied</h3></div>}
                     {!loadingUsers && canMessage && (
                         <div className="flex flex-1 bg-white rounded-xl shadow-sm border overflow-hidden">
-                            <div className={`w-full md:w-1/3 lg:w-1/4 border-r flex flex-col ${isMobile && !isUserListVisible ? 'hidden' : 'flex'}`}>
-                                <div className="p-3 border-b">
+                            {/* User List Pane */}
+                            <div className={`w-full md:w-1/3 lg:w-1/4 border-r border-slate-200 flex flex-col ${isMobile && !isUserListVisible ? 'hidden' : 'flex'}`}>
+                                <div className="p-3 border-b border-slate-200">
                                     <input
                                         type="text"
                                         placeholder="Search users..."
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
-                                        className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
                                     />
                                 </div>
                                 <div className="flex-1 overflow-y-auto">
@@ -436,7 +444,7 @@ const MessagesPage = () => {
                                         .map(u => (
                                             <button key={u.username}
                                                 onClick={() => handleRecipientSelect(u)}
-                                                className={`w-full flex items-center justify-between p-3 hover:bg-slate-100 transition text-left relative ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : ''}`}>
+                                                className={`w-full flex items-center justify-between p-3 hover:bg-slate-100 transition text-left relative border-b border-slate-100 last:border-b-0 ${selectedRecipient?.username === u.username ? 'bg-indigo-50 text-indigo-700' : ''}`}>
                                                 <div className="flex items-center space-x-3">
                                                     <span className="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center font-bold text-indigo-800 flex-shrink-0">
                                                         {u.displayName.charAt(0)}
@@ -456,56 +464,62 @@ const MessagesPage = () => {
                                 </div>
                             </div>
 
+                            {/* Chat Pane */}
                             <div className={`flex-1 flex flex-col bg-slate-50 ${isMobile && isUserListVisible ? 'hidden' : 'flex'}`}>
                                 {selectedRecipient ? (
                                     <>
-                                        <div className="p-4 border-b bg-white flex items-center space-x-3">
+                                        {/* Chat Header */}
+                                        <div className="p-4 border-b border-slate-200 bg-white flex items-center space-x-3 shadow-sm">
                                             {isMobile && (
-                                                <button onClick={() => setUserListVisible(true)} className="text-slate-600 hover:text-black">
-                                                    &larr;
+                                                <button onClick={() => setUserListVisible(true)} className="text-slate-600 hover:text-black p-1 rounded-full hover:bg-slate-100">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                                                 </button>
                                             )}
                                             <span className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600">
                                                 {selectedRecipient.displayName.charAt(0)}
                                             </span>
                                             <div>
-                                                <h2 className="font-bold">{selectedRecipient.displayName}</h2>
-                                                <p className="text-xs text-green-500">Online</p>
+                                                <h2 className="font-bold text-slate-800">{selectedRecipient.displayName}</h2>
+                                                {/* <p className="text-xs text-green-500">Online</p> */} {/* Placeholder for online status */}
                                             </div>
                                         </div>
 
-                                        <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto overflow-x-hidden">
-                                            {loadingMessages && <div className="flex justify-center"><Spinner size="6" /></div>}
+                                        {/* Message Area */}
+                                        <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto overflow-x-hidden scroll-smooth">
+                                            {loadingMessages && <div className="flex justify-center pt-10"><Spinner size="6" /></div>}
                                             {!loadingMessages && messages.map((m) => {
                                                 const isMe = m.sender === user.userIdentifier;
                                                 return (
                                                     <div key={m.id || m.timestamp} className={`flex items-end space-x-2 ${isMe ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
                                                         {!isMe && (
-                                                            <span className="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center text-sm font-bold text-slate-700 flex-shrink-0">
+                                                            <span className="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center text-sm font-bold text-slate-700 flex-shrink-0 self-start">
                                                                 {selectedRecipient.displayName.charAt(0)}
                                                             </span>
                                                         )}
-                                                        <div className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm text-sm break-words ${isMe ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-none' : 'bg-white border text-slate-800 rounded-bl-none'}`}>
+                                                        <div className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm text-sm break-words ${isMe ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none'}`}>
                                                             <p>{m.messageContent}</p>
                                                             <div className="flex justify-end items-center space-x-1 mt-1">
-                                                                <p className="text-[10px] opacity-70">
+                                                                <p className={`text-[10px] ${isMe ? 'text-indigo-100' : 'text-slate-400'}`}>
                                                                     {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                                 </p>
-                                                                {isMe && (
-                                                                    <span className="text-[10px] opacity-70">
+                                                                {/* Optional read status for sent messages */}
+                                                                {/* {isMe && (
+                                                                    <span className={`text-[10px] ${m.isRead ? 'text-blue-300' : 'text-indigo-100'}`}>
                                                                         {m.isRead ? '✓✓' : '✓'}
                                                                     </span>
-                                                                )}
+                                                                )} */}
                                                             </div>
                                                         </div>
                                                     </div>
                                                 );
                                             })}
-                                            <div ref={messagesEndRef} />
+                                            <div ref={messagesEndRef} /> {/* Anchor for scrolling */}
                                         </div>
+                                        {/* Message Input Form */}
                                         <MessageInputForm onSendMessage={handleSendMessage} disabled={loadingMessages || !canMessage || isResetting} />
                                     </>
                                 ) : (
+                                    // Placeholder when no chat is selected
                                     <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-center p-4">
                                          <svg className="w-16 h-16 text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                                         <h3 className="font-semibold text-slate-800">Select a Conversation</h3>
