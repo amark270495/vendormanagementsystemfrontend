@@ -19,18 +19,19 @@ import CreateMSAWOVendorCompanyPage from './pages/CreateMSAWOVendorCompanyPage';
 import ManageMSAWOVendorCompaniesPage from './pages/ManageMSAWOVendorCompaniesPage';
 import CreateOfferLetterPage from './pages/CreateOfferLetterPage';
 import OfferLetterDashboardPage from './pages/OfferLetterDashboardPage';
+import ProfilePage from './pages/ProfilePage';
+import HolidayManagementPage from './pages/HolidayManagementPage';
+import LeaveApprovalPage from './pages/LeaveApprovalPage';
+import LeaveConfigPage from './pages/LeaveConfigPage'; // <-- Import LeaveConfigPage
 
 
 const MainApp = () => {
-    // FIX: Reverted state to be an object to handle page and params
     const [currentPage, setCurrentPage] = useState({ page: 'home', params: {} });
 
-    // This effect loads the saved page state from sessionStorage on initial load
     useEffect(() => {
         const savedPage = sessionStorage.getItem('vms_currentPage');
         if (savedPage) {
             try {
-                // FIX: Parse the stored JSON string back into an object
                 const parsedPage = JSON.parse(savedPage);
                 setCurrentPage(parsedPage);
             } catch (e) {
@@ -42,18 +43,15 @@ const MainApp = () => {
 
     const handleNavigate = (page, params = {}) => {
         const newState = { page, params };
-        // FIX: Stringify the state object before saving to sessionStorage
         sessionStorage.setItem('vms_currentPage', JSON.stringify(newState));
         setCurrentPage(newState);
     };
 
     const renderPage = () => {
-        // FIX: Switch on currentPage.page instead of just currentPage
         switch (currentPage.page) {
             case 'home':
                 return <HomePage onNavigate={handleNavigate} />;
             case 'dashboard':
-                // FIX: Correctly access the sheetKey from currentPage.params.key
                 return <DashboardPage sheetKey={currentPage.params.key} />;
             case 'new_posting':
                 return <JobPostingFormPage onFormSubmit={() => handleNavigate('home')} />;
@@ -89,6 +87,14 @@ const MainApp = () => {
                 return <CreateOfferLetterPage onNavigate={handleNavigate} />;
             case 'offer_letter_dashboard':
                 return <OfferLetterDashboardPage />;
+            case 'profile':
+                return <ProfilePage />;
+            case 'manage_holidays':
+                return <HolidayManagementPage />;
+            case 'approve_leave':
+                return <LeaveApprovalPage />;
+            case 'manage_leave_config': // <-- Added case for leave config page
+                return <LeaveConfigPage />;
             default:
                 return <HomePage onNavigate={handleNavigate} />;
         }
@@ -96,7 +102,6 @@ const MainApp = () => {
 
     return (
         <div className="min-h-screen bg-slate-50">
-            {/* FIX: Pass only the page name string to TopNav for highlighting */}
             <TopNav onNavigate={handleNavigate} currentPage={currentPage.page} />
             <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {renderPage()}
