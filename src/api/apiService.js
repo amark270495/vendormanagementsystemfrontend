@@ -1,8 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = '/api'; // Assumes the frontend is served relative to the API
+const API_BASE_URL = '/api';
 
-// Create an axios instance for API calls
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -10,7 +9,6 @@ const apiClient = axios.create({
   },
 });
 
-// Define the apiService object containing all API call functions
 export const apiService = {
   // --- User & Auth Functions ---
   authenticateUser: (username, password) =>
@@ -41,9 +39,6 @@ export const apiService = {
     apiClient.post('/saveUserDashboardPreferences', { authenticatedUsername, preferences }),
   processJobPosting: (formData, authenticatedUsername) =>
     apiClient.post('/processJobPosting', { formData, authenticatedUsername }),
-  getOpenJobPostings: (authenticatedUsername) => // Corrected name
-    apiClient.get('/getOpenJobPostings', { params: { authenticatedUsername } }),
-
 
   // --- Candidate Functions ---
   addCandidateDetails: (candidateData, authenticatedUsername) =>
@@ -54,8 +49,6 @@ export const apiService = {
     apiClient.get('/getCandidateDetailsPageData', { params: { authenticatedUsername } }),
   getCandidateDetail: (postingId, email, authenticatedUsername) =>
     apiClient.get('/getCandidateDetail', { params: { postingId, email, authenticatedUsername } }),
-  getCandidateReportData: (params) => // Candidate-specific report
-    apiClient.get('/getCandidateReportData', { params }),
 
   // --- Report & Notification Functions ---
   getHomePageData: (authenticatedUsername) =>
@@ -68,10 +61,6 @@ export const apiService = {
     apiClient.get('/getNotifications', { params: { authenticatedUsername } }),
   markNotificationsAsRead: (notificationIds, authenticatedUsername) =>
     apiClient.post('/markNotificationsAsRead', { notificationIds, authenticatedUsername }),
-  sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) =>
-    apiClient.post('/sendAssignmentEmail', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
-
-  // --- Messaging Functions ---
   getMessages: (user1, user2, authenticatedUsername) =>
     apiClient.get('/getMessages', { params: { user1, user2, authenticatedUsername } }),
   saveMessage: (sender, recipient, messageContent, authenticatedUsername) =>
@@ -80,10 +69,8 @@ export const apiService = {
     apiClient.get('/getUnreadMessages', { params: { authenticatedUsername } }),
   markMessagesAsRead: (recipient, sender, authenticatedUsername) =>
     apiClient.post('/markMessagesAsRead', { recipient, sender, authenticatedUsername }),
-  savePublicKey: (authenticatedUsername, publicKey) =>
-    apiClient.post('/savePublicKey', { authenticatedUsername, publicKey }),
-  getPublicKey: (username, authenticatedUsername) =>
-    apiClient.get('/getPublicKey', { params: { username, authenticatedUsername } }),
+  sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) =>
+    apiClient.post('/sendAssignmentEmail', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
 
   // --- Permissions Functions ---
   getUserPermissionsList: (authenticatedUsername) =>
@@ -126,10 +113,10 @@ export const apiService = {
     apiClient.post('/createMSAWOVendorCompany', { companyData, authenticatedUsername }),
   getMSAWOVendorCompanies: (authenticatedUsername) =>
     apiClient.get('/getMSAWOVendorCompanies', { params: { authenticatedUsername } }),
-  updateMSAWOVendorCompany: (originalVendorName, vendorData, authenticatedUsername) => // Parameter was originalCompanyName, corrected to originalVendorName
-    apiClient.post('/updateMSAWOVendorCompany', { originalVendorName, vendorData, authenticatedUsername }),
-  deleteMSAWOVendorCompany: (vendorNameToDelete, authenticatedUsername) => // Parameter was companyNameToDelete, corrected to vendorNameToDelete
-    apiClient.post('/deleteMSAWOVendorCompany', { vendorNameToDelete, authenticatedUsername }),
+  updateMSAWOVendorCompany: (originalVendorName, vendorData, authenticatedUsername) => // Corrected parameter name
+    apiClient.post('/updateMSAWOVendorCompany', { originalCompanyName: originalVendorName, updatedCompanyData: vendorData, authenticatedUsername }), // Use correct keys
+  deleteMSAWOVendorCompany: (vendorNameToDelete, authenticatedUsername) => // Corrected parameter name
+    apiClient.post('/deleteMSAWOVendorCompany', { companyNameToDelete: vendorNameToDelete, authenticatedUsername }), // Use correct key
   createMSAandWO: (formData, authenticatedUsername) =>
     apiClient.post('/createMSAandWO', { formData, authenticatedUsername }),
   getMSAandWODashboardData: (authenticatedUsername) =>
@@ -154,44 +141,53 @@ export const apiService = {
     apiClient.post('/createOfferLetter', { formData, authenticatedUsername }),
   getOfferLetterDashboardData: (authenticatedUsername) =>
     apiClient.get('/getOfferLetterDashboardData', { params: { authenticatedUsername } }),
-  deleteOfferLetter: (rowKey, authenticatedUsername, pdfUrl) => // Added pdfUrl for backend deletion
-    apiClient.post('/deleteOfferLetter', { rowKey, authenticatedUsername, pdfUrl }),
-  updateOfferLetter: (documentData, authenticatedUsername) => // Changed parameter name
-    apiClient.post('/updateOfferLetter', { documentData, authenticatedUsername }), // Changed payload key
+  deleteOfferLetter: (rowKey, authenticatedUsername, pdfUrl) => // Added pdfUrl
+    apiClient.post('/deleteOfferLetter', { rowKey, authenticatedUsername, pdfUrl }), // Pass pdfUrl
+  updateOfferLetter: (documentData, authenticatedUsername) => // Changed first param name
+    apiClient.post('/updateOfferLetter', { documentData, authenticatedUsername }), // Use documentData key
   employeeSignIn: (token, tempPassword) =>
     apiClient.post('/employeeSignIn', { token, tempPassword }),
   updateOfferLetterStatus: (token, signerData) =>
     apiClient.post('/updateOfferLetterStatus', { token, signerData }),
 
-  // --- Attendance & Leave Functions (NEW) ---
-  markAttendance: (attendanceData, authenticatedUsername) =>
-    apiClient.post('/markAttendance', { attendanceData, authenticatedUsername }),
-  getAttendance: (params) => // Params: { authenticatedUsername, targetUsername, month, year, startDate, endDate }
+  // --- Public Key Management ---
+  savePublicKey: (authenticatedUsername, publicKey) =>
+    apiClient.post('/savePublicKey', { authenticatedUsername, publicKey }),
+  getPublicKey: (username, authenticatedUsername) =>
+    apiClient.get('/getPublicKey', { params: { username, authenticatedUsername } }),
+
+  // --- Attendance & Leave ---
+  markAttendance: (attendanceData) => // Expects { authenticatedUsername, date, status }
+    apiClient.post('/markAttendance', attendanceData),
+  getAttendance: (params) => // Expects { authenticatedUsername, month?, year?, startDate?, endDate? }
     apiClient.get('/getAttendance', { params }),
-  getHolidays: (params) => // Params: { authenticatedUsername, year }
+  getHolidays: (params) => // Expects { authenticatedUsername, year? }
     apiClient.get('/getHolidays', { params }),
-  manageHoliday: (holidayData, authenticatedUsername, method = 'POST') => {
-    // For DELETE, data needs to be in the config for axios delete
-    const config = method.toUpperCase() === 'DELETE'
-      ? { data: { holidayData, authenticatedUsername } }
-      : { holidayData, authenticatedUsername };
-    return apiClient({
-        method: method,
-        url: '/manageHoliday',
-        ...config // Spread config which contains data appropriately
-    });
+  manageHoliday: (holidayData, method = 'POST', authenticatedUsername) => { // Expects { date, description } for POST
+    if (method === 'DELETE') {
+      // For DELETE, Axios expects data in the 'data' field, and params for query string
+      return apiClient.delete('/manageHoliday', {
+          data: { date: holidayData.date, authenticatedUsername } // Send date and auth user in body
+      });
+    } else { // POST (Create/Update)
+      return apiClient.post('/manageHoliday', { ...holidayData, authenticatedUsername });
+    }
   },
-  calculateMonthlyAttendance: (params) => // Params: { authenticatedUsername, username, month, details?, sendEmail? }
-    apiClient.get('/calculateMonthlyAttendance', { params }),
-  requestLeave: (leaveData, authenticatedUsername) =>
-    apiClient.post('/requestLeave', { leaveData, authenticatedUsername }),
-  approveLeave: (approvalData, authenticatedUsername) =>
-    apiClient.post('/approveLeave', { approvalData, authenticatedUsername }),
-  getLeaveConfig: (authenticatedUsername) =>
-    apiClient.get('/manageLeaveConfig', { params: { authenticatedUsername } }), // GET uses manageLeaveConfig endpoint
-  manageLeaveConfig: (configData, authenticatedUsername) =>
-    apiClient.post('/manageLeaveConfig', { configData, authenticatedUsername }), // POST uses manageLeaveConfig endpoint
-  getLeaveRequests: (params) => // Params: { authenticatedUsername, targetUsername?, statusFilter?, startDateFilter?, endDateFilter? }
+  calculateMonthlyAttendance: (username, month, sendEmail = false, authenticatedUsername) =>
+    apiClient.post('/calculateMonthlyAttendance', { username, month, sendEmail, authenticatedUsername }),
+  requestLeave: (leaveData, authenticatedUsername) => // Expects { leaveType, startDate, endDate, reason }
+    apiClient.post('/requestLeave', { ...leaveData, authenticatedUsername }),
+  approveLeave: (approvalData, authenticatedUsername) => // Expects { requestId, requestUsername, action, approverComments? }
+    apiClient.post('/approveLeave', { ...approvalData, authenticatedUsername }),
+
+  // --- FIX: Corrected getLeaveConfig ---
+  getLeaveConfig: (params) => // Expects { authenticatedUsername, targetUsername? }
+    apiClient.get('/manageLeaveConfig', { params }), // Pass params directly
+  // --- End FIX ---
+
+  manageLeaveConfig: (configData, authenticatedUsername) => // Expects { targetUsername, sickLeave, casualLeave }
+    apiClient.post('/manageLeaveConfig', { ...configData, authenticatedUsername }),
+  getLeaveRequests: (params) => // Expects { authenticatedUsername, targetUsername?, statusFilter?, startDateFilter?, endDateFilter? }
     apiClient.get('/getLeaveRequests', { params }),
 
 };
