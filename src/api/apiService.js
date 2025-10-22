@@ -113,10 +113,10 @@ export const apiService = {
     apiClient.post('/createMSAWOVendorCompany', { companyData, authenticatedUsername }),
   getMSAWOVendorCompanies: (authenticatedUsername) =>
     apiClient.get('/getMSAWOVendorCompanies', { params: { authenticatedUsername } }),
-  updateMSAWOVendorCompany: (originalVendorName, vendorData, authenticatedUsername) => // Corrected parameter name
-    apiClient.post('/updateMSAWOVendorCompany', { originalCompanyName: originalVendorName, updatedCompanyData: vendorData, authenticatedUsername }), // Use correct keys
-  deleteMSAWOVendorCompany: (vendorNameToDelete, authenticatedUsername) => // Corrected parameter name
-    apiClient.post('/deleteMSAWOVendorCompany', { companyNameToDelete: vendorNameToDelete, authenticatedUsername }), // Use correct key
+  updateMSAWOVendorCompany: (originalVendorName, vendorData, authenticatedUsername) => 
+    apiClient.post('/updateMSAWOVendorCompany', { originalCompanyName: originalVendorName, updatedCompanyData: vendorData, authenticatedUsername }),
+  deleteMSAWOVendorCompany: (vendorNameToDelete, authenticatedUsername) => 
+    apiClient.post('/deleteMSAWOVendorCompany', { companyNameToDelete: vendorNameToDelete, authenticatedUsername }),
   createMSAandWO: (formData, authenticatedUsername) =>
     apiClient.post('/createMSAandWO', { formData, authenticatedUsername }),
   getMSAandWODashboardData: (authenticatedUsername) =>
@@ -141,10 +141,10 @@ export const apiService = {
     apiClient.post('/createOfferLetter', { formData, authenticatedUsername }),
   getOfferLetterDashboardData: (authenticatedUsername) =>
     apiClient.get('/getOfferLetterDashboardData', { params: { authenticatedUsername } }),
-  deleteOfferLetter: (rowKey, authenticatedUsername, pdfUrl) => // Added pdfUrl
-    apiClient.post('/deleteOfferLetter', { rowKey, authenticatedUsername, pdfUrl }), // Pass pdfUrl
-  updateOfferLetter: (documentData, authenticatedUsername) => // Changed first param name
-    apiClient.post('/updateOfferLetter', { documentData, authenticatedUsername }), // Use documentData key
+  deleteOfferLetter: (rowKey, authenticatedUsername, pdfUrl) => 
+    apiClient.post('/deleteOfferLetter', { rowKey, authenticatedUsername, pdfUrl }),
+  updateOfferLetter: (documentData, authenticatedUsername) => 
+    apiClient.post('/updateOfferLetter', { documentData, authenticatedUsername }),
   employeeSignIn: (token, tempPassword) =>
     apiClient.post('/employeeSignIn', { token, tempPassword }),
   updateOfferLetterStatus: (token, signerData) =>
@@ -157,37 +157,35 @@ export const apiService = {
     apiClient.get('/getPublicKey', { params: { username, authenticatedUsername } }),
 
   // --- Attendance & Leave ---
-  markAttendance: (attendanceData) => // Expects { authenticatedUsername, date, status }
+  markAttendance: (attendanceData) =>
     apiClient.post('/markAttendance', attendanceData),
-  getAttendance: (params) => // Expects { authenticatedUsername, month?, year?, startDate?, endDate? }
+  getAttendance: (params) =>
     apiClient.get('/getAttendance', { params }),
-  getHolidays: (params) => // Expects { authenticatedUsername, year? }
+  getHolidays: (params) =>
     apiClient.get('/getHolidays', { params }),
-  manageHoliday: (holidayData, method = 'POST', authenticatedUsername) => { // Expects { date, description } for POST
+  manageHoliday: (holidayData, method = 'POST', authenticatedUsername) => {
     if (method === 'DELETE') {
-      // For DELETE, Axios expects data in the 'data' field, and params for query string
       return apiClient.delete('/manageHoliday', {
-          data: { date: holidayData.date, authenticatedUsername } // Send date and auth user in body
+          data: { ...holidayData, authenticatedUsername } // Send all data in 'data' field
       });
-    } else { // POST (Create/Update)
+    } else {
       return apiClient.post('/manageHoliday', { ...holidayData, authenticatedUsername });
     }
   },
   calculateMonthlyAttendance: (username, month, sendEmail = false, authenticatedUsername) =>
     apiClient.post('/calculateMonthlyAttendance', { username, month, sendEmail, authenticatedUsername }),
-  requestLeave: (leaveData, authenticatedUsername) => // Expects { leaveType, startDate, endDate, reason }
+  requestLeave: (leaveData, authenticatedUsername) =>
     apiClient.post('/requestLeave', { ...leaveData, authenticatedUsername }),
-  approveLeave: (approvalData, authenticatedUsername) => // Expects { requestId, requestUsername, action, approverComments? }
-    apiClient.post('/approveLeave', { ...approvalData, authenticatedUsername }),
-
-  // --- FIX: Corrected getLeaveConfig ---
-  getLeaveConfig: (params) => // Expects { authenticatedUsername, targetUsername? }
-    apiClient.get('/manageLeaveConfig', { params }), // Pass params directly
+  
+  // --- FIX: approveLeave now expects ONE argument: an object with all fields ---
+  approveLeave: (approvalData) => // Expects { requestId, requestUsername, action, approverComments?, authenticatedUsername }
+    apiClient.post('/approveLeave', approvalData), // Pass the single object directly
   // --- End FIX ---
-
-  manageLeaveConfig: (configData, authenticatedUsername) => // Expects { targetUsername, sickLeave, casualLeave }
+  
+  getLeaveConfig: (params) =>
+    apiClient.get('/manageLeaveConfig', { params }),
+  manageLeaveConfig: (configData, authenticatedUsername) =>
     apiClient.post('/manageLeaveConfig', { ...configData, authenticatedUsername }),
-  getLeaveRequests: (params) => // Expects { authenticatedUsername, targetUsername?, statusFilter?, startDateFilter?, endDateFilter? }
+  getLeaveRequests: (params) =>
     apiClient.get('/getLeaveRequests', { params }),
-
 };
