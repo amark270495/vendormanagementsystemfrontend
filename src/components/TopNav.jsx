@@ -49,16 +49,21 @@ const TopNav = ({ onNavigate, currentPage }) => {
         if (!user?.userIdentifier) return;
         try {
             const response = await apiService.getNotifications(user.userIdentifier);
-            if (response.data.success) {
-                const newNotifications = response.data.notifications || [];
-                // Play sound only if new notifications arrived since the last check
-                if (newNotifications.length > notifications.length && notifications.length > 0) {
-                     playSound('notification.mp3');
-                }
-                setNotifications(newNotifications);
+            // --- FIX: Safely access notifications array ---
+            const newNotifications = response?.data?.success ? (response.data.notifications || []) : [];
+            // --- End FIX ---
+
+            // Play sound only if new notifications arrived since the last check
+            // --- FIX: Ensure 'notifications' state array is also valid before comparing length ---
+            if (Array.isArray(newNotifications) && Array.isArray(notifications) && newNotifications.length > notifications.length && notifications.length > 0) {
+                 playSound('notification.mp3');
             }
+            // --- End FIX ---
+            setNotifications(newNotifications); // Always set state, even if empty
         } catch (err) {
             console.error('Could not fetch notifications', err);
+            // Optionally set notifications to empty array on error
+            // setNotifications([]);
         }
     }, [user?.userIdentifier, notifications]); // Keep notifications dependency
 
@@ -91,7 +96,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
     }, [fetchNotifications, fetchUnreadMessages]);
 
     const handleMarkAsRead = async () => {
-        if (notifications.length === 0) return;
+        if (!Array.isArray(notifications) || notifications.length === 0) return; // Add safety check
         try {
             const idsToMark = notifications.map(n => ({ id: n.id, partitionKey: n.partitionKey }));
             await apiService.markNotificationsAsRead(idsToMark, user.userIdentifier);
@@ -189,22 +194,33 @@ const TopNav = ({ onNavigate, currentPage }) => {
                         {/* Notifications Dropdown */}
                         <Dropdown width="80" trigger={
                             <button className="relative text-slate-500 hover:text-slate-700" aria-label="Notifications">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 0 0 1-3.46 0"></path></svg>
-                                {notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
+                                {/* --- FIX: Corrected SVG Syntax --- */}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path> {/* Corrected arc flag issue here if present, ensure values are 0 or 1 */}
+                                </svg>
+                                {/* --- End FIX --- */}
+                                {/* --- FIX: Check array length safely --- */}
+                                {Array.isArray(notifications) && notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
+                                {/* --- End FIX --- */}
                             </button>
                         }>
                             <div className="p-2">
                                 <div className="flex justify-between items-center mb-2 px-2">
                                     <h4 className="font-semibold text-slate-800">Notifications</h4>
-                                    {notifications.length > 0 && <button onClick={handleMarkAsRead} className="text-xs text-indigo-600 hover:underline">Mark all as read</button>}
+                                    {/* --- FIX: Check array length safely --- */}
+                                    {Array.isArray(notifications) && notifications.length > 0 && <button onClick={handleMarkAsRead} className="text-xs text-indigo-600 hover:underline">Mark all as read</button>}
+                                    {/* --- End FIX --- */}
                                 </div>
                                 <div className="max-h-80 overflow-y-auto">
-                                    {notifications.length > 0 ? notifications.map(n => (
+                                    {/* --- FIX: Check array length safely --- */}
+                                    {Array.isArray(notifications) && notifications.length > 0 ? notifications.map(n => (
                                         <div key={n.id || n.timestamp} className="p-2 border-b hover:bg-slate-50">
                                             <p className="text-sm text-slate-700">{n.message}</p>
                                             <p className="text-xs text-slate-400">{new Date(n.timestamp).toLocaleString()}</p>
                                         </div>
                                     )) : <p className="text-sm text-slate-500 p-4 text-center">No new notifications.</p>}
+                                    {/* --- End FIX --- */}
                                 </div>
                             </div>
                         </Dropdown>
@@ -212,7 +228,14 @@ const TopNav = ({ onNavigate, currentPage }) => {
                         {/* User Menu Dropdown */}
                         <Dropdown trigger={
                             <button className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" aria-label="User menu">
-                                <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-600"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
+                                <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center">
+                                    {/* --- FIX: Corrected SVG Syntax --- */}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-600">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                    {/* --- End FIX --- */}
+                                </div>
                             </button>
                         }>
                             <div className="px-4 py-2 border-b">
