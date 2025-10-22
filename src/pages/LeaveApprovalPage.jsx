@@ -241,7 +241,7 @@ const LeaveApprovalPage = () => {
                         ) : (
                             <p className="text-center text-gray-500 py-10">
                                 No leave requests match the current filter.
-                            </pre>
+                            </p>
                         )}
                     </div>
                 </div>
