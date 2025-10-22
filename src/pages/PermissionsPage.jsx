@@ -1,39 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { usePermissions } from '../hooks/usePermissions'; // We use this to protect the page itself
+import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
-
-// An interactive toggle component that displays a tick or a cross.
-const PermissionToggle = ({ allowed, onChange, disabled }) => {
-    const baseClasses = "flex justify-center items-center w-6 h-6 rounded-full transition-colors";
-    const disabledClasses = "cursor-not-allowed opacity-50";
-    const allowedClasses = "bg-green-100 hover:bg-green-200";
-    const deniedClasses = "bg-red-100 hover:bg-red-200";
-    const wrapperClasses = "flex justify-center items-center"; // Center the button
-
-    return (
-        <div className={wrapperClasses}>
-            <button
-                type="button"
-                onClick={onChange}
-                disabled={disabled}
-                className={`${baseClasses} ${allowed ? allowedClasses : deniedClasses} ${disabled ? disabledClasses : ''}`}
-                aria-label={allowed ? 'Revoke permission' : 'Grant permission'}
-            >
-                {allowed ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                )}
-            </button>
-        </div>
-    );
-};
+import EditPermissionsModal from '../components/admin/EditPermissionsModal'; // Import the modal
 
 const PermissionsPage = () => {
     const { user, updatePermissions: updateAuthContextPermissions } = useAuth();
@@ -42,10 +12,14 @@ const PermissionsPage = () => {
     const [usersWithPermissions, setUsersWithPermissions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [savingStates, setSavingStates] = useState({}); // Track saving state per user
     const [successMessage, setSuccessMessage] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
 
-    // --- UPDATED: Include all relevant permission keys ---
+    // State for the modal
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
+
+    // --- Define permission keys - Make sure this is comprehensive ---
     const permissionKeys = [
         { key: 'canViewDashboards', name: 'View Dashboards' },
         { key: 'canAddPosting', name: 'Add/Edit Jobs' },
@@ -58,24 +32,29 @@ const PermissionsPage = () => {
         { key: 'canRequestTimesheetApproval', name: 'Request Timesheet Approval' },
         { key: 'canManageMSAWO', name: 'Manage MSA/WO' },
         { key: 'canManageOfferLetters', name: 'Manage Offer Letters' },
-        { key: 'canManageHolidays', name: 'Manage Holidays' }, // Added
-        { key: 'canApproveLeave', name: 'Approve Leave' },     // Added
-        { key: 'canManageLeaveConfig', name: 'Manage Leave Config' }, // Added
+        { key: 'canManageHolidays', name: 'Manage Holidays' },
+        { key: 'canApproveLeave', name: 'Approve Leave' },
+        { key: 'canManageLeaveConfig', name: 'Manage Leave Config' },
+        { key: 'canRequestLeave', name: 'Request Leave'}, // Added from tableUtils
+        { key: 'canSendMonthlyReport', name: 'Send Monthly Report'}, // Added from tableUtils
         { key: 'canEditUsers', name: 'Edit Users & Permissions' },
     ];
-    // --- End UPDATE ---
+    // --- End permission keys ---
 
     const fetchUserPermissions = useCallback(async () => {
-        if (!user?.userIdentifier || !canEditUsers) return; // Guard clause
+        if (!user?.userIdentifier || !canEditUsers) {
+             setLoading(false); // Stop loading if no permission
+             setError("You do not have permission to view or edit user permissions.");
+            return;
+        }
         setLoading(true);
         setError('');
         try {
             const response = await apiService.getUserPermissionsList(user.userIdentifier);
             if (response.data.success) {
-                // Ensure every user object has a permissions object, even if empty initially
                  const usersData = response.data.users.map(u => ({
                     ...u,
-                    permissions: u.permissions || {} // Default to empty object if missing
+                    permissions: u.permissions || {} // Ensure permissions object exists
                 }));
                 setUsersWithPermissions(usersData);
             } else {
@@ -92,66 +71,55 @@ const PermissionsPage = () => {
         fetchUserPermissions();
     }, [fetchUserPermissions]);
 
-    const handlePermissionChange = (username, permissionKey, isChecked) => {
-        setUsersWithPermissions(prevUsers =>
-            prevUsers.map(u =>
-                u.username === username
-                    ? { ...u, permissions: { ...u.permissions, [permissionKey]: isChecked } }
-                    : u
-            )
-        );
-        // Optionally clear success message when changes are made before saving
-        setSuccessMessage('');
+    const handleOpenModal = (userToEdit) => {
+        if (!canEditUsers) return; // Add check here too for safety
+        setSelectedUser(userToEdit);
+        setIsModalOpen(true);
     };
 
-    const handleSavePermissions = async (usernameToSave) => {
-        setSavingStates(prev => ({ ...prev, [usernameToSave]: true })); // Set saving state for specific user
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedUser(null);
+    };
+
+    const handleSavePermissions = async (usernameToSave, updatedPermissions) => {
+        // This function is now passed to the modal as the onSave prop.
+        // It will be called *by the modal* when its internal save button is clicked.
         setError('');
         setSuccessMessage('');
         try {
-            const userToUpdate = usersWithPermissions.find(u => u.username === usernameToSave);
-            if (!userToUpdate) {
-                throw new Error("User not found for update.");
-            }
-
-            // --- UPDATED: Ensure all defined keys are included in the payload ---
-            const permissionsPayload = permissionKeys.reduce((acc, p) => {
-                // Send boolean true/false, default to false if undefined
-                acc[p.key] = Boolean(userToUpdate.permissions[p.key]);
-                return acc;
-            }, {});
-            // --- End UPDATE ---
-
-            // Security Check: Prevent self-lockout
-             if (userToUpdate.username === user.userIdentifier && permissionsPayload.canEditUsers === false) {
-                 throw new Error("You cannot revoke your own administrative permissions.");
-             }
-
-            const response = await apiService.updateUserPermissions(userToUpdate.username, permissionsPayload, user.userIdentifier);
+            const response = await apiService.updateUserPermissions(usernameToSave, updatedPermissions, user.userIdentifier);
 
             if (response.data.success) {
-                setSuccessMessage(`Permissions for ${userToUpdate.displayName} saved successfully!`);
+                setSuccessMessage(`Permissions for ${selectedUser?.displayName || usernameToSave} saved successfully!`);
                 // If the current user's permissions were updated, update the auth context
-                if (userToUpdate.username === user.userIdentifier) {
-                    updateAuthContextPermissions(permissionsPayload);
+                if (usernameToSave === user.userIdentifier) {
+                    updateAuthContextPermissions(updatedPermissions);
                 }
-                // Optionally refetch, or just rely on the UI state being correct
-                // fetchUserPermissions();
+                // Refresh the main list data after saving
+                fetchUserPermissions();
                 setTimeout(() => setSuccessMessage(''), 3000);
+                 // The modal will close itself on successful save via its `onSave` prop.
+                 // handleCloseModal(); // Let the modal handle closing on success
             } else {
-                setError(response.data.message);
-                 // Optionally revert UI changes on error
-                 // fetchUserPermissions();
+                 // Throw error to be caught by the modal's save handler
+                throw new Error(response.data.message || "Failed to save permissions.");
             }
         } catch (err) {
-            setError(err.message || "Failed to save permissions.");
-             // Optionally revert UI changes on error
-             // fetchUserPermissions();
-        } finally {
-             setSavingStates(prev => ({ ...prev, [usernameToSave]: false })); // Clear saving state for specific user
+             console.error("Error saving permissions:", err);
+             // Re-throw the error so the modal can display it
+            throw err;
         }
+        // Loading state is handled within the modal now
     };
 
+    // Filter users based on search term
+    const filteredUsers = usersWithPermissions.filter(u =>
+        (u.displayName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (u.username?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+    );
+
+    // Render logic
     if (!canEditUsers && !loading) {
         return (
             <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
@@ -161,81 +129,87 @@ const PermissionsPage = () => {
         );
     }
 
-
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border">
-            <div className="mb-5">
-                <h2 className="text-xl font-bold text-gray-800">User Permissions Matrix</h2>
-                <p className="text-sm text-gray-500">Manage granular access controls for each user.</p>
+        <>
+            <div className="bg-white p-6 rounded-xl shadow-sm border">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-4">
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-800">User Permissions</h2>
+                        <p className="text-sm text-gray-500">Manage granular access controls for each user.</p>
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Search users by name or email..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                        disabled={loading} // Disable search while loading
+                    />
+                </div>
+
+                {successMessage && (
+                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 animate-fadeIn" role="alert">
+                        {successMessage}
+                    </div>
+                )}
+                 {/* Display general page error if any */}
+                {error && !isModalOpen && ( // Only show page error if modal isn't showing its own
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 animate-shake" role="alert">
+                        {error}
+                    </div>
+                )}
+
+                {loading && <div className="flex justify-center items-center h-64"><Spinner size="10"/></div>}
+
+                {!loading && !error && (
+                    <div className="overflow-x-auto">
+                        {filteredUsers.length > 0 ? (
+                            <ul className="divide-y divide-gray-200">
+                                {filteredUsers.map(u => (
+                                    <li key={u.username} className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 px-2 hover:bg-gray-50 transition-colors duration-150 gap-3 sm:gap-0">
+                                        {/* User Info */}
+                                        <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                             <span className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700 text-lg flex-shrink-0">
+                                                {u.displayName?.charAt(0).toUpperCase() || '?'}
+                                            </span>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-semibold text-gray-900 truncate">{u.displayName}</p>
+                                                <p className="text-xs text-gray-500 truncate">{u.username}</p>
+                                                <p className="text-xs text-gray-500 truncate">{u.backendOfficeRole}</p>
+                                            </div>
+                                        </div>
+                                        {/* Edit Button */}
+                                        <button
+                                            onClick={() => handleOpenModal(u)}
+                                            className="ml-auto sm:ml-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-semibold transition-colors shadow-sm flex-shrink-0"
+                                            aria-label={`Edit permissions for ${u.displayName}`}
+                                        >
+                                            Edit Permissions
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="text-center text-gray-500 py-10">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm6-11a3 3 0 100-6 3 3 0 000 6zm-3 11a6 6 0 01-10.84-3.21A3.988 3.988 0 0112 18a3.988 3.988 0 014.16-2.21A6.002 6.002 0 0118 21z" /></svg>
+                                <h3 className="mt-2 text-sm font-medium text-gray-900">No Users Found</h3>
+                                <p className="mt-1 text-sm text-gray-500">No users match your search criteria, or no users exist yet.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {successMessage && (
-                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 animate-fadeIn" role="alert">
-                    {successMessage}
-                </div>
-            )}
-            {error && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 animate-shake" role="alert">
-                    {error}
-                </div>
-            )}
-
-            {loading && <div className="flex justify-center items-center h-64"><Spinner size="10"/></div>}
-
-            {!loading && !error && (
-                <div className="overflow-x-auto relative">
-                    {usersWithPermissions.length > 0 ? (
-                        <table className="w-full text-sm text-left text-gray-600 border-collapse border border-gray-200">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10">
-                                <tr>
-                                    <th scope="col" className="px-4 py-4 border border-gray-200 min-w-[150px]">User</th>
-                                    {permissionKeys.map(p => (
-                                        <th key={p.key} scope="col" className="px-4 py-4 text-center border border-gray-200 min-w-[120px]">{p.name}</th>
-                                    ))}
-                                    <th scope="col" className="px-4 py-4 text-center border border-gray-200 min-w-[80px]">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {usersWithPermissions.map(u => (
-                                    <tr key={u.username} className="hover:bg-gray-50">
-                                        <td className="px-4 py-3 font-semibold text-gray-900 border border-gray-200">
-                                            {u.displayName}
-                                            <p className="text-xs font-normal text-gray-500">{u.username}</p>
-                                        </td>
-                                        {permissionKeys.map(p => (
-                                            <td key={p.key} className="px-4 py-3 border border-gray-200">
-                                                <PermissionToggle
-                                                    allowed={u.permissions[p.key] || false}
-                                                    onChange={() => handlePermissionChange(u.username, p.key, !u.permissions[p.key])}
-                                                    // Disable toggling 'canEditUsers' for the logged-in user
-                                                    disabled={u.username === user.userIdentifier && p.key === 'canEditUsers'}
-                                                />
-                                            </td>
-                                        ))}
-                                        <td className="px-4 py-3 text-center border border-gray-200">
-                                            <button
-                                                onClick={() => handleSavePermissions(u.username)}
-                                                className="px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-xs font-medium disabled:bg-gray-400 w-[60px] h-[30px] flex justify-center items-center"
-                                                // Disable save if currently saving this user OR if it's the current user trying to remove their own edit rights
-                                                disabled={savingStates[u.username] || (u.username === user.userIdentifier && !u.permissions.canEditUsers)}
-                                                title={u.username === user.userIdentifier && !u.permissions.canEditUsers ? "Cannot revoke own admin rights" : "Save permissions for this user"}
-                                            >
-                                                {savingStates[u.username] ? <Spinner size="4" /> : 'Save'}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <div className="text-center text-gray-500 p-10">
-                            <h3 className="text-lg font-medium">No Users Found</h3>
-                            <p className="text-sm">Please add users via the User Management tab first.</p>
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
+            {/* Render the Modal (controlled by isModalOpen and selectedUser) */}
+            <EditPermissionsModal
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                userToEdit={selectedUser}
+                onSave={handleSavePermissions} // Pass the save handler
+                permissionKeys={permissionKeys} // Pass the definition of keys
+                currentUsername={user?.userIdentifier} // Pass current user's name for self-lock check
+            />
+        </>
     );
 };
 
