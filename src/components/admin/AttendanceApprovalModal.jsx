@@ -128,10 +128,10 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    // State for the nested action/comment modal (if used later)
+    // *** REMOVED: State variables no longer needed for the fixed logic ***
     // const [isActionModalOpen, setIsActionModalOpen] = useState(false);
-    // const [requestToAction, setRequestToAction] = useState(null); // The specific pending request object
-    // const [currentAction, setCurrentAction] = useState(null); // 'Approved' or 'Rejected'
+    // const [requestToAction, setRequestToAction] = useState(null);
+    // const [currentAction, setCurrentAction] = useState(null);
     const [actionLoading, setActionLoading] = useState(false); // Loading state for the API call
 
     // Helper function to format date for display in confirmation
@@ -171,7 +171,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 apiService.getLeaveRequests({ authenticatedUsername: user.userIdentifier, targetUsername: selectedUsername, statusFilter: 'Approved', startDateFilter: `${monthString}-01`, endDateFilter: `${monthString}-${monthEndDay.toString().padStart(2,'0')}` })
             ]);
 
-             // console.log("API Responses:", { attendanceRes, holidaysRes, leaveRes }); // Less verbose logging
+            // console.log("API Responses:", { attendanceRes, holidaysRes, leaveRes }); // Verbose
 
             // Process Attendance Data
             const attMap = {};
@@ -193,7 +193,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             }
             setAttendanceData(attMap);
             setPendingRequestsMap(pendingMap);
-            // console.log("Processed Pending Requests Map:", pendingMap); // Less verbose
+            // console.log("Processed Pending Requests Map:", pendingMap); // Verbose
 
             // Process Holidays
             const holMap = {};
@@ -224,36 +224,32 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         } finally {
             setLoading(false);
         }
-    }, [user?.userIdentifier]); // Removed selectedUsername dependency, rely on prop
+    }, [user?.userIdentifier, selectedUsername]); // *** MODIFIED: Rely on selectedUsername prop ***
 
-    // Fetch data when the modal opens OR selectedUsername changes OR month changes
+    // Fetch data when the modal opens OR selectedUsername changes
     useEffect(() => {
         if (isOpen && selectedUsername) {
-             // Reset to current month only when selectedUsername changes or modal opens initially
-            if (!currentMonthDate || currentMonthDate.toISOString().substring(0,7) !== new Date().toISOString().substring(0,7)) {
-                const initialMonth = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1));
-                setCurrentMonthDate(initialMonth);
-                fetchDataForUserAndMonth(initialMonth);
-            } else {
-                // Otherwise, just fetch for the existing month if username didn't change
-                 fetchDataForUserAndMonth(currentMonthDate);
-            }
+            // Reset to current month when the selected user changes
+            const initialMonth = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1));
+            setCurrentMonthDate(initialMonth);
+            fetchDataForUserAndMonth(initialMonth);
         }
-    }, [isOpen, selectedUsername, fetchDataForUserAndMonth]); // Depend on selectedUsername here
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, selectedUsername]); // *** MODIFIED: Fetch only when modal opens or user changes ***
 
-    // Refetch when month changes
+    // Refetch ONLY when month changes
      useEffect(() => {
         if (isOpen && selectedUsername) {
              fetchDataForUserAndMonth(currentMonthDate);
         }
-     }, [currentMonthDate, isOpen, selectedUsername, fetchDataForUserAndMonth]);
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, [currentMonthDate]); // *** MODIFIED: Separate effect for month change ***
 
 
     const changeMonth = (offset) => {
         setCurrentMonthDate(prev => {
             const newDate = new Date(prev);
             newDate.setUTCMonth(newDate.getUTCMonth() + offset, 1);
-            // Fetch will be triggered by useEffect watching currentMonthDate
             return newDate;
         });
     };
@@ -268,7 +264,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 setError("Internal error: Cannot process action due to missing request data. Please refresh.");
                 return;
             }
-            // *** Don't set requestToAction state here if calling confirm directly ***
 
             // Use window.confirm for simplicity for now
              const actionConfirmed = window.confirm(
@@ -293,7 +288,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         if (!req || !req.date || !req.username || !action) {
             console.error("handleConfirmAction Error: Request details or action missing.", {req, action});
             setError("Cannot perform action: Request details or action type are missing.");
-            // No state to clear here for requestToAction
             return;
         }
 
@@ -314,14 +308,19 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
              console.log("approveAttendance API response:", response);
 
             if (response.data.success) {
-                // No modal state to manage here
                 // Refresh the calendar data for the current month
                 await fetchDataForUserAndMonth(currentMonthDate); // Wait for refresh
-                // Notify the parent page ONLY if all pending requests for this user *might* be gone
-                // This requires checking the *newly fetched* pendingRequestsMap
-                // For simplicity, always call it now. Parent handles debouncing if needed.
-                if (onApprovalComplete) {
-                    onApprovalComplete();
+                
+                // Check if any pending requests remain for this user *in this month*
+                const remainingPendingInMonth = Object.values(pendingRequestsMap).some(p => 
+                    p.date !== req.date && // Check other dates
+                    p.status === 'Pending'
+                );
+
+                // If no pending requests left *in this view*, call onApprovalComplete
+                // Note: This won't call if pending requests exist in other months
+                if (!remainingPendingInMonth && onApprovalComplete) {
+                    onApprovalComplete(); 
                 }
             } else {
                 throw new Error(response.data.message);
@@ -331,7 +330,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             setError(err.message || "An unknown error occurred while processing the request.");
         } finally {
             setActionLoading(false);
-            // No state to clear here for requestToAction
         }
     };
 
