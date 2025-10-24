@@ -46,28 +46,40 @@ const ApproveAttendancePage = () => {
         setLoading(true);
         setError('');
         try {
-            // Use getAttendance but filter for 'Pending' status (adjust API if needed)
-            // Ideally, have a dedicated backend endpoint like getPendingAttendance
-            // For now, filtering client-side after fetching all attendance might be inefficient
-            // Let's assume we need a way to fetch *all* pending requests.
-            // This might require a backend change or fetching all attendance and filtering.
-            // SIMPLIFIED: Fetching *all* and filtering - REPLACE WITH DEDICATED API CALL LATER
-             const result = await apiService.getAttendance({ // Needs admin rights potentially
-                 authenticatedUsername: user.userIdentifier,
-                 // No username filter to get all, OR loop through users
-                 // This is inefficient - backend endpoint is better
-             });
+            // *** WORKAROUND: Fetch all attendance for the current year and filter client-side ***
+            // Ideally, the backend should have an endpoint specifically for pending requests.
+            const currentYear = new Date().getFullYear().toString();
+            console.log(`ApproveAttendance: Fetching all attendance for year ${currentYear} to find pending requests.`); // Log
 
-            if (result.data.success) {
-                 // Filter for pending status client-side (Inefficient - needs backend support)
+            const result = await apiService.getAttendance({
+                 authenticatedUsername: user.userIdentifier,
+                 // No specific username to get all (assuming backend supports this IF admin)
+                 // Provide the year to satisfy backend validation
+                 year: currentYear
+            });
+            console.log("ApproveAttendance: API response:", result); // Log
+
+            if (result.data.success && Array.isArray(result.data.attendanceRecords)) {
+                 // Filter for pending status client-side
                  const pending = (result.data.attendanceRecords || []).filter(r => r.status === 'Pending');
+                 console.log(`ApproveAttendance: Found ${pending.length} pending requests.`); // Log
                  setPendingRequests(pending);
+                 if(pending.length === 0){
+                     // Optionally set a message if no pending requests found after fetch
+                     // setError("No pending attendance requests found for the current year.");
+                 }
             } else {
-                 setError(result.data.message);
+                 setError(result.data.message || "Failed to fetch attendance data.");
                  setPendingRequests([]);
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to fetch pending attendance requests.');
+             console.error("ApproveAttendance: Fetch error:", err); // Log full error
+            // Check if the error is specifically the 400 validation error
+            if (err.response?.status === 400 && err.response?.data?.message?.includes('provide a date range')) {
+                 setError("Backend error: The getAttendance API requires a date filter. Please update the backend or contact support.");
+            } else {
+                 setError(err.response?.data?.message || 'Failed to fetch pending attendance requests.');
+            }
             setPendingRequests([]);
         } finally {
             setLoading(false);
@@ -81,17 +93,18 @@ const ApproveAttendancePage = () => {
     const filteredRequests = useMemo(() => {
         if (!searchTerm) return pendingRequests;
         const lowerSearch = searchTerm.toLowerCase();
+        // Ensure properties exist before calling toLowerCase
         return pendingRequests.filter(req =>
-            (req.username && req.username.toLowerCase().includes(lowerSearch)) ||
-            (req.date && req.date.includes(lowerSearch)) ||
-            (req.requestedStatus && req.requestedStatus.toLowerCase().includes(lowerSearch))
+            (req.username?.toLowerCase() || '').includes(lowerSearch) ||
+            (req.date && req.date.includes(lowerSearch)) || // Date is already string
+            (req.requestedStatus?.toLowerCase() || '').includes(lowerSearch)
         );
     }, [pendingRequests, searchTerm]);
 
     const handleActionClick = (request, action) => {
         setCurrentRequest(request);
         setCurrentAction(action);
-        // Using a simple confirm for now, add comment modal later if needed
+        // Using a simple confirm for now
         if (window.confirm(`Are you sure you want to ${action} the request for ${request.username} on ${formatDate(request.date)}?`)) {
             handleConfirmAction(''); // Pass empty comments for now
         }
@@ -105,7 +118,9 @@ const ApproveAttendancePage = () => {
         const req = currentRequest;
 
         try {
+            // Ensure necessary fields are present
             if (!req || !req.date || !req.username) {
+                console.error("Confirm Action Error: Missing request data", req);
                 throw new Error("Internal Error: Request data is missing.");
             }
 
@@ -117,7 +132,9 @@ const ApproveAttendancePage = () => {
                 authenticatedUsername: user.userIdentifier
             };
 
+             console.log("Calling approveAttendance with payload:", payload); // Log payload
             const response = await apiService.approveAttendance(payload); // Ensure this exists in apiService
+             console.log("approveAttendance response:", response); // Log response
 
             if (response.data.success) {
                 setSuccess(response.data.message);
@@ -129,7 +146,8 @@ const ApproveAttendancePage = () => {
                 throw new Error(response.data.message);
             }
         } catch (err) {
-            setError(err.message || "An unknown error occurred.");
+             console.error("Confirm Action Error:", err); // Log full error
+            setError(err.message || "An unknown error occurred while processing the request.");
             // If using modal, might want to re-throw: throw err;
         } finally {
             setActionLoading(false);
@@ -137,6 +155,8 @@ const ApproveAttendancePage = () => {
             setCurrentRequest(null); // Clear request even on error for simple confirm
         }
     };
+
+    // --- Render ---
 
     if (loading && !actionLoading) {
         return <div className="flex justify-center items-center h-64"><Spinner size="12" /></div>;
@@ -159,9 +179,11 @@ const ApproveAttendancePage = () => {
                     <p className="mt-1 text-gray-600">Review and action pending attendance requests.</p>
                 </div>
 
+                {/* Display error/success messages */}
                 {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded animate-shake">{error}</div>}
                 {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded animate-fadeIn">{success}</div>}
 
+                {/* Search Bar */}
                 <div className="bg-white p-4 rounded-xl shadow border border-gray-100 flex justify-end">
                     <input
                         type="text"
@@ -172,9 +194,11 @@ const ApproveAttendancePage = () => {
                     />
                 </div>
 
+                {/* Requests List */}
                 <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
                     <div className="overflow-x-auto">
-                        {filteredRequests.length > 0 ? (
+                        {/* Show table only if not loading and no critical error preventing load */}
+                        {!loading && filteredRequests.length > 0 ? (
                              <table className="w-full text-sm text-left text-gray-600">
                                 <thead className="text-xs text-gray-700 uppercase bg-gray-100">
                                     <tr>
@@ -187,12 +211,13 @@ const ApproveAttendancePage = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
                                     {filteredRequests.map(req => (
+                                        // Use a more unique key if possible, combining username and date
                                         <tr key={`${req.username}-${req.date}`} className="hover:bg-gray-50">
                                             <td className="px-5 py-4 font-medium text-gray-900">{req.username}</td>
                                             <td className="px-5 py-4">{formatDate(req.date)}</td>
                                             <td className="px-5 py-4">
                                                  <span className={`font-semibold ${req.requestedStatus === 'Present' ? 'text-green-600' : 'text-red-600'}`}>
-                                                     {req.requestedStatus}
+                                                     {req.requestedStatus || 'N/A'}
                                                  </span>
                                             </td>
                                             <td className="px-5 py-4 text-xs text-gray-500">{formatDate(req.markedOn)}</td>
@@ -218,9 +243,10 @@ const ApproveAttendancePage = () => {
                                     ))}
                                 </tbody>
                             </table>
-                        ) : (
+                        ) : !loading && !error ? ( // Show only if not loading and no error occurred during fetch
                              <p className="text-center text-gray-500 py-10">No pending attendance requests found.</p>
-                        )}
+                        ) : null /* Don't show "No pending" if there was an error or still loading */
+                        }
                     </div>
                 </div>
             </div>
