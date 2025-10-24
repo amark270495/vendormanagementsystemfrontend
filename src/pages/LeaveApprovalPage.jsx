@@ -19,7 +19,8 @@ const LeaveApprovalPage = () => {
 
     // State for the modal
     const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
-    const [currentRequest, setCurrentRequest] = useState(null); // This will hold the full request object
+    // *** MODIFIED: Store only needed identifiers and the original object for display ***
+    const [currentRequestData, setCurrentRequestData] = useState({ id: null, username: null, displayData: null });
     const [currentAction, setCurrentAction] = useState(null); // 'Approved' or 'Rejected'
     const [actionLoading, setActionLoading] = useState(false);
 
@@ -37,7 +38,12 @@ const LeaveApprovalPage = () => {
                 statusFilter: statusFilter
             });
             if (result.data.success) {
-                setLeaveRequests(result.data.requests || []);
+                // Ensure the 'id' property exists from the start
+                const requestsWithId = (result.data.requests || []).map(req => ({
+                    ...req,
+                    id: req.id // Make sure 'id' is present, API should provide it via RowKey mapping
+                }));
+                setLeaveRequests(requestsWithId);
             } else {
                 setError(result.data.message);
                 setLeaveRequests([]);
@@ -67,59 +73,48 @@ const LeaveApprovalPage = () => {
 
     // --- Action Handlers ---
 
-    // 1. When admin clicks "Approve" or "Reject" button
-    const handleActionClick = (request, action) => {
-        console.log("Setting currentRequest in handleActionClick:", request); // Log when setting
-        setCurrentRequest(request); // 'request' is the full object { id, username, ... }
+    // *** MODIFIED: Accept id and username directly ***
+    const handleActionClick = (requestId, requestUsername, action, fullRequestData) => {
+        console.log("Setting currentRequestData in handleActionClick:", { id: requestId, username: requestUsername, action, displayData: fullRequestData });
+        // Store individual pieces needed for API and the full object for modal display
+        setCurrentRequestData({ id: requestId, username: requestUsername, displayData: fullRequestData });
         setCurrentAction(action);
         setIsCommentModalOpen(true);
     };
 
-    // 2. When admin confirms in the modal
+    // *** MODIFIED: Use directly stored id and username ***
     const handleConfirmAction = async (comments) => {
         setActionLoading(true);
         setError('');
         setSuccess('');
 
-        // *** ADDED DETAILED LOGGING HERE ***
-        console.log("handleConfirmAction triggered. Current State:", {
-            currentRequest,
-            currentAction,
-            comments
-        });
+        // Get ID and Username directly from the stored state
+        const reqId = currentRequestData?.id;
+        const reqUsername = currentRequestData?.username;
 
-        const req = currentRequest; // Get the request object from state
+        console.log("handleConfirmAction triggered. Stored State:", { reqId, reqUsername, currentAction, comments });
 
         try {
-            // *** MODIFIED CHECK WITH MORE INFO ***
-            if (!req || typeof req !== 'object') {
-                console.error("Critical Error: currentRequest is null or not an object.", req);
-                throw new Error("Internal Error: Request data reference lost. Please try again.");
+            if (!reqId || !reqUsername) {
+                console.error("Critical Error: Stored request ID or Username is missing.", { reqId, reqUsername });
+                throw new Error("Internal Error: Essential request data (ID or Username) reference lost. Please try reopening the request.");
             }
-            if (!req.id || !req.username) {
-                 console.error("Critical Error: currentRequest is missing 'id' or 'username'.", req);
-                 // Try to log what properties *are* present
-                 console.log("Properties present in currentRequest:", Object.keys(req));
-                throw new Error("Internal Error: Essential request data (ID or Username) is missing.");
-            }
-            // *** END MODIFIED CHECK ***
-
 
             const payload = {
-                requestId: req.id,           // This is the RowKey
-                requestUsername: req.username, // This is the PartitionKey (user who requested)
+                requestId: reqId,
+                requestUsername: reqUsername,
                 action: currentAction,
                 approverComments: comments,
-                authenticatedUsername: user.userIdentifier // Add the admin's username
+                authenticatedUsername: user.userIdentifier
             };
-            console.log("Sending payload to API:", payload); // Log the payload being sent
+            console.log("Sending payload to API:", payload);
 
             const response = await apiService.approveLeave(payload);
 
             if (response.data.success) {
                 setSuccess(response.data.message);
                 setIsCommentModalOpen(false);
-                setCurrentRequest(null); // Clear state after success
+                setCurrentRequestData({ id: null, username: null, displayData: null }); // Clear state after success
                 loadRequests(); // Refresh the list
                 setTimeout(() => setSuccess(''), 3000);
             } else {
@@ -127,10 +122,8 @@ const LeaveApprovalPage = () => {
             }
         } catch (err) {
             console.error("Failed to approve leave in handleConfirmAction:", err);
-            // Error will be shown inside the modal via throw err
-            setError(err.message || "An unknown error occurred during approval."); // Set error state here as well
-            // *Do not clear currentRequest here on error*, allow retry if needed, or close modal handles it.
-            // Rethrow the error if the modal needs to display it internally.
+            setError(err.message || "An unknown error occurred during approval.");
+            // Rethrow the error so the modal can potentially display it or handle retries
             throw err;
         } finally {
             setActionLoading(false);
@@ -222,7 +215,7 @@ const LeaveApprovalPage = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
                                     {filteredRequests.map(req => (
-                                        <tr key={req.id} className="hover:bg-gray-50">
+                                        <tr key={req.id} className="hover:bg-gray-50"> {/* Use req.id which should be RowKey */}
                                             <td className="px-5 py-4 font-medium text-gray-900">
                                                 {req.username}
                                                 <p className="text-xs text-gray-500 font-normal">Req. {formatDate(req.requestDate)}</p>
@@ -245,15 +238,16 @@ const LeaveApprovalPage = () => {
                                             <td className="px-5 py-4 text-center">
                                                 {req.status === 'Pending' ? (
                                                     <div className="flex justify-center space-x-2">
+                                                        {/* *** MODIFIED: Pass id and username directly *** */}
                                                         <button
-                                                            onClick={() => handleActionClick(req, 'Approved')}
+                                                            onClick={() => handleActionClick(req.id, req.username, 'Approved', req)}
                                                             disabled={actionLoading} // Disable buttons during any action
                                                             className="px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-md hover:bg-green-600 transition disabled:opacity-50"
                                                         >
                                                             Approve
                                                         </button>
                                                         <button
-                                                            onClick={() => handleActionClick(req, 'Rejected')}
+                                                            onClick={() => handleActionClick(req.id, req.username, 'Rejected', req)}
                                                             disabled={actionLoading} // Disable buttons during any action
                                                             className="px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded-md hover:bg-red-600 transition disabled:opacity-50"
                                                         >
@@ -285,10 +279,12 @@ const LeaveApprovalPage = () => {
                 isOpen={isCommentModalOpen}
                 onClose={() => {
                     setIsCommentModalOpen(false);
-                    // Don't clear currentRequest here, might be needed if modal had error
+                    // Clear state when modal closes
+                    setCurrentRequestData({ id: null, username: null, displayData: null });
                 }}
                 onConfirm={handleConfirmAction} // This now receives comments
-                request={currentRequest}
+                // Pass the display data part to the modal for rendering info
+                request={currentRequestData?.displayData}
                 action={currentAction}
                 loading={actionLoading} // Pass action loading state to modal
             />
