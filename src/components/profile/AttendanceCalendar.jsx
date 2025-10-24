@@ -5,7 +5,11 @@ import Spinner from '../Spinner';
 
 const AttendanceCalendar = ({ initialMonthString }) => {
     const { user } = useAuth();
-    const [currentMonthDate, setCurrentMonthDate] = useState(new Date(initialMonthString + '-01T00:00:00'));
+    // Use initialMonthString to set the starting date, ensuring it's treated as UTC
+    const [currentMonthDate, setCurrentMonthDate] = useState(() => {
+        const [year, month] = initialMonthString.split('-').map(Number);
+        return new Date(Date.UTC(year, month - 1, 1)); // Month is 0-indexed for Date constructor
+    });
     const [attendanceData, setAttendanceData] = useState({});
     const [holidays, setHolidays] = useState({});
     const [leaveDaysSet, setLeaveDaysSet] = useState(new Set()); // Store leave days for quick lookup
@@ -17,21 +21,25 @@ const AttendanceCalendar = ({ initialMonthString }) => {
         setLoading(true);
         setError('');
         try {
-            const year = monthDate.getFullYear();
-            const month = (monthDate.getMonth() + 1).toString().padStart(2, '0');
+            const year = monthDate.getUTCFullYear(); // Use UTC methods
+            const month = (monthDate.getUTCMonth() + 1).toString().padStart(2, '0'); // Use UTC methods
             const monthString = `${year}-${month}`;
+            const monthEndDay = new Date(Date.UTC(year, monthDate.getUTCMonth() + 1, 0)).getUTCDate(); // Get last day using UTC
 
             // Fetch attendance
             const attendanceRes = await apiService.getAttendance({
                 authenticatedUsername: user.userIdentifier,
+                username: user.userIdentifier, // Explicitly target self
                 month: monthString
             });
             const attendanceMap = {};
-            if (attendanceRes.data.success && attendanceRes.data.attendance) {
-                attendanceRes.data.attendance.forEach(att => {
-                    attendanceMap[att.dateKey] = att.status;
+            // --- FIX: Corrected property access based on getAttendance response ---
+            if (attendanceRes.data.success && Array.isArray(attendanceRes.data.attendanceRecords)) {
+                attendanceRes.data.attendanceRecords.forEach(att => {
+                    attendanceMap[att.date] = att.status; // Use 'date' which is RowKey
                 });
             }
+            // --- End FIX ---
             setAttendanceData(attendanceMap);
 
             // Fetch holidays for the year
@@ -40,62 +48,79 @@ const AttendanceCalendar = ({ initialMonthString }) => {
                 year: year.toString()
             });
             const holidaysMap = {};
-            if (holidaysRes.data.success && holidaysRes.data.holidays) {
+            if (holidaysRes.data.success && Array.isArray(holidaysRes.data.holidays)) {
                 holidaysRes.data.holidays.forEach(h => {
                     holidaysMap[h.date] = h.description;
                 });
             }
             setHolidays(holidaysMap);
 
-            // Fetch approved leave for the month
+            // Fetch approved leave *only for the current user* for the month
             const leaveRes = await apiService.getLeaveRequests({
                 authenticatedUsername: user.userIdentifier,
+                // *** FIX: Explicitly set targetUsername to self ***
+                targetUsername: user.userIdentifier,
+                // *** END FIX ***
                 statusFilter: 'Approved',
                 startDateFilter: `${monthString}-01`, // Start of the month
-                endDateFilter: new Date(year, monthDate.getMonth() + 1, 0).toISOString().split('T')[0] // End of the month
+                endDateFilter: `${monthString}-${monthEndDay.toString().padStart(2, '0')}` // End of the month
             });
 
             const newLeaveDaysSet = new Set();
-            if (leaveRes.data.success && leaveRes.data.requests) {
+            if (leaveRes.data.success && Array.isArray(leaveRes.data.requests)) {
                 leaveRes.data.requests.forEach(req => {
                     const start = new Date(req.startDate + 'T00:00:00Z'); // Ensure UTC
                     const end = new Date(req.endDate + 'T00:00:00Z');   // Ensure UTC
                     for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
                          // Only add dates within the current calendar month
-                        if (d.getUTCFullYear() === year && d.getUTCMonth() === monthDate.getMonth()) {
+                        if (d.getUTCFullYear() === year && d.getUTCMonth() === monthDate.getUTCMonth()) {
                             newLeaveDaysSet.add(d.toISOString().split('T')[0]);
                         }
                     }
                 });
+            } else if (!leaveRes.data.success) {
+                 console.error("Failed to fetch leave requests:", leaveRes.data.message);
+                 // Optionally set an error state here
             }
             setLeaveDaysSet(newLeaveDaysSet);
 
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to load calendar data.');
+             const errorMsg = err.response?.data?.message || err.message || 'Failed to load calendar data.';
+             setError(errorMsg);
             console.error(err);
+             // Clear data on error to avoid showing stale info
+             setAttendanceData({});
+             setHolidays({});
+             setLeaveDaysSet(new Set());
         } finally {
             setLoading(false);
         }
-    }, [user?.userIdentifier]);
+    }, [user?.userIdentifier]); // Removed initialMonthString dependency as it's used only for initial state
 
     useEffect(() => {
-        fetchData(currentMonthDate);
-    }, [fetchData, currentMonthDate]);
+        // Initialize currentMonthDate based on initialMonthString
+        const [year, month] = initialMonthString.split('-').map(Number);
+        const initialDate = new Date(Date.UTC(year, month - 1, 1));
+        setCurrentMonthDate(initialDate);
+        fetchData(initialDate); // Fetch data for the initial month
+    }, [initialMonthString, fetchData]); // Rerun if initialMonthString changes (shouldn't typically happen) or fetchData updates
+
 
     const changeMonth = (offset) => {
         setCurrentMonthDate(prev => {
             const newDate = new Date(prev);
-            newDate.setMonth(newDate.getMonth() + offset);
+            newDate.setUTCMonth(newDate.getUTCMonth() + offset, 1); // Set day to 1 to avoid month skipping issues
+            fetchData(newDate); // Fetch data for the new month
             return newDate;
         });
     };
 
     const getDayStatus = (day) => {
-        const year = currentMonthDate.getFullYear();
-        const month = currentMonthDate.getMonth();
+        const year = currentMonthDate.getUTCFullYear();
+        const month = currentMonthDate.getUTCMonth();
         const date = new Date(Date.UTC(year, month, day)); // Use UTC
 
-        if (date.getMonth() !== month) {
+        if (date.getUTCMonth() !== month) {
             return { status: 'Empty', text: '' }; // Should not happen with current grid logic
         }
 
@@ -139,8 +164,8 @@ const AttendanceCalendar = ({ initialMonthString }) => {
 
 
     const calendarGrid = useMemo(() => {
-        const year = currentMonthDate.getFullYear();
-        const month = currentMonthDate.getMonth();
+        const year = currentMonthDate.getUTCFullYear();
+        const month = currentMonthDate.getUTCMonth();
         const firstDayOfMonth = new Date(Date.UTC(year, month, 1)).getUTCDay(); // Day of the week (0-6)
         const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
 
@@ -159,8 +184,11 @@ const AttendanceCalendar = ({ initialMonthString }) => {
                     week.push({ day: null, statusInfo: { status: 'Empty' } }); // Empty cell after month ends
                 }
             }
-            grid.push(week);
-            if (dayCounter > daysInMonth && i < 5) break; // Stop adding rows if month ended and not the last possible row
+            // Only add the row if it contains actual days of the month
+            if (week.some(cell => cell.day !== null)) {
+                 grid.push(week);
+            }
+            if (dayCounter > daysInMonth) break; // Stop adding rows if month ended
         }
         return grid;
     }, [currentMonthDate, attendanceData, holidays, leaveDaysSet]); // Rerun if month, attendance, holidays or leave changes
