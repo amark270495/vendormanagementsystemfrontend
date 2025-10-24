@@ -19,8 +19,8 @@ const LeaveApprovalPage = () => {
 
     // State for the modal
     const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
-    // *** MODIFIED: Store only needed identifiers and the original object for display ***
-    const [currentRequestData, setCurrentRequestData] = useState({ id: null, username: null, displayData: null });
+    // *** REVERTED: Store the full request object again ***
+    const [currentRequest, setCurrentRequest] = useState(null);
     const [currentAction, setCurrentAction] = useState(null); // 'Approved' or 'Rejected'
     const [actionLoading, setActionLoading] = useState(false);
 
@@ -38,12 +38,11 @@ const LeaveApprovalPage = () => {
                 statusFilter: statusFilter
             });
             if (result.data.success) {
-                // Ensure the 'id' property exists from the start
-                const requestsWithId = (result.data.requests || []).map(req => ({
-                    ...req,
-                    id: req.id // Make sure 'id' is present, API should provide it via RowKey mapping
-                }));
-                setLeaveRequests(requestsWithId);
+                // *** SIMPLIFIED: Trust API mapping (id should come from RowKey) ***
+                const requestsFromApi = result.data.requests || [];
+                // Log to verify 'id' is present
+                console.log("Fetched requests from API:", requestsFromApi);
+                setLeaveRequests(requestsFromApi);
             } else {
                 setError(result.data.message);
                 setLeaveRequests([]);
@@ -73,36 +72,40 @@ const LeaveApprovalPage = () => {
 
     // --- Action Handlers ---
 
-    // *** MODIFIED: Accept id and username directly ***
-    const handleActionClick = (requestId, requestUsername, action, fullRequestData) => {
-        console.log("Setting currentRequestData in handleActionClick:", { id: requestId, username: requestUsername, action, displayData: fullRequestData });
-        // Store individual pieces needed for API and the full object for modal display
-        setCurrentRequestData({ id: requestId, username: requestUsername, displayData: fullRequestData });
+    // *** REVERTED: Pass the full request object ***
+    const handleActionClick = (request, action) => {
+        console.log("Setting currentRequest in handleActionClick:", request); // Log when setting
+        setCurrentRequest(request);
         setCurrentAction(action);
         setIsCommentModalOpen(true);
     };
 
-    // *** MODIFIED: Use directly stored id and username ***
+    // *** REVERTED: Use currentRequest state object ***
     const handleConfirmAction = async (comments) => {
         setActionLoading(true);
         setError('');
         setSuccess('');
 
-        // Get ID and Username directly from the stored state
-        const reqId = currentRequestData?.id;
-        const reqUsername = currentRequestData?.username;
+        // Use the state variable directly
+        const req = currentRequest;
 
-        console.log("handleConfirmAction triggered. Stored State:", { reqId, reqUsername, currentAction, comments });
+        console.log("handleConfirmAction triggered. Current State:", {
+            currentRequest: req, // Log the object being used
+            currentAction,
+            comments
+        });
 
         try {
-            if (!reqId || !reqUsername) {
-                console.error("Critical Error: Stored request ID or Username is missing.", { reqId, reqUsername });
-                throw new Error("Internal Error: Essential request data (ID or Username) reference lost. Please try reopening the request.");
+            // Reinstate original check
+            if (!req || !req.id || !req.username) {
+                console.error("Critical Error: currentRequest is missing 'id' or 'username'.", req);
+                console.log("Properties present:", req ? Object.keys(req) : 'null');
+                throw new Error("Internal Error: Essential request data (ID or Username) is missing. Please try again.");
             }
 
             const payload = {
-                requestId: reqId,
-                requestUsername: reqUsername,
+                requestId: req.id,
+                requestUsername: req.username,
                 action: currentAction,
                 approverComments: comments,
                 authenticatedUsername: user.userIdentifier
@@ -114,7 +117,7 @@ const LeaveApprovalPage = () => {
             if (response.data.success) {
                 setSuccess(response.data.message);
                 setIsCommentModalOpen(false);
-                setCurrentRequestData({ id: null, username: null, displayData: null }); // Clear state after success
+                setCurrentRequest(null); // Clear state after success
                 loadRequests(); // Refresh the list
                 setTimeout(() => setSuccess(''), 3000);
             } else {
@@ -123,7 +126,7 @@ const LeaveApprovalPage = () => {
         } catch (err) {
             console.error("Failed to approve leave in handleConfirmAction:", err);
             setError(err.message || "An unknown error occurred during approval.");
-            // Rethrow the error so the modal can potentially display it or handle retries
+            // Rethrow the error so the modal can potentially display it
             throw err;
         } finally {
             setActionLoading(false);
@@ -214,8 +217,9 @@ const LeaveApprovalPage = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
+                                    {/* *** Use stable req.id as key *** */}
                                     {filteredRequests.map(req => (
-                                        <tr key={req.id} className="hover:bg-gray-50"> {/* Use req.id which should be RowKey */}
+                                        <tr key={req.id} className="hover:bg-gray-50">
                                             <td className="px-5 py-4 font-medium text-gray-900">
                                                 {req.username}
                                                 <p className="text-xs text-gray-500 font-normal">Req. {formatDate(req.requestDate)}</p>
@@ -238,16 +242,16 @@ const LeaveApprovalPage = () => {
                                             <td className="px-5 py-4 text-center">
                                                 {req.status === 'Pending' ? (
                                                     <div className="flex justify-center space-x-2">
-                                                        {/* *** MODIFIED: Pass id and username directly *** */}
+                                                        {/* *** REVERTED: Pass full req object *** */}
                                                         <button
-                                                            onClick={() => handleActionClick(req.id, req.username, 'Approved', req)}
+                                                            onClick={() => handleActionClick(req, 'Approved')}
                                                             disabled={actionLoading} // Disable buttons during any action
                                                             className="px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-md hover:bg-green-600 transition disabled:opacity-50"
                                                         >
                                                             Approve
                                                         </button>
                                                         <button
-                                                            onClick={() => handleActionClick(req.id, req.username, 'Rejected', req)}
+                                                            onClick={() => handleActionClick(req, 'Rejected')}
                                                             disabled={actionLoading} // Disable buttons during any action
                                                             className="px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded-md hover:bg-red-600 transition disabled:opacity-50"
                                                         >
@@ -280,11 +284,10 @@ const LeaveApprovalPage = () => {
                 onClose={() => {
                     setIsCommentModalOpen(false);
                     // Clear state when modal closes
-                    setCurrentRequestData({ id: null, username: null, displayData: null });
+                    setCurrentRequest(null);
                 }}
                 onConfirm={handleConfirmAction} // This now receives comments
-                // Pass the display data part to the modal for rendering info
-                request={currentRequestData?.displayData}
+                request={currentRequest} // Pass the full object
                 action={currentAction}
                 loading={actionLoading} // Pass action loading state to modal
             />
