@@ -23,8 +23,9 @@ import ProfilePage from './pages/ProfilePage';
 import HolidayManagementPage from './pages/HolidayManagementPage';
 import LeaveApprovalPage from './pages/LeaveApprovalPage';
 import LeaveConfigPage from './pages/LeaveConfigPage';
-// *** NEW: Import ApproveAttendancePage ***
+// *** Import the missing pages ***
 import ApproveAttendancePage from './pages/ApproveAttendancePage';
+import MonthlyAttendanceReportPage from './pages/MonthlyAttendanceReportPage';
 
 
 const MainApp = () => {
@@ -63,7 +64,6 @@ const MainApp = () => {
                 return <ReportsPage />;
             case 'messages':
                 return <MessagesPage />;
-            // *** MODIFIED: Pass onNavigate to AdminPage ***
             case 'admin':
                 return <AdminPage onNavigate={handleNavigate} />;
             case 'create_timesheet_company':
@@ -98,9 +98,14 @@ const MainApp = () => {
                 return <LeaveApprovalPage />;
             case 'leave_config':
                 return <LeaveConfigPage />;
-             // *** NEW: Add case for approve_attendance ***
+            
+            // *** ADDED MISSING CASES HERE ***
             case 'approve_attendance':
                 return <ApproveAttendancePage />;
+            case 'monthly_attendance_report':
+                return <MonthlyAttendanceReportPage />;
+            // *** END FIX ***
+                
             default:
                 return <HomePage onNavigate={handleNavigate} />;
         }
