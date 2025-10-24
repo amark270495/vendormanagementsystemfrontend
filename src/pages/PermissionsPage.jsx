@@ -10,7 +10,7 @@ const PermissionsPage = () => {
     const { canEditUsers } = usePermissions(); // Permission to access this page
 
     const [usersWithPermissions, setUsersWithPermissions] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true); // Start loading true
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
@@ -20,7 +20,6 @@ const PermissionsPage = () => {
     const [selectedUser, setSelectedUser] = useState(null);
 
     // --- Define permission keys - Ensure this list is complete and matches backend ---
-    // *** MODIFIED: Added canApproveAttendance and canSendMonthlyReport ***
     const permissionKeys = [
         { key: 'canViewDashboards', name: 'View Dashboards', description: 'Access dashboard pages.' },
         { key: 'canAddPosting', name: 'Add/Edit Jobs', description: 'Submit new job postings via the form.' },
@@ -44,38 +43,79 @@ const PermissionsPage = () => {
     // --- End permission keys ---
 
     const fetchUserPermissions = useCallback(async () => {
-        if (!user?.userIdentifier || !canEditUsers) {
-             setLoading(false);
-             setError("You do not have permission to view or edit user permissions.");
+        console.log("PermissionsPage: fetchUserPermissions called."); // Log entry
+
+        // *** Start loading only if we have permission ***
+        if (!user?.userIdentifier) {
+            console.log("PermissionsPage: No user identifier, skipping fetch.");
+            setError("User not identified.");
+            setLoading(false); // Stop loading if no user
             return;
         }
+        if (!canEditUsers) {
+            console.log("PermissionsPage: No permission (canEditUsers=false), skipping fetch.");
+            setError("You do not have permission to view or edit user permissions.");
+            setLoading(false); // Stop loading if no permission
+            return;
+        }
+
         setLoading(true);
         setError('');
+        setUsersWithPermissions([]); // Clear previous data
+
         try {
+            console.log("PermissionsPage: Calling apiService.getUserPermissionsList..."); // Log start
             const response = await apiService.getUserPermissionsList(user.userIdentifier);
-            if (response.data.success) {
+            console.log("PermissionsPage: API Response received:", response); // Log raw response
+
+            // *** More Robust Check ***
+            if (response?.data?.success && Array.isArray(response.data.users)) {
                  const usersData = response.data.users.map(u => ({
                     ...u,
                     // Ensure permissions object exists, merge with defaults from permissionKeys
                     permissions: permissionKeys.reduce((acc, pKey) => {
+                        // Safely access permissions, default to false
                         acc[pKey.key] = u.permissions ? (u.permissions[pKey.key] === true) : false;
                         return acc;
                     }, {})
                 }));
+                console.log("PermissionsPage: Processed users data:", usersData); // Log processed data
                 setUsersWithPermissions(usersData);
+                 if (usersData.length === 0) {
+                     // Set a specific message if the API returns success but no users
+                     setError("No users found in the system."); // Use setError for consistency
+                 }
             } else {
-                setError(response.data.message);
+                 // Throw error if API response indicates failure or unexpected structure
+                 const errorMessage = response?.data?.message || "Received invalid data structure from API.";
+                 console.error("PermissionsPage: API call failed or returned invalid data.", response?.data);
+                 throw new Error(errorMessage);
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to fetch user permissions.');
+            console.error("PermissionsPage: Error during API call or processing:", err); // Log the full error object
+            // Set a user-friendly error message
+            setError(err?.response?.data?.message || err?.message || 'Failed to fetch user permissions.');
+            setUsersWithPermissions([]); // Clear data on error
         } finally {
-            setLoading(false);
+            console.log("PermissionsPage: Fetch complete. Setting loading to false."); // Log end
+            setLoading(false); // *** Ensure loading is always set to false ***
         }
     }, [user?.userIdentifier, canEditUsers, permissionKeys]); // Added permissionKeys dependency
 
     useEffect(() => {
-        fetchUserPermissions();
-    }, [fetchUserPermissions]);
+        // Fetch only when permission is confirmed and user exists
+        if (user?.userIdentifier && canEditUsers) {
+            fetchUserPermissions();
+        } else if (user?.userIdentifier && !canEditUsers) {
+             // If user exists but no permission
+             setLoading(false); // Ensure loading stops
+             setError("You do not have permission to view or edit user permissions.");
+        } else {
+            setLoading(false); // Ensure loading stops if user is not identified yet
+            setError("Authenticating..."); // Indicate auth state might still be loading
+        }
+    }, [fetchUserPermissions, canEditUsers, user?.userIdentifier]); // Rerun if permission changes or user loads
+
 
     const handleOpenModal = (userToEdit) => {
         if (!canEditUsers) return;
@@ -123,8 +163,11 @@ const PermissionsPage = () => {
         (u.username?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
-    // Render access denied only if loading is finished and permission is false
-    if (!loading && !canEditUsers) {
+    // --- RENDER LOGIC ---
+
+    // Show Access Denied first if applicable (check after initial auth)
+    // Use user.userIdentifier to ensure auth state is loaded before checking permission
+    if (!loading && user?.userIdentifier && !canEditUsers) {
         return (
             <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
                 <h3 className="text-lg font-medium">Access Denied</h3>
@@ -132,6 +175,11 @@ const PermissionsPage = () => {
             </div>
         );
     }
+    // Show loading spinner while fetching
+    if (loading) {
+         return <div className="flex justify-center items-center h-64"><Spinner size="10"/></div>;
+    }
+
 
     return (
         <>
@@ -147,7 +195,6 @@ const PermissionsPage = () => {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                        disabled={loading}
                     />
                 </div>
 
@@ -156,49 +203,50 @@ const PermissionsPage = () => {
                         {successMessage}
                     </div>
                 )}
-                 {error && !isModalOpen && ( // Don't show page error if modal is open (modal shows its own)
+                 {/* Show general page errors if not loading and modal is closed */}
+                 {error && !isModalOpen && (
                     <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 animate-shake" role="alert">
                         {error}
                     </div>
                 )}
 
-                {loading && <div className="flex justify-center items-center h-64"><Spinner size="10"/></div>}
 
-                {!loading && !error && (
-                    <div className="overflow-x-auto">
-                        {filteredUsers.length > 0 ? (
-                             <ul className="divide-y divide-gray-200">
-                                {filteredUsers.map(u => (
-                                    <li key={u.username} className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 px-2 hover:bg-gray-50 transition-colors duration-150 gap-3 sm:gap-0">
-                                        <div className="flex items-center space-x-3 min-w-0 flex-1">
-                                             <span className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700 text-lg flex-shrink-0">
-                                                {u.displayName?.charAt(0).toUpperCase() || '?'}
-                                            </span>
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-semibold text-gray-900 truncate">{u.displayName}</p>
-                                                <p className="text-xs text-gray-500 truncate">{u.username}</p>
-                                                <p className="text-xs text-gray-500 truncate">{u.backendOfficeRole}</p>
-                                            </div>
+                {/* Only render user list/message if not loading */}
+                <div className="overflow-x-auto">
+                    {/* Display user list only if there's no error */}
+                    {!error && filteredUsers.length > 0 ? (
+                            <ul className="divide-y divide-gray-200">
+                            {filteredUsers.map(u => (
+                                <li key={u.username} className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 px-2 hover:bg-gray-50 transition-colors duration-150 gap-3 sm:gap-0">
+                                    <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                            <span className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700 text-lg flex-shrink-0">
+                                            {u.displayName?.charAt(0).toUpperCase() || '?'}
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-semibold text-gray-900 truncate">{u.displayName}</p>
+                                            <p className="text-xs text-gray-500 truncate">{u.username}</p>
+                                            <p className="text-xs text-gray-500 truncate">{u.backendOfficeRole}</p>
                                         </div>
-                                        <button
-                                            onClick={() => handleOpenModal(u)}
-                                            className="ml-auto sm:ml-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-semibold transition-colors shadow-sm flex-shrink-0"
-                                            aria-label={`Edit permissions for ${u.displayName}`}
-                                        >
-                                            Edit Permissions
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                             <div className="text-center text-gray-500 py-10">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                                <h3 className="mt-2 text-sm font-medium text-gray-900">No Users Found</h3>
-                                <p className="mt-1 text-sm text-gray-500">No users match your search criteria, or no users exist yet.</p>
-                            </div>
-                        )}
-                    </div>
-                )}
+                                    </div>
+                                    <button
+                                        onClick={() => handleOpenModal(u)}
+                                        className="ml-auto sm:ml-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-semibold transition-colors shadow-sm flex-shrink-0"
+                                        aria-label={`Edit permissions for ${u.displayName}`}
+                                    >
+                                        Edit Permissions
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : !error ? ( // Show "No Users Found" only if there wasn't a fetch error
+                            <div className="text-center text-gray-500 py-10">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                            <h3 className="mt-2 text-sm font-medium text-gray-900">No Users Found</h3>
+                            <p className="mt-1 text-sm text-gray-500">No users match your search criteria, or no users exist yet.</p>
+                        </div>
+                    ) : null /* Don't show "No users" if there was a fetch error displayed above */
+                    }
+                </div>
             </div>
 
             {/* Render the Modal */}
