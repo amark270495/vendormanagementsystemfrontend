@@ -6,22 +6,20 @@ import { usePermissions } from '../hooks/usePermissions';
 
 const MonthlyAttendanceReportPage = () => {
     const { user } = useAuth();
-    // *** MODIFIED: Use canApproveAttendance as the controlling permission ***
-    // (Or canSendMonthlyReport if you defined that in tableUtils/usePermissions)
-    const { canApproveAttendance } = usePermissions();
+    // *** Use 'canSendMonthlyReport' or 'canApproveAttendance' ***
+    const { canSendMonthlyReport, canApproveAttendance } = usePermissions();
+    const canSendReport = canSendMonthlyReport || canApproveAttendance; // Combine permissions
 
     const [selectedMonth, setSelectedMonth] = useState('');
-    // *** NEW: State for user list and selected user ***
-    const [usersList, setUsersList] = useState([]);
-    const [selectedUser, setSelectedUser] = useState(''); // Store the username (email)
+    // *** REMOVED: User selection state ***
     
     const [loading, setLoading] = useState(false); // For main action
-    const [loadingUsers, setLoadingUsers] = useState(true); // For fetching user list
+    // *** REMOVED: loadingUsers state ***
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [statusMessage, setStatusMessage] = useState(''); // For ongoing status
 
-    // Generate month options (e.g., last 12 months)
+    // Generate month options
     const monthOptions = useMemo(() => {
         const options = [];
         const today = new Date();
@@ -36,74 +34,42 @@ const MonthlyAttendanceReportPage = () => {
         return options;
     }, []);
 
-    // Set default month on initial load
+    // Set default month
     useEffect(() => {
         if (monthOptions.length > 0) {
             setSelectedMonth(monthOptions[0].value);
         }
     }, [monthOptions]);
 
-    // *** NEW: Fetch users on load ***
-    useEffect(() => {
-        const fetchUsers = async () => {
-            if (!user?.userIdentifier || !canApproveAttendance) {
-                setLoadingUsers(false);
-                if (user?.userIdentifier) { // Only set error if user is loaded but no permission
-                     setError("You do not have permission to access this page.");
-                }
-                return;
-            }
-            try {
-                setLoadingUsers(true);
-                const response = await apiService.getUsers(user.userIdentifier);
-                if (response.data.success) {
-                    setUsersList(response.data.users || []);
-                } else {
-                    setError("Failed to load user list.");
-                }
-            } catch (err) {
-                setError("Failed to load user list.");
-                console.error("Fetch users error:", err);
-            } finally {
-                setLoadingUsers(false);
-            }
-        };
+    // *** REMOVED: Fetch users useEffect ***
 
-        fetchUsers();
-    }, [user?.userIdentifier, canApproveAttendance]);
-
-
-    // *** MODIFIED: handleSendReport (singular) ***
-    const handleSendReport = async () => {
-        if (!canApproveAttendance) {
+    // *** MODIFIED: handleSendConsolidatedReport ***
+    const handleSendConsolidatedReport = async () => {
+        if (!canSendReport) {
             setError("You do not have permission to send monthly reports.");
             return;
         }
-        if (!selectedMonth || !selectedUser) {
-            setError("Please select a user and a month.");
+        if (!selectedMonth) {
+            setError("Please select a month.");
             return;
         }
 
         setLoading(true);
         setError('');
         setSuccess('');
-        setStatusMessage(`Generating and sending report for ${selectedUser} for ${selectedMonth}...`);
+        setStatusMessage(`Generating consolidated report for ${selectedMonth}... This may take a moment.`);
 
         try {
-            // Call the backend GET endpoint with sendEmail=true
-            const response = await apiService.calculateMonthlyAttendance(
+            // Call the new backend POST endpoint
+            const response = await apiService.sendConsolidatedReport(
                 {
                     authenticatedUsername: user.userIdentifier,
-                    username: selectedUser, // The user to send to
                     month: selectedMonth,
-                    sendEmail: true,
-                    details: true // Include details for the email
                 }
-                // No 'POST' method needed, apiService now handles this as GET
             );
 
             if (response.data.success) {
-                setSuccess(response.data.emailStatus || 'Report sent successfully.');
+                setSuccess(response.data.message || 'Report sent successfully.');
             } else {
                 setError(response.data.message || 'An error occurred while sending the report.');
             }
@@ -112,13 +78,13 @@ const MonthlyAttendanceReportPage = () => {
             setError(err.response?.data?.message || "An unexpected error occurred while sending the report.");
         } finally {
             setLoading(false);
-            setStatusMessage(''); // Clear status message
+            setStatusMessage('');
             setTimeout(() => { setError(''); setSuccess(''); }, 5000);
         }
     };
 
     // Check permission for page access
-    if (!canApproveAttendance && !loadingUsers) {
+    if (!canSendReport && !loading) {
         return (
             <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
                 <h3 className="text-lg font-medium">Access Denied</h3>
@@ -126,12 +92,18 @@ const MonthlyAttendanceReportPage = () => {
             </div>
         );
     }
+    
+    // Show spinner if permission check is still loading
+    if (loading) {
+         return <div className="flex justify-center items-center h-64"><Spinner size="12" /></div>;
+    }
+
 
     return (
         <div className="space-y-6">
             <div>
                 <h1 className="text-3xl font-bold text-gray-900">Monthly Attendance Reports</h1>
-                <p className="mt-1 text-gray-600">Generate and email a monthly attendance summary to a specific user.</p>
+                <p className="mt-1 text-gray-600">Generate and email a consolidated attendance summary for all users to the admin.</p>
             </div>
 
             {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded animate-shake">{error}</div>}
@@ -141,32 +113,16 @@ const MonthlyAttendanceReportPage = () => {
 
             <div className="bg-white p-6 rounded-xl shadow border border-gray-100">
                 <div className="flex flex-col sm:flex-row items-center gap-4">
-                    {/* --- NEW: User Selection Dropdown --- */}
-                    <div className="flex-1 w-full sm:w-auto">
-                        <label htmlFor="userSelect" className="block text-sm font-medium text-gray-700">Select User:</label>
-                        <select
-                            id="userSelect"
-                            value={selectedUser}
-                            onChange={(e) => setSelectedUser(e.target.value)}
-                            className="mt-1 w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            disabled={loading || loadingUsers}
-                        >
-                            <option value="">Select a user...</option>
-                            {loadingUsers ? <option>Loading users...</option> : null}
-                            {usersList.map(u => (
-                                <option key={u.username} value={u.username}>{u.displayName} ({u.username})</option>
-                            ))}
-                        </select>
-                    </div>
-
+                    {/* --- REMOVED: User Selection Dropdown --- */}
+                    
                     <div className="flex-1 w-full sm:w-auto">
                         <label htmlFor="monthSelect" className="block text-sm font-medium text-gray-700">Select Month:</label>
                         <select
                             id="monthSelect"
                             value={selectedMonth}
                             onChange={(e) => setSelectedMonth(e.target.value)}
-                            className="mt-1 w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            disabled={loading || loadingUsers}
+                            className="mt-1 w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500"
+                            disabled={loading}
                         >
                             {monthOptions.map(opt => (
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -177,16 +133,16 @@ const MonthlyAttendanceReportPage = () => {
                     {/* --- MODIFIED: Button text and action --- */}
                     <div className="flex-shrink-0 mt-5">
                         <button
-                            onClick={handleSendReport}
+                            onClick={handleSendConsolidatedReport}
                             className="w-full sm:w-auto px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 flex items-center justify-center h-10 shadow-sm transition disabled:bg-indigo-400 disabled:cursor-wait"
-                            disabled={loading || loadingUsers || !selectedMonth || !selectedUser}
+                            disabled={loading || !selectedMonth}
                         >
-                            {loading ? <Spinner size="5" /> : 'Send Report to User'}
+                            {loading ? <Spinner size="5" /> : 'Send Consolidated Report'}
                         </button>
                     </div>
                 </div>
                  <p className="mt-4 text-xs text-gray-500 italic">
-                    Note: This will calculate attendance for the selected user and email them their individual report.
+                    Note: This will calculate attendance for *all* users and email a single Excel file to the designated admin address.
                  </p>
             </div>
         </div>

@@ -159,7 +159,6 @@ export const apiService = {
   // --- Attendance & Leave ---
   markAttendance: (attendanceData) => // { date, requestedStatus, authenticatedUsername }
     apiClient.post('/markAttendance', attendanceData),
-  // *** NEW: Add approveAttendance endpoint ***
   approveAttendance: (payload) => // { targetUsername, attendanceDate, action, approverComments, authenticatedUsername }
     apiClient.post('/approveAttendance', payload),
   getAttendance: (params) => // { authenticatedUsername, username?, startDate?, endDate?, month?, year? }
@@ -169,14 +168,23 @@ export const apiService = {
   manageHoliday: (holidayData, method = 'POST', authenticatedUsername) => { // { date, description? }
     if (method === 'DELETE') {
       return apiClient.delete('/manageHoliday', {
-          data: { ...holidayData, authenticatedUsername } // Send data in 'data' field for DELETE
+          data: { ...holidayData, authenticatedUsername }
       });
     } else {
       return apiClient.post('/manageHoliday', { ...holidayData, authenticatedUsername });
     }
   },
-  calculateMonthlyAttendance: (params) => // { authenticatedUsername, username, month, sendEmail? }
-    apiClient.get('/calculateMonthlyAttendance', { params }), // Changed to GET as per backend function
+  
+  // *** This just GETS data for one user ***
+  calculateMonthlyAttendance: (params) => { // { authenticatedUsername, username, month, details? }
+    return apiClient.get('/calculateMonthlyAttendance', { params: params });
+  },
+
+  // *** NEW: Endpoint for the consolidated report ***
+  sendConsolidatedReport: (payload) => { // { authenticatedUsername, month }
+    return apiClient.post('/sendConsolidatedReport', payload);
+  },
+  
   requestLeave: (leaveData, authenticatedUsername) => // { leaveType, startDate, endDate, reason }
     apiClient.post('/requestLeave', { ...leaveData, authenticatedUsername }),
   approveLeave: (approvalData) => // { requestId, requestUsername, action, approverComments?, authenticatedUsername }
