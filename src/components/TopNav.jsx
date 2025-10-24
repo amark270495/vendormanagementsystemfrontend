@@ -31,7 +31,9 @@ const TopNav = ({ onNavigate, currentPage }) => {
         canManageOfferLetters,
         canManageHolidays, // Added
         canApproveLeave, // Added
-        canManageLeaveConfig // Added
+        canManageLeaveConfig, // Added
+        canApproveAttendance, // Added
+        canSendMonthlyReport // Added
     } = usePermissions();
 
     const [notifications, setNotifications] = useState([]);
@@ -79,15 +81,19 @@ const TopNav = ({ onNavigate, currentPage }) => {
     }, [user?.userIdentifier, canMessage, unreadMessagesCount]); // Use unreadMessagesCount dependency
 
     useEffect(() => {
+        // Fetch immediately on load
         fetchNotifications();
         fetchUnreadMessages();
+        // Set up intervals
         const notificationInterval = setInterval(fetchNotifications, 30000); // Poll every 30 seconds
         const messageInterval = setInterval(fetchUnreadMessages, 15000); // Poll every 15 seconds
+        // Clear intervals on component unmount
         return () => {
             clearInterval(notificationInterval);
             clearInterval(messageInterval);
         };
-    }, [fetchNotifications, fetchUnreadMessages]);
+    }, [fetchNotifications, fetchUnreadMessages]); // Rerun effect if functions change
+
 
     const handleMarkAsRead = async () => {
         if (!Array.isArray(notifications) || notifications.length === 0) return; // Add safety check
@@ -96,7 +102,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
             await apiService.markNotificationsAsRead(idsToMark, user.userIdentifier);
             // Immediately update UI before next poll
             setNotifications([]);
-            // Optionally re-fetch immediately: await fetchNotifications();
         } catch (err) {
             console.error('Failed to mark notifications as read', err);
         }
@@ -113,7 +118,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
     };
 
     // Determine if any admin sub-link should be shown
-    const showAdminDropdown = canEditUsers || canManageHolidays || canApproveLeave || canManageLeaveConfig;
+    const showAdminDropdown = canEditUsers || canManageHolidays || canApproveLeave || canManageLeaveConfig || canApproveAttendance || canSendMonthlyReport;
 
     return (
         <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-40 border-b border-slate-200">
@@ -124,10 +129,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                         <h1 className="text-2xl font-bold text-indigo-600">VMS Portal</h1>
                         <nav className="hidden md:flex space-x-1">
                             <a href="#" onClick={() => onNavigate('home')} className={getLinkClass('home')}>Home</a>
-
-                             {/* Profile Link */}
                             <a href="#" onClick={() => onNavigate('profile')} className={getLinkClass('profile')}>My Profile</a>
-
 
                             {canViewDashboards && (
                                 <Dropdown trigger={<button className={getLinkClass('dashboard')}>Dashboards</button>}>
@@ -175,11 +177,13 @@ const TopNav = ({ onNavigate, currentPage }) => {
 
                             {/* Admin Dropdown */}
                             {showAdminDropdown && (
-                                <Dropdown trigger={<button className={getLinkClass(['admin', 'manage_holidays', 'approve_leave', 'leave_config'])}>Admin</button>}>
+                                <Dropdown trigger={<button className={getLinkClass(['admin', 'manage_holidays', 'approve_leave', 'leave_config', 'approve_attendance', 'monthly_attendance_report'])}>Admin</button>}>
                                     {canEditUsers && <a href="#" onClick={() => onNavigate('admin')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">User Management</a>}
                                     {canManageHolidays && <a href="#" onClick={() => onNavigate('manage_holidays')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Manage Holidays</a>}
                                     {canApproveLeave && <a href="#" onClick={() => onNavigate('approve_leave')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Approve Leave</a>}
                                     {canManageLeaveConfig && <a href="#" onClick={() => onNavigate('leave_config')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Leave Configuration</a>}
+                                    {canApproveAttendance && <a href="#" onClick={() => onNavigate('approve_attendance')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Approve Attendance</a>}
+                                    {canSendMonthlyReport && <a href="#" onClick={() => onNavigate('monthly_attendance_report')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Send Monthly Reports</a>}
                                 </Dropdown>
                             )}
                         </nav>
@@ -190,6 +194,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                         {/* Notifications Dropdown */}
                         <Dropdown width="80" trigger={
                             <button className="relative text-slate-500 hover:text-slate-700" aria-label="Notifications">
+                                {/* Bell Icon - viewBox fixed */}
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
                                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                                     <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -197,6 +202,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                                 {Array.isArray(notifications) && notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
                             </button>
                         }>
+                            {/* ... (dropdown content remains the same) ... */}
                             <div className="p-2">
                                 <div className="flex justify-between items-center mb-2 px-2">
                                     <h4 className="font-semibold text-slate-800">Notifications</h4>
@@ -217,6 +223,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                         <Dropdown trigger={
                             <button className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" aria-label="User menu">
                                 <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center">
+                                    {/* User Icon - viewBox fixed */}
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-600">
                                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                         <circle cx="12" cy="7" r="4"></circle>
@@ -224,11 +231,11 @@ const TopNav = ({ onNavigate, currentPage }) => {
                                 </div>
                             </button>
                         }>
+                            {/* ... (dropdown content remains the same) ... */}
                             <div className="px-4 py-2 border-b">
                                 <p className="text-sm font-medium text-slate-900">{user?.userName || 'User'}</p>
                                 <p className="text-sm text-slate-500 truncate">{user?.userIdentifier || 'No Email'}</p>
                             </div>
-                             {/* Added My Profile Link */}
                             <a href="#" onClick={() => onNavigate('profile')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">My Profile</a>
                             <a href="#" onClick={logout} className="block px-4 py-2 text-sm text-red-600 hover:bg-slate-100">Logout</a>
                         </Dropdown>
