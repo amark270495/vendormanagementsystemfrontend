@@ -37,10 +37,10 @@ const TopNav = ({ onNavigate, currentPage }) => {
     const [notifications, setNotifications] = useState([]);
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(0); // Renamed for clarity
 
-    // --- Sound Playing Logic (using original relative path) ---
+    // --- Sound Playing Logic (using public path) ---
     const playSound = (soundFile) => {
-        // Correct relative path from src/components back to src/sounds
-        const audio = new Audio(`../sounds/${soundFile}`);
+        // Correct path from public directory
+        const audio = new Audio(`/sounds/${soundFile}`); // Assumes sounds folder is in public
         audio.play().catch(e => console.error("Error playing sound:", e));
     };
     // --- End Sound Playing Logic ---
@@ -49,21 +49,15 @@ const TopNav = ({ onNavigate, currentPage }) => {
         if (!user?.userIdentifier) return;
         try {
             const response = await apiService.getNotifications(user.userIdentifier);
-            // --- FIX: Safely access notifications array ---
             const newNotifications = response?.data?.success ? (response.data.notifications || []) : [];
-            // --- End FIX ---
 
             // Play sound only if new notifications arrived since the last check
-            // --- FIX: Ensure 'notifications' state array is also valid before comparing length ---
             if (Array.isArray(newNotifications) && Array.isArray(notifications) && newNotifications.length > notifications.length && notifications.length > 0) {
                  playSound('notification.mp3');
             }
-            // --- End FIX ---
             setNotifications(newNotifications); // Always set state, even if empty
         } catch (err) {
             console.error('Could not fetch notifications', err);
-            // Optionally set notifications to empty array on error
-            // setNotifications([]);
         }
     }, [user?.userIdentifier, notifications]); // Keep notifications dependency
 
@@ -109,11 +103,13 @@ const TopNav = ({ onNavigate, currentPage }) => {
     };
 
     const getLinkClass = (pageName) => {
+        // Handle array for multi-page active states
+        const targetPages = Array.isArray(pageName) ? pageName : [pageName];
         const base = "px-3 py-2 rounded-md text-sm font-medium transition-colors";
         const active = "bg-slate-200 text-slate-900";
         const inactive = "text-slate-500 hover:bg-slate-100 hover:text-slate-800";
-        // Check if the current page *name* matches the link's target page name
-        return `${base} ${currentPage === pageName ? active : inactive}`;
+        // Check if the current page *name* matches any of the link's target page names
+        return `${base} ${targetPages.includes(currentPage) ? active : inactive}`;
     };
 
     // Determine if any admin sub-link should be shown
@@ -134,7 +130,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
 
 
                             {canViewDashboards && (
-                                <Dropdown trigger={<button className="px-3 py-2 rounded-md text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800">Dashboards</button>}>
+                                <Dropdown trigger={<button className={getLinkClass('dashboard')}>Dashboards</button>}>
                                     {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
                                         <a href="#" key={key} onClick={() => onNavigate('dashboard', { key })} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">{config.title}</a>
                                     ))}
@@ -153,7 +149,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                             }
 
                             {canManageTimesheets && (
-                                <Dropdown trigger={<button className={getLinkClass(['create_timesheet_company', 'manage_companies', 'create_timesheet_employee', 'manage_timesheet_employees', 'log_hours', 'timesheets_dashboard'].includes(currentPage))}>Timesheets</button>}>
+                                <Dropdown trigger={<button className={getLinkClass(['create_timesheet_company', 'manage_companies', 'create_timesheet_employee', 'manage_timesheet_employees', 'log_hours', 'timesheets_dashboard'])}>Timesheets</button>}>
                                     <a href="#" onClick={() => onNavigate('create_timesheet_company')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Create Company</a>
                                     <a href="#" onClick={() => onNavigate('manage_companies')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Manage Companies</a>
                                     <a href="#" onClick={() => onNavigate('create_timesheet_employee')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Create Timesheet Employee</a>
@@ -164,7 +160,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                             )}
 
                              {(canManageMSAWO || canManageOfferLetters) && (
-                                <Dropdown trigger={<button className={getLinkClass(['create_msa_wo_vendor_company', 'manage_msa_wo_vendor_companies', 'create_msa_wo', 'msa_wo_dashboard', 'create_offer_letter', 'offer_letter_dashboard'].includes(currentPage))}>E-Sign's</button>}>
+                                <Dropdown trigger={<button className={getLinkClass(['create_msa_wo_vendor_company', 'manage_msa_wo_vendor_companies', 'create_msa_wo', 'msa_wo_dashboard', 'create_offer_letter', 'offer_letter_dashboard'])}>E-Sign's</button>}>
                                     <div className="px-4 py-2 text-xs font-bold text-slate-400 uppercase">MSA & WO</div>
                                     {canManageMSAWO && <a href="#" onClick={() => onNavigate('create_msa_wo_vendor_company')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Create Vendor Company</a>}
                                     {canManageMSAWO && <a href="#" onClick={() => onNavigate('manage_msa_wo_vendor_companies')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Manage Vendor Companies</a>}
@@ -179,7 +175,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
 
                             {/* Admin Dropdown */}
                             {showAdminDropdown && (
-                                <Dropdown trigger={<button className={getLinkClass(['admin', 'manage_holidays', 'approve_leave', 'leave_config'].includes(currentPage))}>Admin</button>}>
+                                <Dropdown trigger={<button className={getLinkClass(['admin', 'manage_holidays', 'approve_leave', 'leave_config'])}>Admin</button>}>
                                     {canEditUsers && <a href="#" onClick={() => onNavigate('admin')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">User Management</a>}
                                     {canManageHolidays && <a href="#" onClick={() => onNavigate('manage_holidays')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Manage Holidays</a>}
                                     {canApproveLeave && <a href="#" onClick={() => onNavigate('approve_leave')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Approve Leave</a>}
@@ -194,33 +190,25 @@ const TopNav = ({ onNavigate, currentPage }) => {
                         {/* Notifications Dropdown */}
                         <Dropdown width="80" trigger={
                             <button className="relative text-slate-500 hover:text-slate-700" aria-label="Notifications">
-                                {/* --- FIX: Corrected SVG Syntax --- */}
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
                                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path> {/* Corrected arc flag issue here if present, ensure values are 0 or 1 */}
+                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                                 </svg>
-                                {/* --- End FIX --- */}
-                                {/* --- FIX: Check array length safely --- */}
                                 {Array.isArray(notifications) && notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
-                                {/* --- End FIX --- */}
                             </button>
                         }>
                             <div className="p-2">
                                 <div className="flex justify-between items-center mb-2 px-2">
                                     <h4 className="font-semibold text-slate-800">Notifications</h4>
-                                    {/* --- FIX: Check array length safely --- */}
                                     {Array.isArray(notifications) && notifications.length > 0 && <button onClick={handleMarkAsRead} className="text-xs text-indigo-600 hover:underline">Mark all as read</button>}
-                                    {/* --- End FIX --- */}
                                 </div>
                                 <div className="max-h-80 overflow-y-auto">
-                                    {/* --- FIX: Check array length safely --- */}
                                     {Array.isArray(notifications) && notifications.length > 0 ? notifications.map(n => (
                                         <div key={n.id || n.timestamp} className="p-2 border-b hover:bg-slate-50">
                                             <p className="text-sm text-slate-700">{n.message}</p>
                                             <p className="text-xs text-slate-400">{new Date(n.timestamp).toLocaleString()}</p>
                                         </div>
                                     )) : <p className="text-sm text-slate-500 p-4 text-center">No new notifications.</p>}
-                                    {/* --- End FIX --- */}
                                 </div>
                             </div>
                         </Dropdown>
@@ -229,12 +217,10 @@ const TopNav = ({ onNavigate, currentPage }) => {
                         <Dropdown trigger={
                             <button className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" aria-label="User menu">
                                 <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center">
-                                    {/* --- FIX: Corrected SVG Syntax --- */}
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-600">
                                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                         <circle cx="12" cy="7" r="4"></circle>
                                     </svg>
-                                    {/* --- End FIX --- */}
                                 </div>
                             </button>
                         }>
