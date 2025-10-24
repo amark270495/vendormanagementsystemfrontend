@@ -9,6 +9,21 @@ import ApprovalCommentModal from '../leave/ApprovalCommentModal';
 // --- Reusable Calendar Logic (Adapted from AttendanceCalendar) ---
 const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, onDayClick, pendingRequestsMap }) => {
 
+    // Helper function to format date for display in confirmation
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        try {
+            // Use UTC date parts to avoid timezone shifts during display
+            const date = new Date(dateString + 'T00:00:00Z');
+            return date.toLocaleDateString('en-US', {
+                timeZone: 'UTC',
+                month: 'short', day: 'numeric', year: 'numeric'
+            });
+        } catch (e) {
+            return dateString;
+        }
+    };
+
     const getDayStatus = (day) => {
         const year = monthDate.getUTCFullYear();
         const month = monthDate.getUTCMonth();
@@ -28,7 +43,18 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             if (attendanceRecord.status === 'Pending') {
                 const requestedText = attendanceRecord.requestedStatus === 'Present' ? 'P?' : 'A?';
                 // Add isPending flag for click handler
-                return { status: 'Pending', text: requestedText, color: 'bg-yellow-100 text-yellow-700 border-yellow-200 hover:ring-2 hover:ring-yellow-400 cursor-pointer', description: `Pending ${attendanceRecord.requestedStatus}`, isPending: true, request: pendingRequestsMap[dateKey] };
+                // *** FIX: Ensure request object in map has username ***
+                const requestObj = pendingRequestsMap[dateKey] || {}; // Get request from map
+                return {
+                    status: 'Pending',
+                    text: requestedText,
+                    color: 'bg-yellow-100 text-yellow-700 border-yellow-200 hover:ring-2 hover:ring-yellow-400 cursor-pointer',
+                    description: `Pending ${attendanceRecord.requestedStatus}`,
+                    isPending: true,
+                    // Pass the request object which should include username now
+                    request: requestObj
+                };
+                // *** END FIX ***
             }
             if (attendanceRecord.status === 'Present') return { status: 'Present', text: 'P', color: 'bg-green-100 text-green-700 border-green-200' };
             if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') return { status: attendanceRecord.status, text: 'A', color: 'bg-red-100 text-red-700 border-red-200' };
@@ -74,7 +100,7 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
                         className={`h-16 flex flex-col items-center justify-center border rounded text-center ${cell.statusInfo.color || 'bg-gray-50 border-gray-100'} ${cell.day === null ? 'invisible' : ''}`}
                         title={cell.statusInfo.description || cell.statusInfo.status}
                         // Add onClick only for pending days
-                        onClick={() => cell.statusInfo.isPending && onDayClick(cell.statusInfo.request)}
+                        onClick={() => cell.statusInfo.isPending && onDayClick(cell.statusInfo.request)} // Pass the full request object
                     >
                         <span className="text-sm">{cell.day}</span>
                         {cell.statusInfo.text && <span className="text-xs font-bold mt-1">{cell.statusInfo.text}</span>}
@@ -84,11 +110,12 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             {/* Legend */}
             <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-xs">
                 <span className="flex items-center"><span className="w-3 h-3 rounded-full bg-green-100 mr-1 border border-green-200"></span> P</span>
-                <span className="flex items-center"><span className="w-3 h-3 rounded-full bg-red-100 mr-1 border border-red-200"></span> A</span>
+                <span className="flex items-center"><span className="w-3 h-3 rounded-full bg-red-100 mr-1 border border-red-200"></span> A/Rejected</span>
                 <span className="flex items-center"><span className="w-3 h-3 rounded-full bg-yellow-100 mr-1 border border-yellow-200"></span> P?/A? (Pending)</span>
                 <span className="flex items-center"><span className="w-3 h-3 rounded-full bg-purple-100 mr-1 border border-purple-200"></span> L</span>
                 <span className="flex items-center"><span className="w-3 h-3 rounded-full bg-gray-100 mr-1 border border-gray-200"></span> W</span>
                 <span className="flex items-center"><span className="w-3 h-3 rounded-full bg-yellow-100 mr-1 border border-yellow-200"></span> H</span>
+                 <span className="flex items-center ml-auto"><span className="w-3 h-3 rounded-full bg-red-50 mr-1 border border-red-100"></span> A (Unmarked)</span>
             </div>
         </>
     );
@@ -113,9 +140,32 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const [currentAction, setCurrentAction] = useState(null); // 'Approved' or 'Rejected'
     const [actionLoading, setActionLoading] = useState(false); // Loading state for the API call
 
+    // Helper function to format date for display in confirmation
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        try {
+            // Use UTC date parts to avoid timezone shifts during display
+            const date = new Date(dateString + 'T00:00:00Z');
+            return date.toLocaleDateString('en-US', {
+                timeZone: 'UTC',
+                month: 'short', day: 'numeric', year: 'numeric'
+            });
+        } catch (e) {
+            return dateString;
+        }
+    };
+
     // Fetch all necessary data for the selected user and month
     const fetchDataForUserAndMonth = useCallback(async (monthDate) => {
-        if (!user?.userIdentifier || !selectedUsername) return;
+        // *** FIX: Add check for selectedUsername ***
+        if (!user?.userIdentifier || !selectedUsername) {
+             console.log("fetchDataForUserAndMonth: Skipping fetch - user or selectedUsername missing.");
+             setLoading(false); // Ensure loading stops if username isn't set yet
+            return;
+        }
+        // *** END FIX ***
+
+        console.log(`fetchDataForUserAndMonth: Fetching data for ${selectedUsername}, month: ${monthDate.toISOString().substring(0, 7)}`); // Log fetch start
         setLoading(true);
         setError('');
         try {
@@ -126,35 +176,54 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
 
             // Fetch attendance, holidays, leave (similar to AttendanceCalendar)
             const [attendanceRes, holidaysRes, leaveRes] = await Promise.all([
+                // *** FIX: Pass selectedUsername correctly ***
                 apiService.getAttendance({ authenticatedUsername: user.userIdentifier, username: selectedUsername, month: monthString }),
+                // *** END FIX ***
                 apiService.getHolidays({ authenticatedUsername: user.userIdentifier, year: year.toString() }),
                 apiService.getLeaveRequests({ authenticatedUsername: user.userIdentifier, targetUsername: selectedUsername, statusFilter: 'Approved', startDateFilter: `${monthString}-01`, endDateFilter: `${monthString}-${monthEndDay.toString().padStart(2,'0')}` })
             ]);
 
+             console.log("API Responses:", { attendanceRes, holidaysRes, leaveRes }); // Log API responses
+
             // Process Attendance Data
             const attMap = {};
             const pendingMap = {};
-            if (attendanceRes.data.success && Array.isArray(attendanceRes.data.attendanceRecords)) {
+            if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendanceRecords)) {
                 attendanceRes.data.attendanceRecords.forEach(att => {
-                    attMap[att.date] = { status: att.status, requestedStatus: att.requestedStatus };
+                    // *** FIX: Ensure username is included in the pending request object ***
+                    const record = {
+                        status: att.status,
+                        requestedStatus: att.requestedStatus,
+                        username: selectedUsername, // Add username here
+                        date: att.date, // Ensure date is here
+                        markedOn: att.markedOn // Keep other useful fields
+                        // Add partitionKey/rowKey if needed by backend approveAttendance
+                         // partitionKey: att.partitionKey, // Assuming backend provides these
+                         // rowKey: att.rowKey
+                    };
+                    attMap[att.date] = record; // Store the richer object
                     if (att.status === 'Pending') {
-                        pendingMap[att.date] = att; // Store full request if pending
+                        pendingMap[att.date] = record; // Store full request if pending
                     }
+                    // *** END FIX ***
                 });
+            } else {
+                 console.warn("Failed to process attendance response:", attendanceRes?.data?.message);
             }
             setAttendanceData(attMap);
             setPendingRequestsMap(pendingMap);
+            console.log("Processed Pending Requests Map:", pendingMap); // Log pending map
 
             // Process Holidays
             const holMap = {};
-            if (holidaysRes.data.success && Array.isArray(holidaysRes.data.holidays)) {
+            if (holidaysRes?.data?.success && Array.isArray(holidaysRes.data.holidays)) {
                 holidaysRes.data.holidays.forEach(h => holMap[h.date] = h.description);
             }
             setHolidays(holMap);
 
             // Process Leave
             const leaveSet = new Set();
-            if (leaveRes.data.success && Array.isArray(leaveRes.data.requests)) {
+            if (leaveRes?.data?.success && Array.isArray(leaveRes.data.requests)) {
                 leaveRes.data.requests.forEach(req => {
                     const start = new Date(req.startDate + 'T00:00:00Z');
                     const end = new Date(req.endDate + 'T00:00:00Z');
@@ -168,54 +237,74 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             setLeaveDaysSet(leaveSet);
 
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to load calendar data for user.');
-            console.error(err);
+            const errorMsg = err.response?.data?.message || err.message || 'Failed to load calendar data for user.';
+            setError(errorMsg);
+            console.error("fetchDataForUserAndMonth error:", err); // Log full error
         } finally {
             setLoading(false);
         }
-    }, [user?.userIdentifier, selectedUsername]);
+    }, [user?.userIdentifier]); // Removed selectedUsername from dependencies, rely on prop passed in useEffect call
 
-    // Fetch data when the modal opens or month changes
+    // Fetch data when the modal opens or month/selectedUsername changes
     useEffect(() => {
         if (isOpen && selectedUsername) {
-            fetchDataForUserAndMonth(currentMonthDate);
+            // Reset month to current when username changes, fetch otherwise
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth();
+            const initialMonth = new Date(Date.UTC(currentYear, currentMonth, 1));
+            setCurrentMonthDate(initialMonth); // Reset to current month for new user
+            fetchDataForUserAndMonth(initialMonth); // Fetch for initial month
+        } else if (isOpen && selectedUsername && currentMonthDate) {
+             // If username is same but month might change via buttons
+             fetchDataForUserAndMonth(currentMonthDate);
         }
-    }, [isOpen, selectedUsername, currentMonthDate, fetchDataForUserAndMonth]);
+    }, [isOpen, selectedUsername, fetchDataForUserAndMonth]); // Depend on selectedUsername here
+
 
     const changeMonth = (offset) => {
         setCurrentMonthDate(prev => {
             const newDate = new Date(prev);
             newDate.setUTCMonth(newDate.getUTCMonth() + offset, 1);
-            return newDate; // Fetch happens in useEffect based on this change
+            // Fetch will be triggered by useEffect watching currentMonthDate
+            return newDate;
         });
     };
 
     // --- Action Handling ---
     const handleDayClick = (request) => {
+        // *** FIX: Check request object passed from CalendarDisplay ***
         if (request && request.status === 'Pending') {
-             console.log("Pending day clicked:", request); // Log clicked request
-            setRequestToAction(request);
-            // Open action modal immediately or after selecting action type
-            // For simplicity, let's open it directly, action type decided inside modal/confirm
-            // setIsActionModalOpen(true); // We'll use simple confirm first
+            console.log("Pending day clicked:", request); // Log clicked request
+            // Ensure the request object contains username and date
+            if (!request.username || !request.date) {
+                console.error("Clicked request object is missing username or date:", request);
+                setError("Internal error: Cannot process action due to missing request data.");
+                return;
+            }
+            setRequestToAction(request); // Store the full request object
+            // Use window.confirm for simplicity for now
+             const actionConfirmed = window.confirm(
+                 `Request Details:\nUser: ${request.username}\nDate: ${formatDate(request.date)}\nRequested: ${request.requestedStatus}\n\nClick OK to Approve, Cancel to Reject.`
+             );
+            const action = actionConfirmed ? 'Approved' : 'Rejected';
+            handleConfirmAction(action, ''); // Pass action and empty comments
 
-             // Using simple confirm first
-             const action = window.confirm(`Request: ${request.requestedStatus} for ${formatDate(request.date)}\n\nClick OK to Approve, Cancel to Reject.`);
-             if (action === true) { // Approve
-                 handleConfirmAction('Approved', ''); // No comments with confirm
-             } else if (action === false) { // Reject
-                 handleConfirmAction('Rejected', ''); // No comments with confirm
-             }
         } else {
-             console.log("Clicked non-pending day or invalid request:", request);
+             console.log("Clicked non-pending day or invalid/missing request object:", request);
         }
+        // *** END FIX ***
     };
 
-    // This function is called when the final action is confirmed (e.g., from comment modal or simple confirm)
+    // This function is called when the final action is confirmed
     const handleConfirmAction = async (action, comments) => {
-        const req = requestToAction || currentRequest; // Use requestToAction if set (from simple confirm)
+        // *** FIX: Use requestToAction directly ***
+        const req = requestToAction; // Use the state holding the clicked request
+        // *** END FIX ***
         if (!req || !req.date || !req.username) {
+            console.error("handleConfirmAction Error: Request details missing.", req);
             setError("Cannot perform action: Request details are missing.");
+            // Clear requestToAction if it's invalid
+            setRequestToAction(null);
             return;
         }
 
@@ -224,38 +313,41 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
 
         try {
             const payload = {
-                targetUsername: req.username,
-                attendanceDate: req.date,
-                action: action, // 'Approved' or 'Rejected'
+                targetUsername: req.username, // Use username from the request object
+                attendanceDate: req.date,     // Use date from the request object
+                action: action,               // 'Approved' or 'Rejected'
                 approverComments: comments,
                 authenticatedUsername: user.userIdentifier
             };
+            console.log("Calling approveAttendance API with payload:", payload); // Log before API call
 
             const response = await apiService.approveAttendance(payload);
+             console.log("approveAttendance API response:", response); // Log API response
 
             if (response.data.success) {
                 // Close action modal if it was open
                 setIsActionModalOpen(false);
-                setRequestToAction(null);
+                setRequestToAction(null); // Clear the specific request
                 setCurrentAction(null);
                 // Refresh the calendar data for the current month
-                fetchDataForUserAndMonth(currentMonthDate);
-                // Notify the parent page to refresh its list (optional but good)
+                await fetchDataForUserAndMonth(currentMonthDate); // Wait for refresh
+                // Notify the parent page ONLY if all pending requests for this user *might* be gone
+                // (More complex check needed if only refreshing parent on full completion)
+                // For simplicity, always call it now
                 if (onApprovalComplete) {
                     onApprovalComplete();
                 }
-                 // Show temporary success message inside the modal?
-                 // setSuccess(response.data.message);
-                 // setTimeout(() => setSuccess(''), 2000);
             } else {
                 throw new Error(response.data.message);
             }
         } catch (err) {
             console.error("Confirm Action Error:", err);
             setError(err.message || "An unknown error occurred while processing the request.");
-            // Keep action modal open if it was used, so user sees the error
+            // Keep action modal open if used, so user sees the error
         } finally {
             setActionLoading(false);
+            // Clear requestToAction after attempt, regardless of success/fail for window.confirm approach
+            setRequestToAction(null);
         }
     };
 
@@ -263,33 +355,48 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const monthName = currentMonthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Attendance Approval for ${selectedUsername}`} size="2xl">
+        // Use Modal component for the main structure
+        <Modal isOpen={isOpen} onClose={onClose} title={`Attendance Approval for ${selectedUsername || '...'}`} size="3xl"> {/* Increased size */}
+            {/* Display error within the modal */}
             {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 animate-shake">{error}</div>}
 
-            <div className="flex justify-between items-center mb-4">
-                <button onClick={() => changeMonth(-1)} className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50" disabled={loading}>&lt; Prev</button>
-                <h3 className="text-lg font-semibold">{monthName}</h3>
-                <button onClick={() => changeMonth(1)} className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50" disabled={loading}>Next &gt;</button>
+            {/* Month Navigation */}
+            <div className="flex justify-between items-center mb-4 px-1">
+                <button onClick={() => changeMonth(-1)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 text-sm font-medium shadow-sm transition" disabled={loading || actionLoading}>&lt; Prev</button>
+                <h3 className="text-xl font-semibold text-gray-800">{monthName}</h3>
+                <button onClick={() => changeMonth(1)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 text-sm font-medium shadow-sm transition" disabled={loading || actionLoading}>Next &gt;</button>
             </div>
 
+            {/* Loading Spinner or Calendar */}
             {loading ? (
-                <div className="flex justify-center items-center h-48"><Spinner /></div>
+                <div className="flex justify-center items-center h-64"><Spinner size="10"/></div>
+            ) : actionLoading ? (
+                 <div className="flex justify-center items-center h-64"><Spinner size="10"/><p className="ml-3 text-gray-600">Processing...</p></div>
             ) : (
+                // Render CalendarDisplay only if not loading
                 <CalendarDisplay
                     monthDate={currentMonthDate}
                     attendanceData={attendanceData}
                     holidays={holidays}
                     leaveDaysSet={leaveDaysSet}
-                    onDayClick={handleDayClick}
+                    onDayClick={handleDayClick} // Pass the click handler
                     pendingRequestsMap={pendingRequestsMap} // Pass the map
                 />
             )}
 
-            {/* Optional: Add Comment Modal Triggered by handleDayClick */}
+            {/* Footer with Close Button (Optional) */}
+             <div className="mt-6 pt-4 border-t flex justify-end">
+                <button onClick={onClose} className="px-5 py-2 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition shadow-sm">
+                    Close
+                </button>
+             </div>
+
+
+            {/* Optional: Add Comment Modal (if replacing window.confirm) */}
             {/* <ApprovalCommentModal
                 isOpen={isActionModalOpen}
                 onClose={() => setIsActionModalOpen(false)}
-                onConfirm={(comments) => handleConfirmAction(currentAction, comments)} // Needs modification
+                onConfirm={(comments) => handleConfirmAction(currentAction, comments)}
                 request={requestToAction ? { // Adapt props if using ApprovalCommentModal
                     username: requestToAction.username,
                     startDate: requestToAction.date,
