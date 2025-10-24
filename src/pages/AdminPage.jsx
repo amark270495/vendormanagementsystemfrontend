@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import UserManagementPage from './UserManagementPage';
 import PermissionsPage from './PermissionsPage';
-import HolidayManagementPage from './HolidayManagementPage'; // Import new page
-import LeaveApprovalPage from './LeaveApprovalPage';     // Import new page
-import LeaveConfigPage from './LeaveConfigPage';         // Import new page
+import HolidayManagementPage from './HolidayManagementPage';
+import LeaveApprovalPage from './LeaveApprovalPage';
+import LeaveConfigPage from './LeaveConfigPage';
+// *** NEW: Import ApproveAttendancePage ***
+import ApproveAttendancePage from './ApproveAttendancePage';
 import { usePermissions } from '../hooks/usePermissions';
 
 const AdminPage = ({ onNavigate }) => { // Added onNavigate prop
     // Get all relevant admin permissions
-    const { canEditUsers, canManageHolidays, canApproveLeave, canManageLeaveConfig } = usePermissions();
+    // *** NEW: Added canApproveAttendance ***
+    const { canEditUsers, canManageHolidays, canApproveLeave, canManageLeaveConfig, canApproveAttendance } = usePermissions();
 
     // Determine the default view based on available permissions
     const getDefaultView = () => {
@@ -16,6 +19,8 @@ const AdminPage = ({ onNavigate }) => { // Added onNavigate prop
         if (canManageHolidays) return 'holidays';
         if (canApproveLeave) return 'approve_leave';
         if (canManageLeaveConfig) return 'leave_config';
+        // *** NEW: Added approve_attendance ***
+        if (canApproveAttendance) return 'approve_attendance';
         return 'access_denied'; // Fallback if no admin permissions
     };
 
@@ -45,6 +50,9 @@ const AdminPage = ({ onNavigate }) => { // Added onNavigate prop
                  return canApproveLeave ? <LeaveApprovalPage /> : null;
             case 'leave_config':
                  return canManageLeaveConfig ? <LeaveConfigPage /> : null;
+            // *** NEW: Added approve_attendance case ***
+            case 'approve_attendance':
+                 return canApproveAttendance ? <ApproveAttendancePage /> : null;
             case 'access_denied':
                  return (
                      <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border mt-4">
@@ -58,7 +66,8 @@ const AdminPage = ({ onNavigate }) => { // Added onNavigate prop
     };
 
     // Check if user has ANY admin permissions to show the console at all
-    const hasAnyAdminPermission = canEditUsers || canManageHolidays || canApproveLeave || canManageLeaveConfig;
+    // *** NEW: Added canApproveAttendance ***
+    const hasAnyAdminPermission = canEditUsers || canManageHolidays || canApproveLeave || canManageLeaveConfig || canApproveAttendance;
 
     return (
         <div className="space-y-6">
@@ -98,6 +107,12 @@ const AdminPage = ({ onNavigate }) => { // Added onNavigate prop
                              {canManageLeaveConfig && (
                                  <button onClick={() => setView('leave_config')} className={getButtonClasses('leave_config')}>
                                      Leave Configuration
+                                 </button>
+                            )}
+                            {/* *** NEW: Added Approve Attendance Tab *** */}
+                             {canApproveAttendance && (
+                                 <button onClick={() => setView('approve_attendance')} className={getButtonClasses('approve_attendance')}>
+                                     Approve Attendance
                                  </button>
                             )}
                         </nav>

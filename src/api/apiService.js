@@ -113,9 +113,9 @@ export const apiService = {
     apiClient.post('/createMSAWOVendorCompany', { companyData, authenticatedUsername }),
   getMSAWOVendorCompanies: (authenticatedUsername) =>
     apiClient.get('/getMSAWOVendorCompanies', { params: { authenticatedUsername } }),
-  updateMSAWOVendorCompany: (originalVendorName, vendorData, authenticatedUsername) => 
+  updateMSAWOVendorCompany: (originalVendorName, vendorData, authenticatedUsername) =>
     apiClient.post('/updateMSAWOVendorCompany', { originalCompanyName: originalVendorName, updatedCompanyData: vendorData, authenticatedUsername }),
-  deleteMSAWOVendorCompany: (vendorNameToDelete, authenticatedUsername) => 
+  deleteMSAWOVendorCompany: (vendorNameToDelete, authenticatedUsername) =>
     apiClient.post('/deleteMSAWOVendorCompany', { companyNameToDelete: vendorNameToDelete, authenticatedUsername }),
   createMSAandWO: (formData, authenticatedUsername) =>
     apiClient.post('/createMSAandWO', { formData, authenticatedUsername }),
@@ -141,9 +141,9 @@ export const apiService = {
     apiClient.post('/createOfferLetter', { formData, authenticatedUsername }),
   getOfferLetterDashboardData: (authenticatedUsername) =>
     apiClient.get('/getOfferLetterDashboardData', { params: { authenticatedUsername } }),
-  deleteOfferLetter: (rowKey, authenticatedUsername, pdfUrl) => 
+  deleteOfferLetter: (rowKey, authenticatedUsername, pdfUrl) =>
     apiClient.post('/deleteOfferLetter', { rowKey, authenticatedUsername, pdfUrl }),
-  updateOfferLetter: (documentData, authenticatedUsername) => 
+  updateOfferLetter: (documentData, authenticatedUsername) =>
     apiClient.post('/updateOfferLetter', { documentData, authenticatedUsername }),
   employeeSignIn: (token, tempPassword) =>
     apiClient.post('/employeeSignIn', { token, tempPassword }),
@@ -157,35 +157,34 @@ export const apiService = {
     apiClient.get('/getPublicKey', { params: { username, authenticatedUsername } }),
 
   // --- Attendance & Leave ---
-  markAttendance: (attendanceData) =>
+  markAttendance: (attendanceData) => // { date, requestedStatus, authenticatedUsername }
     apiClient.post('/markAttendance', attendanceData),
-  getAttendance: (params) =>
+  // *** NEW: Add approveAttendance endpoint ***
+  approveAttendance: (payload) => // { targetUsername, attendanceDate, action, approverComments, authenticatedUsername }
+    apiClient.post('/approveAttendance', payload),
+  getAttendance: (params) => // { authenticatedUsername, username?, startDate?, endDate?, month?, year? }
     apiClient.get('/getAttendance', { params }),
-  getHolidays: (params) =>
+  getHolidays: (params) => // { authenticatedUsername, year? }
     apiClient.get('/getHolidays', { params }),
-  manageHoliday: (holidayData, method = 'POST', authenticatedUsername) => {
+  manageHoliday: (holidayData, method = 'POST', authenticatedUsername) => { // { date, description? }
     if (method === 'DELETE') {
       return apiClient.delete('/manageHoliday', {
-          data: { ...holidayData, authenticatedUsername } // Send all data in 'data' field
+          data: { ...holidayData, authenticatedUsername } // Send data in 'data' field for DELETE
       });
     } else {
       return apiClient.post('/manageHoliday', { ...holidayData, authenticatedUsername });
     }
   },
-  calculateMonthlyAttendance: (username, month, sendEmail = false, authenticatedUsername) =>
-    apiClient.post('/calculateMonthlyAttendance', { username, month, sendEmail, authenticatedUsername }),
-  requestLeave: (leaveData, authenticatedUsername) =>
+  calculateMonthlyAttendance: (params) => // { authenticatedUsername, username, month, sendEmail? }
+    apiClient.get('/calculateMonthlyAttendance', { params }), // Changed to GET as per backend function
+  requestLeave: (leaveData, authenticatedUsername) => // { leaveType, startDate, endDate, reason }
     apiClient.post('/requestLeave', { ...leaveData, authenticatedUsername }),
-  
-  // --- FIX: approveLeave now expects ONE argument: an object with all fields ---
-  approveLeave: (approvalData) => // Expects { requestId, requestUsername, action, approverComments?, authenticatedUsername }
-    apiClient.post('/approveLeave', approvalData), // Pass the single object directly
-  // --- End FIX ---
-  
-  getLeaveConfig: (params) =>
+  approveLeave: (approvalData) => // { requestId, requestUsername, action, approverComments?, authenticatedUsername }
+    apiClient.post('/approveLeave', approvalData),
+  getLeaveConfig: (params) => // { authenticatedUsername, targetUsername? }
     apiClient.get('/manageLeaveConfig', { params }),
-  manageLeaveConfig: (configData, authenticatedUsername) =>
+  manageLeaveConfig: (configData, authenticatedUsername) => // { targetUsername, sickLeave, casualLeave }
     apiClient.post('/manageLeaveConfig', { ...configData, authenticatedUsername }),
-  getLeaveRequests: (params) =>
+  getLeaveRequests: (params) => // { authenticatedUsername, targetUsername?, statusFilter?, startDateFilter?, endDateFilter? }
     apiClient.get('/getLeaveRequests', { params }),
 };

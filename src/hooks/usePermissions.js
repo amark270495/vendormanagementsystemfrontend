@@ -19,7 +19,8 @@ const defaultPermissions = {
     canApproveLeave: false,        // Included
     canManageLeaveConfig: false,   // Included
     canRequestLeave: false,        // Included
-    canSendMonthlyReport: false    // Included
+    canSendMonthlyReport: false,    // Included
+    canApproveAttendance: false // <-- ADDED PERMISSION
 };
 
 

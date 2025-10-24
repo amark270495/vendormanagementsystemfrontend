@@ -15,7 +15,7 @@ const HistoryIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5
 
 const ProfilePage = () => {
     const { user } = useAuth();
-    const [todayStatus, setTodayStatus] = useState(null);
+    const [todayStatus, setTodayStatus] = useState(null); // Will store { status: 'Present'/'Absent'/'Pending'/'Weekend' etc, requestedStatus: 'Present'/'Absent'/null }
     const [leaveQuota, setLeaveQuota] = useState(null);
     const [leaveHistory, setLeaveHistory] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -26,12 +26,19 @@ const ProfilePage = () => {
     const today = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(new Date());
     const initialMonthString = today.substring(0, 7); // YYYY-MM
 
+    // --- Callback to refresh calendar data ---
+    // We pass this down to AttendanceCalendar so it can be triggered after marking attendance
+    const [calendarRefreshKey, setCalendarRefreshKey] = useState(Date.now());
+    const refreshCalendar = () => setCalendarRefreshKey(Date.now());
+
+
     const fetchLeaveHistory = useCallback(async () => {
         if (!user?.userIdentifier) return;
         // Simplified: only set state, error handling is in loadInitialData
         try {
              const leaveRes = await apiService.getLeaveRequests({
-                 authenticatedUsername: user.userIdentifier
+                 authenticatedUsername: user.userIdentifier,
+                 targetUsername: user.userIdentifier // Ensure only self
              });
              if (leaveRes.data.success && Array.isArray(leaveRes.data.requests)) {
                  setLeaveHistory(leaveRes.data.requests);
@@ -55,20 +62,22 @@ const ProfilePage = () => {
         setError('');
         try {
             const [attendanceRes, configRes] = await Promise.all([
-                apiService.getAttendance({ authenticatedUsername: user.userIdentifier, startDate: today, endDate: today }),
+                apiService.getAttendance({ authenticatedUsername: user.userIdentifier, username: user.userIdentifier, startDate: today, endDate: today }),
                 apiService.getLeaveConfig({ authenticatedUsername: user.userIdentifier, targetUsername: user.userIdentifier })
             ]);
 
-            // Process Attendance
-            if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendance) && attendanceRes.data.attendance.length > 0) {
-                 setTodayStatus(attendanceRes.data.attendance[0].status);
+            // Process Attendance - Store more detailed status
+            if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendanceRecords) && attendanceRes.data.attendanceRecords.length > 0) {
+                 const record = attendanceRes.data.attendanceRecords[0];
+                 setTodayStatus({ status: record.status, requestedStatus: record.requestedStatus || null }); // Store both statuses
             } else if (attendanceRes?.data?.success) {
                 const todayDate = new Date();
                 const dayOfWeek = todayDate.getUTCDay(); // Sunday = 0, Saturday = 6
                 if (dayOfWeek === 0 || dayOfWeek === 6) {
-                    setTodayStatus('Weekend');
+                    setTodayStatus({ status: 'Weekend', requestedStatus: null });
                 } else {
-                    setTodayStatus(null); // Will rely on calendar fetch for holidays/leave
+                    // Check holidays/leave via calendar data later if needed, default to null
+                    setTodayStatus(null);
                 }
             } else {
                  console.error("Failed to fetch today's attendance status:", attendanceRes?.data?.message);
@@ -102,7 +111,7 @@ const ProfilePage = () => {
     }, [loadInitialData]);
 
 
-    const handleMarkAttendance = async (status) => {
+    const handleMarkAttendance = async (requestedStatus) => { // Changed 'status' to 'requestedStatus'
         setActionLoading(true);
         setError('');
         setSuccess('');
@@ -110,17 +119,20 @@ const ProfilePage = () => {
             const response = await apiService.markAttendance({
                 authenticatedUsername: user.userIdentifier,
                 date: today,
-                status: status
+                // *** MODIFIED: Send 'requestedStatus' ***
+                requestedStatus: requestedStatus
             });
             if (response.data.success) {
-                setTodayStatus(status);
-                setSuccess(`Attendance marked as ${status} for today.`);
+                // *** MODIFIED: Update status to 'Pending' ***
+                setTodayStatus({ status: 'Pending', requestedStatus: requestedStatus });
+                setSuccess(response.data.message); // Use message from backend
+                refreshCalendar(); // Trigger calendar refresh
                 setTimeout(() => setSuccess(''), 3000);
             } else {
                 setError(response.data.message);
             }
         } catch (err) {
-            setError(err.response?.data?.message || `Failed to mark attendance as ${status}.`);
+            setError(err.response?.data?.message || `Failed to submit attendance request.`);
         } finally {
             setActionLoading(false);
         }
@@ -128,7 +140,7 @@ const ProfilePage = () => {
 
     const handleLeaveRequested = () => {
         fetchLeaveHistory(); // Re-fetch leave history
-        // Optionally show a success message here or rely on the form's message
+        refreshCalendar(); // Refresh calendar to show pending leave (if applicable, though leave is instant approved/rejected for now)
     };
 
     if (loading) {
@@ -140,8 +152,9 @@ const ProfilePage = () => {
         );
     }
 
-    const isWorkingDay = todayStatus !== 'Weekend' && todayStatus !== 'Holiday' && todayStatus !== 'On Leave';
-    const canMarkAttendance = isWorkingDay && todayStatus !== 'Present' && todayStatus !== 'Absent';
+    // Determine if today is eligible for marking attendance
+    const isWorkingDayForMarking = todayStatus === null || todayStatus?.status === 'Pending'; // Allow marking if not marked or already pending
+    const canMarkAttendance = isWorkingDayForMarking && !actionLoading;
 
     // --- Today Status Component ---
     const TodayStatusDisplay = () => (
@@ -153,19 +166,20 @@ const ProfilePage = () => {
                 <Spinner size="8" />
             ) : todayStatus ? (
                  <span className={`px-4 py-2 text-base font-bold rounded-full shadow-sm ${
-                     todayStatus === 'Present' ? 'bg-green-100 text-green-800 ring-1 ring-green-200' :
-                     todayStatus === 'Absent' ? 'bg-red-100 text-red-800 ring-1 ring-red-200' :
-                     todayStatus === 'On Leave' ? 'bg-purple-100 text-purple-800 ring-1 ring-purple-200' :
-                     'bg-gray-100 text-gray-700 ring-1 ring-gray-200' // Weekend, Holiday
+                     todayStatus.status === 'Present' ? 'bg-green-100 text-green-800 ring-1 ring-green-200' :
+                     todayStatus.status === 'Absent' ? 'bg-red-100 text-red-800 ring-1 ring-red-200' :
+                     todayStatus.status === 'On Leave' ? 'bg-purple-100 text-purple-800 ring-1 ring-purple-200' :
+                     // *** MODIFIED: Show pending status ***
+                     todayStatus.status === 'Pending' ? 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-200' :
+                     'bg-gray-100 text-gray-700 ring-1 ring-gray-200' // Weekend, Holiday, Rejected
                  }`}>
-                     {todayStatus}
+                     {todayStatus.status === 'Pending' ? `Pending (${todayStatus.requestedStatus})` : todayStatus.status}
                  </span>
-            ) : isWorkingDay ? (
+            ) : (
                  <span className="text-base text-gray-500 italic font-semibold">Not Marked</span>
-             ) : (
-                 <span className="text-base text-gray-500 italic font-semibold">Not Applicable</span>
              )}
-             {canMarkAttendance && !actionLoading && (
+             {/* Show buttons only if not already approved/rejected/weekend etc. AND not loading */}
+             {canMarkAttendance && (
                  <div className="mt-4 space-x-3 flex justify-center">
                      <button
                          onClick={() => handleMarkAttendance('Present')}
@@ -181,6 +195,10 @@ const ProfilePage = () => {
                      </button>
                  </div>
             )}
+             {/* Show message if already marked and final */}
+             {todayStatus && !['Pending', null].includes(todayStatus.status) && !isWorkingDayForMarking && (
+                 <p className="mt-4 text-sm text-gray-500">Attendance status is final for today.</p>
+             )}
         </div>
     );
 
@@ -189,7 +207,6 @@ const ProfilePage = () => {
              {/* Page Header */}
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                  <h1 className="text-3xl font-bold text-gray-800">My Profile & Attendance</h1>
-                 {/* Maybe add quick stats or actions here later */}
              </div>
 
             {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 animate-shake">{error}</div>}
@@ -207,8 +224,6 @@ const ProfilePage = () => {
                         <p className="text-sm text-gray-500 font-medium">{user?.backendOfficeRole || 'Role not specified'}</p>
                     </div>
                 </div>
-                {/* Placeholder for future actions like 'Edit Profile' */}
-                {/* <button className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">Edit Profile</button> */}
             </div>
 
             {/* Main Content Grid (Two Columns) */}
@@ -219,7 +234,8 @@ const ProfilePage = () => {
                     <TodayStatusDisplay />
                     <div>
                         <h3 className="text-xl font-semibold mb-3 flex items-center"><CalendarIcon /> Attendance Calendar</h3>
-                         <AttendanceCalendar initialMonthString={initialMonthString} key={initialMonthString} /> {/* Added key */}
+                         {/* Pass refresh key to force re-render/re-fetch */}
+                         <AttendanceCalendar initialMonthString={initialMonthString} key={calendarRefreshKey} />
                     </div>
                 </div>
 
