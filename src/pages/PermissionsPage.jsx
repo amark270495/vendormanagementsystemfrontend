@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { usePermissions } from '../hooks/usePermissions';
+import { usePermissions } from '../hooks/usePermissions'; // Import usePermissions
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import EditPermissionsModal from '../components/admin/EditPermissionsModal'; // Import the modal
@@ -20,24 +20,26 @@ const PermissionsPage = () => {
     const [selectedUser, setSelectedUser] = useState(null);
 
     // --- Define permission keys - Ensure this list is complete and matches backend ---
+    // *** MODIFIED: Added canApproveAttendance and canSendMonthlyReport ***
     const permissionKeys = [
-        { key: 'canViewDashboards', name: 'View Dashboards' },
-        { key: 'canAddPosting', name: 'Add/Edit Jobs' },
-        { key: 'canViewReports', name: 'View Reports' },
-        { key: 'canEmailReports', name: 'Email Reports' },
-        { key: 'canViewCandidates', name: 'View Candidates' },
-        { key: 'canEditDashboard', name: 'Edit Dashboard Cells' },
-        { key: 'canMessage', name: 'Send Messages' },
-        { key: 'canManageTimesheets', name: 'Manage Timesheets (Full)' },
-        { key: 'canRequestTimesheetApproval', name: 'Request Timesheet Approval' },
-        { key: 'canManageMSAWO', name: 'Manage MSA/WO' },
-        { key: 'canManageOfferLetters', name: 'Manage Offer Letters' },
-        { key: 'canManageHolidays', name: 'Manage Holidays' },
-        { key: 'canApproveLeave', name: 'Approve Leave' },
-        { key: 'canManageLeaveConfig', name: 'Manage Leave Config' },
-        { key: 'canRequestLeave', name: 'Request Leave'}, // Ensure this key is correct
-        { key: 'canSendMonthlyReport', name: 'Send Monthly Report'}, // Ensure this key is correct
-        { key: 'canEditUsers', name: 'Edit Users & Permissions' },
+        { key: 'canViewDashboards', name: 'View Dashboards', description: 'Access dashboard pages.' },
+        { key: 'canAddPosting', name: 'Add/Edit Jobs', description: 'Submit new job postings via the form.' },
+        { key: 'canEditDashboard', name: 'Edit Dashboard Cells', description: 'Directly edit cells like Remarks, Working By.' },
+        { key: 'canViewReports', name: 'View Reports', description: 'Access the main Reports page.' },
+        { key: 'canEmailReports', name: 'Email Reports', description: 'Send aggregated job reports via email.' },
+        { key: 'canViewCandidates', name: 'View Candidates', description: 'Access the Candidate Details page.' },
+        { key: 'canMessage', name: 'Send Messages', description: 'Use the internal messaging system.' },
+        { key: 'canManageTimesheets', name: 'Manage Timesheets (Full)', description: 'Create companies/employees, log/edit/delete hours.' },
+        { key: 'canRequestTimesheetApproval', name: 'Request Timesheet Approval', description: 'Send approval request emails.' },
+        { key: 'canManageMSAWO', name: 'Manage MSA/WO', description: 'Create, manage, and view MSA/WO documents.' },
+        { key: 'canManageOfferLetters', name: 'Manage Offer Letters', description: 'Create, manage, and view Offer Letters.' },
+        { key: 'canManageHolidays', name: 'Manage Holidays', description: 'Add or remove company holidays (Admin Console).' },
+        { key: 'canApproveLeave', name: 'Approve Leave', description: 'Approve or reject leave requests (Admin Console).' },
+        { key: 'canManageLeaveConfig', name: 'Manage Leave Config', description: 'Set leave quotas for users (Admin Console).' },
+        { key: 'canRequestLeave', name: 'Request Leave', description: 'Submit leave requests via My Profile.'},
+        { key: 'canSendMonthlyReport', name: 'Send Monthly Report', description: 'Send monthly attendance reports to all users (Admin Console).'}, // Added
+        { key: 'canApproveAttendance', name: 'Approve Attendance', description: 'Approve or reject attendance marking requests (Admin Console).' }, // Added
+        { key: 'canEditUsers', name: 'Edit Users & Permissions', description: 'Add/edit/delete users and manage all permissions (Admin Console).' },
     ];
     // --- End permission keys ---
 
@@ -54,7 +56,11 @@ const PermissionsPage = () => {
             if (response.data.success) {
                  const usersData = response.data.users.map(u => ({
                     ...u,
-                    permissions: u.permissions || {}
+                    // Ensure permissions object exists, merge with defaults from permissionKeys
+                    permissions: permissionKeys.reduce((acc, pKey) => {
+                        acc[pKey.key] = u.permissions ? (u.permissions[pKey.key] === true) : false;
+                        return acc;
+                    }, {})
                 }));
                 setUsersWithPermissions(usersData);
             } else {
@@ -65,7 +71,7 @@ const PermissionsPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.userIdentifier, canEditUsers]);
+    }, [user?.userIdentifier, canEditUsers, permissionKeys]); // Added permissionKeys dependency
 
     useEffect(() => {
         fetchUserPermissions();
@@ -86,12 +92,19 @@ const PermissionsPage = () => {
         setError('');
         setSuccessMessage('');
         try {
-            const response = await apiService.updateUserPermissions(usernameToSave, updatedPermissions, user.userIdentifier);
+            // Ensure all permission keys are present in the payload sent to the backend
+            const fullPermissionsPayload = permissionKeys.reduce((acc, pKey) => {
+                acc[pKey.key] = updatedPermissions[pKey.key] === true; // Ensure boolean
+                return acc;
+            }, {});
+
+            const response = await apiService.updateUserPermissions(usernameToSave, fullPermissionsPayload, user.userIdentifier);
 
             if (response.data.success) {
                 setSuccessMessage(`Permissions for ${selectedUser?.displayName || usernameToSave} saved successfully!`);
+                // If editing self, update context
                 if (usernameToSave === user.userIdentifier) {
-                    updateAuthContextPermissions(updatedPermissions);
+                    updateAuthContextPermissions(fullPermissionsPayload);
                 }
                 fetchUserPermissions(); // Refresh list data
                 setTimeout(() => setSuccessMessage(''), 3000);
@@ -100,7 +113,7 @@ const PermissionsPage = () => {
             }
         } catch (err) {
              console.error("Error saving permissions:", err);
-             // Re-throw the error so the modal can display it
+            // Re-throw the error so the modal can display it
             throw err;
         }
     };
@@ -110,7 +123,8 @@ const PermissionsPage = () => {
         (u.username?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
-    if (!canEditUsers && !loading) {
+    // Render access denied only if loading is finished and permission is false
+    if (!loading && !canEditUsers) {
         return (
             <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
                 <h3 className="text-lg font-medium">Access Denied</h3>
@@ -142,7 +156,7 @@ const PermissionsPage = () => {
                         {successMessage}
                     </div>
                 )}
-                 {error && !isModalOpen && (
+                 {error && !isModalOpen && ( // Don't show page error if modal is open (modal shows its own)
                     <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 animate-shake" role="alert">
                         {error}
                     </div>
@@ -178,7 +192,7 @@ const PermissionsPage = () => {
                             </ul>
                         ) : (
                              <div className="text-center text-gray-500 py-10">
-                                {/* Icon Placeholder */}
+                                <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                                 <h3 className="mt-2 text-sm font-medium text-gray-900">No Users Found</h3>
                                 <p className="mt-1 text-sm text-gray-500">No users match your search criteria, or no users exist yet.</p>
                             </div>
@@ -193,7 +207,7 @@ const PermissionsPage = () => {
                 onClose={handleCloseModal}
                 userToEdit={selectedUser}
                 onSave={handleSavePermissions}
-                permissionKeys={permissionKeys}
+                permissionKeys={permissionKeys} // Pass the updated list
                 currentUsername={user?.userIdentifier}
             />
         </>

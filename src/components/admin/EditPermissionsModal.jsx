@@ -42,20 +42,23 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
 
     useEffect(() => {
         // Initialize local state when modal opens or user changes
-        if (userToEdit?.permissions) {
+        if (userToEdit?.permissions && permissionKeys) { // Added check for permissionKeys
             // Ensure all keys from permissionKeys exist, defaulting to false
             const initialPerms = permissionKeys.reduce((acc, p) => {
                 acc[p.key] = Boolean(userToEdit.permissions[p.key]); // Ensure boolean
                 return acc;
             }, {});
              setCurrentPermissions(initialPerms);
-        } else {
+        } else if (permissionKeys) { // Added check for permissionKeys
              // Initialize with all false if no permissions object exists
             const initialPerms = permissionKeys.reduce((acc, p) => {
                 acc[p.key] = false;
                 return acc;
             }, {});
             setCurrentPermissions(initialPerms);
+        } else {
+             // Fallback if permissionKeys itself is not ready
+             setCurrentPermissions({});
         }
         setError(''); // Reset error on open/user change
     }, [isOpen, userToEdit, permissionKeys]);
@@ -78,9 +81,9 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
         setLoading(true);
         setError('');
         try {
-            // Payload construction remains the same, ensuring all keys are present
+            // Payload construction needs to ensure all keys defined in permissionKeys are present
             const permissionsPayload = permissionKeys.reduce((acc, p) => {
-                acc[p.key] = Boolean(currentPermissions[p.key]);
+                acc[p.key] = Boolean(currentPermissions[p.key]); // Ensure boolean value
                 return acc;
             }, {});
 
@@ -98,15 +101,24 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
         }
     };
 
-    if (!userToEdit) return null;
+    if (!userToEdit || !permissionKeys) return null; // Added check for permissionKeys
 
      // Group permissions for better organization (optional, adjust as needed)
+     // *** MODIFIED: Include new permissions in relevant groups ***
      const corePermissions = permissionKeys.filter(p => ['canViewDashboards', 'canAddPosting', 'canEditDashboard', 'canViewReports', 'canEmailReports'].includes(p.key));
      const candidatePermissions = permissionKeys.filter(p => ['canViewCandidates'].includes(p.key));
      const communicationPermissions = permissionKeys.filter(p => ['canMessage'].includes(p.key));
      const timesheetPermissions = permissionKeys.filter(p => ['canManageTimesheets', 'canRequestTimesheetApproval'].includes(p.key));
      const esignPermissions = permissionKeys.filter(p => ['canManageMSAWO', 'canManageOfferLetters'].includes(p.key));
-     const attendanceLeavePermissions = permissionKeys.filter(p => ['canManageHolidays', 'canApproveLeave', 'canManageLeaveConfig', 'canRequestLeave', 'canSendMonthlyReport'].includes(p.key));
+     // Added canApproveAttendance, canSendMonthlyReport to this group
+     const attendanceLeavePermissions = permissionKeys.filter(p => [
+         'canManageHolidays',
+         'canApproveLeave',
+         'canManageLeaveConfig',
+         'canRequestLeave',
+         'canApproveAttendance', // Added
+         'canSendMonthlyReport' // Added
+        ].includes(p.key));
      const adminPermissions = permissionKeys.filter(p => ['canEditUsers'].includes(p.key));
 
 
@@ -145,8 +157,9 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
                                 <PermissionToggle
                                     key={p.key}
                                     label={p.name}
-                                    // description={p.description} // Add descriptions to permissionKeys if desired
-                                    allowed={currentPermissions[p.key] || false}
+                                    description={p.description} // Pass description
+                                    // *** Safely access permission, default to false ***
+                                    allowed={currentPermissions[p.key] === true}
                                     onChange={() => handleToggle(p.key)}
                                     disabled={loading || (userToEdit.username === currentUsername && p.key === 'canEditUsers')}
                                 />
