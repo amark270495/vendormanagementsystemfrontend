@@ -61,14 +61,14 @@ const DashboardPage = ({ sheetKey }) => {
 
     // *** FIX: Define column widths to prevent scrolling ***
     const colWidths = useMemo(() => ({
-        'Posting ID': 'w-20',
+        'Posting ID': 'w-23',
         'Posting Title': 'w-30',
         'Posting Date': 'w-20',
         'Last Submission Date': 'w-20',
         'Deadline': 'w-20',
         'Max Submissions': 'w-25',
         'Max C2C Rate': 'w-25',
-        'Client Info': 'w-40',
+        'Client Info': 'w-30',
         'Required Skill Set': 'w-70',
         'Any Required Certificates': 'w-45',
         'Work Position Type': 'w-32',
