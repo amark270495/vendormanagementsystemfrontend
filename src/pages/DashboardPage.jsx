@@ -57,26 +57,28 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
-    // Column widths to prevent horizontal scrolling
+    // Using your specified column widths
     const colWidths = useMemo(() => ({
-        'Posting ID': 'w-28', // 112px
-        'Posting Title': 'w-64', // 256px
-        'Posting Date': 'w-32', // 128px
-        'Deadline': 'w-32', // 128px
-        'Max Submissions': 'w-24', // 96px
-        'Max C2C Rate': 'w-28', // 112px
-        'Client Info': 'w-48', // 192px
-        'Required Skill Set': 'w-64', // 256px
-        'Any Required Certificates': 'w-48', // 192px
-        'Work Position Type': 'w-32', // 128px
-        'Working By': 'w-40', // 160px
-        '# Submitted': 'w-24', // 96px
-        'Remarks': 'w-48', // 192px
-        '1st Candidate Name': 'w-40', // 160px
-        '2nd Candidate Name': 'w-40', // 160px
-        '3rd Candidate Name': 'w-40', // 160px
-        'Status': 'w-28', // 112px
-        'Actions': 'w-20' // 80px
+        'Posting ID': 'w-23',
+        'Posting Title': 'w-30',
+        'Posting Date': 'w-20',
+        'Last Submission Date': 'w-20',
+        'Deadline': 'w-20',
+        'Max Submissions': 'w-25',
+        'Max C2C Rate': 'w-25',
+        'Client Info': 'w-30',
+        'Required Skill Set': 'w-64', // Increased from w-50 to w-64
+        'Any Required Certificates': 'w-30',
+        'Work Position Type': 'w-25',
+        'Working By': 'w-30',
+        'No. of Resumes Submitted': 'w-24',
+        '# Submitted': 'w-24',
+        'Remarks': 'w-30',
+        '1st Candidate Name': 'w-25',
+        '2nd Candidate Name': 'w-25',
+        '3rd Candidate Name': 'w-25',
+        'Status': 'w-20',
+        'Actions': 'w-20'
     }), []);
 
     const userPrefs = useMemo(() => {
@@ -380,7 +382,6 @@ const DashboardPage = ({ sheetKey }) => {
     const handleSaveColumnSettings = async (newPrefs) => {
         setLoading(true);
         try {
-            // *** FIX: Use correct preference keys ***
             await apiService.saveUserDashboardPreferences(user.userIdentifier, { 
                 columnOrder: JSON.stringify(newPrefs.order), 
                 columnVisibility: JSON.stringify(newPrefs.visibility) 
@@ -389,7 +390,6 @@ const DashboardPage = ({ sheetKey }) => {
                 columnOrder: JSON.stringify(newPrefs.order), 
                 columnVisibility: JSON.stringify(newPrefs.visibility) 
             });
-            // *** END FIX ***
         } catch(err) {
             setError(`Failed to save column settings: ${err.message}`);
         } finally {
@@ -483,11 +483,10 @@ const DashboardPage = ({ sheetKey }) => {
             
             {!loading && !error && (
                 <div className="bg-white rounded-lg shadow-lg border border-gray-200" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                    {/* *** FIX: No overflow-x-auto on this div *** */}
+                    {/* This div prevents horizontal scrollbar on the main page */}
                     <div> 
-                        {/* *** FIX: Added table-fixed and w-full *** */}
+                        {/* This table uses fixed layout and defined column widths */}
                         <table className="w-full text-sm text-left text-gray-500 table-fixed">
-                            {/* *** FIX: Added colgroup to define widths *** */}
                             <colgroup>
                                 {displayHeader.map(h => (
                                     <col key={h} className={colWidths[h] || 'w-auto'} />
@@ -501,7 +500,6 @@ const DashboardPage = ({ sheetKey }) => {
                                             {/* This Dropdown contains the HeaderMenu component */}
                                             <Dropdown width="64" trigger={
                                                 <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
-                                                    {/* *** FIX: Added break-words to allow header text wrapping *** */}
                                                     <span className="font-bold break-words">{h}</span>
                                                     {sortConfig.key === h && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
                                                 </div>
@@ -530,7 +528,6 @@ const DashboardPage = ({ sheetKey }) => {
                                             return (
                                                 <td key={cellIndex} 
                                                     onClick={() => handleCellClick(rowIndex, cellIndex)} 
-                                                    /* *** FIX: Added 'whitespace-normal break-words' *** */
                                                     className={`px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-blue-50' : ''} whitespace-normal break-words`}
                                                 >
                                                     {isEditing && headerName === 'Working By' && canEditDashboard ? (
