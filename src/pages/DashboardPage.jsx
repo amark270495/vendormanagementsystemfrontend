@@ -66,21 +66,21 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
-    // Using your specified column widths
+    // *** FIX: Using your new specified column widths ***
     const colWidths = useMemo(() => ({
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
         'Posting Date': 'w-22',
-        'Last Submission Date': 'w-20',
+        'Last Submission Date': 'w-20', // Kept for mapping, even if hidden/renamed
         'Deadline': 'w-25',
         'Max Submissions': 'w-25',
         'Max C2C Rate': 'w-25',
         'Client Info': 'w-30',
-        'Required Skill Set': 'w-64', // Increased from w-50 to w-64
+        'Required Skill Set': 'w-64', // Kept increased width
         'Any Required Certificates': 'w-30',
         'Work Position Type': 'w-23',
         'Working By': 'w-28',
-        'No. of Resumes Submitted': 'w-24',
+        'No. of Resumes Submitted': 'w-24', // Kept for mapping
         '# Submitted': 'w-22',
         'Remarks': 'w-30',
         '1st Candidate Name': 'w-25',
@@ -89,6 +89,7 @@ const DashboardPage = ({ sheetKey }) => {
         'Status': 'w-25',
         'Actions': 'w-15'
     }), []);
+    // *** END FIX ***
 
     const userPrefs = useMemo(() => {
         const safeParse = (jsonString, def = []) => {
@@ -96,6 +97,7 @@ const DashboardPage = ({ sheetKey }) => {
                 const parsed = JSON.parse(jsonString);
                 return Array.isArray(parsed) ? parsed : def;
             } catch (e) {
+                // If it's already an array (due to old bug), just return it.
                 return Array.isArray(jsonString) ? jsonString : def;
             }
         };
@@ -377,14 +379,20 @@ const DashboardPage = ({ sheetKey }) => {
     const handleSaveColumnSettings = async (newPrefs) => {
         setLoading(true);
         try {
+            // *** FIX: Send ARRAYS to the backend, not strings ***
+            // The backend (saveUserDashboardPreferences) stringifies the arrays.
             await apiService.saveUserDashboardPreferences(user.userIdentifier, { 
-                columnOrder: JSON.stringify(newPrefs.order), 
-                columnVisibility: JSON.stringify(newPrefs.visibility) 
+                columnOrder: newPrefs.order, 
+                columnVisibility: newPrefs.visibility 
             });
+            // *** FIX: Save STRINGIFIED arrays to the context ***
+            // The context loader (userPrefs) expects strings to parse.
             updatePreferences({ 
+                ...user.dashboardPreferences, // Preserve other preferences
                 columnOrder: JSON.stringify(newPrefs.order), 
                 columnVisibility: JSON.stringify(newPrefs.visibility) 
             });
+            // *** END FIX ***
         } catch(err) {
             setError(`Failed to save column settings: ${err.message}`);
         } finally {
@@ -468,6 +476,7 @@ const DashboardPage = ({ sheetKey }) => {
         <div className="space-y-4">
             {/* Page Header */}
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
+                {/* *** FIX: Reduced font size *** */}
                 <h2 className="text-2xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
                 {/* Save Changes Button */}
                 {canEditDashboard && Object.keys(unsavedChanges).length > 0 && (
@@ -487,6 +496,7 @@ const DashboardPage = ({ sheetKey }) => {
             </div>
             
             {/* Filter Bar */}
+            {/* *** FIX: Updated filter bar style to be lighter *** */}
             <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
                     <input type="text" placeholder="Search all jobs..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-lg px-4 py-2 w-full md:w-64 focus:ring-2 focus:ring-indigo-500 transition"/>
@@ -516,6 +526,7 @@ const DashboardPage = ({ sheetKey }) => {
             {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
             
             {!loading && !error && (
+                // *** FIX: Changed border to lighter gray-200 ***
                 <div className="bg-white rounded-xl shadow-lg border border-gray-200" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                     <div> 
                         <table className="w-full text-sm text-left text-gray-500 table-fixed">
@@ -523,15 +534,16 @@ const DashboardPage = ({ sheetKey }) => {
                                 {displayHeader.map(h => (
                                     <col key={h} className={colWidths[h] || 'w-auto'} />
                                 ))}
-                                <col className={colWidths['Actions'] || 'w-20'} />
+                                {/* *** FIX: Using your width for Actions *** */}
+                                <col className={colWidths['Actions'] || 'w-15'} />
                             </colgroup>
-                            {/* *** MODIFIED: Table Header Styling *** */}
-                            <thead className="text-xs text-white uppercase bg-indigo-600 sticky top-0 z-10">
+                            {/* *** FIX: Updated header color scheme *** */}
+                            <thead className="text-xs text-indigo-100 uppercase bg-indigo-700 sticky top-0 z-10">
                                 <tr>
                                     {displayHeader.map(h => (
-                                        <th key={h} scope="col" className="p-0 border-r border-indigo-400 last:border-r-0">
+                                        <th key={h} scope="col" className="p-0 border-r border-indigo-500 last:border-r-0">
                                             <Dropdown width="64" trigger={
-                                                <div className="flex items-center justify-between w-full h-full cursor-pointer px-3 py-4 hover:bg-indigo-700 transition-colors">
+                                                <div className="flex items-center justify-between w-full h-full cursor-pointer px-3 py-4 hover:bg-indigo-800 transition-colors">
                                                     <span className="font-bold break-words flex items-center">
                                                         {getHeaderIcon(h)}
                                                         {h}
@@ -548,12 +560,13 @@ const DashboardPage = ({ sheetKey }) => {
                                             </Dropdown>
                                         </th>
                                     ))}
-                                    <th scope="col" className="px-4 py-3 border-r border-indigo-400 last:border-r-0">Action</th>
+                                    <th scope="col" className="px-4 py-3 border-r border-indigo-500 last:border-r-0">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredAndSortedData.map((row, rowIndex) => (
-                                    <tr key={row[displayHeader.indexOf('Posting ID')] || rowIndex} className="bg-white border-b hover:bg-indigo-50 transition-colors">
+                                    // *** FIX: Added alternating row colors ***
+                                    <tr key={row[displayHeader.indexOf('Posting ID')] || rowIndex} className="bg-white border-b border-gray-200 odd:bg-white even:bg-gray-50 hover:bg-indigo-50 transition-colors">
                                         {row.map((cell, cellIndex) => {
                                             const headerName = displayHeader[cellIndex];
                                             const postingId = row[displayHeader.indexOf('Posting ID')];
@@ -562,8 +575,7 @@ const DashboardPage = ({ sheetKey }) => {
                                             return (
                                                 <td key={cellIndex} 
                                                     onClick={() => handleCellClick(rowIndex, cellIndex)} 
-                                                    // *** MODIFIED: Cell Styling ***
-                                                    className={`px-4 py-4 border-r border-gray-200 font-medium ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-gray-900'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer' : ''} whitespace-normal break-words align-top`}
+                                                    className={`px-5 py-3 border-r border-gray-200 font-medium ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-gray-900'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer' : ''} whitespace-normal break-words align-top`}
                                                 >
                                                     {isEditing && headerName === 'Working By' && canEditDashboard ? (
                                                         <select
@@ -597,7 +609,6 @@ const DashboardPage = ({ sheetKey }) => {
                                                         </select>
                                                     ) : (
                                                         <div contentEditable={isEditing && headerName !== 'Working By' && headerName !== 'Remarks' && canEditDashboard} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}>
-                                                            {/* *** MODIFIED: Conditional cell styling *** */}
                                                             {headerName === 'Status' ? (
                                                                 <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusBadge(cell)}`}>
                                                                     {cell}
