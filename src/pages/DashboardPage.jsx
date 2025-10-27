@@ -86,7 +86,7 @@ const DashboardPage = ({ sheetKey }) => {
         '1st Candidate Name': 'w-25',
         '2nd Candidate Name': 'w-25',
         '3rd Candidate Name': 'w-25',
-        'Status': 'w-20',
+        'Status': 'w-25',
         'Actions': 'w-20'
     }), []);
 
