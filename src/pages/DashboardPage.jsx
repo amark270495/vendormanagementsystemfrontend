@@ -59,6 +59,30 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, data: null }); // <-- MODIFIED MODAL STATE
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
+    // *** FIX: Define column widths to prevent scrolling ***
+    const colWidths = useMemo(() => ({
+        'Posting ID': 'w-28',
+        'Posting Title': 'w-64',
+        'Posting Date': 'w-32',
+        'Last Submission Date': 'w-32',
+        'Deadline': 'w-32',
+        'Max Submissions': 'w-24',
+        'Max C2C Rate': 'w-28',
+        'Client Info': 'w-48',
+        'Required Skill Set': 'w-64',
+        'Any Required Certificates': 'w-48',
+        'Work Position Type': 'w-32',
+        'Working By': 'w-40',
+        'No. of Resumes Submitted': 'w-24',
+        '# Submitted': 'w-24',
+        'Remarks': 'w-48',
+        '1st Candidate Name': 'w-40',
+        '2nd Candidate Name': 'w-40',
+        '3rd Candidate Name': 'w-40',
+        'Status': 'w-28',
+        'Actions': 'w-20'
+    }), []);
+
     const userPrefs = useMemo(() => {
         const safeParse = (jsonString, def = []) => {
             try {
@@ -413,6 +437,7 @@ const DashboardPage = ({ sheetKey }) => {
             <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
             
             <div className="bg-white p-4 rounded-lg shadow-sm border flex flex-wrap items-center justify-between gap-4">
+                {/* ... (filter and button elements remain the same) ... */}
                 <div className="flex flex-wrap items-center gap-4">
                     <input type="text" placeholder="Search all columns..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md px-3 py-2"/>
                     <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md px-3 py-2">
@@ -447,15 +472,25 @@ const DashboardPage = ({ sheetKey }) => {
             
             {!loading && !error && (
                 <div className="bg-white rounded-lg shadow-lg border border-gray-200" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-gray-500">
+                    {/* *** FIX: Removed overflow-x-auto *** */}
+                    <div> 
+                        {/* *** FIX: Added table-fixed and w-full *** */}
+                        <table className="w-full text-sm text-left text-gray-500 table-fixed">
+                            {/* *** FIX: Added colgroup to define widths *** */}
+                            <colgroup>
+                                {displayHeader.map(h => (
+                                    <col key={h} className={colWidths[h] || 'w-auto'} />
+                                ))}
+                                <col className={colWidths['Actions'] || 'w-20'} />
+                            </colgroup>
                             <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
                                 <tr>
                                     {displayHeader.map(h => (
-                                        <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0" style={{ minWidth: h === 'Required Skill Set' ? '200px' : 'auto' }}>
+                                        <th key={h} scope="col" className="p-0 border-r border-slate-300 last:border-r-0">
                                             <Dropdown width="64" trigger={
                                                 <div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300">
-                                                    <span className="font-bold">{h}</span>
+                                                    {/* *** FIX: Added break-words to allow header text wrapping *** */}
+                                                    <span className="font-bold break-words">{h}</span>
                                                     {sortConfig.key === h && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
                                                 </div>
                                             }>
@@ -463,7 +498,8 @@ const DashboardPage = ({ sheetKey }) => {
                                             </Dropdown>
                                         </th>
                                     ))}
-                                    <th scope="col" className="px-4 py-3">Action</th>
+                                    {/* *** FIX: Added explicit style to Actions header *** */}
+                                    <th scope="col" className="px-4 py-3 border-r border-slate-300 last:border-r-0">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -475,7 +511,11 @@ const DashboardPage = ({ sheetKey }) => {
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                                             
                                             return (
-                                                <td key={cellIndex} onClick={() => handleCellClick(rowIndex, cellIndex)} className={`px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-blue-50' : ''}`}> {/* NEW: Conditional styling for editable cells */}
+                                                <td key={cellIndex} 
+                                                    onClick={() => handleCellClick(rowIndex, cellIndex)} 
+                                                    /* *** FIX: Added 'whitespace-normal break-words' *** */
+                                                    className={`px-4 py-3 border-r border-slate-200 last:border-r-0 font-medium text-gray-900 align-middle ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : ''} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-blue-50' : ''} whitespace-normal break-words`}
+                                                >
                                                     {isEditing && headerName === 'Working By' && canEditDashboard ? ( // NEW: Conditional rendering based on canEditDashboard
                                                         <select
                                                             value={unsavedChanges[postingId]?.[headerName] || cell}
@@ -514,7 +554,8 @@ const DashboardPage = ({ sheetKey }) => {
                                                 </td>
                                             );
                                         })}
-                                        <td className="px-4 py-3 align-middle">
+                                        {/* *** FIX: Added text-center for alignment *** */}
+                                        <td className="px-4 py-3 align-middle text-center border-r border-slate-200 last:border-r-0">
                                             {canEditDashboard && <ActionMenu job={jobToObject(row)} onAction={(type, job) => setModalState({type, data: job})} />} {/* NEW: Conditional rendering based on canEditDashboard */}
                                         </td>
                                     </tr>
