@@ -87,7 +87,7 @@ const DashboardPage = ({ sheetKey }) => {
         '2nd Candidate Name': 'w-25',
         '3rd Candidate Name': 'w-25',
         'Status': 'w-25',
-        'Actions': 'w-20'
+        'Actions': 'w-15'
     }), []);
 
     const userPrefs = useMemo(() => {
