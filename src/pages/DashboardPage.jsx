@@ -70,9 +70,9 @@ const DashboardPage = ({ sheetKey }) => {
     const colWidths = useMemo(() => ({
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
-        'Posting Date': 'w-20',
+        'Posting Date': 'w-22',
         'Last Submission Date': 'w-20',
-        'Deadline': 'w-20',
+        'Deadline': 'w-25',
         'Max Submissions': 'w-25',
         'Max C2C Rate': 'w-25',
         'Client Info': 'w-30',
