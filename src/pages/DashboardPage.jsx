@@ -59,7 +59,7 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, data: null }); // <-- MODIFIED MODAL STATE
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
-    // *** FIX: Define column widths to prevent scrolling ***
+    // *** FIX: Using your provided column widths and increasing 'Required Skill Set' ***
     const colWidths = useMemo(() => ({
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
@@ -69,7 +69,7 @@ const DashboardPage = ({ sheetKey }) => {
         'Max Submissions': 'w-25',
         'Max C2C Rate': 'w-25',
         'Client Info': 'w-30',
-        'Required Skill Set': 'w-50',
+        'Required Skill Set': 'w-64', // Increased from w-50 to w-64
         'Any Required Certificates': 'w-30',
         'Work Position Type': 'w-25',
         'Working By': 'w-30',
