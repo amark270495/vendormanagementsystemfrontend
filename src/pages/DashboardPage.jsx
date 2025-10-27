@@ -75,10 +75,10 @@ const DashboardPage = ({ sheetKey }) => {
         'Working By': 'w-40',
         'No. of Resumes Submitted': 'w-24',
         '# Submitted': 'w-24',
-        'Remarks': 'w-48',
-        '1st Candidate Name': 'w-40',
-        '2nd Candidate Name': 'w-40',
-        '3rd Candidate Name': 'w-40',
+        'Remarks': 'w-30',
+        '1st Candidate Name': 'w-25',
+        '2nd Candidate Name': 'w-25',
+        '3rd Candidate Name': 'w-25',
         'Status': 'w-28',
         'Actions': 'w-20'
     }), []);
