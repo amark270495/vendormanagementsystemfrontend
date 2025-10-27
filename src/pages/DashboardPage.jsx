@@ -78,10 +78,10 @@ const DashboardPage = ({ sheetKey }) => {
         'Client Info': 'w-30',
         'Required Skill Set': 'w-64', // Increased from w-50 to w-64
         'Any Required Certificates': 'w-30',
-        'Work Position Type': 'w-25',
-        'Working By': 'w-30',
+        'Work Position Type': 'w-23',
+        'Working By': 'w-28',
         'No. of Resumes Submitted': 'w-24',
-        '# Submitted': 'w-24',
+        '# Submitted': 'w-22',
         'Remarks': 'w-30',
         '1st Candidate Name': 'w-25',
         '2nd Candidate Name': 'w-25',
