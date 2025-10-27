@@ -69,7 +69,7 @@ const DashboardPage = ({ sheetKey }) => {
         'Max Submissions': 'w-25',
         'Max C2C Rate': 'w-25',
         'Client Info': 'w-30',
-        'Required Skill Set': 'w-70',
+        'Required Skill Set': 'w-50',
         'Any Required Certificates': 'w-30',
         'Work Position Type': 'w-25',
         'Working By': 'w-30',
