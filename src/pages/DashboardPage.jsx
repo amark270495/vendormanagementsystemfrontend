@@ -14,13 +14,11 @@ import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-// --- SVG Icons for Table Headers ---
-const IconCalendar = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" /></svg>;
-const IconClock = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" /></svg>;
-const IconCheckCircle = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>;
-// *** FIX: Added missing IconHash definition ***
-const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
-// *** END FIX ***
+// --- SVG Icons (Removed from table headers, kept for save button) ---
+// const IconCalendar = ... (removed)
+// const IconClock = ... (removed)
+// const IconCheckCircle = ... (removed)
+// const IconHash = ... (removed)
 // --- End SVG Icons ---
 
 const DASHBOARD_CONFIGS = {
@@ -66,7 +64,7 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
-    // *** FIX: Using your new specified column widths ***
+    // *** MODIFIED: Using your new specified column widths ***
     const colWidths = useMemo(() => ({
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
@@ -89,7 +87,7 @@ const DashboardPage = ({ sheetKey }) => {
         'Status': 'w-25',
         'Actions': 'w-15'
     }), []);
-    // *** END FIX ***
+    // *** END MODIFICATION ***
 
     const userPrefs = useMemo(() => {
         const safeParse = (jsonString, def = []) => {
@@ -379,20 +377,19 @@ const DashboardPage = ({ sheetKey }) => {
     const handleSaveColumnSettings = async (newPrefs) => {
         setLoading(true);
         try {
-            // *** FIX: Send ARRAYS to the backend, not strings ***
-            // The backend (saveUserDashboardPreferences) stringifies the arrays.
+            // *** This logic is correct based on your file structure ***
+            // Send raw arrays to the API
             await apiService.saveUserDashboardPreferences(user.userIdentifier, { 
                 columnOrder: newPrefs.order, 
                 columnVisibility: newPrefs.visibility 
             });
-            // *** FIX: Save STRINGIFIED arrays to the context ***
-            // The context loader (userPrefs) expects strings to parse.
+            // Update local context with stringified versions
             updatePreferences({ 
-                ...user.dashboardPreferences, // Preserve other preferences
+                ...user.dashboardPreferences,
                 columnOrder: JSON.stringify(newPrefs.order), 
                 columnVisibility: JSON.stringify(newPrefs.visibility) 
             });
-            // *** END FIX ***
+            // *** End of settings logic ***
         } catch(err) {
             setError(`Failed to save column settings: ${err.message}`);
         } finally {
@@ -458,26 +455,14 @@ const DashboardPage = ({ sheetKey }) => {
         return 'bg-gray-100 text-gray-700';
     };
 
-    const getHeaderIcon = (header) => {
-        if (DATE_COLUMNS.includes(header)) {
-            return <IconCalendar />;
-        }
-        if (header === 'Status') {
-            return <IconCheckCircle />;
-        }
-        if (header === 'Posting ID') {
-            return <IconHash />;
-        }
-        return null;
-    };
-
+    // *** REMOVED getHeaderIcon function ***
 
     return (
         <div className="space-y-4">
             {/* Page Header */}
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
-                {/* *** FIX: Reduced font size *** */}
-                <h2 className="text-2xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
+                {/* *** MODIFIED: Reduced font size *** */}
+                <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
                 {/* Save Changes Button */}
                 {canEditDashboard && Object.keys(unsavedChanges).length > 0 && (
                     <button 
@@ -496,7 +481,7 @@ const DashboardPage = ({ sheetKey }) => {
             </div>
             
             {/* Filter Bar */}
-            {/* *** FIX: Updated filter bar style to be lighter *** */}
+            {/* *** MODIFIED: Updated filter bar style to be lighter *** */}
             <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
                     <input type="text" placeholder="Search all jobs..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-lg px-4 py-2 w-full md:w-64 focus:ring-2 focus:ring-indigo-500 transition"/>
@@ -526,7 +511,6 @@ const DashboardPage = ({ sheetKey }) => {
             {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
             
             {!loading && !error && (
-                // *** FIX: Changed border to lighter gray-200 ***
                 <div className="bg-white rounded-xl shadow-lg border border-gray-200" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                     <div> 
                         <table className="w-full text-sm text-left text-gray-500 table-fixed">
@@ -537,15 +521,15 @@ const DashboardPage = ({ sheetKey }) => {
                                 {/* *** FIX: Using your width for Actions *** */}
                                 <col className={colWidths['Actions'] || 'w-15'} />
                             </colgroup>
-                            {/* *** FIX: Updated header color scheme *** */}
-                            <thead className="text-xs text-indigo-100 uppercase bg-indigo-700 sticky top-0 z-10">
+                            {/* *** MODIFIED: Table Header Styling *** */}
+                            <thead className="text-xs text-slate-800 uppercase bg-slate-100 sticky top-0 z-10 border-b border-slate-300">
                                 <tr>
                                     {displayHeader.map(h => (
-                                        <th key={h} scope="col" className="p-0 border-r border-indigo-500 last:border-r-0">
+                                        <th key={h} scope="col" className="p-0 border-r border-slate-200 last:border-r-0">
                                             <Dropdown width="64" trigger={
-                                                <div className="flex items-center justify-between w-full h-full cursor-pointer px-3 py-4 hover:bg-indigo-800 transition-colors">
-                                                    <span className="font-bold break-words flex items-center">
-                                                        {getHeaderIcon(h)}
+                                                <div className="flex items-center justify-between w-full h-full cursor-pointer px-3 py-3 hover:bg-slate-200 transition-colors">
+                                                    {/* *** MODIFIED: Removed icon, kept text *** */}
+                                                    <span className="font-semibold break-words flex items-center">
                                                         {h}
                                                     </span>
                                                     {sortConfig.key === h && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
@@ -560,13 +544,13 @@ const DashboardPage = ({ sheetKey }) => {
                                             </Dropdown>
                                         </th>
                                     ))}
-                                    <th scope="col" className="px-4 py-3 border-r border-indigo-500 last:border-r-0">Action</th>
+                                    <th scope="col" className="px-4 py-3 border-r border-slate-200 last:border-r-0 font-semibold text-slate-800">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredAndSortedData.map((row, rowIndex) => (
-                                    // *** FIX: Added alternating row colors ***
-                                    <tr key={row[displayHeader.indexOf('Posting ID')] || rowIndex} className="bg-white border-b border-gray-200 odd:bg-white even:bg-gray-50 hover:bg-indigo-50 transition-colors">
+                                    // *** MODIFIED: Added alternating row colors ***
+                                    <tr key={row[displayHeader.indexOf('Posting ID')] || rowIndex} className="bg-white border-b border-gray-200 odd:bg-white even:bg-slate-50 hover:bg-indigo-50 transition-colors">
                                         {row.map((cell, cellIndex) => {
                                             const headerName = displayHeader[cellIndex];
                                             const postingId = row[displayHeader.indexOf('Posting ID')];
@@ -575,7 +559,8 @@ const DashboardPage = ({ sheetKey }) => {
                                             return (
                                                 <td key={cellIndex} 
                                                     onClick={() => handleCellClick(rowIndex, cellIndex)} 
-                                                    className={`px-5 py-3 border-r border-gray-200 font-medium ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-gray-900'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer' : ''} whitespace-normal break-words align-top`}
+                                                    // *** MODIFIED: Cell Styling ***
+                                                    className={`px-4 py-3 border-r border-gray-200 font-medium ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-gray-800'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer' : ''} whitespace-normal break-words align-top`}
                                                 >
                                                     {isEditing && headerName === 'Working By' && canEditDashboard ? (
                                                         <select
