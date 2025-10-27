@@ -2,6 +2,40 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../Modal.jsx';
 import Spinner from '../Spinner.jsx';
 import { usePermissions } from '../../hooks/usePermissions.js';
+import { apiService } from '../../api/apiService.js'; // Added apiService import
+
+// *** FIX: Moved FormInput helper component outside of the main component ***
+// This gives it a stable identity and prevents it from being re-created on every render.
+const FormInput = ({ label, name, type = 'text', required = false, readOnly = false, value, onChange, options, disabled = false }) => (
+    <div>
+        <label className="block text-sm font-medium text-gray-700">{label} {required && <span className="text-red-500">*</span>}</label>
+        {options ? (
+            <select 
+                name={name} 
+                value={value || ''} 
+                onChange={onChange} 
+                className={`mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] ${readOnly ? 'bg-gray-100' : ''}`} 
+                required={required} 
+                disabled={readOnly || disabled}
+            >
+                <option value="">Select Option</option>
+                {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+        ) : (
+            <input 
+                type={type} 
+                name={name} 
+                value={value || ''} 
+                onChange={onChange} 
+                className={`mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 ${readOnly ? 'bg-gray-100' : ''}`} 
+                required={required} 
+                readOnly={readOnly}
+                disabled={readOnly || disabled} 
+            />
+        )}
+    </div>
+);
+// *** END FIX ***
 
 const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEdit }) => {
     const { canEditDashboard } = usePermissions();
@@ -54,7 +88,7 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
             setCurrentSkill('');
             setError('');
         }
-    }, [isOpen, candidateToEdit]);
+    }, [isOpen, candidateToEdit, jobInfo]); // Added jobInfo to dependencies
 
     const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -92,35 +126,7 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
     };
 
     // Helper for rendering form fields
-    const FormInput = ({ label, name, type = 'text', required = false, readOnly = false, value, onChange, options }) => (
-        <div>
-            <label className="block text-sm font-medium text-gray-700">{label} {required && <span className="text-red-500">*</span>}</label>
-            {options ? (
-                <select 
-                    name={name} 
-                    value={value || ''} 
-                    onChange={onChange} 
-                    className={`mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] ${readOnly ? 'bg-gray-100' : ''}`} 
-                    required={required} 
-                    disabled={readOnly || !canEditDashboard}
-                >
-                    <option value="">Select Option</option>
-                    {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
-            ) : (
-                <input 
-                    type={type} 
-                    name={name} 
-                    value={value || ''} 
-                    onChange={onChange} 
-                    className={`mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 ${readOnly ? 'bg-gray-100' : ''}`} 
-                    required={required} 
-                    readOnly={readOnly}
-                    disabled={!canEditDashboard || readOnly} 
-                />
-            )}
-        </div>
-    );
+    // *** This component is now defined OUTSIDE the modal component ***
 
     const remarksOptions = [
         "Submitted To Client", "Resume Is Under View", "Resume Shortlisted For Interview", 
@@ -146,10 +152,10 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                 <div className="space-y-4 pt-4">
                     <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Personal & Contact Details</h3>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <FormInput label="First Name" name="firstName" required value={formData.firstName} onChange={handleChange} />
-                        <FormInput label="Middle Name" name="middleName" value={formData.middleName} onChange={handleChange} />
-                        <FormInput label="Last Name" name="lastName" required value={formData.lastName} onChange={handleChange} />
-                        <FormInput label="Mobile Number" name="mobileNumber" type="tel" required value={formData.mobileNumber} onChange={handleChange} />
+                        <FormInput label="First Name" name="firstName" required value={formData.firstName} onChange={handleChange} disabled={!canEditDashboard} />
+                        <FormInput label="Middle Name" name="middleName" value={formData.middleName} onChange={handleChange} disabled={!canEditDashboard} />
+                        <FormInput label="Last Name" name="lastName" required value={formData.lastName} onChange={handleChange} disabled={!canEditDashboard} />
+                        <FormInput label="Mobile Number" name="mobileNumber" type="tel" required value={formData.mobileNumber} onChange={handleChange} disabled={!canEditDashboard} />
                         
                         <FormInput 
                             label="Email" 
@@ -158,10 +164,11 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                             required 
                             value={formData.email} 
                             onChange={handleChange} 
-                            readOnly={isEditMode} // Email is only editable during the initial add/not in edit mode
+                            readOnly={isEditMode} // Email is only editable during the initial add
+                            disabled={isEditMode || !canEditDashboard} // Disabled if editing
                         />
                          <div className="md:col-span-3">
-                            <FormInput label="Reference From" name="referenceFrom" value={formData.referenceFrom} onChange={handleChange} />
+                            <FormInput label="Reference From" name="referenceFrom" value={formData.referenceFrom} onChange={handleChange} disabled={!canEditDashboard} />
                         </div>
                     </div>
                 </div>
@@ -170,14 +177,15 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                 <div className="space-y-4 pt-4 border-t">
                     <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Role & Status Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormInput label="Current Working Role" name="currentRole" required value={formData.currentRole} onChange={handleChange} />
-                        <FormInput label="Current Location" name="currentLocation" required value={formData.currentLocation} onChange={handleChange} />
+                        <FormInput label="Current Working Role" name="currentRole" required value={formData.currentRole} onChange={handleChange} disabled={!canEditDashboard} />
+                        <FormInput label="Current Location" name="currentLocation" required value={formData.currentLocation} onChange={handleChange} disabled={!canEditDashboard} />
                         <FormInput 
                             label="Remarks" 
                             name="remarks" 
                             options={remarksOptions} 
                             value={formData.remarks} 
                             onChange={handleChange} 
+                            disabled={!canEditDashboard}
                         />
                     </div>
                 </div>
