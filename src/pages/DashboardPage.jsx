@@ -41,7 +41,8 @@ const REMARKS_OPTIONS = [
     'Resume Received',
     'Resume Submitting',
     'Resume Submitted',
-    'No Resumes Found'
+    'No Resumes Found - Date Closed',
+    'Resume Found - Date Closed'
 ];
 
 
