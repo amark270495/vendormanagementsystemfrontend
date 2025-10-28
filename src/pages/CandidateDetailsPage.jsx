@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions'; // <-- NEW: Import usePermissions
 import { apiService } from '../api/apiService';
+import { formatDate, getDeadlineClass } from '../utils/helpers';
 import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
 import HeaderMenu from '../components/dashboard/HeaderMenu';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
 import CandidateProfileViewModal from '../components/dashboard/CandidateProfileViewModal';
 import ColumnSettingsModal from '../components/dashboard/ColumnSettingsModal';
-import { formatDate } from '../utils/helpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { usePermissions } from '../hooks/usePermissions';
+// import { usePermissions } from '../hooks/usePermissions'; // Duplicate import removed
 
 // Component to handle the collapsible skill display
 const SkillPill = ({ skill, index }) => (
@@ -38,7 +39,7 @@ const CandidateDetailsPage = () => {
     const [candidateToEdit, setCandidateToEdit] = useState(null);
     const [isProfileViewModalOpen, setIsProfileViewModalOpen] = useState(false);
     const [candidateToView, setCandidateToView] = useState(null);
-    const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
+    const [isColumnModalOpen, setColumnModalOpen] = useState(false);
     
     // Removed state related to timesheet approval modal
     const [candidateForApproval, setCandidateForApproval] = useState(null);
@@ -77,7 +78,7 @@ const CandidateDetailsPage = () => {
     const loadData = useCallback(async () => {
         setLoading(true);
         setError('');
-        if (!canViewCandidates) {
+        if (!user?.userIdentifier || !canViewCandidates) {
             setLoading(false);
             setError("You do not have permission to view candidate details.");
             return;
@@ -157,7 +158,10 @@ const CandidateDetailsPage = () => {
             const lowercasedFilter = generalFilter.toLowerCase();
             filteredRows = filteredRows.filter(item => {
                 const c = item.original;
-                const skillSetString = Array.isArray(c.skillSet) ? c.skillSet.join(' ').toLowerCase() : '';
+                // Handle both array (new) and string (old) skillSet formats
+                const skillSetString = Array.isArray(c.skillSet) 
+                    ? c.skillSet.join(' ').toLowerCase() 
+                    : (typeof c.skillSet === 'string' ? c.skillSet.toLowerCase() : '');
 
                 // Search across Name, Role, Location, Posting ID, Skills, and Remarks
                 return (
@@ -166,6 +170,9 @@ const CandidateDetailsPage = () => {
                     (c.currentLocation && c.currentLocation.toLowerCase().includes(lowercasedFilter)) ||
                     (c.referenceFrom && c.referenceFrom.toLowerCase().includes(lowercasedFilter)) ||
                     (c.remarks && c.remarks.toLowerCase().includes(lowercasedFilter)) ||
+                    // *** FIX: Added search for postingId ***
+                    (c.postingId && c.postingId.toLowerCase().includes(lowercasedFilter)) ||
+                    // *** END FIX ***
                     skillSetString.includes(lowercasedFilter)
                 );
             });
@@ -199,7 +206,7 @@ const CandidateDetailsPage = () => {
     const colWidths = {
         'Full Name': 'w-[7.5%]',
         'Candidate Contact Details': 'w-[9%]',
-        'Current Role': 'w-[7.5%]',
+        'Current Role': 'w-[7.Eclat VMS5%]',
         'Skill Set': 'w-[16%]',
         'Submitted By': 'w-[9%]',
         'Actions': 'w-[4%]'
@@ -221,11 +228,14 @@ const CandidateDetailsPage = () => {
 
     const handleSaveCandidate = async (formData) => {
         if (!canEditDashboard) throw new Error("Permission denied to save candidate details.");
+        setLoading(true); // Set loading true on save
         try {
             await apiService.updateCandidateDetails(candidateToEdit.email, formData, user.userIdentifier);
             loadData();
         } catch (error) {
             throw error;
+        } finally {
+            setLoading(false); // Set loading false on complete
         }
     };
     
@@ -320,7 +330,7 @@ const CandidateDetailsPage = () => {
                 <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-col md:flex-row items-center justify-between gap-4">
                     <input 
                         type="text" 
-                        placeholder="Search all candidates..." 
+                        placeholder="Search by name, role, location, skills, posting id..." 
                         value={generalFilter} 
                         onChange={(e) => setGeneralFilter(e.target.value)} 
                         className="shadow-sm border-gray-300 rounded-md px-3 py-2 w-full md:w-1/3"
