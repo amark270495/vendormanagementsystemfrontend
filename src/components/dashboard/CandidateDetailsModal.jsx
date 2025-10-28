@@ -132,7 +132,7 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
         "Submitted To Client", "Resume Is Under View", "Resume Shortlisted For Interview", 
         "Interview With Manager", "Client Reject Due To Candidate Not Up To Mark", 
         "Rejected Due To Some Other Reasons", "Candidate Selected", "Resume Submitted Posting Is Still Open",
-        "Client Rejected Details Not Mentioned", "Interviews occurring"
+        "Client Rejected Details Not Mentioned", "Interviews occurring","Rejected Due To Duplicate"
     ];
 
     return (
