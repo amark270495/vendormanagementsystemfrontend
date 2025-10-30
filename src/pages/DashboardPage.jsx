@@ -15,7 +15,10 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 // --- SVG Icons (Removed from table headers, kept for save button) ---
-// ... (No icons needed for this version) ...
+// *** FIX: Added missing IconHash definition ***
+// (Even if not used in header, it might be used by a helper)
+const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
+// *** END FIX ***
 
 // *** NEW: MultiSelectDropdown Component ***
 // Defined outside the main component to prevent re-render issues.
@@ -154,21 +157,21 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
-    // Using your specified column widths
+    // *** MODIFIED: Using your new specified column widths ***
     const colWidths = useMemo(() => ({
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
         'Posting Date': 'w-22',
-        'Last Submission Date': 'w-20',
+        'Last Submission Date': 'w-20', // Kept for mapping, even if hidden/renamed
         'Deadline': 'w-25',
         'Max Submissions': 'w-25',
         'Max C2C Rate': 'w-25',
         'Client Info': 'w-30',
-        'Required Skill Set': 'w-64',
+        'Required Skill Set': 'w-64', // Kept increased width
         'Any Required Certificates': 'w-30',
         'Work Position Type': 'w-23',
         'Working By': 'w-28',
-        'No. of Resumes Submitted': 'w-24',
+        'No. of Resumes Submitted': 'w-24', // Kept for mapping
         '# Submitted': 'w-22',
         'Remarks': 'w-30',
         '1st Candidate Name': 'w-25',
@@ -177,6 +180,7 @@ const DashboardPage = ({ sheetKey }) => {
         'Status': 'w-25',
         'Actions': 'w-15'
     }), []);
+    // *** END MODIFICATION ***
 
     const userPrefs = useMemo(() => {
         const safeParse = (jsonString, def = []) => {
@@ -184,6 +188,7 @@ const DashboardPage = ({ sheetKey }) => {
                 const parsed = JSON.parse(jsonString);
                 return Array.isArray(parsed) ? parsed : def;
             } catch (e) {
+                // If it's already an array (due to old bug), just return it.
                 return Array.isArray(jsonString) ? jsonString : def;
             }
         };
@@ -262,9 +267,6 @@ const DashboardPage = ({ sheetKey }) => {
                 const originalHeader = Object.keys(headerRenames).find(k => headerRenames[k] === newHeader) || newHeader;
                 const cellValue = row[originalHeaderMap.get(originalHeader)];
                 
-                // *** FIX: Ensure "Working By" is always treated as a string, not an array, here ***
-                // The backend stores it as a string (e.g., "User A, User B").
-                // If it's already an array (e.g., from old data), join it.
                 if (newHeader === 'Working By' && Array.isArray(cellValue)) {
                     return cellValue.join(', ');
                 }
@@ -395,7 +397,6 @@ const DashboardPage = ({ sheetKey }) => {
         const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
         const headerName = displayHeader[cellIndex];
         
-        // *** FIX: If value is an array (from MultiSelect), join it. Otherwise, use as-is. ***
         const finalValue = Array.isArray(value) ? value.join(', ') : value;
         
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
@@ -408,7 +409,6 @@ const DashboardPage = ({ sheetKey }) => {
             rowKey: postingId,
             changes: Object.entries(changes).reduce((acc, [header, value]) => {
                 if (headerMap[header]) {
-                    // Value is already a string (e.g., "User A, User B")
                     acc[headerMap[header]] = value;
                 }
                 return acc;
@@ -421,12 +421,10 @@ const DashboardPage = ({ sheetKey }) => {
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
-                // *** FIX: Check for 'Working By' changes and send emails ***
                 if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
                     const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
                     if (jobRow) {
                         const jobTitle = jobRow[displayHeader.indexOf('Posting Title')];
-                        // Send email to each person in the list
                         const assignedUsers = changes['Working By'].split(',').map(s => s.trim()).filter(Boolean);
                         for (const assignedUser of assignedUsers) {
                             if (assignedUser !== 'Need To Update') {
@@ -660,15 +658,17 @@ const DashboardPage = ({ sheetKey }) => {
                                             const postingId = row[displayHeader.indexOf('Posting ID')];
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                                             
-                                            // *** FIX: Prepare 'Working By' data for multi-select ***
-                                            // 'cell' is a comma-separated string (e.g., "User A, User B")
-                                            // 'unsaved' is also a comma-separated string
-                                            // We need to pass an *array* to the new component.
-                                            const workingByValue = (unsavedChanges[postingId]?.[headerName] !== undefined
-                                                ? unsavedChanges[postingId][headerName]
-                                                : cell) || "Need To Update";
-                                            
-                                            const selectedWorkingBy = workingByValue.split(',').map(s => s.trim()).filter(Boolean);
+                                            // *** FIX: This logic is now safe ***
+                                            // It is only run *inside* the `<td>`
+                                            let selectedWorkingBy = [];
+                                            if (headerName === 'Working By') {
+                                                const workingByValue = (unsavedChanges[postingId]?.[headerName] !== undefined
+                                                    ? unsavedChanges[postingId][headerName]
+                                                    : cell) || "Need To Update";
+                                                
+                                                // Ensure workingByValue is a string before splitting
+                                                selectedWorkingBy = String(workingByValue).split(',').map(s => s.trim()).filter(Boolean);
+                                            }
                                             // *** END FIX ***
                                             
                                             return (
@@ -676,16 +676,13 @@ const DashboardPage = ({ sheetKey }) => {
                                                     onClick={() => handleCellClick(rowIndex, cellIndex)} 
                                                     className={`px-4 py-3 border-r border-gray-200 font-medium ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-gray-800'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer' : ''} whitespace-normal break-words align-top`}
                                                 >
-                                                    {/* *** FIX: Render MultiSelectDropdown for 'Working By' *** */}
                                                     {isEditing && headerName === 'Working By' && canEditDashboard ? (
                                                         <MultiSelectDropdown
                                                             options={recruiters}
-                                                            selectedNames={selectedWorkingBy}
+                                                            selectedNames={selectedWorkingBy} // Pass the array
                                                             onBlur={() => setEditingCell(null)}
                                                             onChange={(selectedNames) => {
-                                                                // onChange gives an array, handleCellEdit expects a value
                                                                 handleCellEdit(rowIndex, cellIndex, selectedNames);
-                                                                // We don't setEditingCell(null) here, onBlur will handle it
                                                             }}
                                                         />
                                                     ) : isEditing && headerName === 'Remarks' && canEditDashboard ? (
@@ -717,7 +714,6 @@ const DashboardPage = ({ sheetKey }) => {
                                                                     {cell}
                                                                 </span>
                                                             ) : (
-                                                                // *** FIX: Display "Working By" as pills ***
                                                                 headerName === 'Working By' ? (
                                                                     <div className="flex flex-wrap gap-1">
                                                                         {selectedWorkingBy.map((name, idx) => (
