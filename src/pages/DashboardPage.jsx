@@ -171,7 +171,7 @@ const DashboardPage = ({ sheetKey }) => {
         'Required Skill Set': 'w-64',
         'Any Required Certificates': 'w-30',
         'Work Position Type': 'w-23',
-        'Working By': 'w-28',
+        'Working By': 'w-35',
         'No. of Resumes Submitted': 'w-24',
         '# Submitted': 'w-22',
         'Remarks': 'w-30',
