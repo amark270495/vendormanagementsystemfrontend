@@ -15,9 +15,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 // --- SVG Icons ---
-// *** FIX: Added missing IconHash definition ***
 const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
-// *** END FIX ***
 
 // *** NEW: MultiSelectDropdown Component ***
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
@@ -74,9 +72,9 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
                 </span>
             </button>
             {isOpen && (
-                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                // *** FIX: Changed 'w-full' to 'min-w-full w-auto' and positioned with 'right-0' ***
+                <div className="absolute z-20 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto min-w-full w-auto">
                     <ul>
-                        {/* *** FIX: Added flex and items-center to align checkbox and text *** */}
                         <li
                             key="unassigned"
                             onClick={() => handleToggleSelect("Need To Update")}
@@ -170,15 +168,15 @@ const DashboardPage = ({ sheetKey }) => {
         'Required Skill Set': 'w-64',
         'Any Required Certificates': 'w-30',
         'Work Position Type': 'w-23',
-        'Working By': 'w-40',
+        'Working By': 'w-28',
         'No. of Resumes Submitted': 'w-24',
         '# Submitted': 'w-22',
         'Remarks': 'w-30',
         '1st Candidate Name': 'w-25',
         '2nd Candidate Name': 'w-25',
         '3rd Candidate Name': 'w-25',
-        'Status': 'w-15',
-        'Actions': 'w-12'
+        'Status': 'w-25',
+        'Actions': 'w-15'
     }), []);
 
     const userPrefs = useMemo(() => {
@@ -667,7 +665,8 @@ const DashboardPage = ({ sheetKey }) => {
                                                 
                                                 // Ensure workingByValue is always treated as a string before splitting
                                                 const stringValue = Array.isArray(workingByValue) ? workingByValue.join(', ') : String(workingByValue);
-                                                selectedWorkingBy = stringValue.split(',').map(s => s.trim()).filter(Boolean);
+                                                selectedWorkingBy = stringValue.split(',').map(s => s.trim()).filter(s => s && s !== "Need To Update");
+                                                if (selectedWorkingBy.length === 0) selectedWorkingBy = ["Need To Update"];
                                             }
                                             // *** END FIX ***
                                             
