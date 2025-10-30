@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
@@ -15,11 +15,101 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 // --- SVG Icons (Removed from table headers, kept for save button) ---
-// const IconCalendar = ... (removed)
-// const IconClock = ... (removed)
-// const IconCheckCircle = ... (removed)
-// const IconHash = ... (removed)
-// --- End SVG Icons ---
+// ... (No icons needed for this version) ...
+
+// *** NEW: MultiSelectDropdown Component ***
+// Defined outside the main component to prevent re-render issues.
+const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    // Handle clicks outside the dropdown to close it
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+                if (onBlur) onBlur(); // Call onBlur when closing
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [onBlur]);
+
+    const handleToggleSelect = (name) => {
+        if (name === "Need To Update") {
+            onChange(["Need To Update"]); // Special case: selecting "Unassigned" clears others
+            return;
+        }
+        
+        const newSelectedNames = selectedNames.includes(name)
+            ? selectedNames.filter(n => n !== name)
+            : [...selectedNames.filter(n => n !== "Need To Update"), name]; // Add new name, remove "Unassigned"
+
+        if (newSelectedNames.length === 0) {
+            onChange(["Need To Update"]); // Default to "Unassigned" if empty
+        } else {
+            onChange(newSelectedNames);
+        }
+    };
+    
+    // Display text for the button
+    const displayValue = selectedNames.length > 0 && selectedNames[0] !== "Need To Update"
+        ? `${selectedNames.length} selected`
+        : "Unassigned";
+
+    return (
+        <div className="relative w-full" ref={dropdownRef}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="block w-full border-gray-300 rounded-md shadow-sm p-2 text-sm bg-white text-left"
+            >
+                {displayValue}
+                <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                     <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                </span>
+            </button>
+            {isOpen && (
+                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                    <ul>
+                        <li
+                            key="unassigned"
+                            onClick={() => handleToggleSelect("Need To Update")}
+                            className="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-indigo-50"
+                        >
+                            <input
+                                type="checkbox"
+                                readOnly
+                                checked={selectedNames.includes("Need To Update")}
+                                className="mr-2"
+                            />
+                            Unassigned
+                        </li>
+                        {options.map(name => (
+                            <li
+                                key={name}
+                                onClick={() => handleToggleSelect(name)}
+                                className="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-indigo-50"
+                            >
+                                <input
+                                    type="checkbox"
+                                    readOnly
+                                    checked={selectedNames.includes(name)}
+                                    className="mr-2"
+                                />
+                                {name}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+};
+// *** END MultiSelectDropdown Component ***
+
 
 const DASHBOARD_CONFIGS = {
     'ecaltVMSDisplay': { title: 'Eclat VMS' },
@@ -32,8 +122,8 @@ const DASHBOARD_CONFIGS = {
 };
 const EDITABLE_COLUMNS = ['Working By', '# Submitted', 'Remarks'];
 const CANDIDATE_COLUMNS = ['1st Candidate Name', '2nd Candidate Name', '3rd Candidate Name'];
-const DATE_COLUMNS = ['Posting Date', 'Deadline']; // <-- Filter logic uses this
-const NUMBER_COLUMNS = ['# Submitted', 'Max Submissions']; // <-- Filter logic uses this
+const DATE_COLUMNS = ['Posting Date', 'Deadline'];
+const NUMBER_COLUMNS = ['# Submitted', 'Max Submissions'];
 
 const REMARKS_OPTIONS = [
     'Posted Through Mail',
@@ -41,8 +131,7 @@ const REMARKS_OPTIONS = [
     'Resume Received',
     'Resume Submitting',
     'Resume Submitted',
-    'No Resumes Found - Date Closed',
-    'Resume Found - Date Closed'
+    'No Resumes Found'
 ];
 
 
@@ -65,21 +154,21 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
-    // *** MODIFIED: Using your new specified column widths ***
+    // Using your specified column widths
     const colWidths = useMemo(() => ({
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
         'Posting Date': 'w-22',
-        'Last Submission Date': 'w-20', // Kept for mapping, even if hidden/renamed
+        'Last Submission Date': 'w-20',
         'Deadline': 'w-25',
         'Max Submissions': 'w-25',
         'Max C2C Rate': 'w-25',
         'Client Info': 'w-30',
-        'Required Skill Set': 'w-64', // Kept increased width
+        'Required Skill Set': 'w-64',
         'Any Required Certificates': 'w-30',
         'Work Position Type': 'w-23',
         'Working By': 'w-28',
-        'No. of Resumes Submitted': 'w-24', // Kept for mapping
+        'No. of Resumes Submitted': 'w-24',
         '# Submitted': 'w-22',
         'Remarks': 'w-30',
         '1st Candidate Name': 'w-25',
@@ -88,7 +177,6 @@ const DashboardPage = ({ sheetKey }) => {
         'Status': 'w-25',
         'Actions': 'w-15'
     }), []);
-    // *** END MODIFICATION ***
 
     const userPrefs = useMemo(() => {
         const safeParse = (jsonString, def = []) => {
@@ -96,7 +184,6 @@ const DashboardPage = ({ sheetKey }) => {
                 const parsed = JSON.parse(jsonString);
                 return Array.isArray(parsed) ? parsed : def;
             } catch (e) {
-                // If it's already an array (due to old bug), just return it.
                 return Array.isArray(jsonString) ? jsonString : def;
             }
         };
@@ -130,7 +217,9 @@ const DashboardPage = ({ sheetKey }) => {
                 const result = await apiService.getUsers(user.userIdentifier);
                 if (result.data.success) {
                     const recruitmentRoles = ['Recruitment Team', 'Recruitment Manager'];
-                    const filteredUsers = result.data.users.filter(u => recruitmentRoles.includes(u.backendOfficeRole));
+                    const filteredUsers = result.data.users
+                        .filter(u => recruitmentRoles.includes(u.backendOfficeRole))
+                        .map(u => u.displayName); // *** Store just the display names ***
                     setRecruiters(filteredUsers);
                 }
             } catch (err) {
@@ -171,7 +260,16 @@ const DashboardPage = ({ sheetKey }) => {
                     return info;
                 }
                 const originalHeader = Object.keys(headerRenames).find(k => headerRenames[k] === newHeader) || newHeader;
-                return row[originalHeaderMap.get(originalHeader)];
+                const cellValue = row[originalHeaderMap.get(originalHeader)];
+                
+                // *** FIX: Ensure "Working By" is always treated as a string, not an array, here ***
+                // The backend stores it as a string (e.g., "User A, User B").
+                // If it's already an array (e.g., from old data), join it.
+                if (newHeader === 'Working By' && Array.isArray(cellValue)) {
+                    return cellValue.join(', ');
+                }
+
+                return cellValue;
             });
         });
         return { header: transformedHeader, rows: transformedRows };
@@ -296,7 +394,11 @@ const DashboardPage = ({ sheetKey }) => {
         if (!canEditDashboard) return;
         const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
         const headerName = displayHeader[cellIndex];
-        setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: value } }));
+        
+        // *** FIX: If value is an array (from MultiSelect), join it. Otherwise, use as-is. ***
+        const finalValue = Array.isArray(value) ? value.join(', ') : value;
+        
+        setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
     const handleSaveChanges = async () => {
@@ -305,7 +407,10 @@ const DashboardPage = ({ sheetKey }) => {
         const updates = Object.entries(unsavedChanges).map(([postingId, changes]) => ({
             rowKey: postingId,
             changes: Object.entries(changes).reduce((acc, [header, value]) => {
-                if (headerMap[header]) acc[headerMap[header]] = value;
+                if (headerMap[header]) {
+                    // Value is already a string (e.g., "User A, User B")
+                    acc[headerMap[header]] = value;
+                }
                 return acc;
             }, {})
         })).filter(u => Object.keys(u.changes).length > 0);
@@ -316,11 +421,18 @@ const DashboardPage = ({ sheetKey }) => {
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
+                // *** FIX: Check for 'Working By' changes and send emails ***
                 if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
                     const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
                     if (jobRow) {
                         const jobTitle = jobRow[displayHeader.indexOf('Posting Title')];
-                        await apiService.sendAssignmentEmail(jobTitle, postingId, changes['Working By'], user.userIdentifier);
+                        // Send email to each person in the list
+                        const assignedUsers = changes['Working By'].split(',').map(s => s.trim()).filter(Boolean);
+                        for (const assignedUser of assignedUsers) {
+                            if (assignedUser !== 'Need To Update') {
+                                await apiService.sendAssignmentEmail(jobTitle, postingId, assignedUser, user.userIdentifier);
+                            }
+                        }
                     }
                 }
             }
@@ -378,19 +490,15 @@ const DashboardPage = ({ sheetKey }) => {
     const handleSaveColumnSettings = async (newPrefs) => {
         setLoading(true);
         try {
-            // *** This logic is correct based on your file structure ***
-            // Send raw arrays to the API
             await apiService.saveUserDashboardPreferences(user.userIdentifier, { 
                 columnOrder: newPrefs.order, 
                 columnVisibility: newPrefs.visibility 
             });
-            // Update local context with stringified versions
             updatePreferences({ 
                 ...user.dashboardPreferences,
                 columnOrder: JSON.stringify(newPrefs.order), 
                 columnVisibility: JSON.stringify(newPrefs.visibility) 
             });
-            // *** End of settings logic ***
         } catch(err) {
             setError(`Failed to save column settings: ${err.message}`);
         } finally {
@@ -482,7 +590,6 @@ const DashboardPage = ({ sheetKey }) => {
             </div>
             
             {/* Filter Bar */}
-            {/* *** MODIFIED: Updated filter bar style to be lighter *** */}
             <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
                     <input type="text" placeholder="Search all jobs..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-lg px-4 py-2 w-full md:w-64 focus:ring-2 focus:ring-indigo-500 transition"/>
@@ -519,17 +626,14 @@ const DashboardPage = ({ sheetKey }) => {
                                 {displayHeader.map(h => (
                                     <col key={h} className={colWidths[h] || 'w-auto'} />
                                 ))}
-                                {/* *** FIX: Using your width for Actions *** */}
                                 <col className={colWidths['Actions'] || 'w-15'} />
                             </colgroup>
-                            {/* *** MODIFIED: Table Header Styling *** */}
                             <thead className="text-xs text-slate-800 uppercase bg-slate-100 sticky top-0 z-10 border-b border-slate-300">
                                 <tr>
                                     {displayHeader.map(h => (
                                         <th key={h} scope="col" className="p-0 border-r border-slate-200 last:border-r-0">
                                             <Dropdown width="64" trigger={
                                                 <div className="flex items-center justify-between w-full h-full cursor-pointer px-3 py-3 hover:bg-slate-200 transition-colors">
-                                                    {/* *** MODIFIED: Removed icon, kept text *** */}
                                                     <span className="font-semibold break-words flex items-center">
                                                         {h}
                                                     </span>
@@ -550,33 +654,40 @@ const DashboardPage = ({ sheetKey }) => {
                             </thead>
                             <tbody>
                                 {filteredAndSortedData.map((row, rowIndex) => (
-                                    // *** MODIFIED: Added alternating row colors ***
                                     <tr key={row[displayHeader.indexOf('Posting ID')] || rowIndex} className="bg-white border-b border-gray-200 odd:bg-white even:bg-slate-50 hover:bg-indigo-50 transition-colors">
                                         {row.map((cell, cellIndex) => {
                                             const headerName = displayHeader[cellIndex];
                                             const postingId = row[displayHeader.indexOf('Posting ID')];
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                                             
+                                            // *** FIX: Prepare 'Working By' data for multi-select ***
+                                            // 'cell' is a comma-separated string (e.g., "User A, User B")
+                                            // 'unsaved' is also a comma-separated string
+                                            // We need to pass an *array* to the new component.
+                                            const workingByValue = (unsavedChanges[postingId]?.[headerName] !== undefined
+                                                ? unsavedChanges[postingId][headerName]
+                                                : cell) || "Need To Update";
+                                            
+                                            const selectedWorkingBy = workingByValue.split(',').map(s => s.trim()).filter(Boolean);
+                                            // *** END FIX ***
+                                            
                                             return (
                                                 <td key={cellIndex} 
                                                     onClick={() => handleCellClick(rowIndex, cellIndex)} 
-                                                    // *** MODIFIED: Cell Styling ***
                                                     className={`px-4 py-3 border-r border-gray-200 font-medium ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-gray-800'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer' : ''} whitespace-normal break-words align-top`}
                                                 >
+                                                    {/* *** FIX: Render MultiSelectDropdown for 'Working By' *** */}
                                                     {isEditing && headerName === 'Working By' && canEditDashboard ? (
-                                                        <select
-                                                            value={unsavedChanges[postingId]?.[headerName] || cell}
+                                                        <MultiSelectDropdown
+                                                            options={recruiters}
+                                                            selectedNames={selectedWorkingBy}
                                                             onBlur={() => setEditingCell(null)}
-                                                            onChange={(e) => {
-                                                                handleCellEdit(rowIndex, cellIndex, e.target.value);
-                                                                setEditingCell(null);
+                                                            onChange={(selectedNames) => {
+                                                                // onChange gives an array, handleCellEdit expects a value
+                                                                handleCellEdit(rowIndex, cellIndex, selectedNames);
+                                                                // We don't setEditingCell(null) here, onBlur will handle it
                                                             }}
-                                                            className="block w-full border-gray-300 rounded-md shadow-sm p-2 text-sm"
-                                                            autoFocus
-                                                        >
-                                                            <option value="Need To Update">Unassigned</option>
-                                                            {recruiters.map(r => <option key={r.username} value={r.displayName}>{r.displayName}</option>)}
-                                                        </select>
+                                                        />
                                                     ) : isEditing && headerName === 'Remarks' && canEditDashboard ? (
                                                         <select
                                                             value={unsavedChanges[postingId]?.[headerName] || cell}
@@ -606,7 +717,18 @@ const DashboardPage = ({ sheetKey }) => {
                                                                     {cell}
                                                                 </span>
                                                             ) : (
-                                                                cell
+                                                                // *** FIX: Display "Working By" as pills ***
+                                                                headerName === 'Working By' ? (
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {selectedWorkingBy.map((name, idx) => (
+                                                                            <span key={idx} className="px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-800 rounded-full">
+                                                                                {name}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : (
+                                                                    cell
+                                                                )
                                                             )}
                                                         </div>
                                                     )}
