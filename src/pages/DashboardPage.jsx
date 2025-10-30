@@ -14,21 +14,21 @@ import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-// --- SVG Icons (Removed) ---
-// No icons are needed for the table headers anymore.
+// --- SVG Icons ---
+// *** FIX: Added missing IconHash definition ***
+const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
+// *** END FIX ***
 
 // *** NEW: MultiSelectDropdown Component ***
-// Defined outside the main component to prevent re-render issues.
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 
-    // Handle clicks outside the dropdown to close it
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsOpen(false);
-                if (onBlur) onBlur(); // Call onBlur when closing
+                if (onBlur) onBlur(); 
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
@@ -37,25 +37,23 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
 
     const handleToggleSelect = (name) => {
         if (name === "Need To Update") {
-            onChange(["Need To Update"]); // Special case: selecting "Unassigned" clears others
+            onChange(["Need To Update"]);
             return;
         }
         
-        // Ensure selectedNames is an array before filtering/spreading
         const currentSelected = Array.isArray(selectedNames) ? selectedNames : [];
 
         const newSelectedNames = currentSelected.includes(name)
             ? currentSelected.filter(n => n !== name)
-            : [...currentSelected.filter(n => n !== "Need To Update"), name]; // Add new name, remove "Unassigned"
+            : [...currentSelected.filter(n => n !== "Need To Update"), name]; 
 
         if (newSelectedNames.length === 0) {
-            onChange(["Need To Update"]); // Default to "Unassigned" if empty
+            onChange(["Need To Update"]);
         } else {
             onChange(newSelectedNames);
         }
     };
     
-    // Ensure selectedNames is an array for display logic
     const displayArray = Array.isArray(selectedNames) ? selectedNames : [];
     const displayValue = displayArray.length > 0 && displayArray[0] !== "Need To Update"
         ? `${displayArray.length} selected`
@@ -78,16 +76,17 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
             {isOpen && (
                 <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                     <ul>
+                        {/* *** FIX: Added flex and items-center to align checkbox and text *** */}
                         <li
                             key="unassigned"
                             onClick={() => handleToggleSelect("Need To Update")}
-                            className="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-indigo-50"
+                            className="flex items-center px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-indigo-50"
                         >
                             <input
                                 type="checkbox"
                                 readOnly
                                 checked={displayArray.includes("Need To Update")}
-                                className="mr-2"
+                                className="mr-2 h-4 w-4"
                             />
                             Unassigned
                         </li>
@@ -95,13 +94,13 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
                             <li
                                 key={name}
                                 onClick={() => handleToggleSelect(name)}
-                                className="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-indigo-50"
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-indigo-50"
                             >
                                 <input
                                     type="checkbox"
                                     readOnly
                                     checked={displayArray.includes(name)}
-                                    className="mr-2"
+                                    className="mr-2 h-4 w-4"
                                 />
                                 {name}
                             </li>
@@ -171,7 +170,7 @@ const DashboardPage = ({ sheetKey }) => {
         'Required Skill Set': 'w-64',
         'Any Required Certificates': 'w-30',
         'Work Position Type': 'w-23',
-        'Working By': 'w-35',
+        'Working By': 'w-31',
         'No. of Resumes Submitted': 'w-24',
         '# Submitted': 'w-22',
         'Remarks': 'w-30',
@@ -179,7 +178,7 @@ const DashboardPage = ({ sheetKey }) => {
         '2nd Candidate Name': 'w-25',
         '3rd Candidate Name': 'w-25',
         'Status': 'w-25',
-        'Actions': 'w-15'
+        'Actions': 'w-12'
     }), []);
 
     const userPrefs = useMemo(() => {
@@ -396,7 +395,7 @@ const DashboardPage = ({ sheetKey }) => {
         const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
         const headerName = displayHeader[cellIndex];
         
-        // *** FIX: Value from MultiSelect is an array, join it to a string ***
+        // Value from MultiSelect is an array, join it to a string
         const finalValue = Array.isArray(value) ? value.join(', ') : value;
         
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
@@ -570,7 +569,6 @@ const DashboardPage = ({ sheetKey }) => {
         <div className="space-y-4">
             {/* Page Header */}
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
-                {/* *** MODIFIED: Reduced font size *** */}
                 <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
                 {/* Save Changes Button */}
                 {canEditDashboard && Object.keys(unsavedChanges).length > 0 && (
