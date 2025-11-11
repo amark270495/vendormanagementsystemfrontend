@@ -6,35 +6,34 @@ import AttendanceCalendar from '../components/profile/AttendanceCalendar';
 import LeaveRequestForm from '../components/profile/LeaveRequestForm';
 import LeaveHistory from '../components/profile/LeaveHistory';
 
-// Simple SVG Icons for sections
+// --- Helper Components & Icons (Defined Outside) ---
+
 const CalendarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
 const QuotaIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
 const RequestIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>;
 const HistoryIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const UserIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
-const IdCardIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2" /></svg>;
+const IdCardIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2" /></svg>;
 const BriefcaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.03 23.03 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
 const CakeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 15.25v-4.25a2 2 0 00-2-2H5a2 2 0 00-2 2v4.25a2 2 0 002 2h14a2 2 0 002-2zM6 18v-3M9 18v-3M12 18v-3m3 0v3m3 0v-3m-15-4.5a.75.75 0 100-1.5.75.75 0 000 1.5zM18 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM9 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM15 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM12 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM6 9V6a3 3 0 013-3h6a3 3 0 013 3v3" /></svg>;
 
-// --- NEW Attendance Marker Component ---
-const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance }) => {
-    const { user } = useAuth();
+const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUser }) => {
+    // We pass authUser as a prop to avoid context dependency
     const [statusInfo, setStatusInfo] = useState({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: true });
-    const [actionLoading, setActionLoading] = useState(false); // Loading state for marking actions
+    const [actionLoading, setActionLoading] = useState(false);
     const [localError, setLocalError] = useState('');
     const [localSuccess, setLocalSuccess] = useState('');
 
     const todayDateString = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(new Date());
 
-    // Function to fetch status for a specific date
     const fetchStatusForDate = useCallback(async (dateString) => {
-        if (!user?.userIdentifier || !dateString) {
+        if (!authUser?.userIdentifier || !dateString) {
             setStatusInfo({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: false });
             return;
         }
         setStatusInfo(prev => ({ ...prev, isLoading: true }));
         setLocalError('');
-        setLocalSuccess(''); // Clear messages on new date fetch
+        setLocalSuccess('');
 
         try {
             const dateObj = new Date(dateString + 'T00:00:00Z');
@@ -42,13 +41,12 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance }) => {
             const year = dateString.substring(0, 4);
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-            // Fetch attendance, holiday, and leave concurrently
             const [attendanceRes, holidayRes, leaveRes] = await Promise.all([
-                apiService.getAttendance({ authenticatedUsername: user.userIdentifier, username: user.userIdentifier, startDate: dateString, endDate: dateString })
-                    .catch(err => { console.error("Attendance fetch error:", err); return null; }), // Prevent single failure from stopping others
-                apiService.getHolidays({ authenticatedUsername: user.userIdentifier, year: year }) // Fetch all holidays for the year once? Or filter backend? Fetching year for now.
+                apiService.getAttendance({ authenticatedUsername: authUser.userIdentifier, username: authUser.userIdentifier, startDate: dateString, endDate: dateString })
+                    .catch(err => { console.error("Attendance fetch error:", err); return null; }),
+                apiService.getHolidays({ authenticatedUsername: authUser.userIdentifier, year: year })
                     .catch(err => { console.error("Holiday fetch error:", err); return null; }),
-                apiService.getLeaveRequests({ authenticatedUsername: user.userIdentifier, targetUsername: user.userIdentifier, statusFilter: 'Approved', startDateFilter: dateString, endDateFilter: dateString })
+                apiService.getLeaveRequests({ authenticatedUsername: authUser.userIdentifier, targetUsername: authUser.userIdentifier, statusFilter: 'Approved', startDateFilter: dateString, endDateFilter: dateString })
                     .catch(err => { console.error("Leave fetch error:", err); return null; })
             ]);
 
@@ -58,7 +56,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance }) => {
             let isOnLeave = false;
             let holidayDescription = '';
 
-            // Process Holiday
             if (holidayRes?.data?.success && Array.isArray(holidayRes.data.holidays)) {
                  const holiday = holidayRes.data.holidays.find(h => h.date === dateString);
                  if (holiday) {
@@ -68,27 +65,22 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance }) => {
                  }
             }
 
-            // Process Leave (takes precedence over attendance/holiday if both apply?)
             if (leaveRes?.data?.success && Array.isArray(leaveRes.data.requests) && leaveRes.data.requests.length > 0) {
                  isOnLeave = true;
                  status = 'On Leave';
             }
 
-            // Process Attendance (if not already determined by leave/holiday/weekend)
             if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendanceRecords) && attendanceRes.data.attendanceRecords.length > 0) {
                 const record = attendanceRes.data.attendanceRecords[0];
-                 // Only use attendance status if it's not a leave day etc.
                  if (status === null && !isWeekend) {
                      status = record.status;
                      requestedStatus = record.requestedStatus || null;
                  } else if (record.status === 'Pending' && status === null && !isWeekend) {
-                     // Handle case where it was marked pending but might now be holiday/leave
                      status = 'Pending';
                      requestedStatus = record.requestedStatus || null;
                  }
             }
 
-            // Set final status based on priority
             if (status === null && isWeekend) {
                  status = 'Weekend';
             }
@@ -108,9 +100,8 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance }) => {
             setLocalError(`Failed to load status for ${dateString}.`);
             setStatusInfo({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: false });
         }
-    }, [user?.userIdentifier]);
+    }, [authUser]); // Depend on authUser prop
 
-    // Fetch status when the selected date changes
     useEffect(() => {
         fetchStatusForDate(selectedDate);
     }, [selectedDate, fetchStatusForDate]);
@@ -120,9 +111,7 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance }) => {
         setLocalError('');
         setLocalSuccess('');
         try {
-            // Pass selectedDate and requested status to the parent handler
             await onMarkAttendance(selectedDate, requested);
-            // Refetch status after marking to show Pending
             fetchStatusForDate(selectedDate);
             setLocalSuccess(`Attendance request for ${formatDateDisplay(selectedDate)} submitted.`);
              setTimeout(() => setLocalSuccess(''), 4000);
@@ -133,7 +122,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance }) => {
         }
     };
 
-    // Determine eligibility to mark attendance for the *selected* date
     const canMarkSelectedDate = !statusInfo.isLoading && !actionLoading && !statusInfo.isWeekend && !statusInfo.isHoliday && !statusInfo.isOnLeave && statusInfo.status !== 'Present' && statusInfo.status !== 'Absent' && statusInfo.status !== 'Rejected';
     const isFutureDate = selectedDate > todayDateString;
 
@@ -144,7 +132,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance }) => {
 
     return (
         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl shadow-md border border-indigo-100 text-center">
-            {/* Date Selector */}
             <div className="mb-4">
                 <label htmlFor="attendanceDate" className="block text-sm font-medium text-gray-700 mb-1">Select Date:</label>
                 <input
@@ -152,12 +139,10 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance }) => {
                     id="attendanceDate"
                     value={selectedDate}
                     onChange={(e) => onDateChange(e.target.value)}
-                    max={todayDateString} // Prevent selecting future dates
+                    max={todayDateString}
                     className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
             </div>
-
-            {/* Status Display */}
             <p className="text-sm font-medium text-indigo-800 mb-3">
                 Status for {formatDateDisplay(selectedDate)}
             </p>
@@ -170,7 +155,7 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance }) => {
                         statusInfo.status === 'Absent' || statusInfo.status === 'Rejected' ? 'bg-red-100 text-red-800 ring-1 ring-red-200' :
                         statusInfo.status === 'On Leave' ? 'bg-purple-100 text-purple-800 ring-1 ring-purple-200' :
                         statusInfo.status === 'Pending' ? 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-200' :
-                        'bg-gray-100 text-gray-700 ring-1 ring-gray-200' // Weekend, Holiday
+                        'bg-gray-100 text-gray-700 ring-1 ring-gray-200'
                     }`}>
                         {statusInfo.status === 'Pending' ? `Pending (${statusInfo.requestedStatus})` : statusInfo.status}
                         {statusInfo.isHoliday ? ` (${statusInfo.holidayDescription})` : ''}
@@ -179,8 +164,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance }) => {
                     <span className="text-base text-gray-500 italic font-semibold">Not Marked</span>
                 )}
             </div>
-
-            {/* Action Buttons - Conditionally Rendered */}
              {canMarkSelectedDate && !isFutureDate && (
                  <div className="mt-4 space-x-3 flex justify-center">
                      <button
@@ -199,29 +182,22 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance }) => {
                      </button>
                  </div>
             )}
-             {/* Informational messages */}
              {isFutureDate && <p className="mt-4 text-xs text-gray-500">Cannot mark attendance for future dates.</p>}
              {!canMarkSelectedDate && !isFutureDate && !statusInfo.isLoading && statusInfo.status !== null && (
                  <p className="mt-4 text-sm text-gray-500">Attendance status is final or not applicable for this date.</p>
              )}
-
-             {/* Local Error/Success */}
              {localError && <p className="mt-4 text-sm text-red-600">{localError}</p>}
              {localSuccess && <p className="mt-4 text-sm text-green-600">{localSuccess}</p>}
         </div>
     );
 };
-// --- END Attendance Marker Component ---
 
-// --- NEW: Helper function to format date for input fields ---
 const formatDateForInput = (dateString) => {
     if (!dateString) return '';
     try {
         const date = new Date(dateString);
-        // Adjust for timezone offset to get the correct YYYY-MM-DD
-        // This handles cases where new Date('2025-10-01') becomes '2025-09-30T...Z'
         const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-        const adjustedDate = new Date(date.getTime() + userTimezoneOffset); // Add offset to get correct UTC date
+        const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
         return adjustedDate.toISOString().split('T')[0];
     } catch (e) {
         console.warn("Invalid date for input formatting:", dateString);
@@ -229,27 +205,25 @@ const formatDateForInput = (dateString) => {
     }
 };
 
+// --- Main ProfilePage Component ---
 
 const ProfilePage = () => {
-    // --- UPDATED: Use `login` as `updateUserInContext` ---
     const { user, login: updateUserInContext } = useAuth();
     
     const [leaveQuota, setLeaveQuota] = useState(null);
     const [leaveHistory, setLeaveHistory] = useState([]);
-    const [loading, setLoading] = useState(true); // For initial page load
+    const [loading, setLoading] = useState(true);
     
     const [selectedDate, setSelectedDate] = useState(
         new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(new Date())
     );
-    const [error, setError] = useState(''); // General page errors
-    const [success, setSuccess] = useState(''); // General page success messages
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
-    // --- NEW: State for editing profile ---
     const [isEditing, setIsEditing] = useState(false);
     const [editLoading, setEditLoading] = useState(false);
     const [formData, setFormData] = useState({});
 
-    // --- NEW: Initialize formData when user data is available ---
     useEffect(() => {
         if (user) {
             setFormData({
@@ -261,27 +235,22 @@ const ProfilePage = () => {
             });
         }
     }, [user]);
-    // --- END NEW ---
 
-
-    const initialMonthString = selectedDate.substring(0, 7); // YYYY-MM based on selectedDate
-
-    // Callback to refresh calendar data
+    const initialMonthString = selectedDate.substring(0, 7);
     const [calendarRefreshKey, setCalendarRefreshKey] = useState(Date.now());
     const refreshCalendar = () => setCalendarRefreshKey(Date.now());
-
 
     const fetchLeaveHistory = useCallback(async () => {
         if (!user?.userIdentifier) return;
         try {
              const leaveRes = await apiService.getLeaveRequests({
                  authenticatedUsername: user.userIdentifier,
-                 targetUsername: user.userIdentifier // Ensure only self
+                 targetUsername: user.userIdentifier
              });
              if (leaveRes.data.success && Array.isArray(leaveRes.data.requests)) {
                  setLeaveHistory(leaveRes.data.requests);
              } else {
-                 console.warn("getLeaveRequests failed or returned invalid data:", leaveRes.data?.message);
+                 console.warn("getLeaveRequests failed:", leaveRes.data?.message);
                  setLeaveHistory([]);
              }
         } catch (err) {
@@ -290,7 +259,6 @@ const ProfilePage = () => {
         }
     }, [user?.userIdentifier]);
 
-    // Load only quota and history initially
     const loadInitialData = useCallback(async () => {
         if (!user?.userIdentifier) {
             setError("User not identified. Cannot load profile data.");
@@ -300,7 +268,6 @@ const ProfilePage = () => {
         setLoading(true);
         setError('');
         try {
-            // Fetch quota
             const configRes = await apiService.getLeaveConfig({ authenticatedUsername: user.userIdentifier, targetUsername: user.userIdentifier });
             if (configRes?.data?.success && configRes.data.config) {
                 setLeaveQuota(configRes.data.config);
@@ -308,9 +275,7 @@ const ProfilePage = () => {
                  console.warn("Failed to fetch leave quota:", configRes?.data?.message);
                  setLeaveQuota(null);
             }
-            // Fetch history
             await fetchLeaveHistory();
-
         } catch (err) {
             console.error("Could not load initial profile data:", err);
             setError(`Could not load initial profile data. Please try again later.`);
@@ -325,8 +290,6 @@ const ProfilePage = () => {
         loadInitialData();
     }, [loadInitialData]);
 
-
-    // Handle marking attendance
     const handleMarkAttendance = async (dateToMark, requestedStatus) => {
         try {
             const response = await apiService.markAttendance({
@@ -335,28 +298,26 @@ const ProfilePage = () => {
                 requestedStatus: requestedStatus
             });
             if (response.data.success) {
-                refreshCalendar(); // Trigger calendar refresh
+                refreshCalendar();
             } else {
-                throw new Error(response.data.message); // Throw error to be caught by component
+                throw new Error(response.data.message);
             }
         } catch (err) {
              const errorMsg = err.response?.data?.message || err.message || `Failed to submit attendance request.`;
              console.error("Error in handleMarkAttendance:", errorMsg)
-             throw new Error(errorMsg); // Throw error to be caught by component
+             throw new Error(errorMsg);
         }
     };
 
     const handleLeaveRequested = () => {
-        fetchLeaveHistory(); // Re-fetch leave history
+        fetchLeaveHistory();
         refreshCalendar();
     };
 
-    // Handler for date changes from the AttendanceMarker
     const handleDateChange = (newDate) => {
         setSelectedDate(newDate);
     };
 
-    // --- NEW: Handlers for editing profile ---
     const handleFormChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
@@ -368,7 +329,6 @@ const ProfilePage = () => {
         setSuccess('');
 
         try {
-            // Only send the fields that are allowed to be updated
             const payload = {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
@@ -381,7 +341,6 @@ const ProfilePage = () => {
 
             if (response.data.success) {
                 setSuccess("Profile updated successfully!");
-                // Update the global auth context with the new user data from the response
                 updateUserInContext(response.data.userData);
                 setIsEditing(false);
                 setTimeout(() => setSuccess(''), 3000);
@@ -397,7 +356,6 @@ const ProfilePage = () => {
     
     const handleCancelEdit = () => {
         setIsEditing(false);
-        // Reset form data to match the user context
         if (user) {
             setFormData({
                 firstName: user.firstName || '',
@@ -410,8 +368,6 @@ const ProfilePage = () => {
         setError('');
         setSuccess('');
     };
-    // --- END NEW ---
-
 
     if (loading) {
         return (
@@ -422,13 +378,10 @@ const ProfilePage = () => {
         );
     }
 
-
     return (
         <div className="space-y-8">
-             {/* Page Header */}
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                  <h1 className="text-3xl font-bold text-gray-800">My Profile & Attendance</h1>
-                 {/* --- NEW: Edit Profile Button --- */}
                  {!isEditing && (
                      <button
                         onClick={() => setIsEditing(true)}
@@ -440,11 +393,9 @@ const ProfilePage = () => {
                  )}
              </div>
 
-            {/* General Page Error/Success */}
             {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 animate-shake">{error}</div>}
             {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 animate-fadeIn">{success}</div>}
              
-            {/* --- UPDATED: User Info Card (now a form) --- */}
             <form onSubmit={handleSaveChanges}>
                 <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
@@ -458,7 +409,8 @@ const ProfilePage = () => {
                                     <input type="text" name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm" />
                                 </div>
                             ) : (
-                                <p className="text-xl font-bold text-gray-900">{user?.displayName || 'User Name'}</p>
+                                // --- THIS IS THE FIX ---
+                                <p className="text-xl font-bold text-gray-900">{user?.userName || 'User Name'}</p>
                             )}
                         </div>
 
@@ -501,7 +453,6 @@ const ProfilePage = () => {
                         </div>
                     </div>
 
-                    {/* --- NEW: Edit Mode Action Buttons --- */}
                     {isEditing && (
                         <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
                              <button
@@ -523,8 +474,6 @@ const ProfilePage = () => {
                     )}
                 </div>
             </form>
-            {/* --- END UPDATED User Info Card --- */}
-
 
             {/* Main Content Grid (Two Columns) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -535,6 +484,7 @@ const ProfilePage = () => {
                         selectedDate={selectedDate}
                         onDateChange={handleDateChange}
                         onMarkAttendance={handleMarkAttendance}
+                        authUser={user} 
                     />
                     <div>
                         <h3 className="text-xl font-semibold mb-3 flex items-center"><CalendarIcon /> Attendance Calendar</h3>
@@ -544,7 +494,6 @@ const ProfilePage = () => {
 
                 {/* Right Column (Narrower): Leave Info */}
                 <div className="space-y-6">
-                    {/* Leave Quota Card */}
                     <div className="bg-white p-5 rounded-xl shadow-md border border-gray-100">
                         <h3 className="text-md font-semibold mb-3 flex items-center text-gray-800"><QuotaIcon /> Leave Quota (Annual)</h3>
                         {leaveQuota ? (
@@ -556,14 +505,10 @@ const ProfilePage = () => {
                             <p className="text-sm text-gray-500 italic">Leave quotas not set.</p>
                         )}
                     </div>
-
-                    {/* Request Leave Card */}
                     <div className="bg-white p-5 rounded-xl shadow-md border border-gray-100">
                          <h3 className="text-md font-semibold mb-3 flex items-center text-gray-800"><RequestIcon /> Request Leave</h3>
                         <LeaveRequestForm onLeaveRequested={handleLeaveRequested} />
                     </div>
-
-                    {/* Leave History Card */}
                     <div className="bg-white p-5 rounded-xl shadow-md border border-gray-100">
                         <h3 className="text-md font-semibold mb-3 flex items-center text-gray-800"><HistoryIcon /> Leave History</h3>
                          <LeaveHistory leaveHistory={leaveHistory} />
