@@ -7,14 +7,33 @@ const defaultPermissions = {
     canEditDashboard: false, canMessage: false, canManageTimesheets: false,
     canRequestTimesheetApproval: false, canManageMSAWO: false, canManageOfferLetters: false,
     canManageHolidays: false, canApproveLeave: false, canManageLeaveConfig: false,
-    canRequestLeave: false, canSendMonthlyReport: false
+    canRequestLeave: false, canSendMonthlyReport: false,
+    canApproveAttendance: false // <-- Make sure all permissions are listed here
+};
+
+// --- NEW: Define the default shape of the user object ---
+const defaultUser = {
+    userIdentifier: null,
+    userName: null,
+    userRole: null,
+    backendOfficeRole: null,
+    isFirstLogin: false,
+    dashboardPreferences: { columnOrder: null, columnVisibility: null },
+    permissions: { ...defaultPermissions },
+    // --- NEW FIELDS ---
+    firstName: '',
+    lastName: '',
+    middleName: '',
+    dateOfBirth: '',
+    dateOfJoining: '',
+    employeeCode: ''
 };
 
 
 // Create the context with safe defaults
 const AuthContext = createContext({
     isAuthenticated: false,
-    user: null, // User object will contain permissions
+    user: defaultUser, // Use the default user shape
     isFirstLogin: false,
     login: () => {},
     logout: () => {},
@@ -28,22 +47,26 @@ const authReducer = (state, action) => {
         case 'LOGIN':
             // Ensure payload.permissions has all keys, defaulting to false
             const mergedPermissions = { ...defaultPermissions, ...(action.payload.permissions || {}) };
+            
+            // --- UPDATED: Merge payload with defaultUser to ensure all fields exist ---
+            const mergedUser = { 
+                ...defaultUser, 
+                ...action.payload, 
+                permissions: mergedPermissions 
+            };
+            
             return {
                 ...state,
                 isAuthenticated: true,
-                user: { ...action.payload, permissions: mergedPermissions }, // Store merged permissions in user
+                user: mergedUser, // Store the complete, merged user object
                 isFirstLogin: action.payload.isFirstLogin,
-                 // Remove separate permissions state
-                 // permissions: mergedPermissions, // No longer needed here
             };
         case 'LOGOUT':
             return {
                 ...state,
                 isAuthenticated: false,
-                user: null,
+                user: null, // Set user to null on logout
                 isFirstLogin: false,
-                 // permissions: {}, // Reset permissions state too
-                 // No longer needed here
             };
         case 'PASSWORD_CHANGED':
              if (!state.user) return state; // Safety check
@@ -65,11 +88,8 @@ const authReducer = (state, action) => {
              const updatedPermissions = { ...defaultPermissions, ...(state.user.permissions || {}), ...action.payload };
             return {
                 ...state,
-                // Update permissions within the user object AND the top-level state
+                // Update permissions within the user object
                 user: { ...state.user, permissions: updatedPermissions },
-                // --- Keep this line if usePermissions reads from top level ---
-                // permissions: updatedPermissions, // Still update top-level if usePermissions relies on it
-                // --- If usePermissions is updated to read from user.permissions, remove the line above ---
             };
         default:
             return state;
@@ -79,9 +99,8 @@ const authReducer = (state, action) => {
 export const AuthProvider = ({ children }) => {
     const [state, dispatch] = useReducer(authReducer, {
         isAuthenticated: false,
-        user: null,
+        user: null, // Start as null, will be populated from session storage or login
         isFirstLogin: false,
-        // permissions: {}, // Remove initial top-level permissions state
     });
 
     const tabId = useRef(crypto.randomUUID()); // For multi-tab logout sync
@@ -92,7 +111,7 @@ export const AuthProvider = ({ children }) => {
             const savedUser = sessionStorage.getItem('vms_user');
             if (savedUser) {
                 const userData = JSON.parse(savedUser);
-                // Dispatch LOGIN to ensure permissions structure is correct
+                // Dispatch LOGIN to ensure permissions and new fields are correctly merged
                 dispatch({ type: 'LOGIN', payload: userData });
                 localStorage.setItem('vms_active_tab', tabId.current);
             }
@@ -121,7 +140,12 @@ export const AuthProvider = ({ children }) => {
     const login = (userData) => {
         // Ensure permissions object exists and merge with defaults upon login
          const mergedPermissions = { ...defaultPermissions, ...(userData.permissions || {}) };
-         const userToStore = { ...userData, permissions: mergedPermissions };
+         // --- UPDATED: Ensure all user fields are present before storing ---
+         const userToStore = { 
+            ...defaultUser, 
+            ...userData, 
+            permissions: mergedPermissions 
+        };
         sessionStorage.setItem('vms_user', JSON.stringify(userToStore));
         localStorage.setItem('vms_active_tab', tabId.current);
         // Dispatch LOGIN, the reducer handles merging defaults again for safety
