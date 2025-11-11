@@ -8,8 +8,9 @@ const defaultPermissions = {
     canRequestTimesheetApproval: false, canManageMSAWO: false, canManageOfferLetters: false,
     canManageHolidays: false, canApproveLeave: false, canManageLeaveConfig: false,
     canRequestLeave: false, canSendMonthlyReport: false,
-    canApproveAttendance: false // <-- Make sure all permissions are listed here
+    canApproveAttendance: false
 };
+
 
 // --- NEW: Define the default shape of the user object ---
 const defaultUser = {
@@ -20,13 +21,26 @@ const defaultUser = {
     isFirstLogin: false,
     dashboardPreferences: { columnOrder: null, columnVisibility: null },
     permissions: { ...defaultPermissions },
-    // --- NEW FIELDS ---
+    
+    // --- Basic Info ---
     firstName: '',
     lastName: '',
     middleName: '',
     dateOfBirth: '',
     dateOfJoining: '',
-    employeeCode: ''
+    employeeCode: '',
+    
+    // --- New Fields ---
+    personalMobileNumber: '',
+    currentAddress: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelation: '',
+    bloodGroup: '',
+    employmentType: '',
+    reportsTo: '',
+    workLocation: '',
+    linkedInProfile: ''
 };
 
 
@@ -133,7 +147,6 @@ export const AuthProvider = ({ children }) => {
 
         window.addEventListener('storage', handleStorageChange);
         return () => window.removeEventListener('storage', handleStorageChange);
-        // Added state.isAuthenticated to dependencies to avoid stale closures
     }, [state.isAuthenticated]); // Depend on isAuthenticated
 
 
@@ -190,7 +203,6 @@ export const AuthProvider = ({ children }) => {
 
 
     // Provide the state and dispatcher functions to children
-    // Ensure the value provided includes everything needed by consumers (like usePermissions)
     return (
         <AuthContext.Provider value={{ ...state, login, logout, passwordChanged, updatePreferences, updatePermissions }}>
             {children}
