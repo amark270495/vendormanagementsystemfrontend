@@ -7,7 +7,7 @@ import LeaveRequestForm from '../components/profile/LeaveRequestForm';
 import LeaveHistory from '../components/profile/LeaveHistory';
 
 // --- Helper Components & Icons (Defined Outside) ---
-
+// Moved outside the main component to prevent re-rendering and focus loss
 const CalendarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
 const QuotaIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
 const RequestIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>;
@@ -25,7 +25,6 @@ const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 
 
 const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUser }) => {
-    // We pass authUser as a prop to avoid context dependency
     const [statusInfo, setStatusInfo] = useState({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: true });
     const [actionLoading, setActionLoading] = useState(false);
     const [localError, setLocalError] = useState('');
@@ -107,7 +106,7 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             setLocalError(`Failed to load status for ${dateString}.`);
             setStatusInfo({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: false });
         }
-    }, [authUser]); // Depend on authUser prop
+    }, [authUser]);
 
     useEffect(() => {
         fetchStatusForDate(selectedDate);
@@ -465,6 +464,44 @@ const ProfilePage = () => {
         );
     }
 
+    // --- Helper to render form inputs in edit mode ---
+    // We pass `name` to ensure the `onChange` handler works correctly
+    const renderEditInput = (name, type = 'text') => (
+        <input
+            type={type}
+            name={name}
+            id={name}
+            value={formData[name] || ''}
+            onChange={handleFormChange}
+            className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+        />
+    );
+
+    const renderEditSelect = (name, options) => (
+         <select
+            name={name}
+            id={name}
+            value={formData[name] || ''}
+            onChange={handleFormChange}
+            className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white h-[42px]"
+        >
+            <option value="">Select...</option>
+            {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+        </select>
+    );
+
+    const renderEditTextArea = (name) => (
+        <textarea
+            name={name}
+            id={name}
+            value={formData[name] || ''}
+            onChange={handleFormChange}
+            rows="3"
+            className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+        />
+    );
+
+
     return (
         <div className="space-y-8">
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -489,19 +526,16 @@ const ProfilePage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
                         {/* Column 1: Name */}
                         <div className="space-y-4">
-                            <DetailItem label="Full Name" icon={<UserIcon />} isEditing={isEditing}>
+                            <DetailItem label="Full Name" icon={<UserIcon />} isEditing={isEditing} value={user?.userName}>
                                 <input type="text" name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm mb-2" />
                                 <input type="text" name="middleName" placeholder="Middle (Optional)" value={formData.middleName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm mb-2" />
                                 <input type="text" name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm" />
                             </DetailItem>
-                            <DetailItem label="Date of Birth" icon={<CakeIcon />} isEditing={isEditing}>
-                                <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+                            <DetailItem label="Date of Birth" icon={<CakeIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfBirth)}>
+                                {renderEditInput('dateOfBirth', 'date')}
                             </DetailItem>
-                            <DetailItem label="Blood Group" icon={<HeartIcon />} isEditing={isEditing}>
-                                <select name="bloodGroup" value={formData.bloodGroup} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white h-[42px]">
-                                    <option value="">Select...</option>
-                                    {bloodGroups.map(group => <option key={group} value={group}>{group}</option>)}
-                                </select>
+                            <DetailItem label="Blood Group" icon={<HeartIcon />} isEditing={isEditing} value={user?.bloodGroup}>
+                                {renderEditSelect('bloodGroup', bloodGroups)}
                             </DetailItem>
                         </div>
                         
@@ -530,14 +564,14 @@ const ProfilePage = () => {
                         
                         {/* Column 4: Contact */}
                         <div className="space-y-4">
-                            <DetailItem label="Personal Mobile" icon={<PhoneIcon />} isEditing={isEditing}>
-                                <input type="tel" name="personalMobileNumber" value={formData.personalMobileNumber} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+                            <DetailItem label="Personal Mobile" icon={<PhoneIcon />} isEditing={isEditing} value={user?.personalMobileNumber}>
+                                {renderEditInput('personalMobileNumber', 'tel')}
                             </DetailItem>
-                            <DetailItem label="LinkedIn Profile" icon={<LinkIcon />} isEditing={isEditing}>
-                                <input type="url" name="linkedInProfile" value={formData.linkedInProfile} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="https://linkedin.com/in/..." />
+                            <DetailItem label="LinkedIn Profile" icon={<LinkIcon />} isEditing={isEditing} value={user?.linkedInProfile}>
+                                {renderEditInput('linkedInProfile', 'url')}
                             </DetailItem>
-                            <DetailItem label="Current Address" icon={<LocationIcon />} isEditing={isEditing}>
-                                <textarea name="currentAddress" value={formData.currentAddress} onChange={handleFormChange} rows="3" className="w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+                            <DetailItem label="Current Address" icon={<LocationIcon />} isEditing={isEditing} value={user?.currentAddress}>
+                                {renderEditTextArea('currentAddress')}
                             </DetailItem>
                         </div>
                     </div>
@@ -546,16 +580,14 @@ const ProfilePage = () => {
                     <div className="pt-6 mt-6 border-t border-gray-200">
                          <h3 className="text-lg font-semibold text-gray-800 mb-4">Emergency Contact</h3>
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
-                             <DetailItem label="Emergency Contact Name" icon={<UserIcon />} isEditing={isEditing}>
-                                <input type="text" name="emergencyContactName" value={formData.emergencyContactName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+                             <DetailItem label="Contact Name" icon={<UserIcon />} isEditing={isEditing} value={user?.emergencyContactName}>
+                                {renderEditInput('emergencyContactName')}
                              </DetailItem>
-                             <DetailItem label="Emergency Contact Phone" icon={<PhoneIcon />} isEditing={isEditing}>
-                                <input type="tel" name="emergencyContactPhone" value={formData.emergencyContactPhone} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+                             <DetailItem label="Contact Phone" icon={<PhoneIcon />} isEditing={isEditing} value={user?.emergencyContactPhone}>
+                                {renderEditInput('emergencyContactPhone', 'tel')}
                              </DetailItem>
-                             <DetailItem label="Relation" icon={<UsersIcon />} isEditing={isEditing}>
-                                 <select name="emergencyContactRelation" value={formData.emergencyContactRelation} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white h-[42px]">
-                                    {relations.map(rel => <option key={rel} value={rel}>{rel}</option>)}
-                                </select>
+                             <DetailItem label="Relation" icon={<UsersIcon />} isEditing={isEditing} value={user?.emergencyContactRelation}>
+                                 {renderEditSelect('emergencyContactRelation', relations)}
                              </DetailItem>
                          </div>
                     </div>
