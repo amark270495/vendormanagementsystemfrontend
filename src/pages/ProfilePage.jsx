@@ -22,10 +22,12 @@ const ShieldIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 
 const LinkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" /></svg>;
 const HeartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 015.13-1.424l.89.445.89-.445a4.5 4.5 0 015.13 1.424A4.5 4.5 0 0119.682 11.5a4.5 4.5 0 01-1.424 5.13l-.445.89-.445.89a4.5 4.5 0 01-5.13 1.424A4.5 4.5 0 0112 19.682a4.5 4.5 0 01-1.424-5.13l-.89-.445-.89-.445a4.5 4.5 0 01-1.424-5.13A4.5 4.5 0 014.318 6.318z" /></svg>;
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
+const ChevronDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>;
+const ChevronUpIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>;
 
 
 const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUser }) => {
-    const [statusInfo, setStatusInfo] = useState({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: true });
+    const [statusInfo, setStatusInfo] =useState({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: true });
     const [actionLoading, setActionLoading] = useState(false);
     const [localError, setLocalError] = useState('');
     const [localSuccess, setLocalSuccess] = useState('');
@@ -211,7 +213,6 @@ const formatDateForInput = (dateString) => {
     }
 };
 
-// Helper for displaying data
 const DetailItem = ({ label, value, icon, isEditing = false, children }) => (
     <div className="space-y-1">
         <label className="text-sm font-medium text-gray-500 flex items-center">
@@ -226,7 +227,6 @@ const DetailItem = ({ label, value, icon, isEditing = false, children }) => (
         )}
     </div>
 );
-
 
 // --- Main ProfilePage Component ---
 
@@ -247,12 +247,14 @@ const ProfilePage = () => {
     const [editLoading, setEditLoading] = useState(false);
     const [formData, setFormData] = useState({});
 
+    // --- NEW: State for collapsible section ---
+    const [isExpanded, setIsExpanded] = useState(false);
+
     // Define options for dropdowns
     const employmentTypes = ['Full-Time', 'Part-Time', 'Contractor (C2C)', 'Contractor (1099)'];
     const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
     const relations = ['Spouse', 'Parent', 'Sibling', 'Child', 'Other'];
 
-    // Memoize the list of managers for the 'Reports To' dropdown
     const [allUsers, setAllUsers] = useState([]);
     useEffect(() => {
         if (isEditing && user?.userIdentifier) {
@@ -266,7 +268,6 @@ const ProfilePage = () => {
         }
     }, [isEditing, user?.userIdentifier]);
 
-    // Initialize form data when user data is available
     useEffect(() => {
         if (user) {
             setFormData({
@@ -274,12 +275,10 @@ const ProfilePage = () => {
                 lastName: user.lastName || '',
                 middleName: user.middleName || '',
                 dateOfBirth: formatDateForInput(user.dateOfBirth),
-                // These fields are admin-only, so we just use the user's current value
                 dateOfJoining: formatDateForInput(user.dateOfJoining),
                 employmentType: user.employmentType || 'Full-Time',
                 workLocation: user.workLocation || '',
                 reportsTo: user.reportsTo || '',
-                // User-editable fields
                 personalMobileNumber: user.personalMobileNumber || '',
                 currentAddress: user.currentAddress || '',
                 emergencyContactName: user.emergencyContactName || '',
@@ -289,8 +288,7 @@ const ProfilePage = () => {
                 linkedInProfile: user.linkedInProfile || '',
             });
         }
-    }, [user]); // Re-run when user object changes (e.g., after login or save)
-
+    }, [user]);
 
     const initialMonthString = selectedDate.substring(0, 7);
     const [calendarRefreshKey, setCalendarRefreshKey] = useState(Date.now());
@@ -385,13 +383,11 @@ const ProfilePage = () => {
         setSuccess('');
 
         try {
-            // Only send the fields that a user is allowed to edit
             const payload = {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 middleName: formData.middleName,
                 dateOfBirth: formData.dateOfBirth,
-                // --- ADD NEW EDITABLE FIELDS ---
                 personalMobileNumber: formData.personalMobileNumber,
                 currentAddress: formData.currentAddress,
                 emergencyContactName: formData.emergencyContactName,
@@ -401,8 +397,6 @@ const ProfilePage = () => {
                 linkedInProfile: formData.linkedInProfile
             };
             
-            // We also pass admin-only fields, but the backend `updateUser.js`
-            // will correctly ignore them if it's a self-edit.
             const adminPayload = {
                 dateOfJoining: formData.dateOfJoining,
                 employmentType: formData.employmentType,
@@ -414,7 +408,6 @@ const ProfilePage = () => {
 
             if (response.data.success) {
                 setSuccess("Profile updated successfully!");
-                // Update the global auth context with the new user data from the response
                 updateUserInContext(response.data.userData);
                 setIsEditing(false);
                 setTimeout(() => setSuccess(''), 3000);
@@ -430,7 +423,6 @@ const ProfilePage = () => {
     
     const handleCancelEdit = () => {
         setIsEditing(false);
-        // Reset form data to match the user context
         if (user) {
             setFormData({
                 firstName: user.firstName || '',
@@ -454,7 +446,6 @@ const ProfilePage = () => {
         setSuccess('');
     };
 
-
     if (loading) {
         return (
             <div className="flex justify-center items-center h-[70vh]">
@@ -464,8 +455,6 @@ const ProfilePage = () => {
         );
     }
 
-    // --- Helper to render form inputs in edit mode ---
-    // We pass `name` to ensure the `onChange` handler works correctly
     const renderEditInput = (name, type = 'text') => (
         <input
             type={type}
@@ -522,77 +511,99 @@ const ProfilePage = () => {
              
             <form onSubmit={handleSaveChanges}>
                 <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                    {/* --- Personal & Employment Info --- */}
+                    {/* --- ALWAYS VISIBLE SECTION --- */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
-                        {/* Column 1: Name */}
-                        <div className="space-y-4">
-                            <DetailItem label="Full Name" icon={<UserIcon />} isEditing={isEditing} value={user?.userName}>
-                                <input type="text" name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm mb-2" />
-                                <input type="text" name="middleName" placeholder="Middle (Optional)" value={formData.middleName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm mb-2" />
-                                <input type="text" name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm" />
-                            </DetailItem>
-                            <DetailItem label="Date of Birth" icon={<CakeIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfBirth)}>
-                                {renderEditInput('dateOfBirth', 'date')}
-                            </DetailItem>
-                            <DetailItem label="Blood Group" icon={<HeartIcon />} isEditing={isEditing} value={user?.bloodGroup}>
-                                {renderEditSelect('bloodGroup', bloodGroups)}
-                            </DetailItem>
+                        {/* 1. Full Name */}
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-500 flex items-center"><UserIcon /> Full Name</label>
+                            {isEditing ? (
+                                <div className="space-y-2">
+                                    <input type="text" name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm mb-2" />
+                                    <input type="text" name="middleName" placeholder="Middle (Optional)" value={formData.middleName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm mb-2" />
+                                    <input type="text" name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+                                </div>
+                            ) : (
+                                <p className="text-xl font-bold text-gray-900">{user?.userName || 'User Name'}</p>
+                            )}
                         </div>
-                        
-                        {/* Column 2: Role & Employment */}
-                        <div className="space-y-4">
-                            <DetailItem label="Username (Email)" icon={<UserIcon />} value={user?.userIdentifier} />
-                            <DetailItem label="Employee Code" icon={<IdCardIcon />} value={user?.employeeCode} />
-                            <DetailItem label="Backend Role" icon={<BriefcaseIcon />} value={user?.backendOfficeRole} />
-                            <DetailItem label="Employment Type" icon={<BriefcaseIcon />} isEditing={isEditing} value={user?.employmentType}>
-                                <input type="text" name="employmentType" value={formData.employmentType} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
-                            </DetailItem>
-                        </div>
-
-                        {/* Column 3: Dates & Location */}
-                        <div className="space-y-4">
-                            <DetailItem label="Date of Joining" icon={<CalendarIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfJoining)}>
-                                <input type="date" name="dateOfJoining" value={formData.dateOfJoining} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
-                            </DetailItem>
-                            <DetailItem label="Work Location" icon={<LocationIcon />} isEditing={isEditing} value={user?.workLocation}>
-                                <input type="text" name="workLocation" value={formData.workLocation} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
-                            </DetailItem>
-                            <DetailItem label="Reports To" icon={<UsersIcon />} isEditing={isEditing} value={user?.reportsTo}>
-                                <input type="text" name="reportsTo" value={formData.reportsTo} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
-                            </DetailItem>
-                        </div>
-                        
-                        {/* Column 4: Contact */}
-                        <div className="space-y-4">
-                            <DetailItem label="Personal Mobile" icon={<PhoneIcon />} isEditing={isEditing} value={user?.personalMobileNumber}>
-                                {renderEditInput('personalMobileNumber', 'tel')}
-                            </DetailItem>
-                            <DetailItem label="LinkedIn Profile" icon={<LinkIcon />} isEditing={isEditing} value={user?.linkedInProfile}>
-                                {renderEditInput('linkedInProfile', 'url')}
-                            </DetailItem>
-                            <DetailItem label="Current Address" icon={<LocationIcon />} isEditing={isEditing} value={user?.currentAddress}>
-                                {renderEditTextArea('currentAddress')}
-                            </DetailItem>
-                        </div>
+                        {/* 2. Username (Email) */}
+                        <DetailItem label="Username (Email)" icon={<UserIcon />} value={user?.userIdentifier} />
+                        {/* 3. Date of Joining */}
+                        <DetailItem label="Date of Joining" icon={<CalendarIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfJoining)}>
+                            <input type="date" name="dateOfJoining" value={formData.dateOfJoining} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
+                        </DetailItem>
+                        {/* 4. Personal Mobile */}
+                        <DetailItem label="Personal Mobile" icon={<PhoneIcon />} isEditing={isEditing} value={user?.personalMobileNumber}>
+                            {renderEditInput('personalMobileNumber', 'tel')}
+                        </DetailItem>
                     </div>
-                    
-                    {/* --- Emergency Contact --- */}
-                    <div className="pt-6 mt-6 border-t border-gray-200">
-                         <h3 className="text-lg font-semibold text-gray-800 mb-4">Emergency Contact</h3>
-                         <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
-                             <DetailItem label="Contact Name" icon={<UserIcon />} isEditing={isEditing} value={user?.emergencyContactName}>
-                                {renderEditInput('emergencyContactName')}
-                             </DetailItem>
-                             <DetailItem label="Contact Phone" icon={<PhoneIcon />} isEditing={isEditing} value={user?.emergencyContactPhone}>
-                                {renderEditInput('emergencyContactPhone', 'tel')}
-                             </DetailItem>
-                             <DetailItem label="Relation" icon={<UsersIcon />} isEditing={isEditing} value={user?.emergencyContactRelation}>
-                                 {renderEditSelect('emergencyContactRelation', relations)}
-                             </DetailItem>
-                         </div>
-                    </div>
+                    {/* --- END ALWAYS VISIBLE SECTION --- */}
+
+                    {/* --- COLLAPSIBLE SECTION --- */}
+                    {(isExpanded || isEditing) && (
+                        <div className="mt-6 pt-6 border-t border-gray-200 space-y-8">
+                            {/* --- Personal & Employment Info --- */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
+                                <DetailItem label="Date of Birth" icon={<CakeIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfBirth)}>
+                                    {renderEditInput('dateOfBirth', 'date')}
+                                </DetailItem>
+                                <DetailItem label="Blood Group" icon={<HeartIcon />} isEditing={isEditing} value={user?.bloodGroup}>
+                                    {renderEditSelect('bloodGroup', bloodGroups)}
+                                </DetailItem>
+                                <DetailItem label="Employee Code" icon={<IdCardIcon />} value={user?.employeeCode} />
+                                <DetailItem label="Backend Role" icon={<BriefcaseIcon />} value={user?.backendOfficeRole} />
+                                <DetailItem label="Employment Type" icon={<BriefcaseIcon />} isEditing={isEditing} value={user?.employmentType}>
+                                    <input type="text" name="employmentType" value={formData.employmentType} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
+                                </DetailItem>
+                                <DetailItem label="Work Location" icon={<LocationIcon />} isEditing={isEditing} value={user?.workLocation}>
+                                    <input type="text" name="workLocation" value={formData.workLocation} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
+                                </DetailItem>
+                                <DetailItem label="Reports To" icon={<UsersIcon />} isEditing={isEditing} value={user?.reportsTo}>
+                                    <input type="text" name="reportsTo" value={formData.reportsTo} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
+                                </DetailItem>
+                                <DetailItem label="LinkedIn Profile" icon={<LinkIcon />} isEditing={isEditing} value={user?.linkedInProfile}>
+                                    {renderEditInput('linkedInProfile', 'url')}
+                                </DetailItem>
+                                <DetailItem label="Current Address" icon={<LocationIcon />} isEditing={isEditing} value={user?.currentAddress} fullWidth>
+                                    {renderEditTextArea('currentAddress')}
+                                </DetailItem>
+                            </div>
+                            
+                            {/* --- Emergency Contact --- */}
+                            <div className="pt-6 mt-6 border-t border-gray-200">
+                                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Emergency Contact</h3>
+                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
+                                     <DetailItem label="Contact Name" icon={<UserIcon />} isEditing={isEditing} value={user?.emergencyContactName}>
+                                        {renderEditInput('emergencyContactName')}
+                                     </DetailItem>
+                                     <DetailItem label="Contact Phone" icon={<PhoneIcon />} isEditing={isEditing} value={user?.emergencyContactPhone}>
+                                        {renderEditInput('emergencyContactPhone', 'tel')}
+                                     </DetailItem>
+                                     <DetailItem label="Relation" icon={<UsersIcon />} isEditing={isEditing} value={user?.emergencyContactRelation}>
+                                         {renderEditSelect('emergencyContactRelation', relations)}
+                                     </DetailItem>
+                                 </div>
+                            </div>
+                        </div>
+                    )}
+                    {/* --- END COLLAPSIBLE SECTION --- */}
 
 
+                    {/* --- NEW: Show More / Show Less Button --- */}
+                    {!isEditing && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 flex justify-center">
+                            <button
+                                type="button"
+                                onClick={() => setIsExpanded(!isExpanded)}
+                                className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 flex items-center"
+                            >
+                                {isExpanded ? 'Show Less' : 'Show More Details'}
+                                {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* --- Edit Mode Action Buttons --- */}
                     {isEditing && (
                         <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
                              <button
@@ -615,7 +626,7 @@ const ProfilePage = () => {
                 </div>
             </form>
 
-            {/* --- Attendance & Leave Section --- */}
+            {/* --- Attendance & Leave Section (No Changes) --- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
                     <AttendanceMarker
