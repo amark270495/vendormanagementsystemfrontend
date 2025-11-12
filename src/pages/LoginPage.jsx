@@ -4,15 +4,13 @@ import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
-// Eye icon for password visibility toggle
+// Eye icon for password visibility toggle (assuming these helpers are defined globally or imported correctly)
 const EyeIcon = ({ size = 5, ...props }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={size * 4} height={size * 4} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
         <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
         <circle cx="12" cy="12" r="3" />
     </svg>
 );
-
-// Eye off icon for password visibility toggle
 const EyeOffIcon = ({ size = 5, ...props }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={size * 4} height={size * 4} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
         <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
@@ -41,11 +39,30 @@ const LoginPage = () => {
             if (response.data.success) {
                 login(response.data);
             } else {
+                // Backend returns 401/404, which is handled as success: false in axios
                 setError(response.data.message);
             }
         } catch (err) {
-            const errorMessage = err.response?.data?.message || "An unexpected error occurred. Please try again.";
+            // --- CRITICAL DIAGNOSTIC CODE ---
+            console.error("Login API Failure:", err);
+            
+            let errorMessage = "An unexpected error occurred. Please try again.";
+            
+            if (err.response) {
+                // If the backend returned a structured response (e.g., 401 Unauthorized)
+                if (err.response.data && err.response.data.message) {
+                    errorMessage = err.response.data.message;
+                } else if (err.response.status === 500) {
+                    // Internal Server Error usually means the code crashed (e.g., hash fail, typo, bad import).
+                    errorMessage = "Internal Server Error (500). Please check the backend function logs for crash details.";
+                }
+            } else if (err.code === 'ECONNREFUSED') {
+                errorMessage = "Connection Refused. Is the backend function host running?";
+            }
+            
             setError(errorMessage);
+            // --- END CRITICAL DIAGNOSTIC CODE ---
+
         } finally {
             setLoading(false);
         }
@@ -132,10 +149,6 @@ const LoginPage = () => {
                                 </div>
                             </div>
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                    <input id="remember-me" name="remember-me" type="checkbox" className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
-                                    <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-900">Remember me</label>
-                                </div>
                                 <div className="text-sm">
                                     <a href="#" onClick={(e) => { e.preventDefault(); setForgotPasswordOpen(true); }} className="font-medium text-indigo-600 hover:text-indigo-500">
                                         Forgot your password?
