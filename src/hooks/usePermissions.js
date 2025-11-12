@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-// Default permissions structure (ensure this matches AuthContext and includes ALL keys)
+// --- CRITICAL: Define the canonical list of ALL granular permissions ---
 const defaultPermissions = {
     canViewCandidates: false,
     canEditUsers: false,
@@ -15,12 +15,12 @@ const defaultPermissions = {
     canRequestTimesheetApproval: false,
     canManageMSAWO: false,
     canManageOfferLetters: false,
-    canManageHolidays: false,      // Included
-    canApproveLeave: false,        // Included
-    canManageLeaveConfig: false,   // Included
-    canRequestLeave: false,        // Included
-    canSendMonthlyReport: false,    // Included
-    canApproveAttendance: false // <-- ADDED PERMISSION
+    canManageHolidays: false,      // NEW PERMISSION
+    canApproveLeave: false,        // NEW PERMISSION
+    canManageLeaveConfig: false,   // NEW PERMISSION
+    canRequestLeave: false,        // NEW PERMISSION
+    canSendMonthlyReport: false,   // NEW PERMISSION
+    canApproveAttendance: false    // NEW PERMISSION
 };
 
 
@@ -32,8 +32,8 @@ const calculatePermissions = (userPermissions) => {
     // Ensure all values returned are strictly boolean true/false
     const finalPermissions = {};
     for (const key in defaultPermissions) {
-        // Use hasOwnProperty to be safe, although defaultPermissions structure controls the loop
         if (Object.hasOwnProperty.call(defaultPermissions, key)) {
+             // CRITICAL: Ensure the value is strictly true/false
              finalPermissions[key] = merged[key] === true;
         }
     }
@@ -42,16 +42,11 @@ const calculatePermissions = (userPermissions) => {
 
 /**
  * Custom hook to safely access permissions throughout the app.
- * Reads permissions directly from the user object in AuthContext.
  */
 export const usePermissions = () => {
-    const auth = useAuth() || {}; // Get auth context, default to empty object if not ready
+    const auth = useAuth() || {};
 
-    // --- FIX: Read permissions from user object within the context state ---
     const userPermissions = auth.user?.permissions;
-    // --- End FIX ---
 
-    // useMemo recalculates the final boolean permissions object only when
-    // the userPermissions object reference from the context changes.
     return useMemo(() => calculatePermissions(userPermissions), [userPermissions]);
 };

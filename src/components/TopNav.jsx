@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { usePermissions } from '../hooks/usePermissions';
-import { apiService } from '../api/apiService';
-import Dropdown from './Dropdown';
+import { useAuth } from './context/AuthContext';
+import { usePermissions } from './hooks/usePermissions';
+import { apiService } from './api/apiService';
+import Dropdown from './components/Dropdown';
 
 // Define DASHBOARD_CONFIGS directly if not imported from elsewhere
 const DASHBOARD_CONFIGS = {
@@ -15,7 +15,6 @@ const DASHBOARD_CONFIGS = {
     'DeloitteDisplay': { title: 'Deloitte Taproot' }
 };
 
-
 const TopNav = ({ onNavigate, currentPage }) => {
     const { user, logout } = useAuth();
     const {
@@ -26,26 +25,25 @@ const TopNav = ({ onNavigate, currentPage }) => {
         canEditUsers,
         canMessage,
         canManageTimesheets,
-        canRequestTimesheetApproval, // Added
+        canRequestTimesheetApproval, 
         canManageMSAWO,
         canManageOfferLetters,
-        canManageHolidays, // Added
-        canApproveLeave, // Added
-        canManageLeaveConfig, // Added
-        canApproveAttendance, // Added
-        canSendMonthlyReport // Added
+        canManageHolidays, 
+        canApproveLeave, 
+        canManageLeaveConfig, 
+        canApproveAttendance, 
+        canSendMonthlyReport 
     } = usePermissions();
 
     const [notifications, setNotifications] = useState([]);
-    const [unreadMessagesCount, setUnreadMessagesCount] = useState(0); // Renamed for clarity
+    const [unreadMessagesCount, setUnreadMessagesCount] = useState(0); 
 
-    // --- Sound Playing Logic (using public path) ---
+    // --- Sound Playing Logic ---
     const playSound = (soundFile) => {
         // Correct path from public directory
-        const audio = new Audio(`/sounds/${soundFile}`); // Assumes sounds folder is in public
+        const audio = new Audio(`/sounds/${soundFile}`); 
         audio.play().catch(e => console.error("Error playing sound:", e));
     };
-    // --- End Sound Playing Logic ---
 
     const fetchNotifications = useCallback(async () => {
         if (!user?.userIdentifier) return;
@@ -57,11 +55,11 @@ const TopNav = ({ onNavigate, currentPage }) => {
             if (Array.isArray(newNotifications) && Array.isArray(notifications) && newNotifications.length > notifications.length && notifications.length > 0) {
                  playSound('notification.mp3');
             }
-            setNotifications(newNotifications); // Always set state, even if empty
+            setNotifications(newNotifications);
         } catch (err) {
             console.error('Could not fetch notifications', err);
         }
-    }, [user?.userIdentifier, notifications]); // Keep notifications dependency
+    }, [user?.userIdentifier, notifications]); 
 
     const fetchUnreadMessages = useCallback(async () => {
         if (!user?.userIdentifier || !canMessage) return;
@@ -78,29 +76,26 @@ const TopNav = ({ onNavigate, currentPage }) => {
         } catch (err) {
              console.error('Could not fetch unread messages count', err);
         }
-    }, [user?.userIdentifier, canMessage, unreadMessagesCount]); // Use unreadMessagesCount dependency
+    }, [user?.userIdentifier, canMessage, unreadMessagesCount]); 
 
     useEffect(() => {
-        // Fetch immediately on load
         fetchNotifications();
         fetchUnreadMessages();
-        // Set up intervals
-        const notificationInterval = setInterval(fetchNotifications, 30000); // Poll every 30 seconds
-        const messageInterval = setInterval(fetchUnreadMessages, 15000); // Poll every 15 seconds
-        // Clear intervals on component unmount
+        const notificationInterval = setInterval(fetchNotifications, 30000); 
+        const messageInterval = setInterval(fetchUnreadMessages, 15000); 
         return () => {
             clearInterval(notificationInterval);
             clearInterval(messageInterval);
         };
-    }, [fetchNotifications, fetchUnreadMessages]); // Rerun effect if functions change
+    }, [fetchNotifications, fetchUnreadMessages]); 
 
 
     const handleMarkAsRead = async () => {
-        if (!Array.isArray(notifications) || notifications.length === 0) return; // Add safety check
+        if (!Array.isArray(notifications) || notifications.length === 0) return; 
         try {
+            // Need ID and PartitionKey to correctly mark "all" notifications as read
             const idsToMark = notifications.map(n => ({ id: n.id, partitionKey: n.partitionKey }));
             await apiService.markNotificationsAsRead(idsToMark, user.userIdentifier);
-            // Immediately update UI before next poll
             setNotifications([]);
         } catch (err) {
             console.error('Failed to mark notifications as read', err);
@@ -108,12 +103,10 @@ const TopNav = ({ onNavigate, currentPage }) => {
     };
 
     const getLinkClass = (pageName) => {
-        // Handle array for multi-page active states
         const targetPages = Array.isArray(pageName) ? pageName : [pageName];
         const base = "px-3 py-2 rounded-md text-sm font-medium transition-colors";
         const active = "bg-slate-200 text-slate-900";
         const inactive = "text-slate-500 hover:bg-slate-100 hover:text-slate-800";
-        // Check if the current page *name* matches any of the link's target page names
         return `${base} ${targetPages.includes(currentPage) ? active : inactive}`;
     };
 
@@ -175,7 +168,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                                 </Dropdown>
                             )}
 
-                            {/* Admin Dropdown */}
+                            {/* Admin Dropdown - ALL NEW PERMISSIONS ARE HERE */}
                             {showAdminDropdown && (
                                 <Dropdown trigger={<button className={getLinkClass(['admin', 'manage_holidays', 'approve_leave', 'leave_config', 'approve_attendance', 'monthly_attendance_report'])}>Admin</button>}>
                                     {canEditUsers && <a href="#" onClick={() => onNavigate('admin')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">User Management</a>}
@@ -194,7 +187,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
                         {/* Notifications Dropdown */}
                         <Dropdown width="80" trigger={
                             <button className="relative text-slate-500 hover:text-slate-700" aria-label="Notifications">
-                                {/* Bell Icon - viewBox fixed */}
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
                                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                                     <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -202,7 +194,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
                                 {Array.isArray(notifications) && notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
                             </button>
                         }>
-                            {/* ... (dropdown content remains the same) ... */}
                             <div className="p-2">
                                 <div className="flex justify-between items-center mb-2 px-2">
                                     <h4 className="font-semibold text-slate-800">Notifications</h4>
@@ -223,15 +214,13 @@ const TopNav = ({ onNavigate, currentPage }) => {
                         <Dropdown trigger={
                             <button className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" aria-label="User menu">
                                 <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center">
-                                    {/* User Icon - viewBox fixed */}
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-600">
-                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <path d="M20 21v-2a4 4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                         <circle cx="12" cy="7" r="4"></circle>
                                     </svg>
                                 </div>
                             </button>
                         }>
-                            {/* ... (dropdown content remains the same) ... */}
                             <div className="px-4 py-2 border-b">
                                 <p className="text-sm font-medium text-slate-900">{user?.userName || 'User'}</p>
                                 <p className="text-sm text-slate-500 truncate">{user?.userIdentifier || 'No Email'}</p>
