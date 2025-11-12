@@ -49,28 +49,55 @@ export const apiService = {
     apiClient.get('/getCandidateDetailsPageData', { params: { authenticatedUsername } }),
   getCandidateDetail: (postingId, email, authenticatedUsername) =>
     apiClient.get('/getCandidateDetail', { params: { postingId, email, authenticatedUsername } }),
-
-  // --- Report & Notification Functions ---
+  
+  // --- Reporting & Email Functions ---
   getHomePageData: (authenticatedUsername) =>
     apiClient.get('/getHomePageData', { params: { authenticatedUsername } }),
   getReportData: (params) =>
     apiClient.get('/getReportData', { params }),
   generateAndSendJobReport: (sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername) =>
     apiClient.post('/generateAndSendJobReport', { sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername }),
-  getNotifications: (authenticatedUsername) =>
-    apiClient.get('/getNotifications', { params: { authenticatedUsername } }),
-  markNotificationsAsRead: (notificationIds, authenticatedUsername) =>
-    apiClient.post('/markNotificationsAsRead', { notificationIds, authenticatedUsername }),
-  getMessages: (user1, user2, authenticatedUsername) =>
-    apiClient.get('/getMessages', { params: { user1, user2, authenticatedUsername } }),
-  saveMessage: (sender, recipient, messageContent, authenticatedUsername) =>
-    apiClient.post('/saveMessage', { sender, recipient, messageContent, authenticatedUsername }),
-  getUnreadMessages: (authenticatedUsername) =>
-    apiClient.get('/getUnreadMessages', { params: { authenticatedUsername } }),
-  markMessagesAsRead: (recipient, sender, authenticatedUsername) =>
-    apiClient.post('/markMessagesAsRead', { recipient, sender, authenticatedUsername }),
   sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) =>
     apiClient.post('/sendAssignmentEmail', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
+  
+  // --- Attendance & Leave Functions (HR-CORE / REPORTING) ---
+  markAttendance: (attendanceData) => // { date, requestedStatus, authenticatedUsername }
+    apiClient.post('/markAttendance', attendanceData),
+  approveAttendance: (payload) => // { targetUsername, attendanceDate, action, approverComments, authenticatedUsername }
+    apiClient.post('/approveAttendance', payload),
+  getAttendance: (params) => // { authenticatedUsername, username?, startDate?, endDate?, month?, year? }
+    apiClient.get('/getAttendance', { params }),
+  getHolidays: (params) => // { authenticatedUsername, year? }
+    apiClient.get('/manageHoliday', { params }), // NOTE: Using GET on manageHoliday for retrieval
+  manageHoliday: (holidayData, method = 'POST', authenticatedUsername) => { // { date, description? }
+    if (method === 'DELETE') {
+      // DELETE request usually passes body via 'data' property
+      return apiClient.delete('/manageHoliday', { data: { ...holidayData, authenticatedUsername } });
+    } else {
+      return apiClient.post('/manageHoliday', { ...holidayData, authenticatedUsername });
+    }
+  },
+  calculateMonthlyAttendance: (params) => { // { authenticatedUsername, username, month, details? }
+    return apiClient.get('/calculateMonthlyAttendance', { params: params });
+  },
+  sendConsolidatedReport: (payload) => { // { authenticatedUsername, month }
+    return apiClient.post('/sendConsolidatedReport', payload);
+  },
+  requestLeave: (leaveData, authenticatedUsername) => // { leaveType, startDate, endDate, reason }
+    apiClient.post('/requestLeave', { ...leaveData, authenticatedUsername }),
+  approveLeave: (approvalData) => // { requestId, requestUsername, action, approverComments?, authenticatedUsername }
+    apiClient.post('/approveLeave', approvalData),
+  getLeaveConfig: (params) => // { authenticatedUsername, targetUsername? }
+    apiClient.get('/manageLeaveConfig', { params }),
+  manageLeaveConfig: (configData, authenticatedUsername) => // { targetUsername, sickLeave, casualLeave }
+    apiClient.post('/manageLeaveConfig', { ...configData, authenticatedUsername }),
+  getLeaveRequests: (params) => // { authenticatedUsername, targetUsername?, statusFilter?, startDateFilter?, endDateFilter? }
+    apiClient.get('/getLeaveRequests', { params }),
+  sendTimesheetApprovalRequest: (employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername) =>
+    apiClient.post('/sendTimesheetApprovalRequest', { employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername }),
+  sendBulkTimesheetApprovalRequest: (employeeIds, month, year, deadlineDate, companyName, authenticatedUsername) =>
+    apiClient.post('/sendBulkTimesheetApprovalRequest', { employeeIds, month, year, deadlineDate, companyName, authenticatedUsername }),
+
 
   // --- Permissions Functions ---
   getUserPermissionsList: (authenticatedUsername) =>
@@ -103,10 +130,6 @@ export const apiService = {
     apiClient.post('/deleteTimesheetEmployee', { employeeIdToDelete, authenticatedUsername }),
   getTimesheetEmployees: (authenticatedUsername) =>
     apiClient.get('/getTimesheetEmployees', { params: { authenticatedUsername } }),
-  sendTimesheetApprovalRequest: (employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername) =>
-    apiClient.post('/sendTimesheetApprovalRequest', { employeeMail, employeeName, month, year, deadlineDate, companyName, authenticatedUsername }),
-  sendBulkTimesheetApprovalRequest: (employeeIds, month, year, deadlineDate, companyName, authenticatedUsername) =>
-    apiClient.post('/sendBulkTimesheetApprovalRequest', { employeeIds, month, year, deadlineDate, companyName, authenticatedUsername }),
 
   // --- MSA and WO Functions ---
   createMSAWOVendorCompany: (companyData, authenticatedUsername) =>
@@ -155,44 +178,4 @@ export const apiService = {
     apiClient.post('/savePublicKey', { authenticatedUsername, publicKey }),
   getPublicKey: (username, authenticatedUsername) =>
     apiClient.get('/getPublicKey', { params: { username, authenticatedUsername } }),
-
-  // --- Attendance & Leave ---
-  markAttendance: (attendanceData) => // { date, requestedStatus, authenticatedUsername }
-    apiClient.post('/markAttendance', attendanceData),
-  approveAttendance: (payload) => // { targetUsername, attendanceDate, action, approverComments, authenticatedUsername }
-    apiClient.post('/approveAttendance', payload),
-  getAttendance: (params) => // { authenticatedUsername, username?, startDate?, endDate?, month?, year? }
-    apiClient.get('/getAttendance', { params }),
-  getHolidays: (params) => // { authenticatedUsername, year? }
-    apiClient.get('/getHolidays', { params }),
-  manageHoliday: (holidayData, method = 'POST', authenticatedUsername) => { // { date, description? }
-    if (method === 'DELETE') {
-      return apiClient.delete('/manageHoliday', {
-          data: { ...holidayData, authenticatedUsername }
-      });
-    } else {
-      return apiClient.post('/manageHoliday', { ...holidayData, authenticatedUsername });
-    }
-  },
-  
-  // *** This just GETS data for one user ***
-  calculateMonthlyAttendance: (params) => { // { authenticatedUsername, username, month, details? }
-    return apiClient.get('/calculateMonthlyAttendance', { params: params });
-  },
-
-  // *** NEW: Endpoint for the consolidated report ***
-  sendConsolidatedReport: (payload) => { // { authenticatedUsername, month }
-    return apiClient.post('/sendConsolidatedReport', payload);
-  },
-  
-  requestLeave: (leaveData, authenticatedUsername) => // { leaveType, startDate, endDate, reason }
-    apiClient.post('/requestLeave', { ...leaveData, authenticatedUsername }),
-  approveLeave: (approvalData) => // { requestId, requestUsername, action, approverComments?, authenticatedUsername }
-    apiClient.post('/approveLeave', approvalData),
-  getLeaveConfig: (params) => // { authenticatedUsername, targetUsername? }
-    apiClient.get('/manageLeaveConfig', { params }),
-  manageLeaveConfig: (configData, authenticatedUsername) => // { targetUsername, sickLeave, casualLeave }
-    apiClient.post('/manageLeaveConfig', { ...configData, authenticatedUsername }),
-  getLeaveRequests: (params) => // { authenticatedUsername, targetUsername?, statusFilter?, startDateFilter?, endDateFilter? }
-    apiClient.get('/getLeaveRequests', { params }),
 };
