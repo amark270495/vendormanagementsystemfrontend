@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from './context/AuthContext';
-import { usePermissions } from './hooks/usePermissions';
-import { apiService } from './api/apiService';
-import Dropdown from './components/Dropdown';
+import { useAuth } from '../context/AuthContext'; // CORRECTED PATH: ../context/AuthContext
+import { usePermissions } from '../hooks/usePermissions'; // CORRECTED PATH: ../hooks/usePermissions
+import { apiService } from '../api/apiService';
+import Dropdown from './Dropdown';
 
-// Define DASHBOARD_CONFIGS directly if not imported from elsewhere
+// Define DASHBOARD_CONFIGS outside the component
 const DASHBOARD_CONFIGS = {
     'ecaltVMSDisplay': { title: 'Eclat VMS' },
     'taprootVMSDisplay': { title: 'Taproot VMS' },
@@ -17,6 +17,7 @@ const DASHBOARD_CONFIGS = {
 
 const TopNav = ({ onNavigate, currentPage }) => {
     const { user, logout } = useAuth();
+    // --- Destructure all 18 granular permissions ---
     const {
         canViewDashboards,
         canAddPosting,
@@ -34,13 +35,14 @@ const TopNav = ({ onNavigate, currentPage }) => {
         canApproveAttendance, 
         canSendMonthlyReport 
     } = usePermissions();
+    // ---------------------------------------------
 
     const [notifications, setNotifications] = useState([]);
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(0); 
 
     // --- Sound Playing Logic ---
+    // NOTE: This assumes the audio files are available in the public/sounds directory
     const playSound = (soundFile) => {
-        // Correct path from public directory
         const audio = new Audio(`/sounds/${soundFile}`); 
         audio.play().catch(e => console.error("Error playing sound:", e));
     };
@@ -67,7 +69,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
             const response = await apiService.getUnreadMessages(user.userIdentifier);
             if (response.data.success) {
                 const currentUnreadCount = Object.values(response.data.unreadCounts || {}).reduce((sum, count) => sum + count, 0);
-                 // Play sound only if the count increased
                 if (currentUnreadCount > unreadMessagesCount && unreadMessagesCount > 0) {
                     playSound('message.mp3');
                 }
@@ -93,7 +94,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
     const handleMarkAsRead = async () => {
         if (!Array.isArray(notifications) || notifications.length === 0) return; 
         try {
-            // Need ID and PartitionKey to correctly mark "all" notifications as read
+            // Need ID and PartitionKey to correctly mark notifications as read
             const idsToMark = notifications.map(n => ({ id: n.id, partitionKey: n.partitionKey }));
             await apiService.markNotificationsAsRead(idsToMark, user.userIdentifier);
             setNotifications([]);
@@ -168,7 +169,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                                 </Dropdown>
                             )}
 
-                            {/* Admin Dropdown - ALL NEW PERMISSIONS ARE HERE */}
+                            {/* Admin Dropdown - Conditional on ANY admin permission */}
                             {showAdminDropdown && (
                                 <Dropdown trigger={<button className={getLinkClass(['admin', 'manage_holidays', 'approve_leave', 'leave_config', 'approve_attendance', 'monthly_attendance_report'])}>Admin</button>}>
                                     {canEditUsers && <a href="#" onClick={() => onNavigate('admin')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">User Management</a>}

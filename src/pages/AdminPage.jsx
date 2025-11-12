@@ -5,7 +5,7 @@ import HolidayManagementPage from './HolidayManagementPage';
 import LeaveApprovalPage from './LeaveApprovalPage';
 import LeaveConfigPage from './LeaveConfigPage';
 import ApproveAttendancePage from './ApproveAttendancePage';
-import MonthlyAttendanceReportPage from './MonthlyAttendanceReportPage'; // NEW: Import monthly report page
+import MonthlyAttendanceReportPage from './MonthlyAttendanceReportPage'; 
 import { usePermissions } from '../hooks/usePermissions';
 
 const AdminPage = ({ onNavigate }) => {
@@ -16,7 +16,7 @@ const AdminPage = ({ onNavigate }) => {
         canApproveLeave, 
         canManageLeaveConfig, 
         canApproveAttendance, 
-        canSendMonthlyReport // NEW: For reporting tab 
+        canSendMonthlyReport 
     } = usePermissions();
 
     // Determine the default view based on available permissions
@@ -26,8 +26,8 @@ const AdminPage = ({ onNavigate }) => {
         if (canApproveLeave) return 'approve_leave';
         if (canManageLeaveConfig) return 'leave_config';
         if (canApproveAttendance) return 'approve_attendance';
-        if (canSendMonthlyReport) return 'monthly_report'; // New default tab check
-        return 'access_denied'; // Fallback if no admin permissions
+        if (canSendMonthlyReport) return 'monthly_report'; 
+        return 'access_denied'; 
     };
 
     const [view, setView] = useState(getDefaultView());
@@ -56,7 +56,6 @@ const AdminPage = ({ onNavigate }) => {
                  return canManageLeaveConfig ? <LeaveConfigPage /> : null;
             case 'approve_attendance':
                  return canApproveAttendance ? <ApproveAttendancePage /> : null;
-            // NEW: Monthly Report Case
             case 'monthly_report':
                  return canSendMonthlyReport ? <MonthlyAttendanceReportPage /> : null;
             case 'access_denied':
