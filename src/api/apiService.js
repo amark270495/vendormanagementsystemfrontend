@@ -149,6 +149,10 @@ export const apiService = {
     apiClient.post('/employeeSignIn', { token, tempPassword }),
   updateOfferLetterStatus: (token, signerData) =>
     apiClient.post('/updateOfferLetterStatus', { token, signerData }),
+  
+  // *** NEW FUNCTION ADDED HERE ***
+  resendOfferLetter: (rowKey, authenticatedUsername) =>
+    apiClient.post('/resendOfferLetter', { rowKey, authenticatedUsername }),
 
   // --- Public Key Management ---
   savePublicKey: (authenticatedUsername, publicKey) =>
@@ -163,12 +167,8 @@ export const apiService = {
     apiClient.post('/approveAttendance', payload),
   getAttendance: (params) => // { authenticatedUsername, username?, startDate?, endDate?, month?, year? }
     apiClient.get('/getAttendance', { params }),
-
-  // This 'getHolidays' function correctly calls GET /api/getHolidays
   getHolidays: (params) => // { authenticatedUsername, year? }
     apiClient.get('/getHolidays', { params }),
-  
-  // This 'manageHoliday' function correctly uses POST and DELETE
   manageHoliday: (holidayData, method = 'POST', authenticatedUsername) => { // { date, description? }
     if (method === 'DELETE') {
       return apiClient.delete('/manageHoliday', {
@@ -178,17 +178,12 @@ export const apiService = {
       return apiClient.post('/manageHoliday', { ...holidayData, authenticatedUsername });
     }
   },
-  
-  // This just GETS data for one user
   calculateMonthlyAttendance: (params) => { // { authenticatedUsername, username, month, details? }
     return apiClient.get('/calculateMonthlyAttendance', { params: params });
   },
-
-  // NEW: Endpoint for the consolidated report
   sendConsolidatedReport: (payload) => { // { authenticatedUsername, month }
     return apiClient.post('/sendConsolidatedReport', payload);
   },
-  
   requestLeave: (leaveData, authenticatedUsername) => // { leaveType, startDate, endDate, reason }
     apiClient.post('/requestLeave', { ...leaveData, authenticatedUsername }),
   approveLeave: (approvalData) => // { requestId, requestUsername, action, approverComments?, authenticatedUsername }
