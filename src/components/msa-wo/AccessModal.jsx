@@ -7,22 +7,19 @@ const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail, api
     const [tempPassword, setTempPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
-
         try {
-            // Determine which API function to call. Fallback to the original MSA/WO function for backward compatibility.
+            // Determine which API function to call.
+            // Fallback to the original MSA/WO function for backward compatibility.
             const methodToCall = apiServiceMethod || apiService.accessMSAandWO;
-            
             if (typeof methodToCall !== 'function') {
                 throw new Error("A required API function was not provided to the modal.");
             }
 
             const response = await methodToCall(token, tempPassword);
-            
             if (response.data.success) {
                 onAccessGranted(response.data.documentData);
                 onClose();
@@ -30,29 +27,33 @@ const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail, api
                 setError(response.data.message);
             }
         } catch (err) {
-            console.error("Error in AccessModal:", err); // Log the full error to the console
+            console.error("Error in AccessModal:", err);
+            // Log the full error to the console
             setError(err.response?.data?.message || "An unexpected error occurred.");
         } finally {
             setLoading(false);
         }
     };
-
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Secure Document Access" size="sm">
             {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
             <form onSubmit={handleSubmit} className="space-y-4">
                 <p className="text-gray-700">
-                    A temporary password has been sent to {vendorEmail}. Please enter it below to securely access the document.
+                    A temporary password has been sent to {vendorEmail}. Please enter it below
+                    to securely access the document.
                 </p>
                 <div>
                     <label htmlFor="tempPassword" className="block text-sm font-medium text-gray-700">Temporary Password <span className="text-red-500">*</span></label>
-                    <input type="password" name="tempPassword" id="tempPassword" value={tempPassword} onChange={(e) => setTempPassword(e.target.value)} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                    <input type="password" name="tempPassword" id="tempPassword" value={tempPassword} onChange={(e) => setTempPassword(e.target.value)} required className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm
+p-2 focus:ring-indigo-500 focus:border-indigo-500" />
                 </div>
                 
                 <div className="flex justify-end space-x-2 pt-4">
                     <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-28" disabled={loading}>
-                        {loading ? <Spinner size="5" /> : 'Access'}
+                 
+                   <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center w-28" disabled={loading}>
+                        {loading ?
+<Spinner size="5" /> : 'Access'}
                     </button>
                 </div>
             </form>
