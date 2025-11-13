@@ -3,15 +3,12 @@ import AccessModal from '../components/msa-wo/AccessModal.jsx';
 import SignatureModal from '../components/msa-wo/SignatureModal.jsx';
 import Spinner from '../components/Spinner';
 import { useAuth } from '../context/AuthContext.jsx';
-import { apiService } from '../api/apiService.js'; // <-- *** CRITICAL FIX: IMPORT THE REAL APISERVICE ***
+import { apiService } from '../api/apiService.js';
 
-// --- REMOVED THE LOCAL, BROKEN apiService ---
-
-// *** FIX: Accept `token` as a prop ***
 const OfferLetterSigningPage = ({ token }) => { 
   const { user } = useAuth() || {};
   const [documentData, setDocumentData] = useState(null);
-  const [loading, setLoading] = useState(true); // Start true
+  const [loading, setLoading] = useState(true); 
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -21,57 +18,66 @@ const OfferLetterSigningPage = ({ token }) => {
   const hasBeenSigned = documentData?.status === 'Signed';
 
   useEffect(() => {
-    if (token && !user) { // If token is passed and user isn't logged in
+    if (token && !user) {
         setIsAccessModalOpen(true);
         setLoading(false);
     } else if (!token) {
         setError('Invalid or missing document token.');
         setLoading(false);
     } else if (token && user) {
-        // Admin is logged in, show error
         setError("Admins cannot sign Offer Letters. Please open this link in an incognito window.");
         setLoading(false);
     }
   }, [token, user]);
 
   const handleAccessGranted = useCallback((data) => {
-    // This is called by AccessModal after a successful login
     if (!data) {
       setError('Access denied. Please check your credentials.');
-      setLoading(false); // Stop loading on error
+      setLoading(false); 
       return;
     }
+    // *** FIX: Check if the pdfUrl is null ***
+    if (!data.pdfUrl) {
+        setError("Login successful, but the document link is missing or invalid. Please contact support.");
+        setLoading(false);
+        return;
+    }
+    // *** END FIX ***
     setDocumentData(data);
     setError('');
     setIsAccessModalOpen(false);
-    setLoading(false); // Stop loading, show document
+    setLoading(false); 
   }, []);
 
   const handleSignSuccess = useCallback((message) => {
     setSuccessMessage(message);
     setIsSigningModalOpen(false);
-    setLoading(true); // Show loading while we refresh the doc
+    setLoading(true); 
     
-    // Refresh the document data to show "Signed" status
-    apiService.employeeSignIn(token, 'post_sign_refresh_token') // Use dummy password
+    apiService.employeeSignIn(token, 'post_sign_refresh_token') 
         .then(response => {
-            if (response.data.success) {
+            if (response.data.success && response.data.documentData.pdfUrl) {
                 setDocumentData(response.data.documentData);
+            } else {
+                 console.error("Could not refresh document status.", response.data.message);
+                 setError("Signature successful, but failed to reload document.");
             }
         })
-        .catch(err => console.error("Could not refresh document status.", err))
+        .catch(err => {
+             console.error("Could not refresh document status.", err);
+             setError("Signature successful, but failed to reload document.");
+        })
         .finally(() => {
             setLoading(false);
             setTimeout(() => setSuccessMessage(''), 4000);
         });
-  }, [token]); // Add token dependency
+  }, [token]);
 
   const handleSign = useCallback(
     async (signerData) => {
       setLoading(true);
       setError('');
       try {
-        // *** FIX: Use the main imported apiService ***
         const response = await apiService.updateOfferLetterStatus(
           token,
           signerData
@@ -83,19 +89,19 @@ const OfferLetterSigningPage = ({ token }) => {
         }
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to sign the document.');
-        setLoading(false); // Stop loading on error
-        throw err; // Re-throw to show error in modal
+        setLoading(false); 
+        throw err; 
       }
     },
-    [token, handleSignSuccess] // Add dependencies
+    [token, handleSignSuccess] 
   );
   
   const openSigningModal = () => {
     setSignerConfig({
       signerType: 'employee',
-      requiresPassword: false, // Candidates don't have a VMS password
+      requiresPassword: false, 
       signerInfo: { name: documentData?.employeeName, title: 'Candidate' },
-      documentUrl: documentData?.pdfUrl // Pass PDF URL
+      documentUrl: documentData?.pdfUrl 
     });
     setIsSigningModalOpen(true);
   };
@@ -143,21 +149,39 @@ const OfferLetterSigningPage = ({ token }) => {
                   <DetailItem label="Employee Name" value={documentData.employeeName} />
                    <DetailItem label="Job Title" value={documentData.jobTitle} />
                   <DetailItem label="Client" value={documentData.clientName} />
-                  {/* Parse date as UTC to prevent timezone shift */}
                   <DetailItem label="Start Date" value={new Date(documentData.startDate + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC' })} />
                   <DetailItem label="Billing Rate" value={`$${documentData.billingRate} ${documentData.term}`} />
                   <DetailItem label="Status" value={documentData.status} />
                  </div>
               </div>
               
+              {/* --- *** IFRAME FIX *** --- */}
+              {/* We check for pdfUrl before rendering the iframe */}
               <div className="border-t">
-                {/* The secure SAS URL will be used here */}
-                <iframe src={documentData.pdfUrl} title="Offer Letter Preview" className="w-full h-[80vh] border-0" />
+                {documentData.pdfUrl ? (
+                    <iframe 
+                        // Add a `key` to force re-render when the URL changes (e.g., after signing)
+                        key={documentData.pdfUrl} 
+                        src={documentData.pdfUrl} 
+                        title="Offer Letter Preview" 
+                        className="w-full h-[80vh] border-0" 
+                    />
+                ) : (
+                    <div className="w-full h-[80vh] flex items-center justify-center bg-gray-100">
+                        <p className="text-red-600 font-semibold">Could not load document preview. The link is missing.</p>
+                    </div>
+                )}
               </div>
+              {/* --- *** END IFRAME FIX *** --- */}
 
               <div className="p-6 sm:p-10 border-t">
+                {/* Disable sign button if document is missing or already signed */}
                 {!hasBeenSigned ? (
-                  <button onClick={openSigningModal} className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-7VMS700 font-semibold shadow-md transition-all">
+                  <button 
+                    onClick={openSigningModal} 
+                    className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold shadow-md transition-all disabled:bg-gray-400"
+                    disabled={!documentData.pdfUrl} 
+                  >
                     Sign and Accept Offer
                    </button>
                 ) : (
@@ -176,8 +200,6 @@ const OfferLetterSigningPage = ({ token }) => {
         onClose={() => { if (!documentData) setError("Access is required to view this document.") }}
         onAccessGranted={handleAccessGranted}
         token={token}
-        // *** THIS IS THE CRITICAL FIX ***
-        // It now correctly passes the imported apiService.employeeSignIn
         apiServiceMethod={apiService.employeeSignIn} 
         vendorEmail={"the email address on file"}
       />
@@ -189,7 +211,7 @@ const OfferLetterSigningPage = ({ token }) => {
         signerType={signerConfig.signerType}
         signerInfo={signerConfig.signerInfo}
         requiresPassword={signerConfig.requiresPassword}
-        documentUrl={documentData?.pdfUrl} // Pass the PDF URL
+        documentUrl={documentData?.pdfUrl} 
       />
     </>
   );
