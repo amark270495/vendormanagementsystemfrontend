@@ -3,8 +3,12 @@ import AccessModal from '../components/msa-wo/AccessModal.jsx';
 import SignatureModal from '../components/msa-wo/SignatureModal.jsx';
 import Spinner from '../components/Spinner';
 import { useAuth } from '../context/AuthContext.jsx';
+// *** FIX: Import the REAL apiService ***
 import { apiService } from '../api/apiService.js';
 
+// --- REMOVED THE BROKEN, LOCAL apiService ---
+
+// *** FIX: Accept `token` as a prop ***
 const OfferLetterSigningPage = ({ token }) => { 
   const { user } = useAuth() || {};
   const [documentData, setDocumentData] = useState(null);
@@ -17,7 +21,10 @@ const OfferLetterSigningPage = ({ token }) => {
   const [signerConfig, setSignerConfig] = useState({});
   const hasBeenSigned = documentData?.status === 'Signed';
 
+  // --- REMOVED: useEffect that searched for token, now we use the prop ---
+
   useEffect(() => {
+    // This effect now runs when the `token` prop is ready
     if (token && !user) {
         setIsAccessModalOpen(true);
         setLoading(false);
@@ -25,6 +32,7 @@ const OfferLetterSigningPage = ({ token }) => {
         setError('Invalid or missing document token.');
         setLoading(false);
     } else if (token && user) {
+        // Admin is logged in, show error
         setError("Admins cannot sign Offer Letters. Please open this link in an incognito window.");
         setLoading(false);
     }
@@ -36,13 +44,11 @@ const OfferLetterSigningPage = ({ token }) => {
       setLoading(false); 
       return;
     }
-    // *** FIX: Check if the pdfUrl is null ***
     if (!data.pdfUrl) {
         setError("Login successful, but the document link is missing or invalid. Please contact support.");
         setLoading(false);
         return;
     }
-    // *** END FIX ***
     setDocumentData(data);
     setError('');
     setIsAccessModalOpen(false);
@@ -54,7 +60,8 @@ const OfferLetterSigningPage = ({ token }) => {
     setIsSigningModalOpen(false);
     setLoading(true); 
     
-    apiService.employeeSignIn(token, 'post_sign_refresh_token') 
+    // Refresh document data to show "Signed" status
+    apiService.employeeSignIn(token, 'post_sign_refresh_token') // Use dummy password
         .then(response => {
             if (response.data.success && response.data.documentData.pdfUrl) {
                 setDocumentData(response.data.documentData);
@@ -78,6 +85,7 @@ const OfferLetterSigningPage = ({ token }) => {
       setLoading(true);
       setError('');
       try {
+        // *** FIX: Use the main, imported apiService ***
         const response = await apiService.updateOfferLetterStatus(
           token,
           signerData
@@ -149,18 +157,16 @@ const OfferLetterSigningPage = ({ token }) => {
                   <DetailItem label="Employee Name" value={documentData.employeeName} />
                    <DetailItem label="Job Title" value={documentData.jobTitle} />
                   <DetailItem label="Client" value={documentData.clientName} />
+                  {/* Parse date as UTC to prevent timezone shift */}
                   <DetailItem label="Start Date" value={new Date(documentData.startDate + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC' })} />
                   <DetailItem label="Billing Rate" value={`$${documentData.billingRate} ${documentData.term}`} />
                   <DetailItem label="Status" value={documentData.status} />
                  </div>
               </div>
               
-              {/* --- *** IFRAME FIX *** --- */}
-              {/* We check for pdfUrl before rendering the iframe */}
               <div className="border-t">
                 {documentData.pdfUrl ? (
                     <iframe 
-                        // Add a `key` to force re-render when the URL changes (e.g., after signing)
                         key={documentData.pdfUrl} 
                         src={documentData.pdfUrl} 
                         title="Offer Letter Preview" 
@@ -172,10 +178,8 @@ const OfferLetterSigningPage = ({ token }) => {
                     </div>
                 )}
               </div>
-              {/* --- *** END IFRAME FIX *** --- */}
 
               <div className="p-6 sm:p-10 border-t">
-                {/* Disable sign button if document is missing or already signed */}
                 {!hasBeenSigned ? (
                   <button 
                     onClick={openSigningModal} 
@@ -200,6 +204,8 @@ const OfferLetterSigningPage = ({ token }) => {
         onClose={() => { if (!documentData) setError("Access is required to view this document.") }}
         onAccessGranted={handleAccessGranted}
         token={token}
+        // *** THIS IS THE CRITICAL FIX ***
+        // It now correctly passes the imported apiService.employeeSignIn
         apiServiceMethod={apiService.employeeSignIn} 
         vendorEmail={"the email address on file"}
       />
