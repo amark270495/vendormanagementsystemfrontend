@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-// import axios from 'axios'; // <-- REMOVED
 import AccessModal from '../components/msa-wo/AccessModal.jsx';
 import SignatureModal from '../components/msa-wo/SignatureModal.jsx';
 import Spinner from '../components/Spinner';
 import { useAuth } from '../context/AuthContext.jsx';
-import { apiService } from '../api/apiService.js'; // <-- *** ADDED: Import the REAL apiService ***
+import { usePermissions } from '../hooks/usePermissions.jsx';
+import { apiService } from '../api/apiService.js'; // <-- *** CRITICAL FIX: IMPORT THE REAL APISERVICE ***
 
 // --- REMOVED THE LOCAL, BROKEN apiService ---
 
 // *** FIX: Accept `token` as a prop ***
 const OfferLetterSigningPage = ({ token }) => { 
   const { user } = useAuth() || {};
-  // const [token, setToken] = useState(null); // <-- REMOVED: No longer needed, use prop
   const [documentData, setDocumentData] = useState(null);
   const [loading, setLoading] = useState(true); // Start true
   const [error, setError] = useState('');
@@ -21,9 +20,6 @@ const OfferLetterSigningPage = ({ token }) => {
   const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
   const [signerConfig, setSignerConfig] = useState({});
   const hasBeenSigned = documentData?.status === 'Signed';
-
-  // --- REMOVED: The useEffect that tried to find the token ---
-  // (App.jsx now handles this)
 
   useEffect(() => {
     if (token && !user) { // If token is passed and user isn't logged in
@@ -58,9 +54,7 @@ const OfferLetterSigningPage = ({ token }) => {
     setLoading(true); // Show loading while we refresh the doc
     
     // Refresh the document data to show "Signed" status
-    // We use a dummy password because the backend 'employeeSignIn' doesn't re-check it
-    // if the token is valid and we just need the data.
-    apiService.employeeSignIn(token, 'post_sign_refresh_token') 
+    apiService.employeeSignIn(token, 'post_sign_refresh_token') // Use dummy password
         .then(response => {
             if (response.data.success) {
                 setDocumentData(response.data.documentData);
@@ -158,12 +152,13 @@ const OfferLetterSigningPage = ({ token }) => {
               </div>
               
               <div className="border-t">
+                {/* The secure SAS URL will be used here */}
                 <iframe src={documentData.pdfUrl} title="Offer Letter Preview" className="w-full h-[80vh] border-0" />
               </div>
 
               <div className="p-6 sm:p-10 border-t">
                 {!hasBeenSigned ? (
-                  <button onClick={openSigningModal} className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold shadow-md transition-all">
+                  <button onClick={openSigningModal} className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-7VMS700 font-semibold shadow-md transition-all">
                     Sign and Accept Offer
                    </button>
                 ) : (

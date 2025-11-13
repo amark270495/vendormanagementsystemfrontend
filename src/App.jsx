@@ -16,13 +16,10 @@ const AppContent = () => {
         const path = window.location.pathname;
         const params = new URLSearchParams(window.location.search);
         
-        // --- FIX: Logic now correctly handles both URL formats ---
         if (path.startsWith('/offer-letter/')) {
-            // New routing for Offer Letters (e.g., /offer-letter/TOKEN)
             setToken(path.split('/offer-letter/')[1]);
             setPage('offer_letter_sign');
         } else {
-            // Fallback to check for the old query parameter style for MSA/WO
             const urlToken = params.get('token');
             if (urlToken) {
                  setToken(urlToken);
