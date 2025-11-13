@@ -164,9 +164,7 @@ export const apiService = {
   getAttendance: (params) => // { authenticatedUsername, username?, startDate?, endDate?, month?, year? }
     apiClient.get('/getAttendance', { params }),
 
-  // --- THIS IS THE FIX ---
   // This 'getHolidays' function correctly calls GET /api/getHolidays
-  // Your 404 error was from an old build that was calling GET /api/manageHoliday
   getHolidays: (params) => // { authenticatedUsername, year? }
     apiClient.get('/getHolidays', { params }),
   
@@ -181,12 +179,12 @@ export const apiService = {
     }
   },
   
-  // *** This just GETS data for one user ***
+  // This just GETS data for one user
   calculateMonthlyAttendance: (params) => { // { authenticatedUsername, username, month, details? }
     return apiClient.get('/calculateMonthlyAttendance', { params: params });
   },
 
-  // *** NEW: Endpoint for the consolidated report ***
+  // NEW: Endpoint for the consolidated report
   sendConsolidatedReport: (payload) => { // { authenticatedUsername, month }
     return apiClient.post('/sendConsolidatedReport', payload);
   },
