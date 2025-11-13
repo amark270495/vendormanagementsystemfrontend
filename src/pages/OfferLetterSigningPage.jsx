@@ -4,6 +4,7 @@ import AccessModal from '../components/msa-wo/AccessModal.jsx';
 import SignatureModal from '../components/msa-wo/SignatureModal.jsx';
 import Spinner from '../components/Spinner';
 import { useAuth } from '../context/AuthContext.jsx';
+import { usePermissions } from '../hooks/usePermissions.jsx';
 import { apiService } from '../api/apiService.js'; // <-- *** ADDED: Import the REAL apiService ***
 
 // --- REMOVED THE LOCAL, BROKEN apiService ---
@@ -40,6 +41,7 @@ const OfferLetterSigningPage = ({ token }) => {
   }, [token, user]);
 
   const handleAccessGranted = useCallback((data) => {
+    // This is called by AccessModal after a successful login
     if (!data) {
       setError('Access denied. Please check your credentials.');
       setLoading(false); // Stop loading on error
@@ -57,7 +59,9 @@ const OfferLetterSigningPage = ({ token }) => {
     setLoading(true); // Show loading while we refresh the doc
     
     // Refresh the document data to show "Signed" status
-    apiService.employeeSignIn(token, 'post_sign_refresh_token') // Use dummy password
+    // We use a dummy password because the backend 'employeeSignIn' doesn't re-check it
+    // if the token is valid and we just need the data.
+    apiService.employeeSignIn(token, 'post_sign_refresh_token') 
         .then(response => {
             if (response.data.success) {
                 setDocumentData(response.data.documentData);
@@ -75,7 +79,7 @@ const OfferLetterSigningPage = ({ token }) => {
       setLoading(true);
       setError('');
       try {
-        // *** FIX: Use the main apiService ***
+        // *** FIX: Use the main imported apiService ***
         const response = await apiService.updateOfferLetterStatus(
           token,
           signerData
@@ -87,8 +91,8 @@ const OfferLetterSigningPage = ({ token }) => {
         }
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to sign the document.');
-        setLoading(false);
-        throw err;
+        setLoading(false); // Stop loading on error
+        throw err; // Re-throw to show error in modal
       }
     },
     [token, handleSignSuccess] // Add dependencies
@@ -97,7 +101,7 @@ const OfferLetterSigningPage = ({ token }) => {
   const openSigningModal = () => {
     setSignerConfig({
       signerType: 'employee',
-      requiresPassword: false,
+      requiresPassword: false, // Candidates don't have a VMS password
       signerInfo: { name: documentData?.employeeName, title: 'Candidate' },
       documentUrl: documentData?.pdfUrl // Pass PDF URL
     });
@@ -139,19 +143,19 @@ const OfferLetterSigningPage = ({ token }) => {
             </div>
           )}
 
-          {documentData && !error && (
+           {documentData && !error && (
             <div className="bg-white rounded-2xl shadow-2xl mt-6">
               <div className="p-6 sm:p-10">
                 <h2 className="text-xl font-bold text-slate-800 mb-6">Offer Details</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   <DetailItem label="Employee Name" value={documentData.employeeName} />
-                  <DetailItem label="Job Title" value={documentData.jobTitle} />
+                   <DetailItem label="Job Title" value={documentData.jobTitle} />
                   <DetailItem label="Client" value={documentData.clientName} />
                   {/* Parse date as UTC to prevent timezone shift */}
                   <DetailItem label="Start Date" value={new Date(documentData.startDate + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC' })} />
                   <DetailItem label="Billing Rate" value={`$${documentData.billingRate} ${documentData.term}`} />
                   <DetailItem label="Status" value={documentData.status} />
-                </div>
+                 </div>
               </div>
               
               <div className="border-t">
@@ -162,12 +166,12 @@ const OfferLetterSigningPage = ({ token }) => {
                 {!hasBeenSigned ? (
                   <button onClick={openSigningModal} className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold shadow-md transition-all">
                     Sign and Accept Offer
-                  </button>
+                   </button>
                 ) : (
                   <div className="w-full text-center p-4 bg-green-50 text-green-700 rounded-lg font-semibold">
                     This offer letter has been signed. A final copy has been sent to your email.
                   </div>
-                )}
+                 )}
               </div>
             </div>
           )}
@@ -181,7 +185,7 @@ const OfferLetterSigningPage = ({ token }) => {
         token={token}
         // *** THIS IS THE CRITICAL FIX ***
         // It now correctly passes the imported apiService.employeeSignIn
-        apiServiceMethod={apiService.employeeSignIn}
+        apiServiceMethod={apiService.employeeSignIn} 
         vendorEmail={"the email address on file"}
       />
 
