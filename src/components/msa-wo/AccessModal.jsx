@@ -22,7 +22,8 @@ const AccessModal = ({ isOpen, onClose, onAccessGranted, token, vendorEmail, api
             const response = await methodToCall(token, tempPassword);
             if (response.data.success) {
                 onAccessGranted(response.data.documentData);
-                onClose();
+                // onClose(); // <-- *** THIS LINE WAS THE BUG. IT IS NOW REMOVED. ***
+                // The onAccessGranted handler in OfferLetterSigningPage will now close the modal.
             } else {
                 setError(response.data.message);
             }
