@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { useAuth } from './context/AuthContext';
-import { usePermissions } from './hooks/usePermissions';
-import { apiService } from './api/apiService';
-import Spinner from './components/Spinner';
+import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
+import { apiService } from '../api/apiService';
+import Spinner from '../components/Spinner';
 
 const JobPostingFormPage = ({ onFormSubmit }) => {
     const { user } = useAuth();
@@ -31,39 +31,74 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         { name: 'Work Position Type', id: 'workPositionType', type: 'select', required: true, options: ['Hybrid', 'Remote', 'Onsite'], half: true },
         { name: 'Required Skill Set', id: 'requiredSkillSet', type: 'textarea', required: true, full: true },
         { name: 'Any Required Certificates', id: 'anyRequiredCertificates', type: 'textarea', full: true },
-    ], [postingFromOptions]); // Added postingFromOptions as dependency
+    ], [postingFromOptions]);
 
+    // --- NEW: Updated skill list ---
     const allSkills = [
         'Java', 'SQL', 'P-SQL', 'Git', 'Agile', 'Scrum', 'API testing', 'Postman', 'Rest Client', 
         'Playwright', 'Selenium', 'Cypress', 'Gherkin', 'JMeter', 'LoadRunner', 'Oracle', 
         'SQL Server', 'Azure DevOps', 'ADA Compliance', 'AccVerify', 'JAWS', 'SADLC', 
         'Mobile App testing', 'iOS', 'Android', 'Eclipse', 'Selenium WebDriver', 'TestNG', 
-        'RESTAssured', 'APIRequestContext'
+        'RESTAssured', 'APIRequestContext', 'Oracle EBS', 'PL/SQL', 'Oracle API', 'Oracle Forms', 
+        'Workflows', 'XML Publisher', 'TOAD', 'Business Analyst', 'Microsoft Project', 'Medicaid',
+        'PEMS'
     ];
 
+    // --- NEW: Updated parsing logic to handle all formats ---
     const handleParseText = () => {
         let text = rawText;
         let parsedData = {};
 
-        const extract = (regex) => (text.match(regex) || [])[1]?.trim() || '';
+        // Helper function to try multiple regex patterns and return the first match
+        const extract = (patterns) => {
+            for (const pattern of patterns) {
+                const match = text.match(pattern);
+                if (match && (match[1] || match[2])) { // Check group 1 or 2
+                    return (match[1] || match[2]).trim();
+                }
+            }
+            return '';
+        };
 
-        parsedData['Posting ID'] = extract(/(?:Job Id:|\()\s*(\d{6,})[)\s]/i);
-        parsedData['Posting Title'] = extract(/(.+?)\s*\(\d{6,}\)/i);
-        parsedData['Client Name'] = extract(/State Name:\s*(.+)/i);
-        parsedData['Max Submissions'] = extract(/Max Submittals by Vendor:\s*(\d+)/i);
-        parsedData['Work Location'] = extract(/Worksite Address:\s*(.+)/i);
+        parsedData['Posting ID'] = extract([
+            /(?:Job Id:|\()\s*(\d{6,})[)\s]/i, // Format 1 & 2 (ID in parens)
+            /Solicitation Reference Number:\s*(\d+)/i // Format 3
+        ]);
+        
+        parsedData['Posting Title'] = extract([
+            /(.+?)\s*\(\d{6,}\)/i, // Format 1 & 2 (Title before parens)
+            /Working Title:\s*(.+)/i // Format 3
+        ]);
 
-        const workArrangement = extract(/Work Arrangement:\s*(Hybrid|Remote|Onsite)/i);
-        if (workArrangement) {
-            parsedData['Work Position Type'] = workArrangement;
-        }
+        parsedData['Client Name'] = extract([
+            /State Name:\s*(.+)/i, // Format 1 & 2
+            /Client Info\s*(.+)/i // Format 3
+        ]);
 
-        const rateMatch = text.match(/(?:C 2 C|C2C)\s*(\d+(\.\d{1,2})?)/i);
+        parsedData['Max Submissions'] = extract([
+            /Max Submittals by Vendor:\s*(\d+)/i, // Format 1 & 2
+            /^Max\s+(\d+)\s*$/im // Format 3 (multiline mode)
+        ]);
+
+        parsedData['Work Location'] = extract([
+            /Worksite Address:\s*(.+)/i, // Format 1 & 2
+            /Work Location\s*(.+)/i // Format 3
+        ]);
+
+        parsedData['Work Position Type'] = extract([
+            /Work Arrangement:?\s*(Hybrid|Remote|Onsite)/i // All formats
+        ]);
+
+        // C2C Rate Logic
+        const rateMatch = text.match(/(?:C 2 C|C2C)\s*(\d+(\.\d{1,2})?)\s*\$ Per Hr/i) || // Format 1 & 2
+                          text.match(/NTE Rate:?\s*(\d+(\.\d{1,2})?)/i); // Format 3
         if (rateMatch) {
-            parsedData['Max C2C Rate'] = `$${rateMatch[1]}/hr`;
+            // rateMatch[1] will be from the first regex, rateMatch[3] from the second
+            parsedData['Max C2C Rate'] = `$${rateMatch[1] || rateMatch[3]}/hr`;
         }
 
-        const dateMatch = text.match(/Last Date For Submission\s*(\d{2}-\d{2}-\d{4})/i);
+        // Date Logic
+        const dateMatch = text.match(/(?:Last Date For Submission|Dead Line)\s*(\d{2}-\d{2}-\d{4})/i); // All formats
         if (dateMatch) {
             try {
                 const [m, d, y] = dateMatch[1].split('-');
@@ -73,24 +108,27 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
             }
         }
 
+        // Posting From (Client Name mapping) - This logic is still robust
         if (parsedData['Client Name']) {
             const clientName = parsedData['Client Name'].toLowerCase();
             const matchedOption = postingFromOptions.find(option => 
-                clientName.includes(option.toLowerCase())
+                // Handles "State of Texas", "Texas(HHSC)", "State of New Jersey" etc.
+                clientName.includes(option.toLowerCase().replace('state of ', ''))
             );
             if (matchedOption) {
                 parsedData['Posting From'] = matchedOption;
             }
         }
 
-        const mustHaveText = (text.split(/Must Have/i)[1] || '').split(/Nice to Have/i)[0] || '';
-        const niceToHaveText = (text.split(/Nice to Have/i)[1] || '');
-
+        // --- NEW: Simplified Skill Finding ---
+        // Just find all skills from the dictionary anywhere in the text
         const findSkills = (skillText, skillList) => {
             const found = new Set();
             if (!skillText) return [];
             for (const skill of skillList) {
-                const regex = new RegExp(`\\b${skill.replace('.', '\\.')}\\b`, 'gi');
+                // Create a regex to find the skill as a whole word, case-insensitive
+                // Escape special characters like '.'
+                const regex = new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
                 if (skillText.match(regex)) {
                     found.add(skill);
                 }
@@ -98,20 +136,13 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
             return [...found];
         };
 
-        const mustHaveSkills = findSkills(mustHaveText, allSkills).join(', ');
-        const niceToHaveSkills = findSkills(niceToHaveText, allSkills).join(', ');
+        const allFoundSkills = findSkills(text, allSkills).join(', ');
+        if (allFoundSkills.length > 0) {
+            parsedData['Required Skill Set'] = allFoundSkills;
+        }
+        // --- End Simplified Skill Finding ---
 
-        let skillSetString = '';
-        if (mustHaveSkills.length > 0) {
-            skillSetString += `> **Must Have:** ${mustHaveSkills}`;
-        }
-        if (niceToHaveSkills.length > 0) {
-            skillSetString += `\n\n> **Nice to Have:** ${niceToHaveSkills}`;
-        }
-        if (skillSetString) {
-            parsedData['Required Skill Set'] = skillSetString;
-        }
-
+        // Set posting date to today
         parsedData['Posting Date'] = new Date().toISOString().split('T')[0];
 
         setFormData(prev => ({ ...prev, ...parsedData }));
