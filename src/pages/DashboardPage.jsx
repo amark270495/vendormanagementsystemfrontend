@@ -165,7 +165,7 @@ const DashboardPage = ({ sheetKey }) => {
         'Max Submissions': 'w-25',
         'Max C2C Rate': 'w-25',
         'Client Info': 'w-30',
-        'Required Skill Set': 'w-69',
+        'Required Skill Set': 'w-64',
         'Any Required Certificates': 'w-30',
         'Work Position Type': 'w-23',
         'Working By': 'w-28',
@@ -176,7 +176,7 @@ const DashboardPage = ({ sheetKey }) => {
         '2nd Candidate Name': 'w-25',
         '3rd Candidate Name': 'w-25',
         'Status': 'w-25',
-        'Actions': 'w-10'
+        'Actions': 'w-15'
     }), []);
 
     const userPrefs = useMemo(() => {
