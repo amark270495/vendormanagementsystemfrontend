@@ -33,23 +33,80 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         { name: 'Any Required Certificates', id: 'anyRequiredCertificates', type: 'textarea', full: true },
     ], [postingFromOptions]);
 
-    // --- NEW: Updated skill list ---
-    const allSkills = [
-        'Java', 'SQL', 'P-SQL', 'Git', 'Agile', 'Scrum', 'API testing', 'Postman', 'Rest Client', 
-        'Playwright', 'Selenium', 'Cypress', 'Gherkin', 'JMeter', 'LoadRunner', 'Oracle', 
-        'SQL Server', 'Azure DevOps', 'ADA Compliance', 'AccVerify', 'JAWS', 'SADLC', 
-        'Mobile App testing', 'iOS', 'Android', 'Eclipse', 'Selenium WebDriver', 'TestNG', 
-        'RESTAssured', 'APIRequestContext', 'Oracle EBS', 'PL/SQL', 'Oracle API', 'Oracle Forms', 
-        'Workflows', 'XML Publisher', 'TOAD', 'Business Analyst', 'Microsoft Project', 'Medicaid',
-        'PEMS'
-    ];
+    // --- NEW: Heuristic Skill Parser ---
 
-    // --- NEW: Updated parsing logic to handle all formats ---
+    // 1. A small list of common lowercase/simple skills to explicitly look for
+    const CORE_SKILLS = new Set([
+        'sql', 'p-sql', 'pl/sql', 'git', 'agile', 'scrum', 'java', 'ios', 'android',
+        'oracle', 'medicaid', 'pems', 'toad', 'api', 'saas'
+    ]);
+
+    // 2. A list of common English/fluff words to ignore
+    const SKILL_BLOCK_LIST = new Set([
+        'Description', 'Services', 'Required', 'Desired', 'Experience', 'Years', 'Client',
+        'State', 'Vendor', 'Project', 'Management', 'Process', 'System', 'Systems', 'Software',
+        'Applications', 'Development', 'Skills', 'Skillset', 'Skill', 'Sets', 'Test', 'Testing',
+        'Analyst', 'Analysis', 'Business', 'Support', 'Address', 'Submission', 'Submittals',
+        'Date', 'Name', 'Title', 'Work', 'Level', 'Category', 'Full', 'Time', 'Rate', 'Info',
+        'Arrangement', 'Location', 'Interview', 'Type', 'Phone', 'Through', 'Microsoft', 'Teams',
+        'Max', 'Dead', 'Line', 'Commission', 'Candidate', 'Candidates', 'General', 'Qualifications',
+        'Document', 'Products', 'Hire', 'Property', 'Texas', 'May', 'Include', 'Pre-selection',
+        'Requirements', 'Potential', 'Vendors', 'Their', 'Submit', 'Satisfy', 'Criminal',
+        'Background', 'Checks', 'Authorized', 'Law', 'Will', 'Pay', 'Fees', 'Interviews',
+        'Discussions', 'Which', 'Occur', 'During', 'Selecting', 'Reviews', 'Analyzes',
+        'Evaluates', 'User', 'Needs', 'Formulates', 'Parallel', 'Overall', 'Strategies',
+        'Experienced', 'Reengineering', 'Identifying', 'New', 'Technology', 'Problems', 'Make',
+        'More', 'Effective', 'Familiar', 'Industry', 'Standard', 'Mapping', 'Prepares',
+        'Solution', 'Options', 'Risk', 'Identification', 'Financial', 'Analyses', 'Such',
+        'Cost/Benefit', 'Roi', 'Buy/Build', 'Etc', 'Writes', 'Detailed', 'Functions',
+        'Steps', 'Modify', 'Computer', 'Programs', 'Automation', 'Unit', 'Within', 'Medicaid',
+        'Chip', 'Department', 'Oversees', 'Partnership', 'Tmhp', 'Related', 'Activities',
+        'Provides', 'Oversight', 'Ltc', 'Program', 'Supports', 'Providers', 'Delivered',
+        'Individuals', 'Modifications', 'Updates', 'Encounter', 'Data', 'Mco', 'File',
+        'Coordination', 'Needed', 'Legislatively', 'Approved', 'Provider', 'Enrollment',
+        'Pems', 'Centralized', 'Electronic', 'Method', 'Non-medicaid', 'Interested', 'Enrolling',
+        'Single', 'Web', 'Portal', 'Accepted', 'Processed', 'Entity', 'Based', 'National',
+        'Identifier', 'Npi', 'Hhsc', 'Would', 'Like', 'Make', 'Significant', 'Changes',
+        'Improve', 'Functionality', 'Worker', 'Will', 'Serve', 'Owner', 'Internal', 'Units',
+        'Technical', 'Sprint', 'Teams', 'Users', 'Provide', 'Subject', 'Matter', 'Expertise',
+        'Perform', 'Critical', 'Ensure', 'Gathered', 'Meet', 'Functional', 'Assist',
+        'Creating', 'Maintaining', 'Prioritized', 'Healthy', 'Backlog', 'Directed',
+        'Legislative', 'Mandate', 'Responsible', 'Delivering', 'Quality', 'Meet', 'State\'s',
+        'Desired', 'Operational', 'Considerable', 'Latitude', 'Use', 'Judgement',
+        'Successful', 'Completion', 'Assigned', 'Tasks', 'Required', 'Multi-task',
+        'Analyze', 'Priorities', 'Communicate', 'Clearly', 'Set', 'Expectations', 'Phases',
+        'Communicating', 'Multiple', 'Internal', 'External', 'Stakeholders', 'Including',
+        'Program', 'Staff', 'Contracted', 'Vendor', 'Resources', 'Participate', 'Meetings',
+        'Track', 'Deliverables', 'Schedules', 'Alert', 'Any', 'Issues', 'Impact',
+        'Following', 'Policies', 'Procedures', 'Determine', 'Impact', 'Areas',
+        'Design', 'Plans', 'Assessment', 'Solicit', 'Document', 'Processes', 'Acts',
+        'Liaison', 'Between', 'Staff', 'Translate', 'Serves', 'Agile', 'Team',
+        'Working', 'Scrum', 'Implement', 'Changes', 'Writes', 'User', 'Stories',
+        'Acceptance', 'Criteria', 'According', 'Methodology', 'Develops', 'Maintains',
+        'Scenarios', 'Participates', 'Acceptance', 'Creates', 'Use', 'Case',
+        'Accurately', 'Map', 'Back', 'Documented', 'Executes', 'Cases', 'Formal',
+        'Tool', 'Tracks', 'Reports', 'Status', 'Evaluates', 'Proposed', 'Strategies',
+        'Ensure', 'Appropriate', 'Coverage', 'Identifies', 'Mitigation', 'Reports',
+        'Established', 'Timelines', 'Action', 'Items', 'Decisions', 'Conducts',
+        'Presentation', 'Manages', 'Schedule', 'Other', 'Duties', 'Assigned', 'Related',
+        'Minimum', 'Exceed', 'Stated', 'Displayed', 'Customers', 'Chosen', 'Opportunity',
+        'Oral', 'Interacting', 'End', 'Gather', 'Validate', 'Solutions', 'Satisfy',
+        'Performing', 'Review', 'Approval', 'Complex', 'Technical', 'User', 'System',
+        'Requirements', 'Written', 'Coordinating', 'Developing', 'Exit', 'Executing',
+        'Detailed', 'Within', 'Environment', 'Using', 'Similar', 'Approving',
+        'Prioritizing', 'Based', 'Stakeholder', 'Feedback', 'Knowledge', 'Claims',
+        'Processing', 'From', 'And', 'The', 'For', 'With', 'In', 'On', 'An', 'Or',
+        'As', 'Be', 'Of', 'To', 'Is', 'It'
+    ]);
+
+
     const handleParseText = () => {
         let text = rawText;
+        if (!text) return;
+
         let parsedData = {};
 
-        // Helper function to try multiple regex patterns and return the first match
+        // --- Step 1: Parse simple fields (same as before) ---
         const extract = (patterns) => {
             for (const pattern of patterns) {
                 const match = text.match(pattern);
@@ -60,93 +117,89 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
             return '';
         };
 
-        parsedData['Posting ID'] = extract([
-            /(?:Job Id:|\()\s*(\d{6,})[)\s]/i, // Format 1 & 2 (ID in parens)
-            /Solicitation Reference Number:\s*(\d+)/i // Format 3
-        ]);
-        
-        parsedData['Posting Title'] = extract([
-            /(.+?)\s*\(\d{6,}\)/i, // Format 1 & 2 (Title before parens)
-            /Working Title:\s*(.+)/i // Format 3
-        ]);
+        parsedData['Posting ID'] = extract([/(?:Job Id:|\()\s*(\d{6,})[)\s]/i, /Solicitation Reference Number:\s*(\d+)/i]);
+        parsedData['Posting Title'] = extract([/(.+?)\s*\(\d{6,}\)/i, /Working Title:\s*(.+)/i]);
+        parsedData['Client Name'] = extract([/State Name:\s*(.+)/i, /Client Info\s*(.+)/i]);
+        parsedData['Max Submissions'] = extract([/Max Submittals by Vendor:\s*(\d+)/i, /^Max\s+(\d+)\s*$/im]);
+        parsedData['Work Location'] = extract([/Worksite Address:\s*(.+)/i, /Work Location\s*(.+)/i]);
+        parsedData['Work Position Type'] = extract([/Work Arrangement:?\s*(Hybrid|Remote|Onsite)/i]);
 
-        parsedData['Client Name'] = extract([
-            /State Name:\s*(.+)/i, // Format 1 & 2
-            /Client Info\s*(.+)/i // Format 3
-        ]);
-
-        parsedData['Max Submissions'] = extract([
-            /Max Submittals by Vendor:\s*(\d+)/i, // Format 1 & 2
-            /^Max\s+(\d+)\s*$/im // Format 3 (multiline mode)
-        ]);
-
-        parsedData['Work Location'] = extract([
-            /Worksite Address:\s*(.+)/i, // Format 1 & 2
-            /Work Location\s*(.+)/i // Format 3
-        ]);
-
-        parsedData['Work Position Type'] = extract([
-            /Work Arrangement:?\s*(Hybrid|Remote|Onsite)/i // All formats
-        ]);
-
-        // C2C Rate Logic
-        const rateMatch = text.match(/(?:C 2 C|C2C)\s*(\d+(\.\d{1,2})?)\s*\$ Per Hr/i) || // Format 1 & 2
-                          text.match(/NTE Rate:?\s*(\d+(\.\d{1,2})?)/i); // Format 3
+        const rateMatch = text.match(/(?:C 2 C|C2C)\s*(\d+(\.\d{1,2})?)\s*\$ Per Hr/i) || text.match(/NTE Rate:?\s*(\d+(\.\d{1,2})?)/i);
         if (rateMatch) {
-            // rateMatch[1] will be from the first regex, rateMatch[3] from the second
             parsedData['Max C2C Rate'] = `$${rateMatch[1] || rateMatch[3]}/hr`;
         }
 
-        // Date Logic
-        const dateMatch = text.match(/(?:Last Date For Submission|Dead Line)\s*(\d{2}-\d{2}-\d{4})/i); // All formats
+        const dateMatch = text.match(/(?:Last Date For Submission|Dead Line)\s*(\d{2}-\d{2}-\d{4})/i);
         if (dateMatch) {
             try {
                 const [m, d, y] = dateMatch[1].split('-');
                 parsedData['Last Submission Date'] = `${y}-${m}-${d}`;
-            } catch (e) {
-                console.error("Could not parse date: ", dateMatch[1]);
-            }
+            } catch (e) { console.error("Could not parse date: ", dateMatch[1]); }
         }
 
-        // Posting From (Client Name mapping) - This logic is still robust
         if (parsedData['Client Name']) {
             const clientName = parsedData['Client Name'].toLowerCase();
-            const matchedOption = postingFromOptions.find(option => 
-                // Handles "State of Texas", "Texas(HHSC)", "State of New Jersey" etc.
-                clientName.includes(option.toLowerCase().replace('state of ', ''))
-            );
+            const matchedOption = postingFromOptions.find(option => clientName.includes(option.toLowerCase().replace('state of ', '')));
             if (matchedOption) {
                 parsedData['Posting From'] = matchedOption;
             }
         }
-
-        // --- NEW: Simplified Skill Finding ---
-        // Just find all skills from the dictionary anywhere in the text
-        const findSkills = (skillText, skillList) => {
-            const found = new Set();
-            if (!skillText) return [];
-            for (const skill of skillList) {
-                // Create a regex to find the skill as a whole word, case-insensitive
-                // Escape special characters like '.'
-                const regex = new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-                if (skillText.match(regex)) {
-                    found.add(skill);
-                }
-            }
-            return [...found];
-        };
-
-        const allFoundSkills = findSkills(text, allSkills).join(', ');
-        if (allFoundSkills.length > 0) {
-            parsedData['Required Skill Set'] = allFoundSkills;
-        }
-        // --- End Simplified Skill Finding ---
-
-        // Set posting date to today
+        
         parsedData['Posting Date'] = new Date().toISOString().split('T')[0];
 
+        // --- Step 2: Heuristic Skill Extraction ---
+        try {
+            // This regex finds:
+            // 1. Multi-word capitalized phrases (e.g., "SAP BusinessObjects", "Microsoft Graph API")
+            // 2. Single capitalized words ("Genesys", "Java")
+            // 3. Acronyms ("SADLC", "CME")
+            // 4. Skills with dots or hyphens ("Node.js", "On-Prem")
+            const skillRegex = /\b([A-Z][a-zA-Z\d\.-]+(?:\s+[A-Z][a-zA-Z\d\.-]+)*)\b/g;
+            let foundSkills = new Set();
+            
+            // Add all regex matches
+            const matches = text.match(skillRegex) || [];
+            matches.forEach(skill => {
+                // Clean suffixes like 's' or ',' or ':'
+                const cleanSkill = skill.replace(/[s,:()]$/, '').trim();
+                if (cleanSkill.length > 1 && !SKILL_BLOCK_LIST.has(cleanSkill)) {
+                    foundSkills.add(cleanSkill);
+                }
+            });
+
+            // Add all core (lowercase) skills
+            CORE_SKILLS.forEach(skill => {
+                // Find core skills as whole words, case-insensitive
+                const coreRegex = new RegExp(`\\b${skill}\\b`, 'gi');
+                if (text.match(coreRegex)) {
+                    // Find the capitalized version first if it exists
+                    const capitalizedVersion = [...foundSkills].find(s => s.toLowerCase() === skill);
+                    if (!capitalizedVersion) {
+                        foundSkills.add(skill);
+                    }
+                }
+            });
+
+            // Filter out any remaining block list items (case-insensitive)
+            let finalSkills = [...foundSkills].filter(skill => {
+                return !SKILL_BLOCK_LIST.has(skill.toLowerCase()) && skill.length > 1;
+            });
+
+            if (finalSkills.length > 0) {
+                parsedData['Required Skill Set'] = finalSkills.join(', ');
+            } else {
+                parsedData['Required Skill Set'] = 'Could not auto-detect skills. Please review manually.';
+            }
+        } catch (e) {
+            console.error("Skill parsing error:", e);
+            parsedData['Required Skill Set'] = 'Error parsing skills. Please review manually.';
+        }
+
+        // --- Step 3: Set all data ---
         setFormData(prev => ({ ...prev, ...parsedData }));
     };
+    // --- END: Heuristic Skill Parser ---
+
 
     const handleChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -191,9 +244,9 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
             {/* --- Job Description Parser --- */}
             {canAddPosting && (
                 <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border space-y-4">
-                    <h2 className="text-xl font-semibold text-gray-800">Paste to Parse</h2>
+                    <h2 className="text-xl font-semibold text-gray-800">Paste to Parse (Smart)</h2>
                     <p className="text-sm text-gray-600">
-                        Paste the full job description text below and click "Parse" to automatically fill the form fields.
+                        Paste the full job description text below. The parser will attempt to find all fields and technical skills automatically.
                     </p>
                     <textarea
                         rows="8"
@@ -235,7 +288,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
                                         {field.name} {field.required && <span className="text-red-500">*</span>}
                                     </label>
                                     {field.type === 'textarea' ? (
-                                        <textarea name={field.name} id={field.id} value={formData[field.name] || ''} onChange={handleChange} required={field.required} rows="4" className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                                        <textarea name={field.name} id={field.id} value={formData[field.name] || ''} onChange={handleChange} required={field.required} rows={field.name === 'Required Skill Set' ? 8 : 4} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
                                     ) : field.type === 'select' ? (
                                         <select name={field.name} id={field.id} value={formData[field.name] || ''} onChange={handleChange} required={field.required} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 h-[42px] focus:ring-indigo-500 focus:border-indigo-500">
                                             <option value="">Select an option</option>
