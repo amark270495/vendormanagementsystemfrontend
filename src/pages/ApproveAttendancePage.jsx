@@ -3,27 +3,15 @@ import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
-// NEW: Import the modal we will create
-import AttendanceApprovalModal from '../components/admin/AttendanceApprovalModal'; // Adjust path as needed
+import AttendanceApprovalModal from '../components/admin/AttendanceApprovalModal'; 
 
 // Helper to group requests by username
 const groupRequestsByUser = (requests) => {
-    // Ensure requests is an array
-    if (!Array.isArray(requests)) {
-        console.error("groupRequestsByUser received non-array:", requests);
-        return {};
-    }
+    if (!Array.isArray(requests)) return {};
     return requests.reduce((acc, req) => {
-        // *** Add safety check for username ***
         const username = req?.username;
-        if (!username) {
-            console.warn("Skipping request with missing username:", req);
-            return acc;
-        }
-        // *** End safety check ***
-        if (!acc[username]) {
-            acc[username] = [];
-        }
+        if (!username) return acc;
+        if (!acc[username]) acc[username] = [];
         acc[username].push(req);
         return acc;
     }, {});
@@ -33,113 +21,97 @@ const ApproveAttendancePage = () => {
     const { user } = useAuth();
     const { canApproveAttendance } = usePermissions();
 
-    // Store the raw list and the grouped list
-    const [allPendingRequests, setAllPendingRequests] = useState([]);
-    const [groupedRequests, setGroupedRequests] = useState({});
+    const [allUsers, setAllUsers] = useState([]); // List of all users for the admin to view
+    const [pendingRequests, setPendingRequests] = useState([]); // Raw pending requests
+    const [groupedPending, setGroupedPending] = useState({}); // Grouped by user
+    
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [success, setSuccess] = useState(''); // Keep for potential success messages after modal actions
+    const [success, setSuccess] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
 
-    // State for the user-specific calendar modal
+    // State for the modal
     const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
     const [selectedUsername, setSelectedUsername] = useState(null);
-    // Remove states related to direct action confirmation from this page
-    // const [actionLoading, setActionLoading] = useState(false); // Action loading is handled inside modal
 
+    // 1. Fetch All Users (for the list)
+    const fetchUsers = useCallback(async () => {
+        try {
+            const response = await apiService.getUsers(user.userIdentifier);
+            if (response.data.success) {
+                setAllUsers(response.data.users);
+            }
+        } catch (err) {
+            console.error("Failed to fetch users:", err);
+        }
+    }, [user.userIdentifier]);
 
-    const loadPendingRequests = useCallback(async () => {
+    // 2. Fetch Pending Requests (for the badges)
+    const fetchPendingRequests = useCallback(async () => {
+        try {
+            // Fetching all attendance for current year to find pending
+            const currentYear = new Date().getFullYear().toString();
+            const result = await apiService.getAttendance({
+                 authenticatedUsername: user.userIdentifier,
+                 year: currentYear
+            });
+
+            if (result.data.success && Array.isArray(result.data.attendanceRecords)) {
+                 const pending = result.data.attendanceRecords.filter(r => r.status === 'Pending');
+                 setPendingRequests(pending);
+                 setGroupedPending(groupRequestsByUser(pending));
+            }
+        } catch (err) {
+             console.error("Failed to fetch pending requests:", err);
+             setError("Could not load pending requests.");
+        }
+    }, [user.userIdentifier]);
+
+    const loadData = useCallback(async () => {
         if (!user?.userIdentifier || !canApproveAttendance) {
             setLoading(false);
             setError("You do not have permission to approve attendance.");
             return;
         }
         setLoading(true);
-        setError(''); // Clear previous errors
-        try {
-            // WORKAROUND: Still fetching all for the year
-            const currentYear = new Date().getFullYear().toString();
-            console.log(`ApproveAttendance: Fetching all attendance for year ${currentYear} to find pending requests.`); // Log
-
-            // *** Fetching ALL users' attendance - Requires Admin permissions on backend ***
-            // *** Ensure backend getAttendance allows fetching without specific 'username' if admin ***
-            const result = await apiService.getAttendance({
-                 authenticatedUsername: user.userIdentifier,
-                 // No specific 'username' parameter to get all (if backend supports)
-                 year: currentYear
-            });
-            console.log("ApproveAttendance: API response:", result); // Log
-
-            if (result.data.success && Array.isArray(result.data.attendanceRecords)) {
-                 // Filter for pending status client-side
-                 const pending = (result.data.attendanceRecords || []).filter(r => r.status === 'Pending');
-                 console.log(`ApproveAttendance: Found ${pending.length} pending requests.`); // Log
-                 setAllPendingRequests(pending); // Store the raw list
-                 const grouped = groupRequestsByUser(pending); // Group them
-                 console.log(`ApproveAttendance: Grouped requests:`, grouped); // Log grouped data
-                 setGroupedRequests(grouped);
-                 if(pending.length === 0){
-                      setError("No pending attendance requests found for the current year."); // Use error state for info message
-                 } else {
-                     setError(''); // Clear error if requests are found
-                 }
-            } else {
-                 setError(result.data.message || "Failed to fetch attendance data.");
-                 setAllPendingRequests([]);
-                 setGroupedRequests({});
-            }
-        } catch (err) {
-             console.error("ApproveAttendance: Fetch error:", err); // Log full error
-             setError(err.response?.data?.message || 'Failed to fetch pending attendance requests.');
-            setAllPendingRequests([]);
-            setGroupedRequests({});
-        } finally {
-            setLoading(false);
-        }
-    }, [user?.userIdentifier, canApproveAttendance]);
+        await Promise.all([fetchUsers(), fetchPendingRequests()]);
+        setLoading(false);
+    }, [user?.userIdentifier, canApproveAttendance, fetchUsers, fetchPendingRequests]);
 
     useEffect(() => {
-        loadPendingRequests();
-    }, [loadPendingRequests]);
+        loadData();
+    }, [loadData]);
 
-    // Filter the *grouped* requests based on username search
-    const filteredUsernames = useMemo(() => {
-        const usernames = Object.keys(groupedRequests);
-        if (!searchTerm) return usernames;
+    // Filter users based on search
+    const filteredUsers = useMemo(() => {
+        if (!searchTerm) return allUsers;
         const lowerSearch = searchTerm.toLowerCase();
-        // Ensure usernames are valid strings before calling toLowerCase
-        return usernames.filter(username => typeof username === 'string' && username.toLowerCase().includes(lowerSearch));
-    }, [groupedRequests, searchTerm]);
+        return allUsers.filter(u => 
+            (u.displayName && u.displayName.toLowerCase().includes(lowerSearch)) ||
+            (u.username && u.username.toLowerCase().includes(lowerSearch))
+        );
+    }, [allUsers, searchTerm]);
 
-    // Function to open the calendar modal for a specific user
     const handleUserClick = (username) => {
-         console.log("User clicked:", username); // Log username being selected
-         if (username && username !== 'undefined') { // Add check for 'undefined' string
+         if (username) {
             setSelectedUsername(username);
             setIsCalendarModalOpen(true);
-         } else {
-             console.error("Attempted to open modal for invalid username:", username);
-             setError("Cannot open details for an invalid user entry.");
          }
     };
 
-    // Callback for the modal to signal that data needs refreshing
     const handleApprovalComplete = () => {
-        setIsCalendarModalOpen(false); // Close modal
+        setIsCalendarModalOpen(false); 
         setSelectedUsername(null);
-        setSuccess('Attendance action completed successfully.'); // Show success message
-        loadPendingRequests(); // Reload the list of pending requests
-        setTimeout(() => setSuccess(''), 3000); // Clear message after delay
+        setSuccess('Attendance action completed successfully.');
+        fetchPendingRequests(); // Reload only the pending count
+        setTimeout(() => setSuccess(''), 3000);
     };
 
-    // --- Render ---
-
-    if (loading) { // Show loader only during initial load
+    if (loading) {
         return <div className="flex justify-center items-center h-64"><Spinner size="12" /></div>;
     }
 
-    // Show access denied if permission check failed (and not loading)
-    if (!loading && !canApproveAttendance) {
+    if (!canApproveAttendance) {
         return (
             <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
                 <h3 className="text-lg font-medium">Access Denied</h3>
@@ -152,65 +124,74 @@ const ApproveAttendancePage = () => {
         <>
             <div className="space-y-6">
                  <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Approve Attendance</h1>
-                    <p className="mt-1 text-gray-600">Select a user to view their pending attendance requests on a calendar.</p>
+                    <h1 className="text-3xl font-bold text-gray-900">Attendance Management</h1>
+                    <p className="mt-1 text-gray-600">View user calendars and approve pending requests.</p>
                 </div>
 
-                {/* Display error/success messages */}
-                {/* Show error only if modal is NOT open, to avoid duplicate messages */}
                 {error && !isCalendarModalOpen && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded animate-shake">{error}</div>}
                 {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded animate-fadeIn">{success}</div>}
 
-                {/* Search Bar */}
                 <div className="bg-white p-4 rounded-xl shadow border border-gray-100 flex justify-end">
                     <input
                         type="text"
-                        placeholder="Search by username..."
+                        placeholder="Search users..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full sm:w-72 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                     />
                 </div>
 
-                {/* User List */}
                 <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
                     <div className="overflow-x-auto">
-                        {/* Render list only if not loading */}
-                        {!loading && filteredUsernames.length > 0 ? (
+                        {filteredUsers.length > 0 ? (
                              <ul className="divide-y divide-gray-200">
-                                {filteredUsernames.map(username => (
-                                    <li key={username}
-                                        className="flex items-center justify-between py-4 px-5 hover:bg-gray-50 cursor-pointer transition-colors"
-                                        onClick={() => handleUserClick(username)} // Pass username directly
-                                    >
-                                        <span className="font-medium text-gray-900">{username}</span>
-                                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                            {groupedRequests[username]?.length || 0} Pending
-                                        </span>
-                                    </li>
-                                ))}
+                                {filteredUsers.map(u => {
+                                    const pendingCount = groupedPending[u.username]?.length || 0;
+                                    return (
+                                        <li key={u.username}
+                                            className="flex items-center justify-between py-4 px-5 hover:bg-gray-50 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+                                                    {u.displayName?.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-gray-900">{u.displayName}</p>
+                                                    <p className="text-xs text-gray-500">{u.username}</p>
+                                                </div>
+                                                {pendingCount > 0 && (
+                                                    <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                        {pendingCount} Pending Request{pendingCount !== 1 ? 's' : ''}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => handleUserClick(u.username)}
+                                                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition shadow-sm"
+                                            >
+                                                View Calendar
+                                            </button>
+                                        </li>
+                                    );
+                                })}
                             </ul>
-                        ) : !loading && !error ? ( // Show only if not loading and no fetch error
-                             <p className="text-center text-gray-500 py-10">No users with pending attendance requests found.</p>
-                        ) : null /* Don't show "No users" if there was a fetch error or still loading */
-                        }
+                        ) : (
+                             <p className="text-center text-gray-500 py-10">No users found.</p>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* Render the Calendar Modal */}
-            {/* Ensure selectedUsername is valid before rendering */}
-            {selectedUsername && selectedUsername !== 'undefined' && (
+            {selectedUsername && (
                 <AttendanceApprovalModal
                     isOpen={isCalendarModalOpen}
                     onClose={() => {
                         setIsCalendarModalOpen(false);
                         setSelectedUsername(null);
-                        // Reload data when modal is closed, in case actions were taken
-                        loadPendingRequests();
+                        fetchPendingRequests();
                     }}
                     selectedUsername={selectedUsername}
-                    onApprovalComplete={handleApprovalComplete} // Pass callback
+                    onApprovalComplete={handleApprovalComplete}
                 />
             )}
         </>
