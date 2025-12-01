@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
@@ -6,7 +6,8 @@ import AttendanceCalendar from '../components/profile/AttendanceCalendar';
 import LeaveRequestForm from '../components/profile/LeaveRequestForm';
 import LeaveHistory from '../components/profile/LeaveHistory';
 
-// --- Helper Components & Icons ---
+// --- Helper Components & Icons (Defined Outside) ---
+// This structure prevents the "losing focus" bug during editing.
 const CalendarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
 const QuotaIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
 const RequestIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>;
@@ -17,11 +18,187 @@ const BriefcaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h
 const CakeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 15.25v-4.25a2 2 0 00-2-2H5a2 2 0 00-2 2v4.25a2 2 0 002 2h14a2 2 0 002-2zM6 18v-3M9 18v-3M12 18v-3m3 0v3m3 0v-3m-15-4.5a.75.75 0 100-1.5.75.75 0 000 1.5zM18 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM9 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM15 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM12 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM6 9V6a3 3 0 013-3h6a3 3 0 013 3v3" /></svg>;
 const PhoneIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>;
 const LocationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
+const ShieldIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
 const LinkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" /></svg>;
 const HeartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 015.13-1.424l.89.445.89-.445a4.5 4.5 0 015.13 1.424A4.5 4.5 0 0119.682 11.5a4.5 4.5 0 01-1.424 5.13l-.445.89-.445.89a4.5 4.5 0 01-5.13 1.424A4.5 4.5 0 0112 19.682a4.5 4.5 0 01-1.424-5.13l-.89-.445-.89-.445a4.5 4.5 0 01-1.424-5.13A4.5 4.5 0 014.318 6.318z" /></svg>;
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 const ChevronDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>;
 const ChevronUpIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>;
+
+
+const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUser }) => {
+    const [statusInfo, setStatusInfo] =useState({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: true });
+    const [actionLoading, setActionLoading] = useState(false);
+    const [localError, setLocalError] = useState('');
+    const [localSuccess, setLocalSuccess] = useState('');
+
+    const todayDateString = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(new Date());
+
+    const fetchStatusForDate = useCallback(async (dateString) => {
+        if (!authUser?.userIdentifier || !dateString) {
+            setStatusInfo({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: false });
+            return;
+        }
+        setStatusInfo(prev => ({ ...prev, isLoading: true }));
+        setLocalError('');
+        setLocalSuccess('');
+
+        try {
+            const dateObj = new Date(dateString + 'T00:00:00Z');
+            const dayOfWeek = dateObj.getUTCDay();
+            const year = dateString.substring(0, 4);
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+            const [attendanceRes, holidayRes, leaveRes] = await Promise.all([
+                apiService.getAttendance({ authenticatedUsername: authUser.userIdentifier, username: authUser.userIdentifier, startDate: dateString, endDate: dateString })
+                    .catch(err => { console.error("Attendance fetch error:", err); return null; }),
+                apiService.getHolidays({ authenticatedUsername: authUser.userIdentifier, year: year })
+                    .catch(err => { console.error("Holiday fetch error:", err); return null; }),
+                apiService.getLeaveRequests({ authenticatedUsername: authUser.userIdentifier, targetUsername: authUser.userIdentifier, statusFilter: 'Approved', startDateFilter: dateString, endDateFilter: dateString })
+                    .catch(err => { console.error("Leave fetch error:", err); return null; })
+            ]);
+
+            let status = null;
+            let requestedStatus = null;
+            let isHoliday = false;
+            let isOnLeave = false;
+            let holidayDescription = '';
+
+            if (holidayRes?.data?.success && Array.isArray(holidayRes.data.holidays)) {
+                 const holiday = holidayRes.data.holidays.find(h => h.date === dateString);
+                 if (holiday) {
+                     isHoliday = true;
+                     holidayDescription = holiday.description;
+                     status = 'Holiday';
+                 }
+            }
+
+            if (leaveRes?.data?.success && Array.isArray(leaveRes.data.requests) && leaveRes.data.requests.length > 0) {
+                 isOnLeave = true;
+                 status = 'On Leave';
+            }
+
+            if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendanceRecords) && attendanceRes.data.attendanceRecords.length > 0) {
+                const record = attendanceRes.data.attendanceRecords[0];
+                 if (status === null && !isWeekend) {
+                     status = record.status;
+                     requestedStatus = record.requestedStatus || null;
+                 } else if (record.status === 'Pending' && status === null && !isWeekend) {
+                     status = 'Pending';
+                     requestedStatus = record.requestedStatus || null;
+                 }
+            }
+
+            if (status === null && isWeekend) {
+                 status = 'Weekend';
+            }
+
+            setStatusInfo({
+                status: status,
+                requestedStatus: requestedStatus,
+                isHoliday: isHoliday,
+                isOnLeave: isOnLeave,
+                isWeekend: isWeekend,
+                isLoading: false,
+                holidayDescription: holidayDescription
+            });
+
+        } catch (err) {
+            console.error(`Error fetching status for ${dateString}:`, err);
+            setLocalError(`Failed to load status for ${dateString}.`);
+            setStatusInfo({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: false });
+        }
+    }, [authUser]);
+
+    useEffect(() => {
+        fetchStatusForDate(selectedDate);
+    }, [selectedDate, fetchStatusForDate]);
+
+    const handleMark = async (requested) => {
+        setActionLoading(true);
+        setLocalError('');
+        setLocalSuccess('');
+        try {
+            await onMarkAttendance(selectedDate, requested);
+            fetchStatusForDate(selectedDate);
+            setLocalSuccess(`Attendance request for ${formatDateDisplay(selectedDate)} submitted.`);
+             setTimeout(() => setLocalSuccess(''), 4000);
+        } catch (err) {
+            setLocalError(err.message || "Failed to submit request.");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const canMarkSelectedDate = !statusInfo.isLoading && !actionLoading && !statusInfo.isWeekend && !statusInfo.isHoliday && !statusInfo.isOnLeave && statusInfo.status !== 'Present' && statusInfo.status !== 'Absent' && statusInfo.status !== 'Rejected';
+    const isFutureDate = selectedDate > todayDateString;
+
+    const formatDateDisplay = (dateStr) => {
+        return new Date(dateStr + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
+
+    return (
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl shadow-md border border-indigo-100 text-center">
+            <div className="mb-4">
+                <label htmlFor="attendanceDate" className="block text-sm font-medium text-gray-700 mb-1">Select Date:</label>
+                <input
+                    type="date"
+                    id="attendanceDate"
+                    value={selectedDate}
+                    onChange={(e) => onDateChange(e.target.value)}
+                    max={todayDateString}
+                    className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+            </div>
+            <p className="text-sm font-medium text-indigo-800 mb-3">
+                Status for {formatDateDisplay(selectedDate)}
+            </p>
+            <div className="min-h-[40px] flex justify-center items-center mb-4">
+                {statusInfo.isLoading ? (
+                    <Spinner size="8" />
+                ) : statusInfo.status ? (
+                    <span className={`px-4 py-2 text-base font-bold rounded-full shadow-sm ${
+                        statusInfo.status === 'Present' ? 'bg-green-100 text-green-800 ring-1 ring-green-200' :
+                        statusInfo.status === 'Absent' || statusInfo.status === 'Rejected' ? 'bg-red-100 text-red-800 ring-1 ring-red-200' :
+                        statusInfo.status === 'On Leave' ? 'bg-purple-100 text-purple-800 ring-1 ring-purple-200' :
+                        statusInfo.status === 'Pending' ? 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-200' :
+                        'bg-gray-100 text-gray-700 ring-1 ring-gray-200'
+                    }`}>
+                        {statusInfo.status === 'Pending' ? `Pending (${statusInfo.requestedStatus})` : statusInfo.status}
+                        {statusInfo.isHoliday ? ` (${statusInfo.holidayDescription})` : ''}
+                    </span>
+                ) : (
+                    <span className="text-base text-gray-500 italic font-semibold">Not Marked</span>
+                )}
+            </div>
+             {canMarkSelectedDate && !isFutureDate && (
+                 <div className="mt-4 space-x-3 flex justify-center">
+                     <button
+                         onClick={() => handleMark('Present')}
+                         className="px-5 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 shadow transition disabled:opacity-50"
+                         disabled={actionLoading}
+                    >
+                        {actionLoading ? <Spinner size="4" /> : 'Mark Present'}
+                     </button>
+                     <button
+                         onClick={() => handleMark('Absent')}
+                         className="px-5 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 shadow transition disabled:opacity-50"
+                         disabled={actionLoading}
+                    >
+                         {actionLoading ? <Spinner size="4" /> : 'Mark Absent'}
+                     </button>
+                 </div>
+            )}
+             {isFutureDate && <p className="mt-4 text-xs text-gray-500">Cannot mark attendance for future dates.</p>}
+             {!canMarkSelectedDate && !isFutureDate && !statusInfo.isLoading && statusInfo.status !== null && (
+                 <p className="mt-4 text-sm text-gray-500">Attendance status is final or not applicable for this date.</p>
+             )}
+             {localError && <p className="mt-4 text-sm text-red-600">{localError}</p>}
+             {localSuccess && <p className="mt-4 text-sm text-green-600">{localSuccess}</p>}
+        </div>
+    );
+};
 
 const formatDateForInput = (dateString) => {
     if (!dateString) return '';
@@ -31,10 +208,12 @@ const formatDateForInput = (dateString) => {
         const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
         return adjustedDate.toISOString().split('T')[0];
     } catch (e) {
+        console.warn("Invalid date for input formatting:", dateString);
         return '';
     }
 };
 
+// Helper for displaying data
 const DetailItem = ({ label, value, icon, isEditing = false, children }) => (
     <div className="space-y-1">
         <label className="text-sm font-medium text-gray-500 flex items-center">
@@ -49,6 +228,9 @@ const DetailItem = ({ label, value, icon, isEditing = false, children }) => (
         )}
     </div>
 );
+
+
+// --- Main ProfilePage Component ---
 
 const ProfilePage = () => {
     const { user, login: updateUserInContext } = useAuth();
@@ -66,11 +248,27 @@ const ProfilePage = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editLoading, setEditLoading] = useState(false);
     const [formData, setFormData] = useState({});
+
+    // --- NEW: State for collapsible section ---
     const [isExpanded, setIsExpanded] = useState(false);
 
+    // Define options for dropdowns
     const employmentTypes = ['Full-Time', 'Part-Time', 'Contractor (C2C)', 'Contractor (1099)'];
     const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
     const relations = ['Spouse', 'Parent', 'Sibling', 'Child', 'Other'];
+
+    const [allUsers, setAllUsers] = useState([]);
+    useEffect(() => {
+        if (isEditing && user?.userIdentifier) {
+            apiService.getUsers(user.userIdentifier)
+                .then(res => {
+                    if (res.data.success) {
+                        setAllUsers(res.data.users.filter(u => u.username !== user.userIdentifier));
+                    }
+                })
+                .catch(err => console.error("Failed to fetch users for 'Reports To' dropdown", err));
+        }
+    }, [isEditing, user?.userIdentifier]);
 
     useEffect(() => {
         if (user) {
@@ -108,16 +306,18 @@ const ProfilePage = () => {
              if (leaveRes.data.success && Array.isArray(leaveRes.data.requests)) {
                  setLeaveHistory(leaveRes.data.requests);
              } else {
+                 console.warn("getLeaveRequests failed:", leaveRes.data?.message);
                  setLeaveHistory([]);
              }
         } catch (err) {
+             console.error("Error fetching leave history:", err);
              setLeaveHistory([]);
         }
     }, [user?.userIdentifier]);
 
     const loadInitialData = useCallback(async () => {
         if (!user?.userIdentifier) {
-            setError("User not identified.");
+            setError("User not identified. Cannot load profile data.");
             setLoading(false);
             return;
         }
@@ -128,11 +328,13 @@ const ProfilePage = () => {
             if (configRes?.data?.success && configRes.data.config) {
                 setLeaveQuota(configRes.data.config);
             } else {
+                 console.warn("Failed to fetch leave quota:", configRes?.data?.message);
                  setLeaveQuota(null);
             }
             await fetchLeaveHistory();
         } catch (err) {
-            setError(`Could not load profile data.`);
+            console.error("Could not load initial profile data:", err);
+            setError(`Could not load initial profile data. Please try again later.`);
             setLeaveQuota(null);
             setLeaveHistory([]);
         } finally {
@@ -157,7 +359,9 @@ const ProfilePage = () => {
                 throw new Error(response.data.message);
             }
         } catch (err) {
-             throw new Error(err.response?.data?.message || err.message);
+             const errorMsg = err.response?.data?.message || err.message || `Failed to submit attendance request.`;
+             console.error("Error in handleMarkAttendance:", errorMsg)
+             throw new Error(errorMsg);
         }
     };
 
@@ -218,6 +422,40 @@ const ProfilePage = () => {
              setEditLoading(false);
         }
     };
+    
+    const handleCancelEdit = () => {
+        setIsEditing(false);
+        if (user) {
+            setFormData({
+                firstName: user.firstName || '',
+                lastName: user.lastName || '',
+                middleName: user.middleName || '',
+                dateOfBirth: formatDateForInput(user.dateOfBirth),
+                dateOfJoining: formatDateForInput(user.dateOfJoining),
+                personalMobileNumber: user.personalMobileNumber || '',
+                currentAddress: user.currentAddress || '',
+                emergencyContactName: user.emergencyContactName || '',
+                emergencyContactPhone: user.emergencyContactPhone || '',
+                emergencyContactRelation: user.emergencyContactRelation || 'Other',
+                bloodGroup: user.bloodGroup || '',
+                employmentType: user.employmentType || 'Full-Time',
+                reportsTo: user.reportsTo || '',
+                workLocation: user.workLocation || '',
+                linkedInProfile: user.linkedInProfile || '',
+            });
+        }
+        setError('');
+        setSuccess('');
+    };
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-[70vh]">
+                <Spinner size="12" />
+                <p className="ml-4 text-gray-600">Loading your profile...</p>
+            </div>
+        );
+    }
 
     const renderEditInput = (name, type = 'text') => (
         <input
@@ -254,40 +492,6 @@ const ProfilePage = () => {
         />
     );
 
-    // --- Calculate Remaining Balance Logic ---
-    const calculateBalance = (typeKey, typeLabel) => {
-        if (!leaveQuota) return { total: 0, used: 0, remaining: 0 };
-        
-        const total = leaveQuota[typeKey] || 0;
-        // typeLabel matches the leaveType string stored in database from LeaveRequestForm
-        const used = leaveHistory
-            .filter(req => req.status === 'Approved' && req.leaveType === typeLabel)
-            .reduce((acc, req) => {
-                // Helper to calculate days between two dates inclusive
-                const start = new Date(req.startDate);
-                const end = new Date(req.endDate);
-                const diffTime = Math.abs(end - start);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
-                return acc + diffDays;
-            }, 0);
-            
-        return { total, used, remaining: total - used };
-    };
-
-    const sickLeave = calculateBalance('sickLeave', 'Sick Leave (SL)');
-    const casualLeave = calculateBalance('casualLeave', 'Casual Leave (CL)');
-    const earnedLeave = calculateBalance('earnedLeave', 'Earned Leave (EL)');
-    const maternityLeave = calculateBalance('maternityLeave', 'Maternity Leave');
-    const paternityLeave = calculateBalance('paternityLeave', 'Paternity Leave');
-    
-    // For LWP and LOP, usually there is no "Quota", just tracking used days. 
-    // But if admin set a limit (quota), we show it. If quota is 0/undefined, we can just show used.
-    // Here we assume quota logic applies if set.
-    const lwp = calculateBalance('lwp', 'Leave Without Pay (LWP)');
-    const lop = calculateBalance('lop', 'Loss of Pay (LOP)');
-
-
-    if (loading) return <div className="flex justify-center items-center h-[70vh]"><Spinner size="12" /></div>;
 
     return (
         <div className="space-y-8">
@@ -309,7 +513,9 @@ const ProfilePage = () => {
              
             <form onSubmit={handleSaveChanges}>
                 <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                    {/* --- ALWAYS VISIBLE SECTION --- */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
+                        {/* 1. Full Name */}
                         <div className="space-y-1">
                             <label className="text-sm font-medium text-gray-500 flex items-center"><UserIcon /> Full Name</label>
                             {isEditing ? (
@@ -322,17 +528,23 @@ const ProfilePage = () => {
                                 <p className="text-xl font-bold text-gray-900">{user?.userName || 'User Name'}</p>
                             )}
                         </div>
+                        {/* 2. Username (Email) */}
                         <DetailItem label="Username (Email)" icon={<UserIcon />} value={user?.userIdentifier} />
+                        {/* 3. Date of Joining */}
                         <DetailItem label="Date of Joining" icon={<CalendarIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfJoining)}>
                             <input type="date" name="dateOfJoining" value={formData.dateOfJoining} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
                         </DetailItem>
+                        {/* 4. Personal Mobile */}
                         <DetailItem label="Personal Mobile" icon={<PhoneIcon />} isEditing={isEditing} value={user?.personalMobileNumber}>
                             {renderEditInput('personalMobileNumber', 'tel')}
                         </DetailItem>
                     </div>
+                    {/* --- END ALWAYS VISIBLE SECTION --- */}
 
+                    {/* --- COLLAPSIBLE SECTION --- */}
                     <div className={`transition-all duration-500 ease-in-out ${isExpanded || isEditing ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
                         <div className="mt-6 pt-6 border-t border-gray-200 space-y-8">
+                            {/* --- Personal & Employment Info --- */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
                                 <DetailItem label="Date of Birth" icon={<CakeIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfBirth)}>
                                     {renderEditInput('dateOfBirth', 'date')}
@@ -359,6 +571,7 @@ const ProfilePage = () => {
                                 </DetailItem>
                             </div>
                             
+                            {/* --- Emergency Contact --- */}
                             <div className="pt-6 mt-6 border-t border-gray-200">
                                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Emergency Contact</h3>
                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
@@ -375,7 +588,10 @@ const ProfilePage = () => {
                             </div>
                         </div>
                     </div>
+                    {/* --- END COLLAPSIBLE SECTION --- */}
 
+
+                    {/* --- NEW: Show More / Show Less Button --- */}
                     {!isEditing && (
                         <div className="mt-4 pt-4 border-t border-gray-200 flex justify-center">
                             <button
@@ -389,18 +605,38 @@ const ProfilePage = () => {
                         </div>
                     )}
 
+                    {/* --- Edit Mode Action Buttons --- */}
                     {isEditing && (
                         <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
-                             <button type="button" onClick={() => setIsEditing(false)} className="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition-colors shadow-sm" disabled={editLoading}>Cancel</button>
-                            <button type="submit" className="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 flex items-center justify-center w-32 transition-colors shadow-md disabled:bg-indigo-400" disabled={editLoading}>{editLoading ? <Spinner size="5" /> : 'Save Changes'}</button>
+                             <button
+                                type="button"
+                                onClick={handleCancelEdit}
+                                className="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition-colors shadow-sm"
+                                disabled={editLoading}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                className="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 flex items-center justify-center w-32 transition-colors shadow-md disabled:bg-indigo-400"
+                                disabled={editLoading}
+                            >
+                                {editLoading ? <Spinner size="5" /> : 'Save Changes'}
+                            </button>
                         </div>
                     )}
                 </div>
             </form>
 
+            {/* --- Attendance & Leave Section (No Changes) --- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
-                    <AttendanceMarker selectedDate={selectedDate} onDateChange={handleDateChange} onMarkAttendance={handleMarkAttendance} authUser={user} />
+                    <AttendanceMarker
+                        selectedDate={selectedDate}
+                        onDateChange={handleDateChange}
+                        onMarkAttendance={handleMarkAttendance}
+                        authUser={user} 
+                    />
                     <div>
                         <h3 className="text-xl font-semibold mb-3 flex items-center"><CalendarIcon /> Attendance Calendar</h3>
                          <AttendanceCalendar initialMonthString={initialMonthString} key={calendarRefreshKey} />
@@ -409,54 +645,14 @@ const ProfilePage = () => {
 
                 <div className="space-y-6">
                     <div className="bg-white p-5 rounded-xl shadow-md border border-gray-100">
-                        <h3 className="text-md font-semibold mb-3 flex items-center text-gray-800"><QuotaIcon /> Annual Leave Balance</h3>
+                        <h3 className="text-md font-semibold mb-3 flex items-center text-gray-800"><QuotaIcon /> Leave Quota (Annual)</h3>
                         {leaveQuota ? (
                             <div className="text-sm space-y-2">
-                                <div className="grid grid-cols-3 font-medium text-gray-500 text-xs uppercase border-b pb-1 mb-1">
-                                    <span>Type</span><span className="text-center">Used / Total</span><span className="text-right">Left</span>
-                                </div>
-                                
-                                <div className="grid grid-cols-3 items-center">
-                                    <span className="text-gray-700 font-medium">Sick (SL)</span>
-                                    <span className="text-center text-gray-600">{sickLeave.used} / {sickLeave.total}</span>
-                                    <span className={`text-right font-bold ${sickLeave.remaining < 0 ? 'text-red-600' : 'text-blue-600'}`}>{sickLeave.remaining}</span>
-                                </div>
-                                <div className="grid grid-cols-3 items-center">
-                                    <span className="text-gray-700 font-medium">Casual (CL)</span>
-                                    <span className="text-center text-gray-600">{casualLeave.used} / {casualLeave.total}</span>
-                                    <span className={`text-right font-bold ${casualLeave.remaining < 0 ? 'text-red-600' : 'text-blue-600'}`}>{casualLeave.remaining}</span>
-                                </div>
-                                <div className="grid grid-cols-3 items-center">
-                                    <span className="text-gray-700 font-medium">Earned (EL)</span>
-                                    <span className="text-center text-gray-600">{earnedLeave.used} / {earnedLeave.total}</span>
-                                    <span className={`text-right font-bold ${earnedLeave.remaining < 0 ? 'text-red-600' : 'text-blue-600'}`}>{earnedLeave.remaining}</span>
-                                </div>
-                                <div className="grid grid-cols-3 items-center">
-                                    <span className="text-gray-700 font-medium">Maternity</span>
-                                    <span className="text-center text-gray-600">{maternityLeave.used} / {maternityLeave.total}</span>
-                                    <span className={`text-right font-bold ${maternityLeave.remaining < 0 ? 'text-red-600' : 'text-blue-600'}`}>{maternityLeave.remaining}</span>
-                                </div>
-                                <div className="grid grid-cols-3 items-center">
-                                    <span className="text-gray-700 font-medium">Paternity</span>
-                                    <span className="text-center text-gray-600">{paternityLeave.used} / {paternityLeave.total}</span>
-                                    <span className={`text-right font-bold ${paternityLeave.remaining < 0 ? 'text-red-600' : 'text-blue-600'}`}>{paternityLeave.remaining}</span>
-                                </div>
-                                
-                                <div className="border-t pt-2 mt-2">
-                                    <div className="grid grid-cols-3 items-center">
-                                        <span className="text-gray-700 font-medium">LWP</span>
-                                        <span className="text-center text-gray-600">{lwp.used} used</span>
-                                        <span className="text-right text-gray-400">-</span>
-                                    </div>
-                                    <div className="grid grid-cols-3 items-center">
-                                        <span className="text-gray-700 font-medium">LOP</span>
-                                        <span className="text-center text-gray-600">{lop.used} used</span>
-                                        <span className="text-right text-gray-400">-</span>
-                                    </div>
-                                </div>
+                                <p className="flex justify-between"><span>Sick Leave:</span> <span className="font-bold text-blue-700">{leaveQuota.sickLeave ?? 'N/A'} days</span></p>
+                                <p className="flex justify-between"><span>Casual Leave:</span> <span className="font-bold text-blue-700">{leaveQuota.casualLeave ?? 'N/A'} days</span></p>
                             </div>
                         ) : (
-                            <p className="text-sm text-gray-500 italic">Leave quotas not configured.</p>
+                            <p className="text-sm text-gray-500 italic">Leave quotas not set.</p>
                         )}
                     </div>
                     <div className="bg-white p-5 rounded-xl shadow-md border border-gray-100">
