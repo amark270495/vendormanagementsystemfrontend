@@ -30,7 +30,7 @@ const Dropdown = ({ trigger, children, width = '48' }) => {
     }, []);
 
     return (
-        <div className="relative" ref={node}>
+        <div className="relative inline-block text-left z-50" ref={node}>
             {/* The trigger element. Clicking it toggles the dropdown's visibility. */}
             <div onClick={() => setIsOpen(!isOpen)}>
                 {trigger}
@@ -39,8 +39,8 @@ const Dropdown = ({ trigger, children, width = '48' }) => {
             {/* The dropdown menu, which is rendered conditionally based on the `isOpen` state. */}
             {isOpen && (
                 <div 
-                    className={`absolute right-0 mt-2 w-${width} bg-white rounded-md shadow-lg z-20 py-1`}
-                    // Clicking inside the dropdown content will also close it.
+                    className={`absolute right-0 mt-2 w-${width} bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none py-1`}
+                    // Clicking inside the dropdown content will also close it (optional, depends on UX)
                     onClick={() => setIsOpen(false)}
                 >
                     {children}

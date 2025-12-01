@@ -17,7 +17,7 @@ import 'jspdf-autotable';
 // --- SVG Icons ---
 const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
 
-// *** NEW: MultiSelectDropdown Component ***
+// *** MultiSelectDropdown Component ***
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -72,7 +72,6 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
                 </span>
             </button>
             {isOpen && (
-                // *** FIX: Changed 'w-full' to 'min-w-full w-auto' and positioned with 'right-0' ***
                 <div className="absolute z-20 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto min-w-full w-auto">
                     <ul>
                         <li
@@ -109,8 +108,6 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
         </div>
     );
 };
-// *** END MultiSelectDropdown Component ***
-
 
 const DASHBOARD_CONFIGS = {
     'ecaltVMSDisplay': { title: 'Eclat VMS' },
@@ -135,16 +132,21 @@ const REMARKS_OPTIONS = [
     'No Resumes Found'
 ];
 
-
 const DashboardPage = ({ sheetKey }) => {
     const { user, updatePreferences } = useAuth();
-    const { canEditDashboard, canViewDashboards, canAddPosting, canEmailReports } = usePermissions(); 
+    const { canEditDashboard, canViewDashboards } = usePermissions(); 
 
     const [rawData, setRawData] = useState({ header: [], rows: [] });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+    // ** Default Sorting: Posting Date from Old to New (Ascending) **
+    const [sortConfig, setSortConfig] = useState({ key: 'Posting Date', direction: 'ascending' });
+    
+    // ** Pagination State **
+    const [batchSize, setBatchSize] = useState(15);
+    const [visibleCount, setVisibleCount] = useState(15);
+
     const [generalFilter, setGeneralFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [columnFilters, setColumnFilters] = useState({});
@@ -155,7 +157,6 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
-    // Using your specified column widths
     const colWidths = useMemo(() => ({
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
@@ -202,6 +203,8 @@ const DashboardPage = ({ sheetKey }) => {
             const result = await apiService.getDashboardData(sheetKey, user.userIdentifier);
             if (result.data.success) {
                 setRawData({ header: result.data.header, rows: result.data.rows });
+                // ** Reset visible count to batch size when data reloads or sheet changes **
+                setVisibleCount(batchSize); 
             } else {
                 setError(result.data.message);
             }
@@ -210,7 +213,7 @@ const DashboardPage = ({ sheetKey }) => {
         } finally {
             setLoading(false);
         }
-    }, [sheetKey, user.userIdentifier]);
+    }, [sheetKey, user.userIdentifier, batchSize]);
 
     useEffect(() => {
         const fetchRecruiters = async () => {
@@ -220,7 +223,7 @@ const DashboardPage = ({ sheetKey }) => {
                     const recruitmentRoles = ['Recruitment Team', 'Recruitment Manager'];
                     const filteredUsers = result.data.users
                         .filter(u => recruitmentRoles.includes(u.backendOfficeRole))
-                        .map(u => u.displayName); // Store just the display names
+                        .map(u => u.displayName); 
                     setRecruiters(filteredUsers);
                 }
             } catch (err) {
@@ -384,16 +387,13 @@ const DashboardPage = ({ sheetKey }) => {
     }, [displayData, sortConfig, generalFilter, statusFilter, displayHeader, columnFilters]);
 
     const handleSort = (key, direction) => setSortConfig({ key, direction });
-    const handleFilterChange = (header, config) => {
-        setColumnFilters(prev => ({...prev, [header]: config}));
-    };
+    const handleFilterChange = (header, config) => setColumnFilters(prev => ({ ...prev, [header]: config }));
 
     const handleCellEdit = (rowIndex, cellIndex, value) => {
         if (!canEditDashboard) return;
         const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
         const headerName = displayHeader[cellIndex];
         
-        // Value from MultiSelect is an array, join it to a string
         const finalValue = Array.isArray(value) ? value.join(', ') : value;
         
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
@@ -406,7 +406,6 @@ const DashboardPage = ({ sheetKey }) => {
             rowKey: postingId,
             changes: Object.entries(changes).reduce((acc, [header, value]) => {
                 if (headerMap[header]) {
-                    // Value is now guaranteed to be a string (e.g., "User A, User B")
                     acc[headerMap[header]] = value;
                 }
                 return acc;
@@ -423,7 +422,6 @@ const DashboardPage = ({ sheetKey }) => {
                     const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
                     if (jobRow) {
                         const jobTitle = jobRow[displayHeader.indexOf('Posting Title')];
-                        // Send email to each person in the list
                         const assignedUsers = changes['Working By'].split(',').map(s => s.trim()).filter(Boolean);
                         for (const assignedUser of assignedUsers) {
                             if (assignedUser !== 'Need To Update') {
@@ -539,6 +537,7 @@ const DashboardPage = ({ sheetKey }) => {
         if (EDITABLE_COLUMNS.includes(headerName)) {
             setEditingCell({ rowIndex, cellIndex });
         } else if (CANDIDATE_COLUMNS.includes(headerName)) {
+            // Note: Use absolute index from filtered data for row data access
             const rowData = filteredAndSortedData[rowIndex];
             const jobInfo = {
                 postingId: rowData[displayHeader.indexOf('Posting ID')],
@@ -561,7 +560,16 @@ const DashboardPage = ({ sheetKey }) => {
         return 'bg-gray-100 text-gray-700';
     };
 
-    // *** REMOVED getHeaderIcon function ***
+    // ** Handlers for Pagination **
+    const handleLoadMore = () => {
+        setVisibleCount(prev => prev + batchSize);
+    };
+
+    const handleBatchSizeChange = (e) => {
+        const val = parseInt(e.target.value);
+        setBatchSize(val);
+        setVisibleCount(val); // Reset view to new batch size
+    };
 
     return (
         <div className="space-y-4">
@@ -649,26 +657,24 @@ const DashboardPage = ({ sheetKey }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredAndSortedData.map((row, rowIndex) => (
+                                {/* ** PAGINATION: Slice the data to show only visible rows ** */}
+                                {filteredAndSortedData.slice(0, visibleCount).map((row, rowIndex) => (
                                     <tr key={row[displayHeader.indexOf('Posting ID')] || rowIndex} className="bg-white border-b border-gray-200 odd:bg-white even:bg-slate-50 hover:bg-indigo-50 transition-colors">
                                         {row.map((cell, cellIndex) => {
                                             const headerName = displayHeader[cellIndex];
                                             const postingId = row[displayHeader.indexOf('Posting ID')];
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                                             
-                                            // *** FIX: Robustly get string value before splitting ***
                                             let selectedWorkingBy = [];
                                             if (headerName === 'Working By') {
                                                 const workingByValue = (unsavedChanges[postingId]?.[headerName] !== undefined
                                                     ? unsavedChanges[postingId][headerName]
                                                     : cell) || "Need To Update";
                                                 
-                                                // Ensure workingByValue is always treated as a string before splitting
                                                 const stringValue = Array.isArray(workingByValue) ? workingByValue.join(', ') : String(workingByValue);
                                                 selectedWorkingBy = stringValue.split(',').map(s => s.trim()).filter(s => s && s !== "Need To Update");
                                                 if (selectedWorkingBy.length === 0) selectedWorkingBy = ["Need To Update"];
                                             }
-                                            // *** END FIX ***
                                             
                                             return (
                                                 <td key={cellIndex} 
@@ -678,7 +684,7 @@ const DashboardPage = ({ sheetKey }) => {
                                                     {isEditing && headerName === 'Working By' && canEditDashboard ? (
                                                         <MultiSelectDropdown
                                                             options={recruiters}
-                                                            selectedNames={selectedWorkingBy} // Pass the array
+                                                            selectedNames={selectedWorkingBy} 
                                                             onBlur={() => setEditingCell(null)}
                                                             onChange={(selectedNames) => {
                                                                 handleCellEdit(rowIndex, cellIndex, selectedNames);
@@ -739,6 +745,39 @@ const DashboardPage = ({ sheetKey }) => {
                             </tbody>
                         </table>
                     </div>
+                </div>
+            )}
+
+            {/* ** Pagination Controls Footer ** */}
+            {!loading && !error && filteredAndSortedData.length > 0 && (
+                <div className="flex justify-between items-center mt-4 bg-gray-50 p-4 rounded-lg border border-gray-200 sticky bottom-0 z-20">
+                    <div className="flex items-center space-x-2">
+                        <label htmlFor="batchSize" className="text-sm font-medium text-gray-700">Rows to load:</label>
+                        <select
+                            id="batchSize"
+                            value={batchSize}
+                            onChange={handleBatchSizeChange}
+                            className="block w-24 border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                            <option value={15}>15</option>
+                            <option value={30}>30</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                            <option value={filteredAndSortedData.length}>All</option>
+                        </select>
+                        <span className="text-sm text-gray-500 ml-2">
+                            Showing {Math.min(visibleCount, filteredAndSortedData.length)} of {filteredAndSortedData.length} entries
+                        </span>
+                    </div>
+                    
+                    {visibleCount < filteredAndSortedData.length && (
+                        <button
+                            onClick={handleLoadMore}
+                            className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors shadow-sm"
+                        >
+                            Load Next {batchSize}
+                        </button>
+                    )}
                 </div>
             )}
             
