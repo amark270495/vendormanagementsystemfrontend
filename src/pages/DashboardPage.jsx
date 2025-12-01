@@ -386,6 +386,17 @@ const DashboardPage = ({ sheetKey }) => {
         return data;
     }, [displayData, sortConfig, generalFilter, statusFilter, displayHeader, columnFilters]);
 
+    // ** Handlers for Pagination **
+    const handleLoadMore = () => {
+        setVisibleCount(prev => prev + batchSize);
+    };
+
+    const handleBatchSizeChange = (e) => {
+        const val = parseInt(e.target.value);
+        setBatchSize(val);
+        setVisibleCount(val); // Reset view to new batch size
+    };
+
     const handleSort = (key, direction) => setSortConfig({ key, direction });
     const handleFilterChange = (header, config) => setColumnFilters(prev => ({ ...prev, [header]: config }));
 
@@ -560,40 +571,14 @@ const DashboardPage = ({ sheetKey }) => {
         return 'bg-gray-100 text-gray-700';
     };
 
-    // ** Handlers for Pagination **
-    const handleLoadMore = () => {
-        setVisibleCount(prev => prev + batchSize);
-    };
-
-    const handleBatchSizeChange = (e) => {
-        const val = parseInt(e.target.value);
-        setBatchSize(val);
-        setVisibleCount(val); // Reset view to new batch size
-    };
-
     return (
         <div className="space-y-4">
             {/* Page Header */}
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
                 <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
-                {/* Save Changes Button */}
-                {canEditDashboard && Object.keys(unsavedChanges).length > 0 && (
-                    <button 
-                        onClick={handleSaveChanges} 
-                        className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold shadow-md transition-all flex items-center justify-center gap-2" 
-                        disabled={loading}
-                    >
-                        {loading ? <Spinner size="5" /> : (
-                            <>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                                Save Changes ({Object.keys(unsavedChanges).length})
-                            </>
-                        )}
-                    </button>
-                )}
             </div>
             
-            {/* Filter Bar */}
+            {/* Filter Bar with Toolbar */}
             <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
                     <input type="text" placeholder="Search all jobs..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-lg px-4 py-2 w-full md:w-64 focus:ring-2 focus:ring-indigo-500 transition"/>
@@ -604,6 +589,22 @@ const DashboardPage = ({ sheetKey }) => {
                     </select>
                 </div>
                 <div className="flex items-center space-x-2 w-full md:w-auto">
+                    {/* Save Changes Button - MOVED HERE */}
+                    {canEditDashboard && Object.keys(unsavedChanges).length > 0 && (
+                        <button 
+                            onClick={handleSaveChanges} 
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold shadow-md transition-all flex items-center justify-center gap-2" 
+                            disabled={loading}
+                        >
+                            {loading ? <Spinner size="4" /> : (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                    Save ({Object.keys(unsavedChanges).length})
+                                </>
+                            )}
+                        </button>
+                    )}
+
                     <Dropdown 
                         trigger={
                             <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-semibold flex items-center justify-center w-full md:w-auto shadow-sm transition border border-gray-300">
