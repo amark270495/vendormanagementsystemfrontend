@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext'; // Import useAuth
+import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../api/apiService';
 import Spinner from '../Spinner';
-import { usePermissions } from '../../hooks/usePermissions'; // Import usePermissions
+import { usePermissions } from '../../hooks/usePermissions';
 
 const LeaveRequestForm = ({ onLeaveRequested }) => {
-    const { user } = useAuth(); // Get user info from context
-    const { canRequestLeave } = usePermissions(); // Get the specific permission
+    const { user } = useAuth();
+    const { canRequestLeave } = usePermissions();
 
     const [formData, setFormData] = useState({
-        leaveType: 'Sick Leave', // Default value
+        leaveType: 'Sick Leave (SL)', // Default value
         startDate: '',
         endDate: '',
         reason: ''
@@ -18,11 +18,21 @@ const LeaveRequestForm = ({ onLeaveRequested }) => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
+    // --- Define Leave Types ---
+    const leaveTypes = [
+        { value: 'Sick Leave (SL)', label: 'Sick Leave (SL)' },
+        { value: 'Casual Leave (CL)', label: 'Casual Leave (CL)' },
+        { value: 'Earned Leave (EL)', label: 'Earned Leave (EL)' },
+        { value: 'Leave Without Pay (LWP)', label: 'Leave Without Pay (LWP)' },
+        { value: 'Loss of Pay (LOP)', label: 'Loss of Pay (LOP)' },
+        { value: 'Maternity Leave', label: 'Maternity Leave' },
+        { value: 'Paternity Leave', label: 'Paternity Leave' }
+    ];
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => {
             const newState = { ...prev, [name]: value };
-            // Ensure end date is not before start date
             if (name === 'startDate' && newState.endDate && newState.endDate < value) {
                 newState.endDate = value;
             }
@@ -35,22 +45,16 @@ const LeaveRequestForm = ({ onLeaveRequested }) => {
         setError('');
         setSuccess('');
 
-        // --- Permission Check ---
         if (!canRequestLeave) {
             setError("You do not have permission to request leave.");
             return;
         }
-        // --- End Permission Check ---
 
-        // --- Authentication Check ---
         if (!user?.userIdentifier) {
             setError("Cannot submit request: User is not properly authenticated.");
             return;
         }
-        // --- End Authentication Check ---
 
-
-        // Basic validation
         if (!formData.startDate || !formData.endDate || !formData.reason.trim()) {
             setError("Please fill in all required fields.");
             return;
@@ -62,20 +66,18 @@ const LeaveRequestForm = ({ onLeaveRequested }) => {
 
         setLoading(true);
         try {
-            // --- FIX: Pass user.userIdentifier ---
             const response = await apiService.requestLeave(formData, user.userIdentifier);
-            // --- End FIX ---
 
             if (response.data.success) {
                 setSuccess(response.data.message);
-                setFormData({ // Clear form
-                    leaveType: 'Sick Leave',
+                setFormData({ 
+                    leaveType: 'Sick Leave (SL)',
                     startDate: '',
                     endDate: '',
                     reason: ''
                 });
                 if (onLeaveRequested) {
-                    onLeaveRequested(); // Notify parent to refresh history
+                    onLeaveRequested();
                 }
                 setTimeout(() => setSuccess(''), 4000);
             } else {
@@ -98,7 +100,6 @@ const LeaveRequestForm = ({ onLeaveRequested }) => {
             {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded text-sm animate-shake">{error}</div>}
             {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded text-sm animate-fadeIn">{success}</div>}
 
-            {/* Render form only if user has permission */}
             {canRequestLeave ? (
                 <>
                     <div>
@@ -111,11 +112,9 @@ const LeaveRequestForm = ({ onLeaveRequested }) => {
                             required
                             className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                         >
-                            <option value="Sick Leave">Sick Leave</option>
-                            <option value="Casual Leave">Casual Leave</option>
-                            <option value="Earned Leave">Earned Leave</option>
-                            <option value="Unpaid Leave">Unpaid Leave</option>
-                            {/* Add other leave types as needed */}
+                            {leaveTypes.map(type => (
+                                <option key={type.value} value={type.value}>{type.label}</option>
+                            ))}
                         </select>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -140,7 +139,7 @@ const LeaveRequestForm = ({ onLeaveRequested }) => {
                                 value={formData.endDate}
                                 onChange={handleChange}
                                 required
-                                min={formData.startDate} // Prevent end date before start date
+                                min={formData.startDate} 
                                 className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                             />
                         </div>

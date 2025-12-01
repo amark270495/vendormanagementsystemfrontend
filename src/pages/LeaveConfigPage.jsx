@@ -8,13 +8,12 @@ const LeaveConfigPage = () => {
     const { user } = useAuth();
     const { canManageLeaveConfig } = usePermissions();
 
-    // Separate states for users and their configs
     const [allUsers, setAllUsers] = useState([]);
-    const [leaveConfigs, setLeaveConfigs] = useState({}); // Store configs mapped by username
+    const [leaveConfigs, setLeaveConfigs] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
-    const [savingStates, setSavingStates] = useState({}); // Track saving state per user row
+    const [savingStates, setSavingStates] = useState({});
 
     // State for editable values in each row
     const [editableConfigs, setEditableConfigs] = useState({});
@@ -46,14 +45,19 @@ const LeaveConfigPage = () => {
                 fetchedUsers.forEach(u => {
                     const config = fetchedConfigsMap[u.username];
                     initialEditable[u.username] = {
-                        sickLeave: config?.sickLeave ?? 0, // Default to 0 if no config
-                        casualLeave: config?.casualLeave ?? 0 // Default to 0 if no config
+                        sickLeave: config?.sickLeave ?? 0,
+                        casualLeave: config?.casualLeave ?? 0,
+                        earnedLeave: config?.earnedLeave ?? 0, // Added
+                        lwp: config?.lwp ?? 0, // Added
+                        lop: config?.lop ?? 0, // Added
+                        maternityLeave: config?.maternityLeave ?? 0, // Added
+                        paternityLeave: config?.paternityLeave ?? 0 // Added
                     };
                 });
                 setEditableConfigs(initialEditable);
 
                  if (fetchedUsers.length === 0) {
-                     setError("No users found in the system to configure."); // More specific message
+                     setError("No users found in the system to configure.");
                  }
 
             } else {
@@ -106,8 +110,7 @@ const LeaveConfigPage = () => {
             const response = await apiService.manageLeaveConfig(
                 {
                     targetUsername: targetUsername,
-                    sickLeave: configData.sickLeave,
-                    casualLeave: configData.casualLeave
+                    ...configData // Send all fields (sick, casual, earned, etc.)
                 },
                 user.userIdentifier
             );
@@ -125,10 +128,6 @@ const LeaveConfigPage = () => {
             }
         } catch (err) {
             setError(err.message || `Failed to save configuration for ${targetUsername}.`);
-             // Optionally revert editable state if save fails?
-             // const originalConfig = leaveConfigs[targetUsername];
-             // if (originalConfig) handleInputChange(targetUsername, 'sickLeave', originalConfig.sickLeave);
-             // if (originalConfig) handleInputChange(targetUsername, 'casualLeave', originalConfig.casualLeave);
         } finally {
             setSavingStates(prev => ({ ...prev, [targetUsername]: false }));
         }
@@ -138,7 +137,6 @@ const LeaveConfigPage = () => {
         return <div className="flex justify-center items-center h-64"><Spinner size="12" /></div>;
     }
 
-    // Show access denied only if loading is finished and permission is false
     if (!loading && !canManageLeaveConfig) {
         return (
             <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
@@ -149,10 +147,10 @@ const LeaveConfigPage = () => {
     }
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border">
+        <div className="bg-white p-6 rounded-xl shadow-sm border overflow-hidden">
             <div className="mb-5">
                 <h2 className="text-xl font-bold text-gray-800">Manage Leave Quotas</h2>
-                <p className="text-sm text-gray-500">Set the annual sick and casual leave allowances for each user.</p>
+                <p className="text-sm text-gray-500">Set the annual leave allowances for each user.</p>
             </div>
 
             {successMessage && (
@@ -171,10 +169,15 @@ const LeaveConfigPage = () => {
                     <table className="w-full text-sm text-left text-gray-600 border-collapse">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10">
                             <tr>
-                                <th scope="col" className="px-4 py-3 border border-gray-200">User</th>
-                                <th scope="col" className="px-4 py-3 border border-gray-200 w-32 text-center">Sick Leaves (Days)</th>
-                                <th scope="col" className="px-4 py-3 border border-gray-200 w-32 text-center">Casual Leaves (Days)</th>
-                                <th scope="col" className="px-4 py-3 border border-gray-200 w-24 text-center">Actions</th>
+                                <th scope="col" className="px-4 py-3 border border-gray-200 min-w-[150px]">User</th>
+                                <th scope="col" className="px-2 py-3 border border-gray-200 w-24 text-center" title="Sick Leave">SL</th>
+                                <th scope="col" className="px-2 py-3 border border-gray-200 w-24 text-center" title="Casual Leave">CL</th>
+                                <th scope="col" className="px-2 py-3 border border-gray-200 w-24 text-center" title="Earned Leave">EL</th>
+                                <th scope="col" className="px-2 py-3 border border-gray-200 w-24 text-center" title="Leave Without Pay">LWP</th>
+                                <th scope="col" className="px-2 py-3 border border-gray-200 w-24 text-center" title="Loss Of Pay">LOP</th>
+                                <th scope="col" className="px-2 py-3 border border-gray-200 w-24 text-center" title="Maternity Leave">ML</th>
+                                <th scope="col" className="px-2 py-3 border border-gray-200 w-24 text-center" title="Paternity Leave">PL</th>
+                                <th scope="col" className="px-4 py-3 border border-gray-200 w-24 text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -182,30 +185,23 @@ const LeaveConfigPage = () => {
                                 <tr key={u.username} className="bg-white border-b hover:bg-gray-50">
                                     <td className="px-4 py-3 font-semibold text-gray-900 border border-gray-200">
                                         {u.displayName}
-                                        <p className="text-xs font-normal text-gray-500">{u.username}</p>
+                                        <p className="text-xs font-normal text-gray-500 truncate max-w-[140px]">{u.username}</p>
                                     </td>
-                                    <td className="px-4 py-3 border border-gray-200">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            value={editableConfigs[u.username]?.sickLeave ?? 0}
-                                            onChange={(e) => handleInputChange(u.username, 'sickLeave', e.target.value)}
-                                            className="w-full p-1 border border-gray-300 rounded text-center focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                                        />
-                                    </td>
-                                    <td className="px-4 py-3 border border-gray-200">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            value={editableConfigs[u.username]?.casualLeave ?? 0}
-                                            onChange={(e) => handleInputChange(u.username, 'casualLeave', e.target.value)}
-                                            className="w-full p-1 border border-gray-300 rounded text-center focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                                        />
-                                    </td>
+                                    {['sickLeave', 'casualLeave', 'earnedLeave', 'lwp', 'lop', 'maternityLeave', 'paternityLeave'].map(field => (
+                                        <td key={field} className="px-2 py-3 border border-gray-200">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={editableConfigs[u.username]?.[field] ?? 0}
+                                                onChange={(e) => handleInputChange(u.username, field, e.target.value)}
+                                                className="w-full p-1 border border-gray-300 rounded text-center focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                            />
+                                        </td>
+                                    ))}
                                     <td className="px-4 py-3 text-center border border-gray-200">
                                         <button
                                             onClick={() => handleSaveConfig(u.username)}
-                                            className="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-xs font-medium disabled:bg-gray-400 w-[60px] h-[30px] flex justify-center items-center"
+                                            className="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-xs font-medium disabled:bg-gray-400 w-full h-[30px] flex justify-center items-center"
                                             disabled={savingStates[u.username]}
                                         >
                                             {savingStates[u.username] ? <Spinner size="4" /> : 'Save'}
@@ -216,7 +212,6 @@ const LeaveConfigPage = () => {
                         </tbody>
                     </table>
                 ) : (
-                    // Display the error message if it's set and there are no users, otherwise generic message
                     <div className="text-center text-gray-500 py-10">
                         {error ? error : "No users found to configure."}
                     </div>
