@@ -23,9 +23,17 @@ const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 const ChevronDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>;
 const ChevronUpIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>;
 
-// --- Attendance Marker Component (Inline) ---
+// --- UPDATED Attendance Marker Component ---
 const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUser }) => {
-    const [statusInfo, setStatusInfo] = useState({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: true });
+    const [statusInfo, setStatusInfo] = useState({ 
+        status: null, 
+        requestedStatus: null, 
+        isHoliday: false, 
+        isOnLeave: false, 
+        isWeekend: false, 
+        isLoading: true,
+        holidayDescription: '' 
+    });
     const [actionLoading, setActionLoading] = useState(false);
     const [localError, setLocalError] = useState('');
     const [localSuccess, setLocalSuccess] = useState('');
@@ -122,7 +130,26 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             setLocalSuccess(`Attendance request for ${formatDateDisplay(selectedDate)} submitted.`);
              setTimeout(() => setLocalSuccess(''), 4000);
         } catch (err) {
-            setLocalError(err.message || "Failed to submit request.");
+            const errorMessage = err.message || "Failed to submit request.";
+            setLocalError(errorMessage);
+            
+            // --- SELF-HEALING UI LOGIC ---
+            // If the backend returns a specific error about leaves or holidays,
+            // we catch it here and update the UI status immediately.
+            if (errorMessage.toLowerCase().includes("approved leave")) {
+                setStatusInfo(prev => ({
+                    ...prev,
+                    status: 'On Leave',
+                    isOnLeave: true
+                }));
+            }
+            else if (errorMessage.toLowerCase().includes("holiday")) {
+                setStatusInfo(prev => ({
+                    ...prev,
+                    status: 'Holiday',
+                    isHoliday: true
+                }));
+            }
         } finally {
             setActionLoading(false);
         }
@@ -160,10 +187,11 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                         statusInfo.status === 'Absent' || statusInfo.status === 'Rejected' ? 'bg-red-100 text-red-800 ring-1 ring-red-200' :
                         statusInfo.status === 'On Leave' ? 'bg-purple-100 text-purple-800 ring-1 ring-purple-200' :
                         statusInfo.status === 'Pending' ? 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-200' :
+                        statusInfo.status === 'Holiday' ? 'bg-pink-100 text-pink-800 ring-1 ring-pink-200' :
                         'bg-gray-100 text-gray-700 ring-1 ring-gray-200'
                     }`}>
                         {statusInfo.status === 'Pending' ? `Pending (${statusInfo.requestedStatus})` : statusInfo.status}
-                        {statusInfo.isHoliday ? ` (${statusInfo.holidayDescription})` : ''}
+                        {statusInfo.isHoliday ? ` (${statusInfo.holidayDescription || 'Holiday'})` : ''}
                     </span>
                 ) : (
                     <span className="text-base text-gray-500 italic font-semibold">Not Marked</span>
@@ -191,7 +219,7 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
              {!canMarkSelectedDate && !isFutureDate && !statusInfo.isLoading && statusInfo.status !== null && (
                  <p className="mt-4 text-sm text-gray-500">Attendance status is final or not applicable for this date.</p>
              )}
-             {localError && <p className="mt-4 text-sm text-red-600">{localError}</p>}
+             {localError && <p className="mt-4 text-sm text-red-600 animate-pulse">{localError}</p>}
              {localSuccess && <p className="mt-4 text-sm text-green-600">{localSuccess}</p>}
         </div>
     );
@@ -538,14 +566,14 @@ const ProfilePage = () => {
                                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Emergency Contact</h3>
                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
                                      <DetailItem label="Contact Name" icon={<UserIcon />} isEditing={isEditing} value={user?.emergencyContactName}>
-                                        {renderEditInput('emergencyContactName')}
-                                     </DetailItem>
-                                     <DetailItem label="Contact Phone" icon={<PhoneIcon />} isEditing={isEditing} value={user?.emergencyContactPhone}>
-                                        {renderEditInput('emergencyContactPhone', 'tel')}
-                                     </DetailItem>
-                                     <DetailItem label="Relation" icon={<UsersIcon />} isEditing={isEditing} value={user?.emergencyContactRelation}>
-                                         {renderEditSelect('emergencyContactRelation', relations)}
-                                     </DetailItem>
+                                         {renderEditInput('emergencyContactName')}
+                                      </DetailItem>
+                                      <DetailItem label="Contact Phone" icon={<PhoneIcon />} isEditing={isEditing} value={user?.emergencyContactPhone}>
+                                         {renderEditInput('emergencyContactPhone', 'tel')}
+                                      </DetailItem>
+                                      <DetailItem label="Relation" icon={<UsersIcon />} isEditing={isEditing} value={user?.emergencyContactRelation}>
+                                           {renderEditSelect('emergencyContactRelation', relations)}
+                                      </DetailItem>
                                  </div>
                             </div>
                         </div>
