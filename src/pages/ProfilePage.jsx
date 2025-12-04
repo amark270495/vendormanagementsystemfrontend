@@ -134,8 +134,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             setLocalError(errorMessage);
             
             // --- SELF-HEALING UI LOGIC ---
-            // If the backend returns a specific error about leaves or holidays,
-            // we catch it here and update the UI status immediately.
             if (errorMessage.toLowerCase().includes("approved leave")) {
                 setStatusInfo(prev => ({
                     ...prev,
@@ -226,17 +224,17 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
 };
 // --- End Attendance Marker Component ---
 
+// --- FIXED: Simplified Date Formatting Logic ---
 const formatDateForInput = (dateString) => {
     if (!dateString) return '';
-    try {
-        const date = new Date(dateString);
-        const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-        const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
-        return adjustedDate.toISOString().split('T')[0];
-    } catch (e) {
-        return '';
+    // If it's a full ISO string (e.g., 2022-07-28T00:00:00Z), take the first 10 chars
+    if (dateString.includes('T')) {
+        return dateString.split('T')[0];
     }
+    // If it's already YYYY-MM-DD or empty, return as is
+    return dateString;
 };
+// -----------------------------------------------
 
 const DetailItem = ({ label, value, icon, isEditing = false, children }) => (
     <div className="space-y-1">
