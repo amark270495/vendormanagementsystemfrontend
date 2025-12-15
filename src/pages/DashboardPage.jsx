@@ -129,7 +129,9 @@ const REMARKS_OPTIONS = [
     'Resume Received',
     'Resume Submitting',
     'Resume Submitted',
-    'No Resumes Found'
+    'No Resumes Found',
+    'Posting Cancelled',
+    'Submission Date Closed'
 ];
 
 const DashboardPage = ({ sheetKey }) => {
