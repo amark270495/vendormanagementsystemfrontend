@@ -15,7 +15,12 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
     
     const [rawText, setRawText] = useState('');
 
-    const postingFromOptions = ['State Of Texas', 'State Of Michigan', 'State of North Carolina', 'State Of New Jersey', 'State Of Georgia', 'State Of Iowa', 'State Of Connecticut', 'State Of Virginia', 'State Of Indiana', 'Virtusa', 'Deloitte'];
+    const postingFromOptions = useMemo(() => [
+        'State Of Texas', 'State Of Michigan', 'State of North Carolina', 
+        'State Of New Jersey', 'State Of Georgia', 'State Of Iowa', 
+        'State Of Connecticut', 'State Of Virginia', 'State Of Indiana', 
+        'Virtusa', 'Deloitte'
+    ], []);
 
     const formFields = useMemo(() => [
         { name: 'Posting ID', id: 'postingId', type: 'text', required: true, half: true },
@@ -38,7 +43,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
     // 1. A small list of common lowercase/simple skills to explicitly look for
     const CORE_SKILLS = new Set([
         'sql', 'p-sql', 'pl/sql', 'git', 'agile', 'scrum', 'java', 'ios', 'android',
-        'oracle', 'medicaid', 'pems', 'toad', 'api', 'saas'
+        'oracle', 'medicaid', 'pems', 'toad', 'api', 'saas', 'gcp', 'aws', 'azure', 'genai', 'ai/ml'
     ]);
 
     // 2. A list of common English/fluff words to ignore
@@ -96,7 +101,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         'Detailed', 'Within', 'Environment', 'Using', 'Similar', 'Approving',
         'Prioritizing', 'Based', 'Stakeholder', 'Feedback', 'Knowledge', 'Claims',
         'Processing', 'From', 'And', 'The', 'For', 'With', 'In', 'On', 'An', 'Or',
-        'As', 'Be', 'Of', 'To', 'Is', 'It'
+        'As', 'Be', 'Of', 'To', 'Is', 'It', 'Cluster', 'Primary'
     ]);
 
 
@@ -106,30 +111,71 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
 
         let parsedData = {};
 
-        // --- Step 1: Parse simple fields (same as before) ---
+        // Helper: Extract using regex with 'm' flag support implicitly via logic
+        // Updated to handle "Key:\nValue" format
         const extract = (patterns) => {
             for (const pattern of patterns) {
                 const match = text.match(pattern);
-                if (match && (match[1] || match[2])) { // Check group 1 or 2
-                    return (match[1] || match[2]).trim();
+                if (match && match[1]) {
+                    return match[1].trim();
                 }
             }
             return '';
         };
 
-        parsedData['Posting ID'] = extract([/(?:Job Id:|\()\s*(\d{6,})[)\s]/i, /Solicitation Reference Number:\s*(\d+)/i]);
-        parsedData['Posting Title'] = extract([/(.+?)\s*\(\d{6,}\)/i, /Working Title:\s*(.+)/i]);
-        parsedData['Client Name'] = extract([/State Name:\s*(.+)/i, /Client Info\s*(.+)/i]);
-        parsedData['Max Submissions'] = extract([/Max Submittals by Vendor:\s*(\d+)/i, /^Max\s+(\d+)\s*$/im]);
-        parsedData['Work Location'] = extract([/Worksite Address:\s*(.+)/i, /Work Location\s*(.+)/i]);
-        parsedData['Work Position Type'] = extract([/Work Arrangement:?\s*(Hybrid|Remote|Onsite)/i]);
+        // --- Step 1: Parse Fields ---
 
-        const rateMatch = text.match(/(?:C 2 C|C2C)\s*(\d+(\.\d{1,2})?)\s*\$ Per Hr/i) || text.match(/NTE Rate:?\s*(\d+(\.\d{1,2})?)/i);
+        // ID: Supports standard 6 digits OR "CREQ" followed by digits
+        // Regex logic: Look for "Job Id" or "Ref", optional newline, then capture CREQxxxx or digits
+        parsedData['Posting ID'] = extract([
+            /(?:Job Id:|Ref No:|Reference Number:?)\s*(?:[\r\n]+)?.*?\b(CREQ\d+|\d{6,})\b/i, 
+            /(?:Job Id:|\()\s*(\d{6,})[)\s]/i, 
+            /Solicitation Reference Number:\s*(\d+)/i
+        ]);
+
+        // Title: 
+        // 1. New Format: "Architect... - (CREQ...)" -> Captures "Architect..."
+        // 2. Old Format: "Title (123456)"
+        parsedData['Posting Title'] = extract([
+            /(?:Job Id:)\s*(?:[\r\n]+)?(.+?)\s*-\s*\(/i, 
+            /(.+?)\s*\(\d{6,}\)/i, 
+            /Working Title:\s*(.+)/i
+        ]);
+
+        // Client Name: Supports explicit "Client Name:" key
+        parsedData['Client Name'] = extract([
+            /Client Name:\s*(?:[\r\n]+)?(.+)/i,
+            /State Name:\s*(.+)/i, 
+            /Client Info\s*(.+)/i
+        ]);
+
+        // Max Submissions
+        parsedData['Max Submissions'] = extract([
+            /Max Submittals by Vendor:\s*(\d+)/i, 
+            /^Max\s+(\d+)\s*$/im
+        ]);
+
+        // Work Location
+        parsedData['Work Location'] = extract([
+            /Worksite Address:?\s*(?:[\r\n]+)?(.+)/i,
+            /Work Location\s*(.+)/i
+        ]);
+
+        // Work Position Type: Handles "Work Arrangement \n Onsite"
+        parsedData['Work Position Type'] = extract([
+            /Work Arrangement:?\s*(?:[\r\n]+)?(Hybrid|Remote|Onsite)/i,
+            /Work Arrangement:?\s*(Hybrid|Remote|Onsite)/i
+        ]);
+
+        // C2C Rate: Handles "C 2 C \n 90"
+        const rateMatch = text.match(/(?:C 2 C|C2C)\s*(?:[\r\n]+)?(\d+(\.\d{1,2})?)\s*\$/i) 
+                       || text.match(/NTE Rate:?\s*(\d+(\.\d{1,2})?)/i);
         if (rateMatch) {
-            parsedData['Max C2C Rate'] = `$${rateMatch[1] || rateMatch[3]}/hr`;
+            parsedData['Max C2C Rate'] = `$${rateMatch[1]}/hr`;
         }
 
-        const dateMatch = text.match(/(?:Last Date For Submission|Dead Line)\s*(\d{2}-\d{2}-\d{4})/i);
+        // Date: Handles "Last Date... \n 01-30-2026"
+        const dateMatch = text.match(/(?:Last Date For Submission|Dead Line)\s*(?:[\r\n]+)?(\d{2}-\d{2}-\d{4})/i);
         if (dateMatch) {
             try {
                 const [m, d, y] = dateMatch[1].split('-');
@@ -137,9 +183,12 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
             } catch (e) { console.error("Could not parse date: ", dateMatch[1]); }
         }
 
+        // Auto-detect "Posting From" based on Client Name
         if (parsedData['Client Name']) {
             const clientName = parsedData['Client Name'].toLowerCase();
-            const matchedOption = postingFromOptions.find(option => clientName.includes(option.toLowerCase().replace('state of ', '')));
+            const matchedOption = postingFromOptions.find(option => 
+                clientName.includes(option.toLowerCase().replace('state of ', ''))
+            );
             if (matchedOption) {
                 parsedData['Posting From'] = matchedOption;
             }
@@ -147,52 +196,64 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         
         parsedData['Posting Date'] = new Date().toISOString().split('T')[0];
 
-        // --- Step 2: Heuristic Skill Extraction ---
+        // --- Step 2: Skill Extraction ---
+        let finalSkills = new Set();
+
+        // 2a. explicit extraction from "Primary Skill" or "Skill Cluster" (New Format Priority)
+        const primarySkillMatch = text.match(/Primary Skill:\s*(?:[\r\n]+)?(.+)/i);
+        const clusterMatch = text.match(/Skill Cluster:\s*(?:[\r\n]+)?(.+)/i);
+        
+        if (primarySkillMatch) {
+            primarySkillMatch[1].split(/,|;|\//).forEach(s => finalSkills.add(s.trim()));
+        }
+        if (clusterMatch) {
+            clusterMatch[1].split(/,|;|\//).forEach(s => finalSkills.add(s.trim()));
+        }
+
+        // 2b. Heuristic Extraction (Fallback & Supplement)
         try {
-            // This regex finds:
-            // 1. Multi-word capitalized phrases (e.g., "SAP BusinessObjects", "Microsoft Graph API")
-            // 2. Single capitalized words ("Genesys", "Java")
-            // 3. Acronyms ("SADLC", "CME")
-            // 4. Skills with dots or hyphens ("Node.js", "On-Prem")
             const skillRegex = /\b([A-Z][a-zA-Z\d\.-]+(?:\s+[A-Z][a-zA-Z\d\.-]+)*)\b/g;
-            let foundSkills = new Set();
+            let foundHeuristicSkills = new Set();
             
             // Add all regex matches
             const matches = text.match(skillRegex) || [];
             matches.forEach(skill => {
-                // Clean suffixes like 's' or ',' or ':'
                 const cleanSkill = skill.replace(/[s,:()]$/, '').trim();
                 if (cleanSkill.length > 1 && !SKILL_BLOCK_LIST.has(cleanSkill)) {
-                    foundSkills.add(cleanSkill);
+                    foundHeuristicSkills.add(cleanSkill);
                 }
             });
 
-            // Add all core (lowercase) skills
+            // Add core (lowercase) skills
             CORE_SKILLS.forEach(skill => {
-                // Find core skills as whole words, case-insensitive
                 const coreRegex = new RegExp(`\\b${skill}\\b`, 'gi');
                 if (text.match(coreRegex)) {
-                    // Find the capitalized version first if it exists
-                    const capitalizedVersion = [...foundSkills].find(s => s.toLowerCase() === skill);
+                    const capitalizedVersion = [...foundHeuristicSkills].find(s => s.toLowerCase() === skill);
                     if (!capitalizedVersion) {
-                        foundSkills.add(skill);
+                        foundHeuristicSkills.add(skill);
                     }
                 }
             });
 
-            // Filter out any remaining block list items (case-insensitive)
-            let finalSkills = [...foundSkills].filter(skill => {
-                return !SKILL_BLOCK_LIST.has(skill.toLowerCase()) && skill.length > 1;
+            // Merge heuristic skills if we didn't find enough explicit ones (arbitrary threshold < 3)
+            // Or just append them all but filter common words.
+            foundHeuristicSkills.forEach(s => {
+                if(!SKILL_BLOCK_LIST.has(s)) finalSkills.add(s);
             });
 
-            if (finalSkills.length > 0) {
-                parsedData['Required Skill Set'] = finalSkills.join(', ');
-            } else {
-                parsedData['Required Skill Set'] = 'Could not auto-detect skills. Please review manually.';
-            }
         } catch (e) {
             console.error("Skill parsing error:", e);
-            parsedData['Required Skill Set'] = 'Error parsing skills. Please review manually.';
+        }
+
+        // Filter blocklist one last time for the final set
+        const cleanedSkills = [...finalSkills].filter(skill => {
+            return !SKILL_BLOCK_LIST.has(skill) && !SKILL_BLOCK_LIST.has(skill.replace(/[:.]/g, '')) && skill.length > 1;
+        });
+
+        if (cleanedSkills.length > 0) {
+            parsedData['Required Skill Set'] = cleanedSkills.join(', ');
+        } else {
+            parsedData['Required Skill Set'] = 'Could not auto-detect skills. Please review manually.';
         }
 
         // --- Step 3: Set all data ---
@@ -251,7 +312,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
                     <textarea
                         rows="8"
                         className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="Paste full job description here..."
+                        placeholder="Paste full job description here (supports Virtusa/State formats)..."
                         value={rawText}
                         onChange={(e) => setRawText(e.target.value)}
                     />
