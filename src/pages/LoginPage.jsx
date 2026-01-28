@@ -4,15 +4,16 @@ import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
-// Eye icon for password visibility toggle (assuming these helpers are defined globally or imported correctly)
-const EyeIcon = ({ size = 5, ...props }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size * 4} height={size * 4} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+// --- Inline Icons for portability ---
+const EyeIcon = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
         <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
         <circle cx="12" cy="12" r="3" />
     </svg>
 );
-const EyeOffIcon = ({ size = 5, ...props }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size * 4} height={size * 4} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+
+const EyeOffIcon = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
         <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
         <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
         <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
@@ -20,6 +21,19 @@ const EyeOffIcon = ({ size = 5, ...props }) => (
     </svg>
 );
 
+const LockIcon = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+    </svg>
+);
+
+const UserIcon = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+    </svg>
+);
 
 const LoginPage = () => {
     const [username, setUsername] = useState('');
@@ -28,6 +42,8 @@ const LoginPage = () => {
     const [loading, setLoading] = useState(false);
     const [isForgotPasswordOpen, setForgotPasswordOpen] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    
+    // Use the actual auth context
     const { login } = useAuth();
 
     const handleSubmit = async (e) => {
@@ -39,30 +55,21 @@ const LoginPage = () => {
             if (response.data.success) {
                 login(response.data);
             } else {
-                // Backend returns 401/404, which is handled as success: false in axios
                 setError(response.data.message);
             }
         } catch (err) {
-            // --- CRITICAL DIAGNOSTIC CODE ---
             console.error("Login API Failure:", err);
-            
             let errorMessage = "An unexpected error occurred. Please try again.";
-            
             if (err.response) {
-                // If the backend returned a structured response (e.g., 401 Unauthorized)
                 if (err.response.data && err.response.data.message) {
                     errorMessage = err.response.data.message;
                 } else if (err.response.status === 500) {
-                    // Internal Server Error usually means the code crashed (e.g., hash fail, typo, bad import).
-                    errorMessage = "Internal Server Error (500). Please check the backend function logs for crash details.";
+                    errorMessage = "Server error. Please contact support.";
                 }
             } else if (err.code === 'ECONNREFUSED') {
-                errorMessage = "Connection Refused. Is the backend function host running?";
+                errorMessage = "Connection refused. Server may be offline.";
             }
-            
             setError(errorMessage);
-            // --- END CRITICAL DIAGNOSTIC CODE ---
-
         } finally {
             setLoading(false);
         }
@@ -70,104 +77,119 @@ const LoginPage = () => {
 
     return (
         <>
-            <div className="min-h-screen bg-slate-100 flex font-inter">
-                <div className="relative hidden lg:flex flex-col justify-center items-center w-1/2 bg-indigo-700 text-white p-12 overflow-hidden">
-                     <div className="absolute -top-20 -right-20 w-72 h-72 bg-indigo-500 rounded-full opacity-50"></div>
-                     <div className="absolute -bottom-24 -left-20 w-80 h-80 bg-indigo-600 rounded-full opacity-40"></div>
-                    <div className="z-10 text-center">
-                         <div className="inline-block bg-white/10 p-4 rounded-full mb-6 backdrop-blur-sm border border-white/20">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                        </div>
-                        <h1 className="text-4xl font-bold tracking-tight">VMS Portal</h1>
-                        <p className="mt-4 text-lg text-indigo-200 max-w-sm">
-                            Streamlining Vendor Management for Peak Efficiency and Collaboration.
-                        </p>
-                    </div>
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 font-inter relative overflow-hidden">
+                {/* Abstract Background Shapes */}
+                <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
+                    <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+                    <div className="absolute -bottom-32 left-20 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
                 </div>
 
-                <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
-                    <div className="w-full max-w-md">
-                        <div className="text-center lg:text-left mb-10">
-                            <h2 className="text-3xl font-extrabold text-slate-800">Welcome Back</h2>
-                            <p className="text-slate-500 mt-2">Please sign in to access your dashboard.</p>
+                <div className="z-10 w-full max-w-md p-6">
+                    <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8 sm:p-12">
+                        {/* Header */}
+                        <div className="text-center mb-10">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-indigo-600 shadow-lg shadow-indigo-500/30 mb-6">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                </svg>
+                            </div>
+                            <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Welcome Back</h2>
+                            <p className="text-gray-500 mt-2 text-sm">Sign in to the Vendor Management System</p>
                         </div>
-                        
+
+                        {/* Error Message */}
                         {error && (
-                            <div className="bg-red-50 border-l-4 border-red-500 text-red-800 p-4 rounded-r-lg mb-6 shadow-md animate-shake" role="alert">
-                                <p className="font-bold">Login Failed</p>
-                                <p>{error}</p>
+                            <div className="mb-6 p-4 rounded-lg bg-red-50 border-l-4 border-red-500 flex items-start animate-shake">
+                                <svg className="w-5 h-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div>
+                                    <h3 className="text-sm font-medium text-red-800">Authentication Failed</h3>
+                                    <p className="text-sm text-red-700 mt-1">{error}</p>
+                                </div>
                             </div>
                         )}
 
+                        {/* Login Form */}
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2" htmlFor="username">
-                                    Username (Email)
+                                <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="username">
+                                    Username / Email
                                 </label>
-                                <div className="relative">
-                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                                    </span>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <UserIcon className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+                                    </div>
                                     <input
-                                        className="block w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
                                         id="username"
-                                        type="email"
+                                        type="text"
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
+                                        className="block w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                                        placeholder="Enter your username"
                                         required
-                                        autoComplete="email"
-                                        placeholder="you@example.com"
+                                        autoComplete="username"
                                     />
                                 </div>
                             </div>
+
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2" htmlFor="password">
-                                    Password
-                                </label>
-                                <div className="relative">
-                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                                    </span>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-semibold text-gray-700" htmlFor="password">
+                                        Password
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setForgotPasswordOpen(true)}
+                                        className="text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors focus:outline-none"
+                                    >
+                                        Forgot Password?
+                                    </button>
+                                </div>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <LockIcon className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+                                    </div>
                                     <input
-                                        className="block w-full pl-10 pr-10 py-3 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
                                         id="password"
                                         type={showPassword ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
+                                        className="block w-full pl-11 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                                        placeholder="••••••••"
                                         required
                                         autoComplete="current-password"
-                                        placeholder="••••••••"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer text-slate-400 hover:text-slate-600"
-                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer focus:outline-none"
                                     >
-                                        {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                                        {showPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                                     </button>
                                 </div>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <div className="text-sm">
-                                    <a href="#" onClick={(e) => { e.preventDefault(); setForgotPasswordOpen(true); }} className="font-medium text-indigo-600 hover:text-indigo-500">
-                                        Forgot your password?
-                                    </a>
-                                </div>
-                            </div>
-                            <div className="pt-2">
-                                <button
-                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg flex justify-center items-center h-12 transition-all duration-300 disabled:bg-indigo-400 shadow-lg hover:shadow-indigo-500/50"
-                                    type="submit"
-                                    disabled={loading}
-                                >
-                                    {loading ? <Spinner size="6" /> : 'Sign In'}
-                                </button>
-                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-indigo-500/20 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all transform active:scale-[0.98]"
+                            >
+                                {loading ? <Spinner size="5" color="border-white" /> : 'Sign In to Dashboard'}
+                            </button>
                         </form>
+                    </div>
+
+                    <div className="mt-8 text-center">
+                        <p className="text-slate-400 text-xs">
+                            © {new Date().getFullYear()} VMS Portal. Secure & Confidential.
+                        </p>
                     </div>
                 </div>
             </div>
+
             <ForgotPasswordModal
                 isOpen={isForgotPasswordOpen}
                 onClose={() => setForgotPasswordOpen(false)}
