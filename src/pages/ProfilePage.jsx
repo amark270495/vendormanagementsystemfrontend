@@ -19,29 +19,49 @@ const PlusIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" view
 
 const ProfilePage = () => {
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState('overview');
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'leaves' | 'security'
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
     
     // --- Overview State ---
     const [formData, setFormData] = useState({
-        displayName: '',
-        phone: '',
-        location: '',
+        displayName: user?.displayName || '',
+        phone: user?.phone || '',
+        location: user?.location || '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
     });
 
-    // --- Leaves & Attendance State ---
+    // --- Leaves State ---
     const [isApplyLeaveOpen, setIsApplyLeaveOpen] = useState(false);
     const [leaveFormData, setLeaveFormData] = useState({ type: 'Casual Leave', startDate: '', endDate: '', reason: '' });
-    const [leaveBalances, setLeaveBalances] = useState([]);
-    const [leaveHistory, setLeaveHistory] = useState([]);
-    const [attendanceData, setAttendanceData] = useState([]);
+    
+    // Mock Data for Leaves/Attendance (Replace with API calls)
+    const [leaveBalances, setLeaveBalances] = useState([
+        { type: 'Casual Leave', used: 4, total: 12, color: 'bg-blue-500' },
+        { type: 'Sick Leave', used: 2, total: 10, color: 'bg-red-500' },
+        { type: 'Privilege Leave', used: 5, total: 15, color: 'bg-green-500' },
+    ]);
+    
+    const [leaveHistory, setLeaveHistory] = useState([
+        { id: 1, type: 'Sick Leave', from: '2023-10-10', to: '2023-10-12', status: 'Approved', days: 3 },
+        { id: 2, type: 'Casual Leave', from: '2023-11-05', to: '2023-11-05', status: 'Pending', days: 1 },
+        { id: 3, type: 'Privilege Leave', from: '2023-08-15', to: '2023-08-20', status: 'Rejected', days: 5 },
+    ]);
 
-    // Initialize Form Data from User Context
+    // Mock Attendance Calendar Data (Simple 30-day view)
+    const attendanceData = Array.from({ length: 30 }, (_, i) => {
+        const statusRandom = Math.random();
+        let status = 'Present';
+        if (statusRandom > 0.9) status = 'Absent';
+        else if (statusRandom > 0.8) status = 'Late';
+        else if (i % 7 === 0 || i % 7 === 6) status = 'Weekend';
+        
+        return { day: i + 1, status };
+    });
+
     useEffect(() => {
         if (user) {
             setFormData(prev => ({
@@ -50,47 +70,6 @@ const ProfilePage = () => {
                 phone: user.phone || '',
                 location: user.location || ''
             }));
-        }
-    }, [user]);
-
-    // Fetch Dashboard Data (Leaves, Attendance)
-    useEffect(() => {
-        const fetchDashboardData = async () => {
-            // In a real app, you would fetch this from your API.
-            // Example:
-            // try {
-            //    const leaves = await apiService.getLeaveBalances(user.userIdentifier);
-            //    const history = await apiService.getLeaveHistory(user.userIdentifier);
-            //    setLeaveBalances(leaves);
-            //    setLeaveHistory(history);
-            // } catch (error) { ... }
-
-            // --- TEMPORARY: Placeholder Data for UI ---
-            setLeaveBalances([
-                { type: 'Casual Leave', used: 4, total: 12, color: 'bg-blue-500' },
-                { type: 'Sick Leave', used: 2, total: 10, color: 'bg-red-500' },
-                { type: 'Privilege Leave', used: 5, total: 15, color: 'bg-green-500' },
-            ]);
-            setLeaveHistory([
-                { id: 1, type: 'Sick Leave', from: '2023-10-10', to: '2023-10-12', status: 'Approved', days: 3 },
-                { id: 2, type: 'Casual Leave', from: '2023-11-05', to: '2023-11-05', status: 'Pending', days: 1 },
-                { id: 3, type: 'Privilege Leave', from: '2023-08-15', to: '2023-08-20', status: 'Rejected', days: 5 },
-            ]);
-            // Generate simple attendance mock
-            const mockAttendance = Array.from({ length: 30 }, (_, i) => {
-                const r = Math.random();
-                let status = 'Present';
-                if (r > 0.9) status = 'Absent';
-                else if (r > 0.8) status = 'Late';
-                else if (i % 7 === 0 || i % 7 === 6) status = 'Weekend';
-                return { day: i + 1, status };
-            });
-            setAttendanceData(mockAttendance);
-            // ------------------------------------------
-        };
-
-        if (user) {
-            fetchDashboardData();
         }
     }, [user]);
 
@@ -123,7 +102,6 @@ const ProfilePage = () => {
                 setMessage({ type: 'error', text: res.data.message || 'Update failed.' });
             }
         } catch (err) {
-            console.error(err);
             setMessage({ type: 'error', text: 'An error occurred while updating profile.' });
         } finally {
             setLoading(false);
@@ -148,24 +126,16 @@ const ProfilePage = () => {
                 setMessage({ type: 'error', text: res.data.message || 'Failed to change password.' });
             }
         } catch (err) {
-            console.error(err);
             setMessage({ type: 'error', text: 'An error occurred.' });
         } finally {
             setLoading(false);
         }
     };
 
-    const handleApplyLeave = async (e) => {
+    const handleApplyLeave = (e) => {
         e.preventDefault();
+        // Mock API call simulation
         setLoading(true);
-        
-        // --- TODO: REPLACE WITH API CALL ---
-        // try {
-        //     await apiService.applyLeave(user.userIdentifier, leaveFormData);
-        //     // refresh data...
-        // } catch(e) { ... }
-        
-        // Mock simulation for UI feedback
         setTimeout(() => {
             const newLeave = {
                 id: Date.now(),
@@ -181,7 +151,6 @@ const ProfilePage = () => {
             setLoading(false);
             setMessage({ type: 'success', text: 'Leave application submitted successfully.' });
         }, 1000);
-        // -----------------------------------
     };
 
     // Helper Component for Data Fields
