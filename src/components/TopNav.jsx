@@ -295,14 +295,14 @@ const TopNav = ({ onNavigate, currentPage }) => {
                                 <div className="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-sm ring-2 ring-white">
                                     <span className="text-sm font-bold">{user?.userName ? user.userName.charAt(0).toUpperCase() : 'U'}</span>
                                 </div>
-                                {/* UPDATED: Shows full name here instead of just inside the dropdown */}
                                 <div className="hidden md:flex flex-col items-start">
                                     <span className="text-sm font-semibold text-slate-700 leading-tight">{user?.userName || 'User'}</span>
                                 </div>
                                 <ChevronDownIcon className="h-4 w-4 text-slate-400" />
                             </button>
                         }>
-                            <div className="w-80">
+                            {/* UPDATED: Increased width to w-96 (approx 384px) to fit long emails */}
+                            <div className="w-96">
                                 <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
                                     <p className="text-sm font-bold text-slate-900 break-words">{user?.userName || 'User'}</p>
                                     <p className="text-xs text-slate-500 break-all">{user?.userIdentifier}</p>
