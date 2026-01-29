@@ -1,75 +1,84 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../Modal.jsx';
 import Spinner from '../Spinner.jsx';
-import { usePermissions } from '../../hooks/usePermissions.js';
-import { apiService } from '../../api/apiService.js';
-// The full permissionKeys array is imported from the frontend context/hook layer.
+import { ShieldCheck, ShieldAlert, Check, X } from 'lucide-react'; // Ensure lucide-react is installed
 
-// Enhanced Permission Toggle Component (moved outside for clean code structure)
+// --- Enhanced Toggle Component ---
 const PermissionToggle = ({ allowed, onChange, disabled, label, description }) => {
-    const baseClasses = "relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed";
-    const allowedClasses = "bg-indigo-600";
-    const deniedClasses = "bg-gray-300";
-    const knobBaseClasses = "inline-block w-4 h-4 transform bg-white rounded-full transition-transform";
-    const knobAllowedClasses = "translate-x-6";
-    const knobDeniedClasses = "translate-x-1";
-
     return (
-        <div className="flex items-center justify-between py-3 px-1 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 rounded-md transition-colors duration-150">
-            <div>
-                <span className="text-sm font-medium text-gray-800">{label}</span>
-                {description && <p className="text-xs text-gray-500">{description}</p>}
+        <div className={`
+            flex items-center justify-between p-3 rounded-lg border border-transparent transition-all duration-200
+            ${allowed ? 'bg-indigo-50/50 border-indigo-100' : 'hover:bg-slate-50 border-slate-50'}
+        `}>
+            <div className="flex-1 pr-4">
+                <p className={`text-sm font-semibold ${allowed ? 'text-indigo-900' : 'text-slate-700'}`}>
+                    {label}
+                </p>
+                {description && (
+                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                        {description}
+                    </p>
+                )}
             </div>
+            
             <button
                 type="button"
                 onClick={onChange}
                 disabled={disabled}
-                className={`${baseClasses} ${allowed ? allowedClasses : deniedClasses}`}
-                aria-pressed={allowed}
-                aria-label={label}
-                title={disabled ? "Cannot change this permission for yourself" : (allowed ? `Revoke ${label}` : `Grant ${label}`)}
+                className={`
+                    relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent 
+                    transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
+                    ${allowed ? 'bg-indigo-600' : 'bg-slate-200'}
+                    ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+                `}
+                role="switch"
+                aria-checked={allowed}
             >
-                <span className={`${knobBaseClasses} ${allowed ? knobAllowedClasses : knobDeniedClasses}`} />
+                <span
+                    aria-hidden="true"
+                    className={`
+                        pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 
+                        transition duration-200 ease-in-out
+                        ${allowed ? 'translate-x-5' : 'translate-x-0'}
+                    `}
+                />
             </button>
         </div>
     );
 };
-
 
 const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionKeys, currentUsername }) => {
     const [currentPermissions, setCurrentPermissions] = useState({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    // --- Initialization Logic ---
     useEffect(() => {
-        // Initialize local state when modal opens or user changes
         if (userToEdit?.permissions && permissionKeys) { 
             const initialPerms = permissionKeys.reduce((acc, p) => {
                 acc[p.key] = Boolean(userToEdit.permissions[p.key]); 
                 return acc;
             }, {});
-             setCurrentPermissions(initialPerms);
+            setCurrentPermissions(initialPerms);
         } else if (permissionKeys) {
-             const initialPerms = permissionKeys.reduce((acc, p) => {
-                 acc[p.key] = false;
+            const initialPerms = permissionKeys.reduce((acc, p) => {
+                acc[p.key] = false;
                 return acc;
             }, {});
             setCurrentPermissions(initialPerms);
         } else {
-             setCurrentPermissions({});
+            setCurrentPermissions({});
         }
         setError('');
     }, [isOpen, userToEdit, permissionKeys]);
 
-
+    // --- Handlers ---
     const handleToggle = (permissionKey) => {
-        // --- Security Check: Prevent Self-Lockout (UX Layer) ---
         if (userToEdit?.username === currentUsername && permissionKey === 'canEditUsers' && currentPermissions[permissionKey]) {
-            setError("You cannot revoke your own 'Edit Users & Permissions' right.");
-            setTimeout(() => setError(''), 4000);
+            setError("Safety Lock: You cannot revoke your own admin rights.");
+            setTimeout(() => setError(''), 3000);
             return;
         }
-        // --- End Security Check ---
 
         setCurrentPermissions(prev => ({
             ...prev,
@@ -82,22 +91,18 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
         setLoading(true);
         setError('');
         try {
-            // Build the payload ensuring all permission keys are included, explicitly as booleans
             const permissionsPayload = permissionKeys.reduce((acc, p) => {
                 acc[p.key] = Boolean(currentPermissions[p.key]); 
                 return acc;
             }, {});
             
-            // The backend has a final check for self-lockout, but the frontend should throw an early warning
             if (userToEdit?.username === currentUsername && permissionsPayload.canEditUsers === false) {
                  throw new Error("Safety check failed: Cannot revoke own administrative permissions.");
             }
 
-            // onSave handles the API call to the backend function updateUserPermissions
             await onSave(userToEdit.username, permissionsPayload);
             onClose();
         } catch (err) {
-            // Catch the specific error thrown by the backend's self-lockout check
             setError(err.message || "Failed to save permissions.");
         } finally {
             setLoading(false);
@@ -106,77 +111,80 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
 
     if (!userToEdit || !permissionKeys) return null;
 
-     // Group permissions for better organization
-     const corePermissions = permissionKeys.filter(p => ['canViewDashboards', 'canAddPosting', 'canEditDashboard', 'canViewReports', 'canEmailReports'].includes(p.key));
-     const candidatePermissions = permissionKeys.filter(p => ['canViewCandidates'].includes(p.key));
-     const communicationPermissions = permissionKeys.filter(p => ['canMessage'].includes(p.key));
-     const timesheetPermissions = permissionKeys.filter(p => ['canManageTimesheets', 'canRequestTimesheetApproval'].includes(p.key));
-     const esignPermissions = permissionKeys.filter(p => ['canManageMSAWO', 'canManageOfferLetters'].includes(p.key));
-     const attendanceLeavePermissions = permissionKeys.filter(p => [
-         'canManageHolidays',
-         'canApproveLeave',
-         'canManageLeaveConfig',
-         'canRequestLeave',
-         'canApproveAttendance',
-         'canSendMonthlyReport'
-        ].includes(p.key));
-     const adminPermissions = permissionKeys.filter(p => ['canEditUsers'].includes(p.key));
-
+    // --- Grouping Logic ---
+    const groups = [
+        { title: "Core Platform", keys: ['canViewDashboards', 'canAddPosting', 'canEditDashboard', 'canViewReports', 'canEmailReports'] },
+        { title: "Talent Management", keys: ['canViewCandidates'] },
+        { title: "Communication", keys: ['canMessage'] },
+        { title: "Timesheets", keys: ['canManageTimesheets', 'canRequestTimesheetApproval'] },
+        { title: "E-Signatures", keys: ['canManageMSAWO', 'canManageOfferLetters'] },
+        { title: "Attendance & HR", keys: ['canManageHolidays', 'canApproveLeave', 'canManageLeaveConfig', 'canRequestLeave', 'canApproveAttendance', 'canSendMonthlyReport'] },
+        { title: "System Administration", keys: ['canEditUsers'] },
+    ];
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Permissions for ${userToEdit.displayName}`} size="2xl">
-            {/* User Info Header */}
-             <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-t-lg mb-4 border-b border-indigo-200 flex items-center space-x-3">
-                 <span className="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center font-bold text-indigo-700 text-xl flex-shrink-0">
-                     {userToEdit.displayName?.charAt(0).toUpperCase() || '?'}
-                </span>
+        <Modal isOpen={isOpen} onClose={onClose} title="Access Control" size="2xl">
+            
+            {/* Header: User Profile */}
+            <div className="flex items-center gap-4 p-1 mb-6">
+                <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-lg font-bold border-2 border-white shadow-sm ring-1 ring-indigo-50">
+                    {userToEdit.displayName?.charAt(0).toUpperCase() || '?'}
+                </div>
                 <div>
-                     <p className="text-sm font-semibold text-gray-900">{userToEdit.displayName}</p>
-                     <p className="text-xs text-gray-600">{userToEdit.username}</p>
+                    <h3 className="text-lg font-bold text-slate-900">{userToEdit.displayName}</h3>
+                    <p className="text-sm text-slate-500 font-medium">{userToEdit.username}</p>
+                </div>
+                <div className="ml-auto">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                        <ShieldCheck className="w-3 h-3" />
+                        {Object.values(currentPermissions).filter(Boolean).length} Active Rights
+                    </span>
                 </div>
             </div>
 
-            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 animate-shake">{error}</div>}
+            {/* Error Message */}
+            {error && (
+                <div className="mb-4 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+                    <p className="text-sm font-medium">{error}</p>
+                </div>
+            )}
 
-            {/* Permissions List with Sections */}
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto px-4 py-2 custom-scrollbar">
+            {/* Scrollable Permissions List */}
+            <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                {groups.map((group, idx) => {
+                    // Filter keys for this group
+                    const groupPerms = permissionKeys.filter(p => group.keys.includes(p.key));
+                    if (groupPerms.length === 0) return null;
 
-                 {[
-                    { title: "Core Access", perms: corePermissions },
-                    { title: "Candidate Management", perms: candidatePermissions },
-                    { title: "Communication", perms: communicationPermissions },
-                    { title: "Timesheets", perms: timesheetPermissions },
-                    { title: "E-Signatures", perms: esignPermissions },
-                    { title: "Attendance & Leave", perms: attendanceLeavePermissions },
-                    { title: "Administration", perms: adminPermissions },
-                ].map((group, index) => group.perms.length > 0 && (
-                    <div key={index}>
-                         <h4 className="text-xs font-bold uppercase text-gray-500 tracking-wider mb-1 mt-3">{group.title}</h4>
-                        <div className="bg-gray-50 p-2 rounded-md border border-gray-200">
-                           {group.perms.map(p => (
-                                <PermissionToggle
-                                    key={p.key}
-                                    label={p.name}
-                                    description={p.description}
-                                    // Safely access permission, default to false
-                                    allowed={currentPermissions[p.key] === true}
-                                    onChange={() => handleToggle(p.key)}
-                                    // Disable the toggle if the user is editing themselves AND it's the admin permission
-                                    disabled={loading || (userToEdit.username === currentUsername && p.key === 'canEditUsers')}
-                                />
-                            ))}
+                    return (
+                        <div key={idx}>
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 ml-1">
+                                {group.title}
+                            </h4>
+                            <div className="grid gap-2">
+                                {groupPerms.map(p => (
+                                    <PermissionToggle
+                                        key={p.key}
+                                        label={p.name}
+                                        description={p.description}
+                                        allowed={currentPermissions[p.key] === true}
+                                        onChange={() => handleToggle(p.key)}
+                                        disabled={loading || (userToEdit.username === currentUsername && p.key === 'canEditUsers')}
+                                    />
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                ))}
-
+                    );
+                })}
             </div>
 
-             {/* Action Buttons */}
-            <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
+            {/* Footer Actions */}
+            <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
                 <button
                     type="button"
                     onClick={onClose}
-                    className="px-5 py-2.5 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition-colors shadow-sm disabled:opacity-50"
+                    className="px-5 py-2.5 text-slate-600 font-semibold hover:bg-slate-50 rounded-xl transition-colors"
                     disabled={loading}
                 >
                     Cancel
@@ -184,10 +192,20 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
                 <button
                     type="button"
                     onClick={handleSaveChanges}
-                    className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 flex items-center justify-center w-32 transition-colors shadow-md disabled:bg-indigo-400"
                     disabled={loading}
+                    className="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 disabled:opacity-70"
                 >
-                    {loading ? <Spinner size="5" /> : 'Save Changes'}
+                    {loading ? (
+                        <>
+                            <Spinner size="4" color="white" />
+                            <span>Saving...</span>
+                        </>
+                    ) : (
+                        <>
+                            <Check className="w-4 h-4" />
+                            <span>Save Changes</span>
+                        </>
+                    )}
                 </button>
             </div>
         </Modal>
