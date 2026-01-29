@@ -17,23 +17,23 @@ const getStatusConfig = (statusKey) => {
     const configs = {
         'Present': { 
             bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', 
-            icon: <CheckCircle2 className="w-3.5 h-3.5" />, label: 'Present' 
+            icon: <CheckCircle2 className="w-4 h-4" />, label: 'Present' 
         },
         'Absent': { 
             bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', 
-            icon: <XCircle className="w-3.5 h-3.5" />, label: 'Absent' 
+            icon: <XCircle className="w-4 h-4" />, label: 'Absent' 
         },
         'Pending': { 
             bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', 
-            icon: <Clock className="w-3.5 h-3.5 animate-pulse" />, label: 'Pending' 
+            icon: <Clock className="w-4 h-4 animate-pulse" />, label: 'Pending' 
         },
         'On Leave': { 
             bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', 
-            icon: <Palmtree className="w-3.5 h-3.5" />, label: 'Leave' 
+            icon: <Palmtree className="w-4 h-4" />, label: 'Leave' 
         },
         'Holiday': { 
             bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', 
-            icon: <CalendarOff className="w-3.5 h-3.5" />, label: 'Holiday' 
+            icon: <CalendarOff className="w-4 h-4" />, label: 'Holiday' 
         },
         'Weekend': { 
             bg: 'bg-slate-50', border: 'border-transparent', text: 'text-slate-400', 
@@ -69,10 +69,9 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             const requestObj = pendingRequestsMap[dateKey] || {};
             return {
                 key: 'Pending',
-                description: `Request: ${attendanceRecord.requestedStatus}`,
                 isPending: true,
                 request: requestObj,
-                subText: attendanceRecord.requestedStatus === 'Present' ? 'Req: P' : 'Req: A'
+                subText: attendanceRecord.requestedStatus === 'Present' ? 'REQ: P' : 'REQ: A'
             };
         }
         if (attendanceRecord) {
@@ -106,14 +105,13 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         <div className="w-full flex flex-col">
             <div className="grid grid-cols-7 mb-2">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                    <div key={d} className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">{d}</div>
+                    <div key={d} className="text-center text-[11px] font-bold text-slate-400 uppercase tracking-widest">{d}</div>
                 ))}
             </div>
 
-            {/* No fixed heights - will fill the container width */}
-            <div className="grid grid-cols-7 gap-1.5 w-full">
+            <div className="grid grid-cols-7 gap-2 w-full">
                 {calendarGrid.flat().map((cell, index) => {
-                    const { key, description, isPending, request, subText } = cell.statusInfo;
+                    const { key, isPending, request, subText } = cell.statusInfo;
                     const config = getStatusConfig(key);
                     const isHidden = cell.day === null;
 
@@ -121,21 +119,23 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
                         <div
                             key={index}
                             onClick={() => isPending && onDayClick(request)}
-                            title={description || config.label}
+                            /* min-h raised to 80px (+~30px) to prevent icon/text overlap */
                             className={`
-                                relative min-h-[50px] py-2 rounded-xl border flex flex-col items-center justify-center transition-all
+                                relative min-h-[80px] py-3 rounded-2xl border flex flex-col items-center justify-between transition-all
                                 ${isHidden ? 'invisible' : `${config.bg} ${config.border}`}
-                                ${isPending ? 'cursor-pointer hover:shadow-md ring-2 ring-amber-200 ring-offset-1' : ''}
+                                ${isPending ? 'cursor-pointer hover:shadow-lg ring-2 ring-amber-200 ring-offset-1 scale-[1.02]' : ''}
                             `}
                         >
                             {!isHidden && (
                                 <>
-                                    <span className={`text-xs font-bold mb-1 ${config.text}`}>{cell.day}</span>
-                                    <div className={config.text}>{config.icon}</div>
-                                    {subText && (
-                                        <span className="absolute bottom-1 text-[7px] font-black text-amber-600 uppercase">
+                                    <span className={`text-sm font-bold ${config.text}`}>{cell.day}</span>
+                                    <div className={`${config.text} flex-1 flex items-center`}>{config.icon}</div>
+                                    {subText ? (
+                                        <span className="text-[9px] font-black text-amber-600 bg-amber-100/50 px-1.5 py-0.5 rounded-md uppercase tracking-tighter">
                                             {subText}
                                         </span>
+                                    ) : (
+                                        <div className="h-[14px]" /> /* spacer to maintain height */
                                     )}
                                 </>
                             )}
@@ -144,14 +144,13 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
                 })}
             </div>
 
-            <div className="flex flex-wrap justify-center gap-3 mt-4 pt-3 border-t border-slate-100">
+            <div className="flex flex-wrap justify-center gap-4 mt-8 pt-4 border-t border-slate-100">
                 {['Present', 'Absent', 'Pending', 'On Leave', 'Holiday', 'Unmarked'].map(label => {
-                    const key = label === 'On Leave' ? 'On Leave' : label;
-                    const conf = getStatusConfig(key);
+                    const conf = getStatusConfig(label);
                     return (
-                        <div key={label} className="flex items-center gap-1.5">
-                            <div className={`${conf.text} scale-75`}>{conf.icon}</div>
-                            <span className="text-[10px] font-bold text-slate-500">{label}</span>
+                        <div key={label} className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full border border-slate-100">
+                            <div className={`${conf.text}`}>{conf.icon}</div>
+                            <span className="text-[11px] font-bold text-slate-600">{label}</span>
                         </div>
                     );
                 })}
@@ -170,14 +169,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
-
-    const formatDate = (dateString) => {
-        if (!dateString) return 'N/A';
-        try {
-            const date = new Date(dateString + 'T00:00:00Z');
-            return date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
-        } catch (e) { return dateString; }
-    };
 
     const fetchDataForUserAndMonth = useCallback(async (monthDate) => {
         if (!user?.userIdentifier || !selectedUsername) return;
@@ -226,11 +217,8 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 });
             }
             setLeaveDaysSet(leaveSet);
-        } catch (err) {
-            setError(err.message || 'Failed to load data.');
-        } finally {
-            setLoading(false);
-        }
+        } catch (err) { setError(err.message || 'Error loading data.'); } 
+        finally { setLoading(false); }
     }, [user?.userIdentifier, selectedUsername]);
 
     useEffect(() => {
@@ -239,9 +227,9 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
 
     const changeMonth = (offset) => {
         setCurrentMonthDate(prev => {
-            const newDate = new Date(prev);
-            newDate.setUTCMonth(newDate.getUTCMonth() + offset, 1);
-            return newDate;
+            const d = new Date(prev);
+            d.setUTCMonth(d.getUTCMonth() + offset, 1);
+            return d;
         });
     };
 
@@ -266,35 +254,32 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
 
     const handleDayClick = (request) => {
         if (request?.status === 'Pending') {
-            const actionConfirmed = window.confirm(
-                `Approval Required\n\nUser: ${request.username}\nDate: ${formatDate(request.date)}\nRequest: Mark as ${request.requestedStatus}\n\n• OK to Approve\n• Cancel to Reject`
-            );
-            handleConfirmAction(request, actionConfirmed ? 'Approved' : 'Rejected', '');
+            const confirmAction = window.confirm(`Approve attendance for ${request.username} on ${request.date}?`);
+            if (confirmAction) handleConfirmAction(request, 'Approved', '');
+            else handleConfirmAction(request, 'Rejected', '');
         }
     };
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Review: ${selectedUsername}`} size="2xl">
-            <div className="bg-white flex flex-col p-4 w-full">
-                {error && <div className="mb-4 text-xs text-rose-600 bg-rose-50 p-2 rounded border border-rose-100">{error}</div>}
-                
-                <div className="flex justify-between items-center mb-6 bg-slate-50 p-2 rounded-xl">
-                    <button onClick={() => changeMonth(-1)} disabled={loading} className="p-2 hover:bg-white rounded-lg shadow-sm disabled:opacity-50">
-                        <ChevronLeft className="w-5 h-5 text-slate-600" />
+            <div className="bg-white flex flex-col p-6 w-full">
+                <div className="flex justify-between items-center mb-8 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <button onClick={() => changeMonth(-1)} disabled={loading} className="p-2 hover:bg-white rounded-xl shadow-sm transition-all disabled:opacity-30">
+                        <ChevronLeft className="w-6 h-6 text-slate-600" />
                     </button>
-                    <h3 className="text-lg font-black text-slate-800">
+                    <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase">
                         {currentMonthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}
                     </h3>
-                    <button onClick={() => changeMonth(1)} disabled={loading} className="p-2 hover:bg-white rounded-lg shadow-sm disabled:opacity-50">
-                        <ChevronRight className="w-5 h-5 text-slate-600" />
+                    <button onClick={() => changeMonth(1)} disabled={loading} className="p-2 hover:bg-white rounded-xl shadow-sm transition-all disabled:opacity-30">
+                        <ChevronRight className="w-6 h-6 text-slate-600" />
                     </button>
                 </div>
 
                 <div className="w-full">
                     {loading || actionLoading ? (
-                        <div className="flex flex-col justify-center items-center h-64 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
-                            <Spinner size="10"/>
-                            <p className="mt-4 text-sm font-bold text-slate-400 animate-pulse">Syncing...</p>
+                        <div className="flex flex-col justify-center items-center h-80 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
+                            <Spinner size="12"/>
+                            <p className="mt-4 text-sm font-black text-slate-400 animate-pulse tracking-widest uppercase">Synchronizing...</p>
                         </div>
                     ) : (
                         <CalendarDisplay
@@ -308,9 +293,9 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                     )}
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
-                    <button onClick={onClose} className="px-10 py-3 bg-slate-900 text-white text-xs font-black rounded-xl hover:bg-slate-800 shadow-lg shadow-slate-200">
-                        CLOSE REVIEW
+                <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
+                    <button onClick={onClose} className="px-12 py-4 bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl hover:bg-slate-800 shadow-xl shadow-slate-200 transition-transform active:scale-95">
+                        Close Review
                     </button>
                 </div>
             </div>
