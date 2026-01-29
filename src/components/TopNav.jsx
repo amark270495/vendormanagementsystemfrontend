@@ -1,232 +1,257 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { usePermissions } from '../hooks/usePermissions';
-import { apiService } from '../api/apiService';
-import Dropdown from './Dropdown';
+import React, { useState, Fragment } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { 
+  BellIcon, 
+  MenuIcon, 
+  XIcon, 
+  UserCircleIcon, 
+  LogoutIcon, 
+  CogIcon,
+  ChartPieIcon,
+  UsersIcon,
+  ClockIcon,
+  DocumentTextIcon,
+  ClipboardCheckIcon
+} from '@heroicons/react/outline';
+import { Transition, Menu } from '@headlessui/react';
 
-// Define DASHBOARD_CONFIGS outside the component
-const DASHBOARD_CONFIGS = {
-    'ecaltVMSDisplay': { title: 'Eclat VMS' },
-    'taprootVMSDisplay': { title: 'Taproot VMS' },
-    'michiganDisplay': { title: 'Michigan VMS' },
-    'EclatTexasDisplay': { title: 'Eclat Texas VMS' },
-    'TaprootTexasDisplay': { title: 'Taproot Texas VMS' },
-    'VirtusaDisplay': { title: 'Virtusa Taproot' },
-    'DeloitteDisplay': { title: 'Deloitte Taproot' }
-};
-
-const TopNav = ({ onNavigate, currentPage }) => {
+const TopNav = ({ unreadCount = 0 }) => {
     const { user, logout } = useAuth();
-    // --- Destructure all 18 granular permissions ---
-    const {
-        canViewDashboards,
-        canAddPosting,
-        canViewReports,
-        canViewCandidates,
-        canEditUsers,
-        canMessage,
-        canManageTimesheets,
-        canRequestTimesheetApproval, 
-        canManageMSAWO,
-        canManageOfferLetters,
-        canManageHolidays, 
-        canApproveLeave, 
-        canManageLeaveConfig, 
-        canApproveAttendance, 
-        canSendMonthlyReport 
-    } = usePermissions();
-    // ---------------------------------------------
+    const navigate = useNavigate();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    const [notifications, setNotifications] = useState([]);
-    const [unreadMessagesCount, setUnreadMessagesCount] = useState(0); 
+    // --- PERMISSION LOGIC ---
+    // Helper to check if a user has access to a specific route
+    // Adjust these property names (e.g. user.permissions.x vs user.canX) to match your exact AuthContext data structure
+    const hasAccess = (requiredPermission) => {
+        if (!user) return false;
+        if (user.role === 'SuperAdmin') return true; // SuperAdmin usually accesses everything
 
-    // --- Sound Playing Logic ---
-    const playSound = (soundFile) => {
-        // Ensure the file exists in public/sounds/
-        const audio = new Audio(`/sounds/${soundFile}`); 
-        audio.play().catch(e => console.error("Error playing sound:", e));
-    };
-
-    const fetchNotifications = useCallback(async () => {
-        if (!user?.userIdentifier) return;
-        try {
-            const response = await apiService.getNotifications(user.userIdentifier);
-            const newNotifications = response?.data?.success ? (response.data.notifications || []) : [];
-
-            if (Array.isArray(newNotifications) && Array.isArray(notifications) && newNotifications.length > notifications.length && notifications.length > 0) {
-                 playSound('notification.mp3');
-            }
-            setNotifications(newNotifications);
-        } catch (err) {
-            console.error('Could not fetch notifications', err);
-        }
-    }, [user?.userIdentifier, notifications]); 
-
-    const fetchUnreadMessages = useCallback(async () => {
-        if (!user?.userIdentifier || !canMessage) return;
-        try {
-            const response = await apiService.getUnreadMessages(user.userIdentifier);
-            if (response.data.success) {
-                const currentUnreadCount = Object.values(response.data.unreadCounts || {}).reduce((sum, count) => sum + count, 0);
-                if (currentUnreadCount > unreadMessagesCount && unreadMessagesCount > 0) {
-                    playSound('message.mp3');
-                }
-                setUnreadMessagesCount(currentUnreadCount);
-            }
-        } catch (err) {
-             console.error('Could not fetch unread messages count', err);
-        }
-    }, [user?.userIdentifier, canMessage, unreadMessagesCount]); 
-
-    useEffect(() => {
-        fetchNotifications();
-        fetchUnreadMessages();
-        const notificationInterval = setInterval(fetchNotifications, 30000); 
-        const messageInterval = setInterval(fetchUnreadMessages, 15000); 
-        return () => {
-            clearInterval(notificationInterval);
-            clearInterval(messageInterval);
-        };
-    }, [fetchNotifications, fetchUnreadMessages]); 
-
-
-    const handleMarkAsRead = async () => {
-        if (!Array.isArray(notifications) || notifications.length === 0) return; 
-        try {
-            const idsToMark = notifications.map(n => ({ id: n.id, partitionKey: n.partitionKey }));
-            await apiService.markNotificationsAsRead(idsToMark, user.userIdentifier);
-            setNotifications([]);
-        } catch (err) {
-            console.error('Failed to mark notifications as read', err);
+        switch (requiredPermission) {
+            case 'DASHBOARD':
+                return true; // Everyone typically sees a dashboard
+            case 'TIMESHEETS':
+                return user.role === 'admin' || user.permissions?.canManageTimesheets || user.permissions?.canLogHours;
+            case 'CANDIDATES':
+                return user.role === 'admin' || user.role === 'recruiter' || user.permissions?.canViewCandidates;
+            case 'ONBOARDING':
+                 return user.role === 'admin' || user.permissions?.canManageOnboarding;
+            case 'REPORTS':
+                return user.role === 'admin' || user.permissions?.canViewReports;
+            case 'SETTINGS':
+                return user.role === 'admin'; 
+            default:
+                return false;
         }
     };
 
-    const getLinkClass = (pageName) => {
-        const targetPages = Array.isArray(pageName) ? pageName : [pageName];
-        const base = "px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer";
-        const active = "bg-slate-200 text-slate-900";
-        const inactive = "text-slate-500 hover:bg-slate-100 hover:text-slate-800";
-        return `${base} ${targetPages.includes(currentPage) ? active : inactive}`;
-    };
+    // Navigation Configuration
+    const navLinks = [
+        { name: 'Dashboard', path: '/dashboard', icon: ChartPieIcon, show: hasAccess('DASHBOARD') },
+        { name: 'Timesheets', path: '/timesheets', icon: ClockIcon, show: hasAccess('TIMESHEETS') },
+        { name: 'Candidates', path: '/candidates', icon: UsersIcon, show: hasAccess('CANDIDATES') },
+        { name: 'Onboarding', path: '/onboarding', icon: ClipboardCheckIcon, show: hasAccess('ONBOARDING') },
+        { name: 'Reports', path: '/reports', icon: DocumentTextIcon, show: hasAccess('REPORTS') },
+    ];
 
-    const showAdminDropdown = canEditUsers || canManageHolidays || canApproveLeave || canManageLeaveConfig || canApproveAttendance || canSendMonthlyReport;
+    const handleLogout = async () => {
+        await logout();
+        navigate('/login');
+    };
 
     return (
-        <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-40 border-b border-slate-200">
-            <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center h-16">
-                    {/* Left side: Logo and Main Navigation */}
-                    <div className="flex items-center space-x-8">
-                        <h1 className="text-2xl font-bold text-indigo-600">VMS Portal</h1>
-                        <nav className="hidden md:flex space-x-1">
-                            <a onClick={() => onNavigate('home')} className={getLinkClass('home')}>Home</a>
-                            <a onClick={() => onNavigate('profile')} className={getLinkClass('profile')}>My Profile</a>
-
-                            {canViewDashboards && (
-                                <Dropdown trigger={<button className={getLinkClass('dashboard')}>Dashboards</button>}>
-                                    {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
-                                        <a key={key} onClick={() => onNavigate('dashboard', { key })} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">{config.title}</a>
-                                    ))}
-                                </Dropdown>
-                            )}
-
-                            {canAddPosting && <a onClick={() => onNavigate('new_posting')} className={getLinkClass('new_posting')}>New Posting</a>}
-                            {canViewCandidates && <a onClick={() => onNavigate('candidate_details')} className={getLinkClass('candidate_details')}>Candidates</a>}
-                            {canViewReports && <a onClick={() => onNavigate('reports')} className={getLinkClass('reports')}>Reports</a>}
-
-                            {canMessage &&
-                                <a onClick={() => onNavigate('messages')} className={`${getLinkClass('messages')} relative`}>
-                                    Messages
-                                    {unreadMessagesCount > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-indigo-500 text-white text-xs items-center justify-center">{unreadMessagesCount}</span></span>}
-                                </a>
-                            }
-
-                            {canManageTimesheets && (
-                                <Dropdown trigger={<button className={getLinkClass(['create_timesheet_company', 'manage_companies', 'create_timesheet_employee', 'manage_timesheet_employees', 'log_hours', 'timesheets_dashboard'])}>Timesheets</button>}>
-                                    <a onClick={() => onNavigate('create_timesheet_company')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Create Company</a>
-                                    <a onClick={() => onNavigate('manage_companies')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Manage Companies</a>
-                                    <a onClick={() => onNavigate('create_timesheet_employee')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Create Timesheet Employee</a>
-                                    <a onClick={() => onNavigate('manage_timesheet_employees')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Manage Timesheet Employees</a>
-                                    <a onClick={() => onNavigate('log_hours')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Log Hours</a>
-                                    <a onClick={() => onNavigate('timesheets_dashboard')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Timesheets Dashboard</a>
-                                </Dropdown>
-                            )}
-
-                             {(canManageMSAWO || canManageOfferLetters) && (
-                                <Dropdown trigger={<button className={getLinkClass(['create_msa_wo_vendor_company', 'manage_msa_wo_vendor_companies', 'create_msa_wo', 'msa_wo_dashboard', 'create_offer_letter', 'offer_letter_dashboard'])}>E-Sign's</button>}>
-                                    <div className="px-4 py-2 text-xs font-bold text-slate-400 uppercase">MSA & WO</div>
-                                    {canManageMSAWO && <a onClick={() => onNavigate('create_msa_wo_vendor_company')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Create Vendor Company</a>}
-                                    {canManageMSAWO && <a onClick={() => onNavigate('manage_msa_wo_vendor_companies')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Manage Vendor Companies</a>}
-                                    {canManageMSAWO && <a onClick={() => onNavigate('create_msa_wo')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Create MSA/WO</a>}
-                                    {canManageMSAWO && <a onClick={() => onNavigate('msa_wo_dashboard')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">MSA/WO Dashboard</a>}
-                                    <div className="border-t my-1"></div>
-                                    <div className="px-4 py-2 text-xs font-bold text-slate-400 uppercase">Offer Letter</div>
-                                    {canManageOfferLetters && <a onClick={() => onNavigate('create_offer_letter')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Create Offer Letter</a>}
-                                    {canManageOfferLetters && <a onClick={() => onNavigate('offer_letter_dashboard')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Offer Letter Dashboard</a>}
-                                </Dropdown>
-                            )}
-
-                            {showAdminDropdown && (
-                                <Dropdown trigger={<button className={getLinkClass(['admin', 'manage_holidays', 'approve_leave', 'leave_config', 'approve_attendance', 'monthly_attendance_report'])}>Admin</button>}>
-                                    {canEditUsers && <a onClick={() => onNavigate('admin')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">User Management</a>}
-                                    {canManageHolidays && <a onClick={() => onNavigate('manage_holidays')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Manage Holidays</a>}
-                                    {canApproveLeave && <a onClick={() => onNavigate('approve_leave')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Approve Leave</a>}
-                                    {canManageLeaveConfig && <a onClick={() => onNavigate('leave_config')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Leave Configuration</a>}
-                                    {canApproveAttendance && <a onClick={() => onNavigate('approve_attendance')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Approve Attendance</a>}
-                                    {canSendMonthlyReport && <a onClick={() => onNavigate('monthly_attendance_report')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">Send Monthly Reports</a>}
-                                </Dropdown>
-                            )}
-                        </nav>
+        <nav className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm transition-all duration-300">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between h-16">
+                    
+                    {/* LEFT: Logo & Desktop Nav */}
+                    <div className="flex items-center">
+                        {/* Logo */}
+                        <div className="flex-shrink-0 flex items-center cursor-pointer group" onClick={() => navigate('/')}>
+                            <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center mr-2 shadow-lg group-hover:bg-blue-700 transition-colors">
+                                <span className="text-white font-bold text-xl">V</span>
+                            </div>
+                            <span className="hidden sm:block text-xl font-bold text-gray-800 tracking-tight">
+                                VMS<span className="text-blue-600">Pro</span>
+                            </span>
+                        </div>
+                        
+                        {/* Desktop Links */}
+                        <div className="hidden md:ml-8 md:flex md:space-x-4">
+                            {navLinks.map((link) => (
+                                link.show && (
+                                    <NavLink
+                                        key={link.name}
+                                        to={link.path}
+                                        className={({ isActive }) =>
+                                            `inline-flex items-center px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                                                isActive
+                                                    ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200'
+                                                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                                            }`
+                                        }
+                                    >
+                                        <link.icon className="h-4 w-4 mr-2" />
+                                        {link.name}
+                                    </NavLink>
+                                )
+                            ))}
+                        </div>
                     </div>
 
-                    {/* Right side: Notifications and User Menu */}
-                    <div className="flex items-center space-x-4">
-                        <Dropdown width="80" trigger={
-                            <button className="relative text-slate-500 hover:text-slate-700" aria-label="Notifications">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                                </svg>
-                                {Array.isArray(notifications) && notifications.length > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-white text-xs items-center justify-center">{notifications.length}</span></span>}
-                            </button>
-                        }>
-                            <div className="p-2">
-                                <div className="flex justify-between items-center mb-2 px-2">
-                                    <h4 className="font-semibold text-slate-800">Notifications</h4>
-                                    {Array.isArray(notifications) && notifications.length > 0 && <button onClick={handleMarkAsRead} className="text-xs text-indigo-600 hover:underline">Mark all as read</button>}
-                                </div>
-                                <div className="max-h-80 overflow-y-auto">
-                                    {Array.isArray(notifications) && notifications.length > 0 ? notifications.map(n => (
-                                        <div key={n.id || n.timestamp} className="p-2 border-b hover:bg-slate-50">
-                                            <p className="text-sm text-slate-700">{n.message}</p>
-                                            <p className="text-xs text-slate-400">{new Date(n.timestamp).toLocaleString()}</p>
-                                        </div>
-                                    )) : <p className="text-sm text-slate-500 p-4 text-center">No new notifications.</p>}
-                                </div>
-                            </div>
-                        </Dropdown>
+                    {/* RIGHT: Utilities */}
+                    <div className="hidden md:flex md:items-center md:space-x-3">
+                        {/* Notifications */}
+                        <button className="p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none relative transition-all">
+                            <span className="sr-only">View notifications</span>
+                            <BellIcon className="h-6 w-6" aria-hidden="true" />
+                            {unreadCount > 0 && (
+                                <span className="absolute top-1.5 right-1.5 flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                                </span>
+                            )}
+                        </button>
 
-                        <Dropdown trigger={
-                            <button className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" aria-label="User menu">
-                                <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-600">
-                                        <path d="M20 21v-2a4 4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                        <circle cx="12" cy="7" r="4"></circle>
-                                    </svg>
+                        <div className="h-6 w-px bg-gray-300 mx-2"></div>
+
+                        {/* Profile Dropdown */}
+                        <Menu as="div" className="relative">
+                            <Menu.Button className="flex items-center space-x-3 bg-white hover:bg-gray-50 rounded-full p-1 pr-3 border border-gray-200 transition-all focus:ring-2 focus:ring-blue-100">
+                                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md">
+                                    {user?.name?.charAt(0).toUpperCase() || 'U'}
                                 </div>
-                            </button>
-                        }>
-                            <div className="px-4 py-2 border-b">
-                                <p className="text-sm font-medium text-slate-900">{user?.userName || 'User'}</p>
-                                <p className="text-sm text-slate-500 truncate">{user?.userIdentifier || 'No Email'}</p>
-                            </div>
-                            <a onClick={() => onNavigate('profile')} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer">My Profile</a>
-                            <a onClick={logout} className="block px-4 py-2 text-sm text-red-600 hover:bg-slate-100 cursor-pointer">Logout</a>
-                        </Dropdown>
+                                <div className="hidden lg:flex flex-col items-start">
+                                    <span className="text-sm font-semibold text-gray-700 leading-tight">{user?.name}</span>
+                                    <span className="text-xs text-gray-500 leading-tight capitalize">{user?.role}</span>
+                                </div>
+                            </Menu.Button>
+
+                            <Transition
+                                as={Fragment}
+                                enter="transition ease-out duration-100"
+                                enterFrom="transform opacity-0 scale-95"
+                                enterTo="transform opacity-100 scale-100"
+                                leave="transition ease-in duration-75"
+                                leaveFrom="transform opacity-100 scale-100"
+                                leaveTo="transform opacity-0 scale-95"
+                            >
+                                <Menu.Items className="origin-top-right absolute right-0 mt-2 w-56 rounded-xl shadow-xl bg-white ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 focus:outline-none">
+                                    <div className="px-4 py-3">
+                                        <p className="text-xs text-gray-500">Signed in as</p>
+                                        <p className="text-sm font-medium text-gray-900 truncate">{user?.email}</p>
+                                    </div>
+                                    <div className="py-1">
+                                        <Menu.Item>
+                                            {({ active }) => (
+                                                <button onClick={() => navigate('/profile')} className={`${active ? 'bg-blue-50 text-blue-700' : 'text-gray-700'} group flex items-center px-4 py-2 text-sm w-full`}>
+                                                    <UserCircleIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-blue-500" />
+                                                    Your Profile
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                        {hasAccess('SETTINGS') && (
+                                            <Menu.Item>
+                                                {({ active }) => (
+                                                    <button onClick={() => navigate('/settings')} className={`${active ? 'bg-blue-50 text-blue-700' : 'text-gray-700'} group flex items-center px-4 py-2 text-sm w-full`}>
+                                                        <CogIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-blue-500" />
+                                                        Settings
+                                                    </button>
+                                                )}
+                                            </Menu.Item>
+                                        )}
+                                    </div>
+                                    <div className="py-1">
+                                        <Menu.Item>
+                                            {({ active }) => (
+                                                <button onClick={handleLogout} className={`${active ? 'bg-red-50 text-red-700' : 'text-gray-700'} group flex items-center px-4 py-2 text-sm w-full`}>
+                                                    <LogoutIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-red-500" />
+                                                    Sign out
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                    </div>
+                                </Menu.Items>
+                            </Transition>
+                        </Menu>
+                    </div>
+
+                    {/* Mobile Menu Button */}
+                    <div className="-mr-2 flex items-center md:hidden">
+                        <button
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            className="bg-white inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                            <span className="sr-only">Open main menu</span>
+                            {isMobileMenuOpen ? (
+                                <XIcon className="block h-6 w-6" aria-hidden="true" />
+                            ) : (
+                                <MenuIcon className="block h-6 w-6" aria-hidden="true" />
+                            )}
+                        </button>
                     </div>
                 </div>
             </div>
-        </header>
+
+            {/* Mobile Menu Panel */}
+            <Transition
+                show={isMobileMenuOpen}
+                enter="transition duration-150 ease-out"
+                enterFrom="transform scale-95 opacity-0"
+                enterTo="transform scale-100 opacity-100"
+                leave="transition duration-100 ease-in"
+                leaveFrom="transform scale-100 opacity-100"
+                leaveTo="transform scale-95 opacity-0"
+            >
+                <div className="md:hidden bg-white border-t border-gray-100 shadow-lg absolute w-full">
+                    <div className="pt-2 pb-3 space-y-1 px-2">
+                        {navLinks.map((link) => (
+                             link.show && (
+                                <NavLink
+                                    key={link.name}
+                                    to={link.path}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={({ isActive }) =>
+                                        `block pl-3 pr-4 py-3 rounded-md text-base font-medium flex items-center ${
+                                            isActive
+                                                ? 'bg-blue-50 text-blue-700'
+                                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                        }`
+                                    }
+                                >
+                                    <link.icon className="h-5 w-5 mr-3" />
+                                    {link.name}
+                                </NavLink>
+                             )
+                        ))}
+                    </div>
+                    
+                    {/* Mobile User Info */}
+                    <div className="pt-4 pb-4 border-t border-gray-200 bg-gray-50">
+                        <div className="flex items-center px-4">
+                            <div className="flex-shrink-0">
+                                <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
+                                    {user?.name?.charAt(0) || 'U'}
+                                </div>
+                            </div>
+                            <div className="ml-3">
+                                <div className="text-base font-medium text-gray-800">{user?.name}</div>
+                                <div className="text-sm font-medium text-gray-500">{user?.email}</div>
+                            </div>
+                        </div>
+                        <div className="mt-3 space-y-1 px-2">
+                            <button onClick={() => { navigate('/profile'); setIsMobileMenuOpen(false); }} className="block px-3 py-2 rounded-md text-base font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 w-full text-left">
+                                Your Profile
+                            </button>
+                            <button onClick={handleLogout} className="block px-3 py-2 rounded-md text-base font-medium text-red-600 hover:text-red-800 hover:bg-red-50 w-full text-left">
+                                Sign out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </nav>
     );
 };
 
