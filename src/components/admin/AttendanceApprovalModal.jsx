@@ -17,23 +17,23 @@ const getStatusConfig = (statusKey) => {
     const configs = {
         'Present': { 
             bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', 
-            icon: <CheckCircle2 className="w-4 h-4" />, label: 'Present' 
+            icon: <CheckCircle2 className="w-3.5 h-3.5" />, label: 'Present' 
         },
         'Absent': { 
             bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', 
-            icon: <XCircle className="w-4 h-4" />, label: 'Absent' 
+            icon: <XCircle className="w-3.5 h-3.5" />, label: 'Absent' 
         },
         'Pending': { 
             bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', 
-            icon: <Clock className="w-4 h-4 animate-pulse" />, label: 'Pending' 
+            icon: <Clock className="w-3.5 h-3.5 animate-pulse" />, label: 'Pending' 
         },
         'On Leave': { 
             bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', 
-            icon: <Palmtree className="w-4 h-4" />, label: 'Leave' 
+            icon: <Palmtree className="w-3.5 h-3.5" />, label: 'Leave' 
         },
         'Holiday': { 
             bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', 
-            icon: <CalendarOff className="w-4 h-4" />, label: 'Holiday' 
+            icon: <CalendarOff className="w-3.5 h-3.5" />, label: 'Holiday' 
         },
         'Weekend': { 
             bg: 'bg-slate-50', border: 'border-transparent', text: 'text-slate-400', 
@@ -61,16 +61,18 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         today.setUTCHours(0,0,0,0);
 
         if (leaveDaysSet.has(dateKey)) return { key: 'On Leave' };
-        if (holidays[dateKey]) return { key: 'Holiday' };
+        if (holidays[dateKey]) return { key: 'Holiday', description: holidays[dateKey] };
         if (dayOfWeek === 0 || dayOfWeek === 6) return { key: 'Weekend' };
 
         const attendanceRecord = attendanceData[dateKey];
-        if (attendanceRecord?.status === 'Pending') {
+        if (attendanceRecord && attendanceRecord.status === 'Pending') {
+            const requestObj = pendingRequestsMap[dateKey] || {};
             return {
                 key: 'Pending',
+                description: `Request: ${attendanceRecord.requestedStatus}`,
                 isPending: true,
-                request: pendingRequestsMap[dateKey] || {},
-                subText: attendanceRecord.requestedStatus === 'Present' ? 'REQ:P' : 'REQ:A'
+                request: requestObj,
+                subText: attendanceRecord.requestedStatus === 'Present' ? 'Req: P' : 'Req: A'
             };
         }
         if (attendanceRecord) {
@@ -98,7 +100,7 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             grid.push(week);
         }
         return grid;
-    }, [monthDate, attendanceData, holidays, leaveDaysSet]);
+    }, [monthDate, attendanceData, holidays, leaveDaysSet, pendingRequestsMap]);
 
     return (
         <div className="w-full flex flex-col">
@@ -108,10 +110,10 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
                 ))}
             </div>
 
-            {/* Grid fills the width of the modal content area */}
+            {/* No fixed heights - will fill the container width */}
             <div className="grid grid-cols-7 gap-1.5 w-full">
                 {calendarGrid.flat().map((cell, index) => {
-                    const { key, isPending, request, subText } = cell.statusInfo;
+                    const { key, description, isPending, request, subText } = cell.statusInfo;
                     const config = getStatusConfig(key);
                     const isHidden = cell.day === null;
 
@@ -119,8 +121,9 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
                         <div
                             key={index}
                             onClick={() => isPending && onDayClick(request)}
+                            title={description || config.label}
                             className={`
-                                relative min-h-[60px] rounded-xl border flex flex-col items-center justify-center transition-all
+                                relative min-h-[50px] py-2 rounded-xl border flex flex-col items-center justify-center transition-all
                                 ${isHidden ? 'invisible' : `${config.bg} ${config.border}`}
                                 ${isPending ? 'cursor-pointer hover:shadow-md ring-2 ring-amber-200 ring-offset-1' : ''}
                             `}
@@ -141,14 +144,14 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
                 })}
             </div>
 
-            <div className="flex flex-wrap justify-center gap-4 mt-6 pt-4 border-t border-slate-100">
-                {['Present', 'Absent', 'Pending', 'Leave', 'Holiday'].map(label => {
-                    const key = label === 'Leave' ? 'On Leave' : label;
+            <div className="flex flex-wrap justify-center gap-3 mt-4 pt-3 border-t border-slate-100">
+                {['Present', 'Absent', 'Pending', 'On Leave', 'Holiday', 'Unmarked'].map(label => {
+                    const key = label === 'On Leave' ? 'On Leave' : label;
                     const conf = getStatusConfig(key);
                     return (
                         <div key={label} className="flex items-center gap-1.5">
-                            <div className={`${conf.text} scale-90`}>{conf.icon}</div>
-                            <span className="text-[11px] font-bold text-slate-500">{label}</span>
+                            <div className={`${conf.text} scale-75`}>{conf.icon}</div>
+                            <span className="text-[10px] font-bold text-slate-500">{label}</span>
                         </div>
                     );
                 })}
@@ -161,36 +164,148 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const { user } = useAuth(); 
     const [currentMonthDate, setCurrentMonthDate] = useState(() => new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1)));
     const [attendanceData, setAttendanceData] = useState({});
+    const [holidays, setHolidays] = useState({});
+    const [leaveDaysSet, setLeaveDaysSet] = useState(new Set());
+    const [pendingRequestsMap, setPendingRequestsMap] = useState({});
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [actionLoading, setActionLoading] = useState(false);
 
-    // ... (fetch logic remains same as before) ...
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString + 'T00:00:00Z');
+            return date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
+        } catch (e) { return dateString; }
+    };
+
+    const fetchDataForUserAndMonth = useCallback(async (monthDate) => {
+        if (!user?.userIdentifier || !selectedUsername) return;
+        setLoading(true);
+        setError('');
+        try {
+            const year = monthDate.getUTCFullYear();
+            const month = (monthDate.getUTCMonth() + 1).toString().padStart(2, '0');
+            const monthString = `${year}-${month}`;
+            const monthEndDay = new Date(Date.UTC(year, monthDate.getUTCMonth() + 1, 0)).getUTCDate();
+
+            const [attendanceRes, holidaysRes, leaveRes] = await Promise.all([
+                apiService.getAttendance({ authenticatedUsername: user.userIdentifier, username: selectedUsername, month: monthString }),
+                apiService.getHolidays({ authenticatedUsername: user.userIdentifier, year: year.toString() }),
+                apiService.getLeaveRequests({ authenticatedUsername: user.userIdentifier, targetUsername: selectedUsername, statusFilter: 'Approved', startDateFilter: `${monthString}-01`, endDateFilter: `${monthString}-${monthEndDay.toString().padStart(2,'0')}` })
+            ]);
+
+            const attMap = {};
+            const pendingMap = {};
+            if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendanceRecords)) {
+                attendanceRes.data.attendanceRecords.forEach(att => {
+                    const record = { ...att, username: att.username || selectedUsername, date: att.date || att.rowKey };
+                    attMap[record.date] = record;
+                    if (record.status === 'Pending') pendingMap[record.date] = record;
+                });
+            }
+            setAttendanceData(attMap);
+            setPendingRequestsMap(pendingMap);
+
+            const holMap = {};
+            if (holidaysRes?.data?.success && Array.isArray(holidaysRes.data.holidays)) {
+                holidaysRes.data.holidays.forEach(h => holMap[h.date] = h.description);
+            }
+            setHolidays(holMap);
+
+            const leaveSet = new Set();
+            if (leaveRes?.data?.success && Array.isArray(leaveRes.data.requests)) {
+                leaveRes.data.requests.forEach(req => {
+                    const start = new Date(req.startDate + 'T00:00:00Z');
+                    const end = new Date(req.endDate + 'T00:00:00Z');
+                    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+                        if (d.getUTCFullYear() === year && d.getUTCMonth() === monthDate.getUTCMonth()) {
+                            leaveSet.add(d.toISOString().split('T')[0]);
+                        }
+                    }
+                });
+            }
+            setLeaveDaysSet(leaveSet);
+        } catch (err) {
+            setError(err.message || 'Failed to load data.');
+        } finally {
+            setLoading(false);
+        }
+    }, [user?.userIdentifier, selectedUsername]);
+
+    useEffect(() => {
+        if (isOpen && selectedUsername) fetchDataForUserAndMonth(currentMonthDate);
+    }, [isOpen, selectedUsername, currentMonthDate, fetchDataForUserAndMonth]);
+
+    const changeMonth = (offset) => {
+        setCurrentMonthDate(prev => {
+            const newDate = new Date(prev);
+            newDate.setUTCMonth(newDate.getUTCMonth() + offset, 1);
+            return newDate;
+        });
+    };
+
+    const handleConfirmAction = async (req, action, comments) => {
+        setActionLoading(true);
+        try {
+            const payload = {
+                targetUsername: req.username, 
+                attendanceDate: req.date,     
+                action: action,               
+                approverComments: comments,
+                authenticatedUsername: user.userIdentifier
+            };
+            const response = await apiService.approveAttendance(payload);
+            if (response.data.success) {
+                await fetchDataForUserAndMonth(currentMonthDate);
+                if (onApprovalComplete) onApprovalComplete();
+            }
+        } catch (err) { setError(err.message); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleDayClick = (request) => {
+        if (request?.status === 'Pending') {
+            const actionConfirmed = window.confirm(
+                `Approval Required\n\nUser: ${request.username}\nDate: ${formatDate(request.date)}\nRequest: Mark as ${request.requestedStatus}\n\n• OK to Approve\n• Cancel to Reject`
+            );
+            handleConfirmAction(request, actionConfirmed ? 'Approved' : 'Rejected', '');
+        }
+    };
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Review: ${selectedUsername}`} size="2xl">
             <div className="bg-white flex flex-col p-4 w-full">
-                {/* Header Section */}
+                {error && <div className="mb-4 text-xs text-rose-600 bg-rose-50 p-2 rounded border border-rose-100">{error}</div>}
+                
                 <div className="flex justify-between items-center mb-6 bg-slate-50 p-2 rounded-xl">
-                    <button onClick={() => {/* prev month logic */}} className="p-2 hover:bg-white rounded-lg shadow-sm">
+                    <button onClick={() => changeMonth(-1)} disabled={loading} className="p-2 hover:bg-white rounded-lg shadow-sm disabled:opacity-50">
                         <ChevronLeft className="w-5 h-5 text-slate-600" />
                     </button>
                     <h3 className="text-lg font-black text-slate-800">
                         {currentMonthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}
                     </h3>
-                    <button onClick={() => {/* next month logic */}} className="p-2 hover:bg-white rounded-lg shadow-sm">
+                    <button onClick={() => changeMonth(1)} disabled={loading} className="p-2 hover:bg-white rounded-lg shadow-sm disabled:opacity-50">
                         <ChevronRight className="w-5 h-5 text-slate-600" />
                     </button>
                 </div>
 
-                {/* Calendar fills the available 2xl width of the modal */}
                 <div className="w-full">
-                    <CalendarDisplay
-                        monthDate={currentMonthDate}
-                        attendanceData={attendanceData}
-                        holidays={{}} 
-                        leaveDaysSet={new Set()}
-                        onDayClick={() => {}} 
-                        pendingRequestsMap={{}} 
-                    />
+                    {loading || actionLoading ? (
+                        <div className="flex flex-col justify-center items-center h-64 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
+                            <Spinner size="10"/>
+                            <p className="mt-4 text-sm font-bold text-slate-400 animate-pulse">Syncing...</p>
+                        </div>
+                    ) : (
+                        <CalendarDisplay
+                            monthDate={currentMonthDate}
+                            attendanceData={attendanceData}
+                            holidays={holidays}
+                            leaveDaysSet={leaveDaysSet}
+                            onDayClick={handleDayClick}
+                            pendingRequestsMap={pendingRequestsMap} 
+                        />
+                    )}
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
