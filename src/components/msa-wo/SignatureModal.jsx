@@ -32,18 +32,36 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
         const canvas = typeCanvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+        
+        // 1. Determine font style
         let fontStyle = '30px';
         if (selectedFont === 'font-dancing-script') fontStyle = 'italic 40px "Dancing Script", cursive';
         if (selectedFont === 'font-great-vibes') fontStyle = 'italic 45px "Great Vibes", cursive';
         if (selectedFont === 'font-pacifico') fontStyle = '35px "Pacifico", cursive';
         if (selectedFont === 'font-sacramento') fontStyle = '40px "Sacramento", cursive';
 
+        // 2. Measure text width
         ctx.font = fontStyle;
+        const textMetrics = ctx.measureText(typedSignature);
+        const textWidth = textMetrics.width;
+
+        // 3. Dynamic Resize: Ensure canvas is wide enough for the text + padding
+        // Default to 400, but expand if text is longer
+        const requiredWidth = Math.max(400, Math.ceil(textWidth + 60)); // 60px padding
+        
+        if (canvas.width !== requiredWidth) {
+            canvas.width = requiredWidth;
+            // Reset font after resize as context clears
+            ctx.font = fontStyle; 
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
         ctx.fillStyle = "#111827";
         ctx.textBaseline = 'middle';
-        ctx.fillText(typedSignature, 20, canvas.height / 2);
+        // Draw with left alignment and padding to ensure start isn't clipped
+        ctx.textAlign = 'left';
+        ctx.fillText(typedSignature, 30, canvas.height / 2);
     }, [typedSignature, selectedFont]);
 
     useEffect(() => {
@@ -186,7 +204,7 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
                                 <UploadIcon /><span>Click to upload an image</span><span className="text-xs">(PNG or JPG)</span>
                             </button>
                         </div>
-                        <canvas ref={typeCanvasRef} width="400" height="60" className="hidden"></canvas>
+                        <canvas ref={typeCanvasRef} height="60" className="hidden"></canvas>
                     </div>
                     {requiresPassword && (
                         <div>
