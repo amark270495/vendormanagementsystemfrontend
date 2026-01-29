@@ -13,28 +13,29 @@ import {
     Palmtree 
 } from 'lucide-react';
 
-// --- UI Configuration Helper ---
+// --- Compact UI Configuration ---
 const getStatusConfig = (statusKey) => {
+    // Reduced padding/borders for compact look
     const configs = {
         'Present': { 
             bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', 
-            icon: <CheckCircle2 className="w-4 h-4" />, label: 'Present' 
+            icon: <CheckCircle2 className="w-3.5 h-3.5" />, label: 'Present' 
         },
         'Absent': { 
             bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', 
-            icon: <XCircle className="w-4 h-4" />, label: 'Absent' 
+            icon: <XCircle className="w-3.5 h-3.5" />, label: 'Absent' 
         },
         'Pending': { 
             bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', 
-            icon: <Clock className="w-4 h-4 animate-pulse" />, label: 'Pending Action' 
+            icon: <Clock className="w-3.5 h-3.5 animate-pulse" />, label: 'Pending' 
         },
         'On Leave': { 
             bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', 
-            icon: <Palmtree className="w-4 h-4" />, label: 'Leave' 
+            icon: <Palmtree className="w-3.5 h-3.5" />, label: 'Leave' 
         },
         'Holiday': { 
             bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', 
-            icon: <CalendarOff className="w-4 h-4" />, label: 'Holiday' 
+            icon: <CalendarOff className="w-3.5 h-3.5" />, label: 'Holiday' 
         },
         'Weekend': { 
             bg: 'bg-slate-50', border: 'border-transparent', text: 'text-slate-400', 
@@ -63,18 +64,12 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         const today = new Date(); 
         today.setUTCHours(0,0,0,0);
 
-        // 1. Leave
         if (leaveDaysSet.has(dateKey)) return { key: 'On Leave' };
-        
-        // 2. Holiday
         if (holidays[dateKey]) return { key: 'Holiday', description: holidays[dateKey] };
-
-        // 3. Weekend
         if (dayOfWeek === 0 || dayOfWeek === 6) return { key: 'Weekend' };
 
         const attendanceRecord = attendanceData[dateKey];
         
-        // 4. Pending Requests (Actionable)
         if (attendanceRecord && attendanceRecord.status === 'Pending') {
             const requestObj = pendingRequestsMap[dateKey] || {};
             return {
@@ -86,13 +81,11 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             };
         }
         
-        // 5. Historical Records
         if (attendanceRecord) {
              if (attendanceRecord.status === 'Present') return { key: 'Present' };
              if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') return { key: 'Absent' };
         }
 
-        // 6. Unmarked Past Days
         if (date < today) return { key: 'Unmarked' };
 
         return { key: 'Future' };
@@ -120,18 +113,18 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
     }, [monthDate, attendanceData, holidays, leaveDaysSet, pendingRequestsMap]);
 
     return (
-        <div className="flex flex-col gap-4">
-            {/* Calendar Header Days */}
-            <div className="grid grid-cols-7 mb-2">
+        <div className="flex flex-col gap-2">
+            {/* Compact Header Days */}
+            <div className="grid grid-cols-7 mb-1">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                    <div key={d} className="text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <div key={d} className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-wide">
                         {d}
                     </div>
                 ))}
             </div>
 
-            {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-2">
+            {/* Compact Grid: gap-1 instead of gap-2 */}
+            <div className="grid grid-cols-7 gap-1">
                 {calendarGrid.flat().map((cell, index) => {
                     const { key, description, isPending, request, subText } = cell.statusInfo;
                     const config = getStatusConfig(key);
@@ -142,24 +135,27 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
                             key={index}
                             onClick={() => isPending && onDayClick(request)}
                             title={description || config.label}
+                            // Changed aspect-square to fixed h-12 (48px) for denser vertical layout
                             className={`
-                                relative aspect-square rounded-xl border flex flex-col items-center justify-center transition-all duration-200
+                                relative h-12 rounded-lg border flex flex-col items-center justify-center transition-all duration-200
                                 ${isHidden ? 'invisible' : `${config.bg} ${config.border}`}
-                                ${isPending ? 'cursor-pointer hover:shadow-md hover:scale-105 ring-2 ring-amber-200 ring-offset-1' : ''}
+                                ${isPending ? 'cursor-pointer hover:shadow-sm hover:scale-[1.02] ring-1 ring-amber-200 ring-offset-0' : ''}
                             `}
                         >
                             {!isHidden && (
                                 <>
-                                    <span className={`text-sm font-semibold ${config.text}`}>
+                                    {/* Smaller date text */}
+                                    <span className={`text-xs font-semibold leading-none ${config.text}`}>
                                         {cell.day}
                                     </span>
                                     
-                                    <div className={`mt-1 ${config.text}`}>
+                                    {/* Icon container */}
+                                    <div className={`mt-0.5 ${config.text}`}>
                                         {config.icon}
                                     </div>
 
                                     {subText && (
-                                        <span className="absolute bottom-1 text-[10px] font-bold text-amber-600">
+                                        <span className="absolute bottom-0.5 text-[8px] font-bold text-amber-600 leading-none">
                                             {subText}
                                         </span>
                                     )}
@@ -170,14 +166,14 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
                 })}
             </div>
 
-            {/* Legend */}
-            <div className="flex flex-wrap justify-center gap-3 mt-4 pt-4 border-t border-slate-100">
+            {/* Compact Legend */}
+            <div className="flex flex-wrap justify-center gap-2 mt-2 pt-2 border-t border-slate-100">
                 {['Present', 'Absent', 'Pending', 'On Leave', 'Holiday', 'Unmarked'].map(key => {
                     const conf = getStatusConfig(key);
                     return (
-                        <div key={key} className="flex items-center gap-2 px-3 py-1 bg-white border border-slate-100 rounded-full shadow-sm">
-                            <div className={`${conf.text}`}>{conf.icon}</div>
-                            <span className="text-xs font-medium text-slate-600">{conf.label}</span>
+                        <div key={key} className="flex items-center gap-1.5 px-2 py-0.5 bg-white border border-slate-100 rounded-full shadow-sm">
+                            <div className={`${conf.text} scale-90`}>{conf.icon}</div>
+                            <span className="text-[10px] font-semibold text-slate-600">{conf.label}</span>
                         </div>
                     );
                 })}
@@ -294,8 +290,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 setError("Internal error: Request data missing.");
                 return;
             }
-            // In a real modern app, this would be a nested Modal or Popover. 
-            // Sticking to confirm for simplicity but cleaning the string.
              const actionConfirmed = window.confirm(
                  `Approval Required\n\nUser: ${request.username}\nDate: ${formatDate(request.date)}\nRequest: Mark as ${request.requestedStatus}\n\n• OK to Approve\n• Cancel to Reject`
              );
@@ -339,42 +333,42 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const monthName = currentMonthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Attendance Review: ${selectedUsername || '...'}`} size="3xl">
+        <Modal isOpen={isOpen} onClose={onClose} title={`Review: ${selectedUsername || '...'}`} size="2xl">
             <div className="p-1">
                 {error && (
-                    <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg mb-4 text-sm flex items-center">
-                        <XCircle className="w-4 h-4 mr-2" />
+                    <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded mb-3 text-xs flex items-center">
+                        <XCircle className="w-3.5 h-3.5 mr-2" />
                         {error}
                     </div>
                 )}
 
-                {/* Header Controls */}
-                <div className="flex justify-between items-center mb-6 bg-slate-50 p-2 rounded-xl">
+                {/* Compact Header */}
+                <div className="flex justify-between items-center mb-4 bg-slate-50 p-1.5 rounded-lg">
                     <button 
                         onClick={() => changeMonth(-1)} 
-                        className="p-2 bg-white text-slate-600 rounded-lg hover:bg-white hover:text-indigo-600 hover:shadow-md transition-all disabled:opacity-50" 
+                        className="p-1.5 bg-white text-slate-600 rounded-md hover:bg-white hover:text-indigo-600 hover:shadow-sm transition-all disabled:opacity-50" 
                         disabled={loading || actionLoading}
                     >
-                        <ChevronLeft className="w-5 h-5" />
+                        <ChevronLeft className="w-4 h-4" />
                     </button>
                     
-                    <h3 className="text-lg font-bold text-slate-800 tracking-tight">{monthName}</h3>
+                    <h3 className="text-base font-bold text-slate-800 tracking-tight">{monthName}</h3>
                     
                     <button 
                         onClick={() => changeMonth(1)} 
-                        className="p-2 bg-white text-slate-600 rounded-lg hover:bg-white hover:text-indigo-600 hover:shadow-md transition-all disabled:opacity-50" 
+                        className="p-1.5 bg-white text-slate-600 rounded-md hover:bg-white hover:text-indigo-600 hover:shadow-sm transition-all disabled:opacity-50" 
                         disabled={loading || actionLoading}
                     >
-                        <ChevronRight className="w-5 h-5" />
+                        <ChevronRight className="w-4 h-4" />
                     </button>
                 </div>
 
                 {/* Content Area */}
                 {loading || actionLoading ? (
-                    <div className="flex flex-col justify-center items-center h-80 bg-slate-50/50 rounded-2xl border border-slate-100 dashed">
-                        <Spinner size="10"/>
-                        <p className="mt-3 text-slate-500 font-medium animate-pulse">
-                            {actionLoading ? 'Processing decision...' : 'Loading calendar...'}
+                    <div className="flex flex-col justify-center items-center h-60 bg-slate-50/50 rounded-xl border border-slate-100 dashed">
+                        <Spinner size="8"/>
+                        <p className="mt-2 text-xs text-slate-500 font-medium animate-pulse">
+                            {actionLoading ? 'Processing...' : 'Loading...'}
                         </p>
                     </div>
                 ) : (
@@ -388,12 +382,12 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                     />
                 )}
 
-                <div className="mt-8 pt-4 border-t border-slate-100 flex justify-end">
+                <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
                     <button 
                         onClick={onClose} 
-                        className="px-6 py-2.5 bg-slate-800 text-white font-semibold rounded-xl hover:bg-slate-700 transition shadow-lg shadow-slate-200"
+                        className="px-4 py-2 bg-slate-800 text-white text-sm font-semibold rounded-lg hover:bg-slate-700 transition shadow-md shadow-slate-200"
                     >
-                        Close Review
+                        Close
                     </button>
                 </div>
             </div>
