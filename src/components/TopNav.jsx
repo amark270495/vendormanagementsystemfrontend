@@ -15,7 +15,7 @@ const DASHBOARD_CONFIGS = {
     'DeloitteDisplay': { title: 'Deloitte Taproot' }
 };
 
-// --- Icons (Memoized for speed) ---
+// --- Icons (Memoized) ---
 const ChevronDownIcon = memo(({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6"/></svg>
 ));
@@ -24,9 +24,8 @@ const BellIcon = memo(({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
 ));
 
-// --- NavButton (Simple standard button) ---
+// --- NavButton ---
 const NavButton = memo(({ label, target, isActive, onClick }) => {
-    // Styles match the "Original" look: Simple, no heavy effects
     const baseClass = "px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer select-none";
     const activeClass = "bg-slate-200 text-slate-900";
     const inactiveClass = "text-slate-500 hover:bg-slate-100 hover:text-slate-800";
@@ -62,7 +61,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
     const [notifications, setNotifications] = useState([]);
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
-    // Refs to track previous counts without triggering re-renders loops
     const prevNotifLengthRef = useRef(0);
     const prevMsgCountRef = useRef(0);
     const audioRef = useRef(null);
@@ -88,13 +86,10 @@ const TopNav = ({ onNavigate, currentPage }) => {
             const response = await apiService.getNotifications(user.userIdentifier);
             const newNotifications = response?.data?.success ? (response.data.notifications || []) : [];
             
-            // Check if we need to play sound
             if (newNotifications.length > prevNotifLengthRef.current && prevNotifLengthRef.current > 0) {
                 playSound('notification');
             }
             prevNotifLengthRef.current = newNotifications.length;
-            
-            // Always set state to ensure UI reflects the latest array
             setNotifications(newNotifications); 
 
         } catch (err) {
@@ -122,14 +117,10 @@ const TopNav = ({ onNavigate, currentPage }) => {
 
     // --- Intervals ---
     useEffect(() => {
-        // Initial Fetch
         fetchNotifications();
         fetchUnreadMessages();
-        
-        // Polling Intervals
         const notifInterval = setInterval(fetchNotifications, 30000);
         const msgInterval = setInterval(fetchUnreadMessages, 15000);
-
         return () => {
             clearInterval(notifInterval);
             clearInterval(msgInterval);
@@ -151,13 +142,11 @@ const TopNav = ({ onNavigate, currentPage }) => {
     const showAdminDropdown = canEditUsers || canManageHolidays || canApproveLeave || canManageLeaveConfig || canApproveAttendance || canSendMonthlyReport;
     const isPageActive = (target) => Array.isArray(target) ? target.includes(currentPage) : currentPage === target;
 
-    // Helper to keep the JSX clean
     const handleNav = useCallback((target) => {
         if (typeof target === 'function') target();
         else onNavigate(target);
     }, [onNavigate]);
 
-    // Helper for Link Styles
     const getLinkClass = (target) => {
         const base = "px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer";
         const active = "bg-slate-200 text-slate-900";
@@ -166,7 +155,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
     };
 
     return (
-        // REMOVED 'backdrop-blur' and 'bg-white/90'. Using solid 'bg-white' for performance and no overlay effect.
         <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white shadow-sm">
             <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
@@ -197,7 +185,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
                             {canViewCandidates && <NavButton label="Candidates" target="candidate_details" isActive={currentPage === 'candidate_details'} onClick={handleNav} />}
                             {canViewReports && <NavButton label="Reports" target="reports" isActive={currentPage === 'reports'} onClick={handleNav} />}
                             
-                            {/* MESSAGES - Manually styled to support Floating Badge correctly */}
                             {canMessage && (
                                 <a onClick={() => handleNav('messages')} className={`${getLinkClass('messages')} relative`}>
                                     Messages
@@ -311,10 +298,11 @@ const TopNav = ({ onNavigate, currentPage }) => {
                                 <ChevronDownIcon className="ml-1 h-4 w-4 text-slate-400" />
                             </div>
                         }>
-                            <div className="w-56">
+                            {/* UPDATED: Increased width to w-80 and removed truncation */}
+                            <div className="w-80">
                                 <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
-                                    <p className="text-sm font-bold text-slate-900">{user?.userName || 'User'}</p>
-                                    <p className="text-xs text-slate-500 truncate">{user?.userIdentifier}</p>
+                                    <p className="text-sm font-bold text-slate-900 break-words">{user?.userName || 'User'}</p>
+                                    <p className="text-xs text-slate-500 break-all">{user?.userIdentifier}</p>
                                 </div>
                                 <div className="py-1">
                                     <DropdownItem label="My Profile" target="profile" onClick={handleNav} />
