@@ -46,8 +46,8 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
         const textWidth = textMetrics.width;
 
         // 3. Dynamic Resize: Ensure canvas is wide enough for the text + padding
-        // Default to 400, but expand if text is longer
-        const requiredWidth = Math.max(400, Math.ceil(textWidth + 60)); // 60px padding
+        // Default to 400, but expand if text is longer. 60px provides left/right padding.
+        const requiredWidth = Math.max(400, Math.ceil(textWidth + 60)); 
         
         if (canvas.width !== requiredWidth) {
             canvas.width = requiredWidth;
@@ -59,7 +59,7 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
 
         ctx.fillStyle = "#111827";
         ctx.textBaseline = 'middle';
-        // Draw with left alignment and padding to ensure start isn't clipped
+        // Draw with left alignment and padding (30px) to ensure start isn't clipped
         ctx.textAlign = 'left';
         ctx.fillText(typedSignature, 30, canvas.height / 2);
     }, [typedSignature, selectedFont]);
@@ -104,6 +104,7 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
                     setError('Please type your signature.');
                     setLoading(false); return;
                 }
+                // This captures the FULL dynamically resized canvas
                 signatureData = typeCanvasRef.current.toDataURL('image/png');
             } else if (activeTab === 'draw') {
                 if (signaturePad.current.isEmpty()) {
@@ -204,6 +205,7 @@ const SignatureModal = ({ isOpen, onClose, onSign, signerType, signerInfo, requi
                                 <UploadIcon /><span>Click to upload an image</span><span className="text-xs">(PNG or JPG)</span>
                             </button>
                         </div>
+                        {/* Hidden Canvas - Note: height matches line-height logic, width is dynamic */}
                         <canvas ref={typeCanvasRef} height="60" className="hidden"></canvas>
                     </div>
                     {requiresPassword && (
