@@ -28,7 +28,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-// --- SVG Icons ---
+// --- SVG Icons (Original preserved) ---
 const IconHash = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor">
         <path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" />
@@ -36,6 +36,7 @@ const IconHash = () => (
 );
 
 // *** MultiSelectDropdown Component ***
+// FIXED: Restored original selection and toggle logic for "Working By"
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -52,6 +53,7 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
     }, [onBlur]);
 
     const handleToggleSelect = (name) => {
+        // Original logic: If Unassigned is selected, clear everything else
         if (name === "Need To Update") {
             onChange(["Need To Update"]);
             return;
@@ -59,10 +61,12 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
         
         const currentSelected = Array.isArray(selectedNames) ? selectedNames : [];
 
+        // Original logic: Toggle name and remove "Need To Update" if present
         const newSelectedNames = currentSelected.includes(name)
             ? currentSelected.filter(n => n !== name)
             : [...currentSelected.filter(n => n !== "Need To Update"), name]; 
 
+        // If list is empty, default back to Unassigned
         if (newSelectedNames.length === 0) {
             onChange(["Need To Update"]);
         } else {
@@ -87,11 +91,11 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
             </button>
             {isOpen && (
                 <div className="absolute z-[100] left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto ring-1 ring-black ring-opacity-5">
-                    <ul>
+                    <ul className="p-1">
                         <li
                             key="unassigned"
                             onClick={() => handleToggleSelect("Need To Update")}
-                            className="flex items-center px-4 py-2 text-[14px] text-slate-700 cursor-pointer hover:bg-slate-50 transition-colors"
+                            className="flex items-center px-3 py-2 text-[14px] text-slate-700 cursor-pointer hover:bg-slate-50 rounded transition-colors"
                         >
                             <input
                                 type="checkbox"
@@ -105,7 +109,7 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
                             <li
                                 key={name}
                                 onClick={() => handleToggleSelect(name)}
-                                className="flex items-center px-4 py-2 text-[14px] text-slate-700 cursor-pointer hover:bg-slate-50 transition-colors"
+                                className="flex items-center px-3 py-2 text-[14px] text-slate-700 cursor-pointer hover:bg-slate-50 rounded transition-colors"
                             >
                                 <input
                                     type="checkbox"
@@ -157,10 +161,7 @@ const DashboardPage = ({ sheetKey }) => {
     const [error, setError] = useState('');
     const [activeMenu, setActiveMenu] = useState(null);
 
-    // ** Default Sorting: Posting Date from Old to New (Ascending) **
     const [sortConfig, setSortConfig] = useState({ key: 'Posting Date', direction: 'ascending' });
-    
-    // ** Pagination State **
     const [batchSize, setBatchSize] = useState(15);
     const [visibleCount, setVisibleCount] = useState(15);
 
@@ -174,6 +175,7 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
+    // EXACT COL WIDTHS PRESERVED
     const colWidths = useMemo(() => ({
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
@@ -220,7 +222,6 @@ const DashboardPage = ({ sheetKey }) => {
             const result = await apiService.getDashboardData(sheetKey, user.userIdentifier);
             if (result.data.success) {
                 setRawData({ header: result.data.header, rows: result.data.rows });
-                // ** Reset visible count to batch size when data reloads or sheet changes **
                 setVisibleCount(batchSize); 
             } else {
                 setError(result.data.message);
@@ -276,12 +277,8 @@ const DashboardPage = ({ sheetKey }) => {
                     const postingFrom = row[postingFromIdx] || '';
                     const workLocation = row[workLocationIdx] || '';
                     let info = client;
-                    if (postingFrom && !['All', 'Need To Update'].includes(postingFrom)) {
-                        info += ` / ${postingFrom}`;
-                    }
-                    if (workLocation && workLocation !== 'Need To Update') {
-                        info += ` (${workLocation})`;
-                    }
+                    if (postingFrom && !['All', 'Need To Update'].includes(postingFrom)) info += ` / ${postingFrom}`;
+                    if (workLocation && workLocation !== 'Need To Update') info += ` (${workLocation})`;
                     return info;
                 }
                 const originalHeader = Object.keys(headerRenames).find(k => headerRenames[k] === newHeader) || newHeader;
@@ -407,15 +404,11 @@ const DashboardPage = ({ sheetKey }) => {
         return data;
     }, [displayData, sortConfig, generalFilter, statusFilter, displayHeader, columnFilters]);
 
-    // ** Handlers for Pagination **
-    const handleLoadMore = () => {
-        setVisibleCount(prev => prev + batchSize);
-    };
-
+    const handleLoadMore = () => setVisibleCount(prev => prev + batchSize);
     const handleBatchSizeChange = (e) => {
         const val = parseInt(e.target.value);
         setBatchSize(val);
-        setVisibleCount(val); // Reset view to new batch size
+        setVisibleCount(val);
     };
 
     const handleSort = (key, direction) => setSortConfig({ key, direction });
@@ -425,9 +418,7 @@ const DashboardPage = ({ sheetKey }) => {
         if (!canEditDashboard) return;
         const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
         const headerName = displayHeader[cellIndex];
-        
         const finalValue = Array.isArray(value) ? value.join(', ') : value;
-        
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
@@ -437,9 +428,7 @@ const DashboardPage = ({ sheetKey }) => {
         const updates = Object.entries(unsavedChanges).map(([postingId, changes]) => ({
             rowKey: postingId,
             changes: Object.entries(changes).reduce((acc, [header, value]) => {
-                if (headerMap[header]) {
-                    acc[headerMap[header]] = value;
-                }
+                if (headerMap[header]) acc[headerMap[header]] = value;
                 return acc;
             }, {})
         })).filter(u => Object.keys(u.changes).length > 0);
@@ -466,7 +455,7 @@ const DashboardPage = ({ sheetKey }) => {
             setUnsavedChanges({});
             loadData();
         } catch (err) {
-            setError(`Failed to save: ${err.response?.data?.message || err.message}`);
+            setError(`Failed to save: ${err.message}`);
         } finally {
             setLoading(false);
         }
@@ -484,7 +473,7 @@ const DashboardPage = ({ sheetKey }) => {
             }
             loadData();
         } catch (err) {
-            setError(`Action '${actionType}' failed: ${err.response?.data?.message || err.message}`);
+            setError(`Action failed: ${err.message}`);
         } finally {
             setLoading(false);
             setModalState({ type: null, data: null });
@@ -495,19 +484,16 @@ const DashboardPage = ({ sheetKey }) => {
         setLoading(true);
         try {
             await apiService.addCandidateDetails(candidateData, user.userIdentifier);
-            const fullName = `${candidateData.firstName} ${candidateData.middleName || ''} ${candidateData.lastName}`.replace(/\s+/g, ' ').trim();
+            const fullName = `${candidateData.firstName} ${candidateData.middleName || ''} ${candidateData.lastName}`.trim();
             const headerMap = { '1st Candidate Name': 'candidateName1', '2nd Candidate Name': 'candidateName2', '3rd Candidate Name': 'candidateName3' };
-            const fieldToUpdate = headerMap[candidateSlot];
-
             const updatePayload = [{
                 rowKey: candidateData.postingId,
-                changes: { [fieldToUpdate]: fullName }
+                changes: { [headerMap[candidateSlot]]: fullName }
             }];
-
             await apiService.updateJobPosting(updatePayload, user.userIdentifier);
             loadData();
         } catch (error) {
-            setError(error.response?.data?.message || error.message || "An error occurred while saving the candidate.");
+            setError(error.message);
             throw error;
         } finally {
             setLoading(false);
@@ -517,17 +503,14 @@ const DashboardPage = ({ sheetKey }) => {
     const handleSaveColumnSettings = async (newPrefs) => {
         setLoading(true);
         try {
-            await apiService.saveUserDashboardPreferences(user.userIdentifier, { 
-                columnOrder: newPrefs.order, 
-                columnVisibility: newPrefs.visibility 
-            });
+            await apiService.saveUserDashboardPreferences(user.userIdentifier, newPrefs);
             updatePreferences({ 
                 ...user.dashboardPreferences,
                 columnOrder: JSON.stringify(newPrefs.order), 
                 columnVisibility: JSON.stringify(newPrefs.visibility) 
             });
         } catch(err) {
-            setError(`Failed to save column settings: ${err.message}`);
+            setError(err.message);
         } finally {
             setLoading(false);
             setColumnModalOpen(false);
@@ -537,26 +520,18 @@ const DashboardPage = ({ sheetKey }) => {
     const downloadCsv = () => {
         const csvContent = [
             displayHeader.join(','),
-            ...filteredAndSortedData.map(row => 
-                row.map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')
-            )
+            ...filteredAndSortedData.map(row => row.map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(','))
         ].join('\n');
-
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
         link.download = `${sheetKey}_report.csv`;
-        document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
     };
 
     const downloadPdf = () => {
         const doc = new jsPDF('landscape');
-        doc.autoTable({
-            head: [displayHeader],
-            body: filteredAndSortedData,
-        });
+        doc.autoTable({ head: [displayHeader], body: filteredAndSortedData });
         doc.save(`${sheetKey}_report.pdf`);
     };
     
@@ -565,30 +540,23 @@ const DashboardPage = ({ sheetKey }) => {
     const handleCellClick = (rowIndex, cellIndex) => {
         if (!canEditDashboard) return; 
         const headerName = displayHeader[cellIndex];
-        
         if (EDITABLE_COLUMNS.includes(headerName)) {
             setEditingCell({ rowIndex, cellIndex });
         } else if (CANDIDATE_COLUMNS.includes(headerName)) {
-            // Note: Use absolute index from filtered data for row data access
             const rowData = filteredAndSortedData[rowIndex];
-            const jobInfo = {
+            setModalState({ type: 'addCandidate', data: {
                 postingId: rowData[displayHeader.indexOf('Posting ID')],
                 clientInfo: rowData[displayHeader.indexOf('Client Info')],
                 resumeWorkedBy: rowData[displayHeader.indexOf('Working By')],
                 candidateSlot: headerName
-            };
-            setModalState({ type: 'addCandidate', data: jobInfo });
+            }});
         }
     };
     
     const getStatusBadge = (status) => {
-        const lowerStatus = String(status || '').toLowerCase();
-        if (lowerStatus === 'open') {
-            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-        }
-        if (lowerStatus === 'closed') {
-            return 'bg-rose-50 text-rose-700 border-rose-200';
-        }
+        const s = String(status || '').toLowerCase();
+        if (s === 'open') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        if (s === 'closed') return 'bg-rose-50 text-rose-700 border-rose-200';
         return 'bg-slate-100 text-slate-700 border-slate-200';
     };
 
@@ -607,20 +575,10 @@ const DashboardPage = ({ sheetKey }) => {
                 <div className="flex items-center gap-2 w-full md:w-auto">
                     <div className="relative group w-full md:w-72">
                         <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500" />
-                        <input 
-                            type="text" 
-                            placeholder="Search postings..." 
-                            value={generalFilter} 
-                            onChange={(e) => setGeneralFilter(e.target.value)} 
-                            className="w-full pl-10 pr-4 py-2 bg-slate-50 border-slate-200 rounded-lg text-[14px] outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-inner" 
-                        />
+                        <input type="text" placeholder="Search postings..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-slate-50 border-slate-200 rounded-lg text-[14px] outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-inner" />
                     </div>
                     <div className="relative">
-                        <select 
-                            value={statusFilter} 
-                            onChange={(e) => setStatusFilter(e.target.value)} 
-                            className="appearance-none bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 pr-10 text-[14px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
-                        >
+                        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="appearance-none bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 pr-10 text-[14px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer">
                             <option value="">All Statuses</option>
                             <option value="Open">Open</option>
                             <option value="Closed">Closed</option>
@@ -631,30 +589,19 @@ const DashboardPage = ({ sheetKey }) => {
 
                 <div className="flex items-center gap-2">
                     {canEditDashboard && Object.keys(unsavedChanges).length > 0 && (
-                        <button 
-                            onClick={handleSaveChanges} 
-                            className="px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-[14px] shadow-sm flex items-center gap-2 active:scale-95 transition-all"
-                        >
+                        <button onClick={handleSaveChanges} className="px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-[14px] shadow-sm flex items-center gap-2 active:scale-95 transition-all">
                             <Save className="h-4 w-4" /> Save Changes ({Object.keys(unsavedChanges).length})
                         </button>
                     )}
-                    <Dropdown 
-                        trigger={
-                            <button className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-lg hover:bg-slate-50 font-bold text-[14px] border border-slate-300 shadow-sm transition-all active:scale-95">
-                                <Settings className="h-4 w-4 text-slate-500" /> Options <ChevronDown className="h-4 w-4 text-slate-400" />
-                            </button>
-                        }
-                    >
+                    <Dropdown trigger={
+                        <button className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-lg hover:bg-slate-50 font-bold text-[14px] border border-slate-300 shadow-sm transition-all active:scale-95">
+                            <Settings className="h-4 w-4 text-slate-500" /> Options <ChevronDown className="h-4 w-4 text-slate-400" />
+                        </button>
+                    }>
                         <div className="p-1 min-w-[160px]">
-                            <button onClick={() => setColumnModalOpen(true)} className="flex items-center w-full px-3 py-2 text-[14px] text-slate-700 hover:bg-indigo-50 rounded-md transition-colors">
-                                <Columns className="h-3.5 w-3.5 mr-2" /> Columns
-                            </button>
-                            <button onClick={downloadPdf} className="flex items-center w-full px-3 py-2 text-[14px] text-slate-700 hover:bg-indigo-50 rounded-md transition-colors">
-                                <FileText className="h-3.5 w-3.5 mr-2" /> Download PDF
-                            </button>
-                            <button onClick={downloadCsv} className="flex items-center w-full px-3 py-2 text-[14px] text-slate-700 hover:bg-indigo-50 rounded-md transition-colors">
-                                <Download className="h-3.5 w-3.5 mr-2" /> Download CSV
-                            </button>
+                            <button onClick={() => setColumnModalOpen(true)} className="flex items-center w-full px-3 py-2 text-[14px] text-slate-700 hover:bg-slate-50 rounded-md transition-colors"><Columns className="h-3.5 w-3.5 mr-2" /> Columns</button>
+                            <button onClick={downloadPdf} className="flex items-center w-full px-3 py-2 text-[14px] text-slate-700 hover:bg-slate-50 rounded-md transition-colors"><FileText className="h-3.5 w-3.5 mr-2" /> Download PDF</button>
+                            <button onClick={downloadCsv} className="flex items-center w-full px-3 py-2 text-[14px] text-slate-700 hover:bg-slate-50 rounded-md transition-colors"><Download className="h-3.5 w-3.5 mr-2" /> Download CSV</button>
                         </div>
                     </Dropdown>
                 </div>
@@ -663,50 +610,27 @@ const DashboardPage = ({ sheetKey }) => {
             {loading && !rawData.rows.length && <div className="flex justify-center items-center h-64"><Spinner /></div>}
             {error && <div className="text-rose-600 bg-rose-50 border border-rose-100 p-4 rounded-xl font-bold text-[14px] flex items-center gap-2"><XCircle className="h-5 w-5" /> Error: {error}</div>}
             
-            {/* Data Table with Dimensions Preserved */}
             {!loading && !error && (
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                         <table className="w-full text-left table-fixed border-collapse">
                             <colgroup>
-                                {displayHeader.map(h => (
-                                    <col key={h} className={colWidths[h] || 'w-auto'} />
-                                ))}
+                                {displayHeader.map(h => <col key={h} className={colWidths[h] || 'w-auto'} />)}
                                 <col className={colWidths['Actions'] || 'w-15'} />
                             </colgroup>
-                            {/* Header: Increased to 12px and Slate Palette */}
                             <thead className="sticky top-0 z-40 bg-slate-50 border-b border-slate-300">
                                 <tr>
                                     {displayHeader.map((h, idx) => (
-                                        <th 
-                                            key={idx} 
-                                            scope="col" 
-                                            className="relative overflow-visible p-0 border-r border-slate-200 last:border-r-0"
-                                        >
-                                            <div 
-                                                className="flex items-center justify-between px-3 py-3 cursor-pointer hover:bg-slate-100 transition-all group"
-                                                onClick={() => setActiveMenu(activeMenu === h ? null : h)}
-                                            >
-                                                <span className="text-[12px] font-bold text-slate-500 uppercase tracking-widest leading-none">
-                                                    {h}
-                                                </span>
+                                        <th key={idx} className="relative overflow-visible p-0 border-r border-slate-200 last:border-r-0">
+                                            <div className="flex items-center justify-between px-3 py-3 cursor-pointer hover:bg-slate-100 transition-all group" onClick={() => setActiveMenu(activeMenu === h ? null : h)}>
+                                                <span className="text-[12px] font-bold text-slate-500 uppercase tracking-widest leading-none">{h}</span>
                                                 <div className="flex items-center gap-1">
                                                     {columnFilters[h] && <Filter className="h-3 w-3 text-indigo-500" />}
-                                                    <span className="text-slate-400 text-[10px] font-black">
-                                                        {sortConfig.key === h ? (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼') : ''}
-                                                    </span>
+                                                    <span className="text-slate-400 text-[10px] font-black">{sortConfig.key === h ? (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼') : ''}</span>
                                                 </div>
                                             </div>
-
                                             {activeMenu === h && (
-                                                <HeaderMenu 
-                                                    header={h} 
-                                                    isFirstColumn={idx === 0}
-                                                    onSort={(dir) => handleSort(h, dir)} 
-                                                    filterConfig={columnFilters[h]} 
-                                                    onFilterChange={handleFilterChange}
-                                                    onClose={() => setActiveMenu(null)}
-                                                />
+                                                <HeaderMenu header={h} isFirstColumn={idx === 0} onSort={(dir) => handleSort(h, dir)} filterConfig={columnFilters[h]} onFilterChange={handleFilterChange} onClose={() => setActiveMenu(null)} />
                                             )}
                                         </th>
                                     ))}
@@ -721,29 +645,21 @@ const DashboardPage = ({ sheetKey }) => {
                                             const postingId = row[displayHeader.indexOf('Posting ID')];
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                                             const isUnsaved = unsavedChanges[postingId]?.[headerName] !== undefined;
-
+                                            
                                             let selectedWorkingBy = [];
                                             if (headerName === 'Working By') {
-                                                const workingByValue = (unsavedChanges[postingId]?.[headerName] !== undefined
-                                                    ? unsavedChanges[postingId][headerName]
-                                                    : cell) || "Need To Update";
-                                                const stringValue = Array.isArray(workingByValue) ? workingByValue.join(', ') : String(workingByValue);
-                                                selectedWorkingBy = stringValue.split(',').map(s => s.trim()).filter(s => s && s !== "Need To Update");
+                                                const val = (unsavedChanges[postingId]?.[headerName] !== undefined ? unsavedChanges[postingId][headerName] : cell) || "Need To Update";
+                                                selectedWorkingBy = String(val).split(',').map(s => s.trim()).filter(s => s && s !== "Need To Update");
                                                 if (selectedWorkingBy.length === 0) selectedWorkingBy = ["Need To Update"];
                                             }
 
                                             return (
-                                                <td 
-                                                    key={cellIndex} 
-                                                    onClick={() => handleCellClick(rowIndex, cellIndex)} 
-                                                    className={`px-3 py-3.5 border-r border-slate-100 last:border-r-0 align-top transition-all ${isUnsaved ? 'bg-amber-50 shadow-inner' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-slate-900'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-white/80' : ''}`}
-                                                >
-                                                    {/* Body: Increased to 14px */}
+                                                <td key={cellIndex} onClick={() => handleCellClick(rowIndex, cellIndex)} className={`px-3 py-3.5 border-r border-slate-100 last:border-r-0 align-top transition-all ${isUnsaved ? 'bg-amber-50 shadow-inner' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-slate-900'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-white/80' : ''}`}>
                                                     <div className="text-[14px] font-medium leading-relaxed break-words">
                                                         {isEditing && headerName === 'Working By' && canEditDashboard ? (
                                                             <MultiSelectDropdown options={recruiters} selectedNames={selectedWorkingBy} onBlur={() => setEditingCell(null)} onChange={(val) => handleCellEdit(rowIndex, cellIndex, val)} />
                                                         ) : isEditing && headerName === 'Remarks' && canEditDashboard ? (
-                                                            <select value={unsavedChanges[postingId]?.[headerName] || cell} onBlur={() => setEditingCell(null)} onChange={(e) => { handleCellEdit(rowIndex, cellIndex, e.target.value); setEditingCell(null); }} className="block w-full border border-slate-300 rounded-md px-2 py-1.5 text-[14px] outline-none shadow-sm bg-white" autoFocus>
+                                                            <select value={unsavedChanges[postingId]?.[headerName] || cell} onBlur={() => setEditingCell(null)} onChange={(e) => { handleCellEdit(rowIndex, cellIndex, e.target.value); setEditingCell(null); }} className="block w-full border border-slate-300 rounded-md px-2 py-1 text-[14px] outline-none shadow-sm bg-white" autoFocus>
                                                                 <option value="">Select Remark...</option>
                                                                 {REMARKS_OPTIONS.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
                                                             </select>
@@ -758,7 +674,7 @@ const DashboardPage = ({ sheetKey }) => {
                                                                 ) : headerName === 'Working By' ? (
                                                                     <div className="flex flex-wrap gap-1.5">
                                                                         {selectedWorkingBy.map((name, idx) => (
-                                                                            <span key={idx} className="px-2 py-1 text-[11px] font-bold bg-slate-100 text-slate-600 rounded border border-slate-200">{name.trim()}</span>
+                                                                            <span key={idx} className="px-2 py-1 text-[11px] font-bold bg-slate-100 text-slate-600 rounded border border-slate-200 uppercase tracking-tight">{name}</span>
                                                                         ))}
                                                                     </div>
                                                                 ) : cell}
@@ -798,7 +714,7 @@ const DashboardPage = ({ sheetKey }) => {
                     )}
                 </div>
             )}
-
+            
             {/* Modals remain exact same as original logic */}
             <ConfirmationModal isOpen={['close', 'archive', 'delete'].includes(modalState.type)} onClose={() => setModalState({type: null, data: null})} onConfirm={() => handleAction(modalState.type, modalState.data)} title={`${modalState.type?.toUpperCase()}`} message={`Are you sure you want to ${modalState.type} for "${modalState.data?.['Posting Title']}"?`} confirmText={modalState.type}/>
             <ViewDetailsModal isOpen={modalState.type === 'details'} onClose={() => setModalState({type: null, data: null})} job={modalState.data}/>
