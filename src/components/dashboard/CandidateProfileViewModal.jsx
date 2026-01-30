@@ -2,55 +2,26 @@ import React from 'react';
 import {
   Mail, Phone, MapPin, Briefcase,
   UserCheck, Settings, Building2,
-  Globe, ShieldCheck, Hash, Tag, FileText
+  ShieldCheck, Hash, Tag
 } from 'lucide-react';
 import Modal from '../Modal';
 
-const colorStyles = {
-  indigo: {
-    bg: "bg-indigo-50",
-    icon: "text-indigo-600",
-    ring: "ring-indigo-100"
-  },
-  purple: {
-    bg: "bg-purple-50",
-    icon: "text-purple-600",
-    ring: "ring-purple-100"
-  },
-  emerald: {
-    bg: "bg-emerald-50",
-    icon: "text-emerald-600",
-    ring: "ring-emerald-100"
-  },
-  blue: {
-    bg: "bg-blue-50",
-    icon: "text-blue-600",
-    ring: "ring-blue-100"
-  }
-};
+/* ---------- Design Tokens ---------- */
 
-const StatCard = ({ label, value, icon: Icon, color = "indigo" }) => {
-  const c = colorStyles[color] || colorStyles.indigo;
+const StatCard = ({ label, value, icon: Icon }) => (
+  <div className="group relative bg-white/80 backdrop-blur-xl border border-slate-200/70 rounded-2xl p-5 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+    <div className="flex gap-4 items-start">
+      <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 ring-1 ring-indigo-100 group-hover:scale-110 transition">
+        <Icon size={20} className="text-indigo-600"/>
+      </div>
 
-  return (
-    <div className={`group bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300 ring-1 ${c.ring}`}>
-      <div className="flex items-start gap-4">
-        <div className={`p-3 rounded-xl ${c.bg} group-hover:scale-110 transition`}>
-          <Icon size={20} className={c.icon} />
-        </div>
-
-        <div className="min-w-0">
-          <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">
-            {label}
-          </p>
-          <p className="font-bold text-slate-800 truncate" title={value}>
-            {value || "N/A"}
-          </p>
-        </div>
+      <div className="min-w-0">
+        <p className="label">{label}</p>
+        <p className="value truncate" title={value}>{value || "—"}</p>
       </div>
     </div>
-  );
-};
+  </div>
+);
 
 const CandidateProfileViewModal = ({ isOpen, onClose, candidate }) => {
   if (!candidate) return null;
@@ -60,9 +31,7 @@ const CandidateProfileViewModal = ({ isOpen, onClose, candidate }) => {
     skillSet = Array.isArray(candidate.skillSet)
       ? candidate.skillSet
       : JSON.parse(candidate.skillSet || "[]");
-  } catch {
-    skillSet = [];
-  }
+  } catch {}
 
   const initials =
     (candidate.firstName?.[0] || "") +
@@ -70,29 +39,30 @@ const CandidateProfileViewModal = ({ isOpen, onClose, candidate }) => {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="" size="6xl">
-      <div className="max-h-[85vh] overflow-y-auto">
 
-        {/* ================= HERO ================= */}
-        <div className="relative rounded-[2rem] overflow-hidden p-10 text-white bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 shadow-2xl">
+      <div className="max-h-[88vh] overflow-y-auto">
 
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute -top-32 -right-32 w-96 h-96 bg-indigo-500 rounded-full blur-3xl"/>
-            <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-purple-500 rounded-full blur-3xl"/>
-          </div>
+        {/* ================= HERO HEADER ================= */}
 
-          <div className="relative z-10 flex flex-col xl:flex-row gap-10 justify-between">
+        <div className="relative rounded-[2.2rem] overflow-hidden p-10 shadow-2xl bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white">
 
-            {/* Left */}
+          {/* glow layers */}
+          <div className="absolute -top-32 -right-32 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-3xl"/>
+          <div className="absolute -bottom-32 -left-32 w-[400px] h-[400px] bg-violet-600/20 rounded-full blur-3xl"/>
+
+          <div className="relative z-10 flex flex-col xl:flex-row justify-between gap-10">
+
+            {/* profile */}
             <div className="flex flex-col md:flex-row gap-6 items-center">
               <div className="relative">
-                <div className="w-28 h-28 rounded-3xl bg-gradient-to-tr from-indigo-500 to-pink-500 p-1 shadow-xl">
-                  <div className="w-full h-full rounded-[1.3rem] bg-slate-900 flex items-center justify-center text-4xl font-black">
+                <div className="w-28 h-28 rounded-3xl bg-gradient-to-tr from-indigo-500 via-violet-500 to-fuchsia-500 p-1 shadow-xl">
+                  <div className="w-full h-full rounded-[1.4rem] bg-slate-900 flex items-center justify-center text-4xl font-black">
                     {initials || "NA"}
                   </div>
                 </div>
 
-                <div className="absolute -bottom-2 -right-2 bg-emerald-500 p-2 rounded-xl border-4 border-slate-900">
-                  <UserCheck size={16} />
+                <div className="absolute -bottom-2 -right-2 bg-emerald-500 p-2 rounded-xl border-4 border-slate-900 shadow-lg">
+                  <UserCheck size={16}/>
                 </div>
               </div>
 
@@ -102,87 +72,74 @@ const CandidateProfileViewModal = ({ isOpen, onClose, candidate }) => {
                 </h2>
 
                 <div className="flex flex-wrap gap-3 mt-4 justify-center md:justify-start">
-                  <span className="chip">
+                  <span className="heroChip">
                     <Briefcase size={14}/> {candidate.currentRole}
                   </span>
-                  <span className="chip">
+
+                  <span className="heroChip">
                     <MapPin size={14}/> {candidate.currentLocation}
                   </span>
-                  <span className="chip bg-white/15 border-white/20 text-indigo-200">
+
+                  <span className="heroChip border-indigo-400/30 text-indigo-200">
                     <Hash size={12}/> {candidate.postingId || "—"}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Right */}
+            {/* status */}
             <div className="text-right">
-              <p className="text-xs tracking-widest uppercase text-slate-400 font-bold mb-2">
-                Status
-              </p>
-              <div className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 font-black">
+              <p className="heroLabel">Candidate Status</p>
+              <div className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 font-black text-lg">
                 <ShieldCheck size={18}/>
-                {candidate.remarks || "Active"}
+                {candidate.status || "Active"}
               </div>
             </div>
+
           </div>
         </div>
 
         {/* ================= BODY ================= */}
+
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 mt-10">
 
-          {/* LEFT */}
+          {/* LEFT — MAIN */}
           <div className="xl:col-span-8 space-y-8">
 
-            <SectionTitle title="Core Contact & Source"/>
+            <SectionTitle title="Contact & Professional Details"/>
 
             <div className="grid md:grid-cols-2 gap-5">
-              <StatCard icon={Mail} label="Email" value={candidate.email} />
-              <StatCard icon={Phone} label="Mobile" value={candidate.mobileNumber} color="purple"/>
-              <StatCard icon={Building2} label="Client" value={candidate.clientInfo} color="blue"/>
-              <StatCard icon={Globe} label="Source" value={candidate.referenceFrom || "LinkedIn"} color="emerald"/>
-            </div>
-
-            {/* Remarks */}
-            <div className="relative bg-slate-50 rounded-[2rem] p-8 border border-slate-100 shadow-inner">
-              <FileText size={72} className="absolute right-6 top-6 opacity-10"/>
-              <h3 className="font-black text-lg mb-3">Interviewer Notes</h3>
-              <p className="text-slate-700 text-lg leading-relaxed italic font-medium">
-                {candidate.remarks || "No remarks added yet."}
-              </p>
+              <StatCard icon={Mail} label="Email Address" value={candidate.email}/>
+              <StatCard icon={Phone} label="Mobile Number" value={candidate.mobileNumber}/>
+              <StatCard icon={Building2} label="Client / Agency" value={candidate.clientInfo}/>
+              <StatCard icon={Settings} label="Experience Level" value={candidate.experience}/>
             </div>
 
           </div>
 
-          {/* RIGHT SIDEBAR */}
+          {/* RIGHT — SIDEBAR */}
           <div className="xl:col-span-4 space-y-8">
 
-            {/* Ownership */}
-            <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-xl">
+            {/* ownership */}
+            <div className="glassCard">
               <h3 className="sidebarTitle">
                 <Settings size={18}/> Ownership
               </h3>
 
               <MetaRow label="Recruiter" value={candidate.submittedBy}/>
-              <MetaRow label="Resume Fixer" value={candidate.resumeWorkedBy}/>
-              <MetaRow label="Submission Date" value="—"/>
+              <MetaRow label="Resume Owner" value={candidate.resumeWorkedBy}/>
+              <MetaRow label="Candidate ID" value={candidate.id}/>
             </div>
 
-            {/* Skills */}
+            {/* skills */}
             <div>
               <h3 className="sidebarTitle mb-4">
-                <Tag size={18}/> Skills
+                <Tag size={18}/> Tech Stack
               </h3>
 
               <div className="flex flex-wrap gap-2">
-                {skillSet.length === 0 && (
-                  <span className="text-slate-400 text-sm">No skills listed</span>
-                )}
-
-                {skillSet.map((s, i) => (
-                  <span key={i} className="skillChip">
-                    {s}
-                  </span>
+                {skillSet.map((s,i)=>(
+                  <span key={i} className="skillChip">{s}</span>
                 ))}
               </div>
             </div>
@@ -191,36 +148,45 @@ const CandidateProfileViewModal = ({ isOpen, onClose, candidate }) => {
         </div>
 
         {/* ================= FOOTER ================= */}
-        <div className="sticky bottom-0 bg-white border-t border-slate-100 mt-12 p-6 flex justify-end gap-4">
-          <button
-            onClick={onClose}
-            className="btnGhost"
-          >
+
+        <div className="sticky bottom-0 bg-white/90 backdrop-blur-xl border-t border-slate-200 p-6 flex justify-end gap-4 mt-12">
+          <button onClick={onClose} className="btnGhost">
             Close
           </button>
 
-          <button
-            onClick={onClose}
-            className="btnPrimary"
-          >
-            Finish Review
+          <button onClick={onClose} className="btnPrimary">
+            Done
           </button>
         </div>
+
       </div>
 
-      {/* Tailwind helper classes */}
+      {/* ---------- Utility Classes ---------- */}
+
       <style jsx>{`
-        .chip {
-          @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/10 text-slate-200 font-semibold text-sm;
+        .label {
+          @apply text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1;
+        }
+        .value {
+          @apply font-bold text-slate-800;
+        }
+        .heroChip {
+          @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/10 text-slate-200 font-semibold text-sm backdrop-blur;
+        }
+        .heroLabel {
+          @apply text-xs uppercase tracking-widest text-slate-400 font-bold mb-2;
         }
         .sidebarTitle {
           @apply text-sm font-black uppercase tracking-tight flex items-center gap-2 mb-5 text-slate-800;
         }
+        .glassCard {
+          @apply bg-white/70 backdrop-blur-xl border border-slate-200/70 rounded-[2rem] p-6 shadow-xl;
+        }
         .skillChip {
-          @apply px-4 py-2 rounded-xl text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100 transition;
+          @apply px-4 py-2 rounded-xl text-xs font-black bg-gradient-to-br from-indigo-50 to-violet-50 text-indigo-700 border border-indigo-100 hover:scale-105 transition;
         }
         .btnPrimary {
-          @apply px-8 py-3 rounded-xl bg-slate-900 text-white font-black tracking-wider hover:bg-black active:scale-95 transition;
+          @apply px-8 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-black tracking-wide hover:opacity-95 active:scale-95 transition shadow-lg;
         }
         .btnGhost {
           @apply px-6 py-3 rounded-xl text-slate-500 font-bold hover:text-slate-900 transition;
@@ -233,13 +199,13 @@ const CandidateProfileViewModal = ({ isOpen, onClose, candidate }) => {
 
 const SectionTitle = ({ title }) => (
   <div className="flex items-center gap-3">
-    <div className="w-1.5 h-8 bg-indigo-500 rounded-full"/>
+    <div className="w-1.5 h-8 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-full"/>
     <h3 className="text-xl font-black">{title}</h3>
   </div>
 );
 
 const MetaRow = ({ label, value }) => (
-  <div className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0">
+  <div className="flex justify-between items-center py-3 border-b border-slate-100 last:border-0">
     <span className="text-xs uppercase tracking-widest text-slate-400 font-bold">
       {label}
     </span>
