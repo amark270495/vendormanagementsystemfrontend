@@ -141,6 +141,7 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
+    // Using your original old code column width settings
     const colWidths = useMemo(() => ({
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
@@ -489,10 +490,13 @@ const DashboardPage = ({ sheetKey }) => {
             
             {!loading && !error && (
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-                    {/* Fixed: Allows horizontal scrolling but shows full headers */}
+                    {/* Container mimics the original code's overflow behavior */}
                     <div className="overflow-x-auto overflow-y-visible" style={{ maxHeight: '70vh' }}>
-                        {/* Fixed: Removed 'table-fixed' so headers expand to show full text */}
-                        <table className="min-w-full text-left border-collapse">
+                        {/* REMOVED 'table-fixed' - This is the primary fix. 
+                           Removing it allows the browser to calculate widths based on text, 
+                           just like your original live code. 
+                        */}
+                        <table className="w-full text-left border-collapse">
                             <colgroup>
                                 {displayHeader.map(h => <col key={h} className={colWidths[h] || 'w-auto'} />)}
                                 <col className={colWidths['Actions'] || 'w-15'} />
@@ -500,13 +504,13 @@ const DashboardPage = ({ sheetKey }) => {
                             <thead className="sticky top-0 z-40 bg-slate-50 border-b border-slate-300">
                                 <tr>
                                     {displayHeader.map((h, idx) => (
-                                        <th key={idx} scope="col" className="relative p-0 border-r border-slate-200 last:border-r-0">
-                                            {/* Fixed: Added whitespace-nowrap and removed truncate to align text */}
-                                            <div onClick={() => setActiveMenu(activeMenu === h ? null : h)} className="flex items-center justify-between px-3 py-3 cursor-pointer hover:bg-slate-100 transition-all min-w-0">
-                                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider leading-none whitespace-nowrap">
+                                        <th key={idx} scope="col" className="p-0 border-r border-slate-200 last:border-r-0">
+                                            {/* Header UI Fix: Removed 'truncate' to show full text as requested */}
+                                            <div onClick={() => setActiveMenu(activeMenu === h ? null : h)} className="flex items-center justify-between px-3 py-3 cursor-pointer hover:bg-slate-100 transition-all">
+                                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider leading-none">
                                                     {h}
                                                 </span>
-                                                <div className="flex items-center gap-1 shrink-0 ml-2">
+                                                <div className="flex items-center gap-1 shrink-0 ml-4">
                                                     {columnFilters[h] && <Filter className="h-3 w-3 text-indigo-500" />}
                                                     <span className="text-slate-400 text-[10px]">{sortConfig.key === h ? (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼') : ''}</span>
                                                 </div>
@@ -537,7 +541,7 @@ const DashboardPage = ({ sheetKey }) => {
                                             }
 
                                             return (
-                                                <td key={cellIndex} onClick={() => handleCellClick(rowIndex, cellIndex)} className={`px-3 py-3.5 border-r border-slate-100 last:border-r-0 align-top transition-all overflow-visible relative ${isUnsaved ? 'bg-amber-50 shadow-inner' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-slate-900'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer' : ''}`}>
+                                                <td key={cellIndex} onClick={() => handleCellClick(rowIndex, cellIndex)} className={`px-3 py-3.5 border-r border-slate-100 last:border-r-0 align-top transition-all overflow-visible relative ${isUnsaved ? 'bg-amber-50 shadow-inner' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-slate-900'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-white/50' : ''}`}>
                                                     <div className="text-[14px] font-medium leading-relaxed break-words relative overflow-visible">
                                                         {isEditing && headerName === 'Working By' && canEditDashboard ? (
                                                             <MultiSelectDropdown options={recruiters} selectedNames={selectedWorkingBy} onBlur={() => setEditingCell(null)} onChange={(val) => handleCellEdit(rowIndex, cellIndex, val)} />
