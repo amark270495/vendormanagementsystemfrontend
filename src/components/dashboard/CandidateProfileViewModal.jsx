@@ -2,38 +2,25 @@ import React from 'react';
 import { 
   Mail, Phone, MapPin, Briefcase, Calendar, 
   User, Tag, FileText, ClipboardCheck, Building2, 
-  ChevronRight, Layers, Award
+  ExternalLink, CheckCircle2, UserCheck
 } from 'lucide-react';
 import Modal from '../Modal';
 
 const CandidateProfileViewModal = ({ isOpen, onClose, candidate }) => {
   if (!candidate) return null;
 
-  // Custom Color Helpers
-  const colors = {
-    cyan: '#41E7F2',
-    mint: '#54F7C4',
-    lavender: '#C6ABF5'
-  };
-
-  const DetailCard = ({ label, value, icon: Icon }) => (
-    <div className="group relative p-4 bg-white border border-slate-100 rounded-2xl hover:shadow-md transition-all">
-      <div className="flex items-start justify-between">
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</span>
-          <p className="text-slate-800 font-bold leading-tight">{value || 'N/A'}</p>
-        </div>
-        <div 
-          className="p-2 rounded-xl"
-          style={{ backgroundColor: `${colors.lavender}20` }} // 20% opacity
-        >
-          <Icon size={18} style={{ color: colors.cyan }} strokeWidth={2.5} />
-        </div>
+  // Reusable Detail Component with modern styling
+  const DetailItem = ({ label, value, icon: Icon, large = false }) => (
+    <div className={`flex flex-col p-4 bg-slate-50/50 border border-slate-100 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200 ${large ? 'md:col-span-2' : ''}`}>
+      <div className="flex items-center space-x-2 mb-1.5">
+        <Icon size={14} className="text-indigo-500" />
+        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          {label}
+        </h4>
       </div>
-      <div 
-        className="absolute bottom-0 left-0 h-1 w-0 group-hover:w-full transition-all duration-300 rounded-b-2xl"
-        style={{ backgroundColor: colors.mint }}
-      ></div>
+      <p className="text-slate-700 font-semibold break-words line-clamp-2">
+        {value || <span className="text-slate-300 font-normal italic">Not provided</span>}
+      </p>
     </div>
   );
 
@@ -41,134 +28,142 @@ const CandidateProfileViewModal = ({ isOpen, onClose, candidate }) => {
     ? candidate.skillSet 
     : (candidate.skillSet && typeof candidate.skillSet === 'string' ? JSON.parse(candidate.skillSet) : []);
 
-  const submissionDate = new Date(candidate.submissionDate).toLocaleDateString();
+  const submissionDate = new Date(candidate.submissionDate).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="5xl">
-      <div className="p-1">
-        {/* --- HEADER: VIBRANT GRADIENT --- */}
-        <div 
-          className="rounded-3xl p-8 mb-8 text-slate-900 relative overflow-hidden shadow-2xl shadow-cyan-100/50"
-          style={{ background: `linear-gradient(135deg, ${colors.cyan} 0%, ${colors.mint} 50%, ${colors.lavender} 100%)` }}
-        >
-          <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
-            <div className="h-20 w-20 rounded-2xl bg-white/90 backdrop-blur-sm shadow-xl flex items-center justify-center text-3xl font-black" style={{ color: colors.cyan }}>
+    <Modal isOpen={isOpen} onClose={onClose} title="Candidate Dossier" size="4xl">
+      <div className="space-y-6 antialiased text-slate-900">
+        
+        {/* --- HEADER: IDENTITY BLOCK --- */}
+        <div className="relative overflow-hidden flex flex-col md:flex-row items-center p-6 bg-slate-900 rounded-2xl text-white shadow-lg">
+          {/* Background Decoration */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+          
+          <div className="relative flex-shrink-0">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-3xl font-bold shadow-inner border border-white/20">
               {candidate.firstName.charAt(0)}{candidate.lastName.charAt(0)}
             </div>
-            
-            <div className="text-center md:text-left">
-              <h2 className="text-3xl font-black tracking-tight text-slate-900">
-                {`${candidate.firstName} ${candidate.lastName}`}
-              </h2>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <span className="px-3 py-1 bg-white/40 backdrop-blur-md rounded-lg text-xs font-bold flex items-center gap-1">
-                  <Briefcase size={12} /> {candidate.currentRole}
-                </span>
-                <span className="px-3 py-1 bg-white/40 backdrop-blur-md rounded-lg text-xs font-bold flex items-center gap-1">
-                  <MapPin size={12} /> {candidate.currentLocation}
-                </span>
-              </div>
+            <div className="absolute -bottom-1 -right-1 bg-emerald-500 p-1.5 rounded-lg border-2 border-slate-900">
+              <UserCheck size={12} className="text-white" />
             </div>
+          </div>
 
-            <div className="md:ml-auto">
-                <div className="bg-white/90 px-6 py-3 rounded-2xl shadow-lg border border-white">
-                    <p className="text-[10px] font-black uppercase text-slate-400">Current Status</p>
-                    <p className="font-bold text-slate-800 flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: colors.cyan }}></span>
-                        {candidate.remarks || 'Under Review'}
-                    </p>
-                </div>
+          <div className="mt-4 md:mt-0 md:ml-6 text-center md:text-left flex-grow">
+            <h2 className="text-2xl font-extrabold tracking-tight">
+              {`${candidate.firstName} ${candidate.middleName || ''} ${candidate.lastName}`.trim()}
+            </h2>
+            <div className="flex flex-wrap justify-center md:justify-start items-center gap-3 mt-1.5 text-slate-400 text-sm">
+              <span className="flex items-center gap-1.5">
+                <Briefcase size={14} className="text-indigo-400" /> {candidate.currentRole}
+              </span>
+              <span className="hidden md:inline text-slate-700">•</span>
+              <span className="flex items-center gap-1.5">
+                <MapPin size={14} className="text-indigo-400" /> {candidate.currentLocation}
+              </span>
             </div>
+          </div>
+
+          <div className="mt-4 md:mt-0 flex flex-col items-end gap-2">
+            <span className="px-3 py-1 bg-indigo-500/20 border border-indigo-500/30 rounded-full text-indigo-300 text-[10px] font-black uppercase tracking-tighter">
+              {candidate.postingId || 'General Pool'}
+            </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* --- LEFT: MAIN INFO --- */}
-          <div className="lg:col-span-3 space-y-6">
+        {/* --- GRID: PRIMARY DATA --- */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          {/* Main Info Column */}
+          <div className="md:col-span-2 space-y-6">
             <section>
-              <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <User size={16} style={{ color: colors.lavender }} /> Profile Intelligence
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <DetailCard icon={Mail} label="Email Address" value={candidate.email} />
-                <DetailCard icon={Phone} label="Contact" value={candidate.mobileNumber} />
-                <DetailCard icon={Layers} label="Experience" value={candidate.currentRole} />
+              <div className="flex items-center justify-between mb-3 px-1">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <FileText size={16} className="text-indigo-500" /> Contact & Experience
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <DetailItem icon={Mail} label="Email Address" value={candidate.email} />
+                <DetailItem icon={Phone} label="Mobile Number" value={candidate.mobileNumber} />
+                <DetailItem icon={Building2} label="Client Info" value={candidate.clientInfo} large />
+                <DetailItem icon={User} label="Reference From" value={candidate.referenceFrom} large />
               </div>
             </section>
 
-            <section className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
-              <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Award size={16} style={{ color: colors.mint }} /> Technical Skill Set
+            <section className="p-5 bg-indigo-50/30 border border-indigo-100 rounded-2xl">
+              <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-indigo-600" /> Professional Remarks
+              </h3>
+              <p className="text-slate-600 text-sm leading-relaxed">
+                {candidate.remarks || "No specific recruiter remarks have been added to this profile yet."}
+              </p>
+            </section>
+          </div>
+
+          {/* Sidebar / Meta Column */}
+          <div className="space-y-6">
+            <section>
+              <h3 className="text-sm font-bold text-slate-800 mb-3 px-1">System Metadata</h3>
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
+                <div className="flex justify-between items-center border-b border-slate-50 pb-3">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase">Submission</span>
+                  <span className="text-sm font-semibold text-slate-700">{submissionDate}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-slate-50 pb-3">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase">Recruiter</span>
+                  <span className="text-sm font-semibold text-slate-700">{candidate.submittedBy}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase">Resume Fixer</span>
+                  <span className="text-sm font-semibold text-slate-700">{candidate.resumeWorkedBy || 'N/A'}</span>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="text-sm font-bold text-slate-800 mb-3 px-1 flex items-center gap-2">
+                <Tag size={16} className="text-indigo-500" /> Top Skills
               </h3>
               <div className="flex flex-wrap gap-2">
-                {skillSet.map((skill, i) => (
-                  <span 
-                    key={i} 
-                    className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 shadow-sm"
-                    style={{ borderLeft: `4px solid ${colors.cyan}` }}
-                  >
-                    {skill}
-                  </span>
-                ))}
+                {skillSet.length > 0 ? (
+                  skillSet.map((skill, index) => (
+                    <span key={index} className="px-3 py-1 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-lg shadow-sm hover:border-indigo-300 transition-colors">
+                      {skill}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-slate-400 text-xs italic text-center w-full">No skills extracted</span>
+                )}
               </div>
-            </section>
-
-            <section className="p-6">
-               <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-2">Remarks & Feedback</h3>
-               <p className="text-slate-600 leading-relaxed font-medium">
-                {candidate.remarks || "No additional remarks have been recorded for this candidate profile."}
-               </p>
             </section>
           </div>
 
-          {/* --- RIGHT: SUBMISSION SIDEBAR --- */}
-          <div className="lg:col-span-1">
-            <div className="rounded-3xl p-6 border-2 border-slate-50 space-y-6 sticky top-0">
-              <div className="space-y-4">
-                <div className="p-4 rounded-2xl" style={{ backgroundColor: `${colors.lavender}10` }}>
-                  <span className="text-[10px] font-black text-slate-400 uppercase">Submitted By</span>
-                  <div className="flex items-center gap-3 mt-2">
-                    <div className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: colors.lavender }}>
-                        {candidate.submittedBy?.charAt(0)}
-                    </div>
-                    <span className="text-sm font-bold text-slate-700">{candidate.submittedBy}</span>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl" style={{ backgroundColor: `${colors.mint}10` }}>
-                  <span className="text-[10px] font-black text-slate-400 uppercase">Agency Source</span>
-                  <p className="text-sm font-bold text-slate-700 mt-1 flex items-center gap-2">
-                    <Building2 size={14} style={{ color: colors.mint }} /> {candidate.clientInfo || 'Internal'}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-2xl" style={{ backgroundColor: `${colors.cyan}10` }}>
-                  <span className="text-[10px] font-black text-slate-400 uppercase">Date Logged</span>
-                  <p className="text-sm font-bold text-slate-700 mt-1 flex items-center gap-2">
-                    <Calendar size={14} style={{ color: colors.cyan }} /> {submissionDate}
-                  </p>
-                </div>
-              </div>
-
-              <button 
-                className="w-full py-4 rounded-2xl font-black text-sm uppercase tracking-tighter shadow-lg transition-transform hover:-translate-y-1 active:scale-95 text-white"
-                style={{ background: `linear-gradient(to right, ${colors.cyan}, ${colors.mint})` }}
-              >
-                Download CV
-              </button>
-            </div>
-          </div>
         </div>
 
-        {/* --- FOOTER --- */}
-        <div className="mt-8 flex justify-end">
+        {/* --- FOOTER: ACTIONS --- */}
+        <div className="flex items-center justify-between pt-6 border-t border-slate-100 mt-4">
+          <button className="flex items-center gap-2 text-indigo-600 font-bold text-sm hover:bg-indigo-50 px-4 py-2 rounded-xl transition-all">
+            <ExternalLink size={16} /> Open Resume File
+          </button>
+          <div className="flex gap-3">
             <button 
-                onClick={onClose}
-                className="px-8 py-3 rounded-xl font-bold text-slate-400 hover:text-slate-800 transition-colors"
+              onClick={onClose} 
+              className="px-6 py-2.5 text-slate-500 font-bold text-sm hover:text-slate-800 transition-colors"
             >
-                Dismiss
+              Cancel
             </button>
+            <button 
+              onClick={onClose} 
+              className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-95"
+            >
+              Close View
+            </button>
+          </div>
         </div>
+
       </div>
     </Modal>
   );
