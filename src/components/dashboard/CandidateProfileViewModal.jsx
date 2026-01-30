@@ -115,7 +115,7 @@ const CandidateProfileViewModal = ({ isOpen, onClose, candidate }) => {
                     <div className="flex flex-wrap gap-2 max-h-[220px] overflow-y-auto">
                         {skillSet.length > 0 ? (
                             skillSet.map((skill, i) => (
-                                <span key={i} className="px-3 py-1 text-xs font-bold bg-indigo-600 text-white rounded-full shadow-sm">
+                                <span key={i} className="px-3 py-1 text-xs font-bold text-black rounded-full shadow-sm">
                                     {skill}
                                 </span>
                             ))
