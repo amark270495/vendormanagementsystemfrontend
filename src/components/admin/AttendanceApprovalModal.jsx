@@ -4,12 +4,12 @@ import { apiService } from '../../api/apiService';
 import Spinner from '../Spinner';
 import Modal from '../Modal';
 
-// Inline SVGs for UI controls to ensure no external dependency issues
+// Inline SVGs for UI controls
 const ChevronLeftIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
 );
 const ChevronRightIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
 );
 
 const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, onDayClick, pendingRequestsMap }) => {
@@ -26,15 +26,16 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         const today = new Date(); 
         today.setUTCHours(0,0,0,0);
 
-        // Modern UI Classes Mapping
-        const baseClasses = "transition-all duration-200 ease-in-out border";
+        // Modern UI Base Classes - Soft borders, rounded corners, smooth transitions
+        const baseClasses = "relative transition-all duration-300 ease-out border flex flex-col justify-between p-1 overflow-hidden";
         
         // 1. Check Leave
         if (leaveDaysSet.has(dateKey)) {
             return { 
                 status: 'On Leave', 
-                text: 'L', 
-                color: `${baseClasses} bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100` 
+                label: 'Leave', 
+                color: `${baseClasses} bg-violet-50/60 border-violet-200 text-violet-700 hover:bg-violet-100 hover:border-violet-300 hover:shadow-sm`,
+                badgeColor: "bg-violet-100 text-violet-700"
             };
         }
         
@@ -42,8 +43,9 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         if (holidays[dateKey]) {
             return { 
                 status: 'Holiday', 
-                text: 'H', 
-                color: `${baseClasses} bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100`, 
+                label: 'Holiday', 
+                color: `${baseClasses} bg-orange-50/60 border-orange-200 text-orange-700 hover:bg-orange-100 hover:shadow-sm`,
+                badgeColor: "bg-orange-100 text-orange-800",
                 description: holidays[dateKey] 
             };
         }
@@ -52,8 +54,9 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         if (dayOfWeek === 0 || dayOfWeek === 6) {
             return { 
                 status: 'Weekend', 
-                text: 'W', 
-                color: `${baseClasses} bg-slate-50 text-slate-400 border-slate-100` 
+                label: 'WKND', 
+                color: `${baseClasses} bg-slate-50/50 border-transparent text-slate-400 opacity-80`,
+                badgeColor: "hidden"
             };
         }
 
@@ -61,14 +64,15 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         
         // 4. Check Pending Requests
         if (attendanceRecord && attendanceRecord.status === 'Pending') {
-            const requestedText = attendanceRecord.requestedStatus === 'Present' ? 'P?' : 'A?';
+            const requestedText = attendanceRecord.requestedStatus === 'Present' ? 'Present?' : 'Absent?';
             const requestObj = pendingRequestsMap[dateKey] || {};
             return {
                 status: 'Pending',
-                text: requestedText,
-                // Modernized: Amber color with a dashed border interaction for pending items
-                color: `${baseClasses} bg-amber-50 text-amber-700 border-amber-300 border-dashed cursor-pointer hover:bg-amber-100 hover:shadow-sm hover:scale-[1.02] hover:border-amber-400 font-medium`,
-                description: `Pending ${attendanceRecord.requestedStatus}`,
+                label: requestedText,
+                // Distinct styling for actionable items: Dashed border, cursor pointer, lift effect
+                color: `${baseClasses} bg-amber-50 border-2 border-dashed border-amber-300 text-amber-800 cursor-pointer hover:bg-amber-100 hover:border-amber-400 hover:shadow-md hover:-translate-y-0.5 z-10`,
+                badgeColor: "bg-amber-100 text-amber-800 font-bold",
+                description: `Pending Approval: ${attendanceRecord.requestedStatus}`,
                 isPending: true,
                 request: requestObj 
             };
@@ -79,15 +83,17 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
              if (attendanceRecord.status === 'Present') {
                 return { 
                     status: 'Present', 
-                    text: 'P', 
-                    color: `${baseClasses} bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100` 
+                    label: 'Present', 
+                    color: `${baseClasses} bg-emerald-50/60 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 hover:shadow-sm`,
+                    badgeColor: "bg-emerald-100 text-emerald-700"
                 };
              }
              if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') {
                 return { 
                     status: attendanceRecord.status, 
-                    text: 'A', 
-                    color: `${baseClasses} bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100` 
+                    label: 'Absent', 
+                    color: `${baseClasses} bg-rose-50/60 border-rose-200 text-rose-700 hover:bg-rose-100 hover:border-rose-300 hover:shadow-sm`,
+                    badgeColor: "bg-rose-100 text-rose-700"
                 };
              }
         }
@@ -96,16 +102,18 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         if (date < today) {
             return { 
                 status: 'Absent (Unmarked)', 
-                text: 'A', 
-                color: `${baseClasses} bg-rose-50/50 text-rose-400 border-rose-100 italic` 
+                label: 'N/A', 
+                color: `${baseClasses} bg-gray-50 border-gray-100 text-gray-400 italic`,
+                badgeColor: "bg-gray-100 text-gray-500"
             };
         }
 
         // Future / Empty
         return { 
             status: 'Future', 
-            text: '', 
-            color: `${baseClasses} bg-white border-slate-100 text-slate-300` 
+            label: '', 
+            color: `${baseClasses} bg-white border-slate-100 text-slate-300`,
+            badgeColor: "hidden"
         };
     };
 
@@ -133,9 +141,9 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
     return (
         <div className="select-none">
             {/* Weekday Header */}
-            <div className="grid grid-cols-7 gap-2 mb-2">
+            <div className="grid grid-cols-7 gap-2 mb-3">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="text-center text-xs font-semibold text-slate-400 uppercase tracking-wider py-1">
+                    <div key={day} className="text-center text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         {day}
                     </div>
                 ))}
@@ -146,10 +154,9 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
                 {calendarGrid.flat().map((cell, index) => (
                     <div
                         key={index}
-                        // Preserving h-16 as requested, but adding rounded corners and modern styling
+                        // Maintaining h-16 (height) as requested, but with modern rounded-xl
                         className={`
-                            h-16 relative flex flex-col items-center justify-center 
-                            rounded-lg
+                            h-16 rounded-xl
                             ${cell.day === null ? 'invisible' : cell.statusInfo.color}
                         `}
                         title={cell.statusInfo.description || cell.statusInfo.status}
@@ -157,21 +164,32 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
                     >
                         {cell.day !== null && (
                             <>
-                                <span className={`text-sm ${cell.statusInfo.isPending ? 'font-semibold' : 'font-medium'}`}>
-                                    {cell.day}
-                                </span>
-                                {cell.statusInfo.text && (
-                                    <span className="text-[10px] font-bold mt-0.5 uppercase tracking-tight opacity-90">
-                                        {cell.statusInfo.text}
+                                {/* Top Row: Date Number */}
+                                <div className="flex justify-between items-start w-full px-1">
+                                    <span className={`text-sm ${cell.statusInfo.isPending ? 'font-bold text-amber-700' : 'font-medium'}`}>
+                                        {cell.day}
                                     </span>
-                                )}
-                                {/* Indicator Dot for Pending actions */}
-                                {cell.statusInfo.isPending && (
-                                    <span className="absolute top-1 right-1 flex h-2 w-2">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                                    </span>
-                                )}
+                                    
+                                    {/* Active Indicator for Pending */}
+                                    {cell.statusInfo.isPending && (
+                                        <span className="flex h-2 w-2 relative mt-1 mr-1">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Bottom Row: Status Badge */}
+                                <div className="flex justify-center w-full mb-0.5">
+                                    {cell.statusInfo.label && (
+                                        <span className={`
+                                            text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-full shadow-sm
+                                            ${cell.statusInfo.badgeColor || 'bg-white/50 border border-black/5'}
+                                        `}>
+                                            {cell.statusInfo.label}
+                                        </span>
+                                    )}
+                                </div>
                             </>
                         )}
                     </div>
@@ -179,22 +197,21 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             </div>
 
             {/* Modern Legend */}
-            <div className="mt-6 flex flex-wrap gap-3 justify-center text-xs text-slate-600">
-                <LegendItem color="bg-emerald-100 border-emerald-200 text-emerald-700" label="Present" />
-                <LegendItem color="bg-rose-100 border-rose-200 text-rose-700" label="Absent/Rejected" />
-                <LegendItem color="bg-amber-100 border-amber-300 text-amber-800 border-dashed" label="Pending (Click to Action)" />
-                <LegendItem color="bg-violet-100 border-violet-200 text-violet-700" label="Leave" />
-                <LegendItem color="bg-orange-100 border-orange-200 text-orange-700" label="Holiday" />
-                <LegendItem color="bg-slate-100 border-slate-200 text-slate-500" label="Weekend" />
+            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 justify-center border-t border-slate-100 pt-6">
+                <LegendItem color="bg-emerald-400" label="Present" />
+                <LegendItem color="bg-rose-400" label="Absent" />
+                <LegendItem color="bg-amber-400 ring-2 ring-amber-100 ring-offset-1" label="Pending Action" />
+                <LegendItem color="bg-violet-400" label="Leave" />
+                <LegendItem color="bg-orange-400" label="Holiday" />
             </div>
         </div>
     );
 };
 
 const LegendItem = ({ color, label }) => (
-    <div className="flex items-center space-x-1.5 bg-slate-50 px-2 py-1 rounded border border-slate-100">
-        <span className={`w-3 h-3 rounded-full border ${color}`}></span>
-        <span>{label}</span>
+    <div className="flex items-center space-x-2">
+        <span className={`w-2.5 h-2.5 rounded-full ${color} shadow-sm`}></span>
+        <span className="text-xs font-medium text-slate-500">{label}</span>
     </div>
 );
 
@@ -357,17 +374,17 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Attendance Review: ${selectedUsername || 'Unknown'}`} size="3xl">
             {error && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg mb-4 text-sm flex items-center">
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg mb-4 text-sm flex items-center shadow-sm">
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     {error}
                 </div>
             )}
 
             {/* Header Controls */}
-            <div className="flex justify-between items-center mb-6 bg-slate-50 p-2 rounded-xl border border-slate-100">
+            <div className="flex justify-between items-center mb-6 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
                 <button 
                     onClick={() => changeMonth(-1)} 
-                    className="p-2 bg-white text-slate-600 rounded-lg hover:bg-white hover:text-indigo-600 hover:shadow-md transition-all disabled:opacity-50 border border-transparent hover:border-slate-100" 
+                    className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors disabled:opacity-30" 
                     disabled={loading || actionLoading}
                     aria-label="Previous Month"
                 >
@@ -378,7 +395,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 
                 <button 
                     onClick={() => changeMonth(1)} 
-                    className="p-2 bg-white text-slate-600 rounded-lg hover:bg-white hover:text-indigo-600 hover:shadow-md transition-all disabled:opacity-50 border border-transparent hover:border-slate-100" 
+                    className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors disabled:opacity-30" 
                     disabled={loading || actionLoading}
                     aria-label="Next Month"
                 >
@@ -410,10 +427,10 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 </div>
             )}
 
-            <div className="mt-8 pt-4 border-t border-slate-100 flex justify-end">
+            <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
                 <button 
                     onClick={onClose} 
-                    className="px-6 py-2.5 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition shadow-lg hover:shadow-xl focus:ring-4 focus:ring-slate-200"
+                    className="px-6 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition shadow hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
                 >
                     Close Review
                 </button>
