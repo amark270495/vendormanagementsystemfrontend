@@ -1,203 +1,148 @@
-import React from "react";
-import {
-  Mail, Phone, MapPin, Briefcase,
-  UserCheck, Hash
-} from "lucide-react";
-import Modal from "../Modal";
-
-const Row = ({ icon: Icon, label, value }) => (
-  <div className="dataRow">
-    <div className="rowLabel">
-      {Icon && <Icon size={14}/>}
-      {label}
-    </div>
-    <div className="rowValue">{value || "—"}</div>
-  </div>
-);
+import React from 'react';
+import Modal from '../Modal';
 
 const CandidateProfileViewModal = ({ isOpen, onClose, candidate }) => {
   if (!candidate) return null;
 
-  const initials =
-    (candidate.firstName?.[0] || "") +
-    (candidate.lastName?.[0] || "");
+  const DetailItem = ({ label, value, large = false, icon }) => (
+    <div className={`detailCard ${large ? 'md:col-span-2' : ''}`}>
+      <h4 className="detailLabel">
+        {icon}
+        <span>{label}</span>
+      </h4>
+      <p className="detailValue">{value || '—'}</p>
+    </div>
+  );
 
-  const skills = Array.isArray(candidate.skillSet)
+  const getIcon = (d) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
+      {d === 'user' && <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />}
+      {d === 'email' && <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884zM18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />}
+      {d === 'phone' && <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l1.38 8.049a3 3 0 00.866 1.343l2.87 2.87a3 3 0 001.343.866l8.049 1.38a1 1 0 01.836.986V17a1 1 0 01-1 1h-2.153a1 1 0 01-.986-.836l-1.38-8.049a3 3 0 00-.866-1.343l-2.87-2.87a3 3 0 00-1.343-.866L3.836 3.986A1 1 0 013 3H2z" />}
+      {d === 'location' && <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9z" clipRule="evenodd" />}
+      {d === 'role' && <path d="M6 6h8v8H6z" />}
+      {d === 'date' && <path d="M6 2v2M14 2v2M3 8h14" />}
+      {d === 'tag' && <path d="M3 7l7-4 7 4v6l-7 4-7-4z" />}
+      {d === 'post' && <path d="M4 4h12v12H4z" />}
+    </svg>
+  );
+
+  const skillSet = Array.isArray(candidate.skillSet)
     ? candidate.skillSet
-    : [];
+    : (candidate.skillSet && typeof candidate.skillSet === 'string'
+        ? JSON.parse(candidate.skillSet)
+        : []);
+
+  const submissionDate = candidate.submissionDate
+    ? new Date(candidate.submissionDate).toLocaleDateString()
+    : '—';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="" size="6xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="" size="5xl">
 
-      <div className="max-h-[88vh] overflow-y-auto">
+      <div className="space-y-8">
 
-        {/* ===== HEADER ===== */}
-
-        <div className="headerBand">
-          <div className="flex gap-6 items-center">
-
-            <div className="avatar">{initials}</div>
-
-            <div>
-              <h2 className="name">
-                {candidate.firstName} {candidate.lastName}
-              </h2>
-
-              <div className="flex flex-wrap gap-3 mt-3">
-                <span className="chip role">
-                  <Briefcase size={14}/> {candidate.currentRole}
-                </span>
-
-                <span className="chip location">
-                  <MapPin size={14}/> {candidate.currentLocation}
-                </span>
-
-                <span className="chip id">
-                  <Hash size={14}/> {candidate.postingId}
-                </span>
-              </div>
-            </div>
+        {/* ===== HERO HEADER ===== */}
+        <div className="hero">
+          <div className="avatar">
+            {candidate.firstName.charAt(0)}{candidate.lastName.charAt(0)}
           </div>
 
-          <div className="status">
-            <UserCheck size={16}/>
-            Active
+          <div>
+            <h2 className="heroName">
+              {candidate.firstName} {candidate.lastName}
+            </h2>
+            <p className="heroSub">
+              {candidate.currentRole} • {candidate.currentLocation}
+            </p>
           </div>
         </div>
 
-        {/* ===== GRID ===== */}
+        {/* ===== CONTACT SECTION ===== */}
+        <Section title="Contact & Professional" tint="indigo">
+          <DetailItem icon={getIcon('email')} label="Email" value={candidate.email}/>
+          <DetailItem icon={getIcon('phone')} label="Mobile" value={candidate.mobileNumber}/>
+          <DetailItem icon={getIcon('location')} label="Location" value={candidate.currentLocation}/>
+          <DetailItem icon={getIcon('role')} label="Role" value={candidate.currentRole}/>
+        </Section>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mt-10">
+        {/* ===== SUBMISSION SECTION ===== */}
+        <Section title="Submission Details" tint="violet">
+          <DetailItem icon={getIcon('post')} label="Posting ID" value={candidate.postingId}/>
+          <DetailItem icon={getIcon('date')} label="Submission Date" value={submissionDate}/>
+          <DetailItem icon={getIcon('user')} label="Submitted By" value={candidate.submittedBy}/>
+          <DetailItem icon={getIcon('user')} label="Resume Worked By" value={candidate.resumeWorkedBy}/>
+          <DetailItem large label="Client Info" value={candidate.clientInfo}/>
+        </Section>
 
-          {/* CONTACT CARD */}
-          <div className="card indigo">
-            <h3>Contact & Professional</h3>
-
-            <Row icon={Mail} label="Email" value={candidate.email}/>
-            <Row icon={Phone} label="Mobile" value={candidate.mobileNumber}/>
-            <Row label="Candidate Number" value={candidate.candidateNumber}/>
-            <Row label="Experience" value={candidate.experience}/>
-            <Row label="Client" value={candidate.clientInfo}/>
-            <Row label="Address" value={candidate.currentAddress}/>
-          </div>
-
-          {/* SUBMISSION CARD */}
-          <div className="card violet">
-            <h3>Submission Details</h3>
-
-            <Row label="Recruiter" value={candidate.submittedBy}/>
-            <Row label="Resume Worked By" value={candidate.resumeWorkedBy}/>
-            <Row label="Submitted On" value={candidate.submittedOn}/>
-            <Row label="Posting IDs" value={candidate.postingId}/>
-          </div>
+        {/* ===== STATUS ===== */}
+        <div className="statusCard">
+          Status: {candidate.remarks || "Pending Review"}
         </div>
 
-        {/* SKILLS */}
-
-        <div className="card neutral mt-8">
-          <h3>Technical Skills</h3>
-
-          <div className="skillsWrap">
-            {skills.map((s,i)=>(
-              <span key={i} className="skill">{s}</span>
-            ))}
-          </div>
+        {/* ===== SKILLS ===== */}
+        <div className="skillsCard">
+          {skillSet.map((s,i)=>(
+            <span key={i} className="skillChip">{s}</span>
+          ))}
         </div>
 
         {/* FOOTER */}
-
-        <div className="footer">
-          <button onClick={onClose} className="btnGhost">Close</button>
-          <button onClick={onClose} className="btnPrimary">Done</button>
+        <div className="flex justify-end">
+          <button onClick={onClose} className="btnPrimary">
+            Close Profile
+          </button>
         </div>
 
       </div>
 
-      {/* ===== STYLE SYSTEM ===== */}
-
+      {/* ===== STYLE ===== */}
       <style jsx>{`
-
-        .headerBand {
-          @apply flex justify-between items-center p-8 rounded-3xl
-          bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700
-          text-white shadow-xl;
+        .hero {
+          @apply flex items-center gap-5 p-6 rounded-2xl
+          bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg;
         }
-
         .avatar {
-          @apply w-20 h-20 rounded-2xl bg-white/20
-          flex items-center justify-center text-2xl font-black;
+          @apply w-16 h-16 rounded-xl bg-white/20 flex items-center justify-center text-2xl font-black;
+        }
+        .heroName { @apply text-2xl font-black; }
+        .heroSub { @apply text-indigo-100 font-semibold; }
+
+        .detailCard {
+          @apply p-4 rounded-xl bg-white border border-slate-200 shadow-sm;
+        }
+        .detailLabel {
+          @apply text-xs uppercase font-bold tracking-wider text-indigo-600 flex gap-2;
+        }
+        .detailValue {
+          @apply text-slate-900 font-semibold mt-1 break-words;
         }
 
-        .name { @apply text-3xl font-black; }
-
-        .chip {
-          @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold;
+        .statusCard {
+          @apply p-4 rounded-xl bg-emerald-50 border border-emerald-200 font-bold text-emerald-700;
         }
 
-        .role { @apply bg-white/15; }
-        .location { @apply bg-white/10; }
-        .id { @apply bg-black/20; }
-
-        .status {
-          @apply bg-emerald-400 text-emerald-900 font-black
-          px-6 py-3 rounded-xl flex gap-2 items-center;
+        .skillsCard {
+          @apply p-4 rounded-xl bg-indigo-50 border border-indigo-200 flex flex-wrap gap-2;
         }
-
-        .card {
-          @apply rounded-3xl p-8 border shadow-sm space-y-5;
-        }
-
-        .card.indigo {
-          @apply bg-indigo-50 border-indigo-200;
-        }
-
-        .card.violet {
-          @apply bg-violet-50 border-violet-200;
-        }
-
-        .card.neutral {
-          @apply bg-white border-slate-200;
-        }
-
-        .card h3 {
-          @apply font-black text-lg text-slate-800 mb-2;
-        }
-
-        .dataRow { @apply space-y-1; }
-
-        .rowLabel {
-          @apply text-xs uppercase tracking-widest font-bold text-slate-500 flex gap-2 items-center;
-        }
-
-        .rowValue {
-          @apply text-slate-900 font-semibold;
-        }
-
-        .skillsWrap {
-          @apply flex flex-wrap gap-3;
-        }
-
-        .skill {
-          @apply px-4 py-2 rounded-xl bg-indigo-100 text-indigo-800 font-bold text-xs;
-        }
-
-        .footer {
-          @apply sticky bottom-0 bg-white border-t border-slate-200
-          flex justify-end gap-4 p-6 mt-10;
+        .skillChip {
+          @apply px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded-full;
         }
 
         .btnPrimary {
-          @apply px-8 py-3 rounded-xl bg-indigo-600 text-white font-black shadow hover:bg-indigo-700;
+          @apply px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700;
         }
-
-        .btnGhost {
-          @apply px-6 py-3 text-slate-500 font-bold hover:text-slate-900;
-        }
-
       `}</style>
 
     </Modal>
   );
 };
+
+const Section = ({ title, children, tint }) => (
+  <div className={`p-6 rounded-2xl space-y-4 bg-${tint}-50 border border-${tint}-200`}>
+    <h3 className={`font-black text-${tint}-800`}>{title}</h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
+  </div>
+);
 
 export default CandidateProfileViewModal;
