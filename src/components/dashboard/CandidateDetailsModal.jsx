@@ -3,57 +3,44 @@ import Modal from '../Modal.jsx';
 import Spinner from '../Spinner.jsx';
 import { usePermissions } from '../../hooks/usePermissions.js';
 import { 
-    User, 
-    Briefcase, 
-    MapPin, 
-    Mail, 
-    Phone, 
-    Plus, 
-    X, 
-    AlertCircle, 
-    ClipboardList,
-    Layers,
-    Tag
+    User, Briefcase, MapPin, Mail, Phone, Plus, X, 
+    AlertCircle, Hash, Globe, UserCheck, Zap, 
+    ChevronRight, Fingerprint
 } from 'lucide-react';
 
-// --- Modern Form Input Component ---
-const FormInput = ({ label, name, type = 'text', required = false, readOnly = false, value, onChange, options, disabled = false, icon: Icon }) => (
-    <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1 flex items-center gap-2">
-            {Icon && <Icon size={12} className="text-slate-400" />}
+// --- Ultra-Modern Field Component ---
+const Field = ({ label, name, type = 'text', required, readOnly, value, onChange, options, disabled, icon: Icon }) => (
+    <div className="relative group">
+        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1.5 flex items-center gap-1.5 ml-1">
+            {Icon && <Icon size={12} className="text-indigo-500" />}
             {label} {required && <span className="text-rose-500">*</span>}
         </label>
         {options ? (
-            <select 
-                name={name} 
-                value={value || ''} 
-                onChange={onChange} 
-                className={`
-                    w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700
-                    transition-all focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none appearance-none
-                    ${readOnly ? 'bg-slate-100 cursor-not-allowed opacity-70' : 'hover:border-slate-300'}
-                `}
-                required={required} 
-                disabled={readOnly || disabled}
-            >
-                <option value="">Select Option</option>
-                {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
+            <div className="relative">
+                <select 
+                    name={name} 
+                    value={value || ''} 
+                    onChange={onChange} 
+                    disabled={readOnly || disabled}
+                    className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer hover:bg-slate-100"
+                >
+                    <option value="">Select...</option>
+                    {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <ChevronRight size={16} className="rotate-90" />
+                </div>
+            </div>
         ) : (
             <input 
                 type={type} 
                 name={name} 
                 value={value || ''} 
                 onChange={onChange} 
-                placeholder={`Enter ${label.toLowerCase()}...`}
-                className={`
-                    w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700
-                    transition-all focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none
-                    ${readOnly ? 'bg-slate-50 border-dashed cursor-not-allowed text-slate-500' : 'hover:border-slate-300'}
-                `}
-                required={required} 
                 readOnly={readOnly}
                 disabled={readOnly || disabled} 
+                className="w-full bg-white border-none rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-300 shadow-sm group-hover:shadow-md"
+                placeholder={`Candidate ${label}`}
             />
         )}
     </div>
@@ -88,54 +75,38 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                 referenceFrom: ''
             };
             setFormData(initialData);
-
+            
             if (isEditMode && candidateToEdit.skillSet) {
                 try {
-                    const parsedSkills = typeof candidateToEdit.skillSet === 'string'
-                        ? JSON.parse(candidateToEdit.skillSet)
-                        : candidateToEdit.skillSet;
-                    setSkills(Array.isArray(parsedSkills) ? parsedSkills : []);
-                } catch (e) {
-                    setSkills([]);
-                }
-            } else {
-                setSkills([]);
-            }
-            setCurrentSkill('');
+                    const parsed = typeof candidateToEdit.skillSet === 'string' ? JSON.parse(candidateToEdit.skillSet) : candidateToEdit.skillSet;
+                    setSkills(Array.isArray(parsed) ? parsed : []);
+                } catch { setSkills([]); }
+            } else { setSkills([]); }
             setError('');
         }
     }, [isOpen, candidateToEdit, jobInfo, isEditMode]);
 
-    const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const handleChange = (e) => setFormData(p => ({ ...p, [e.target.name]: e.target.value }));
 
-    const handleAddSkill = () => {
+    const handleAddSkill = (e) => {
+        e?.preventDefault();
         if (currentSkill.trim() && !skills.includes(currentSkill.trim())) {
             setSkills([...skills, currentSkill.trim()]);
             setCurrentSkill('');
         }
     };
 
-    const handleRemoveSkill = (skillToRemove) => {
-        setSkills(skills.filter(skill => skill !== skillToRemove));
-    };
-
-    const handleSubmit = async (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
-        if (!canEditDashboard) return setError("Permission denied.");
-        
         setLoading(true);
         try {
-            const finalFormData = { ...formData, skillSet: skills };
-            await onSave(finalFormData, jobInfo?.candidateSlot);
+            await onSave({ ...formData, skillSet: skills }, jobInfo?.candidateSlot);
             onClose();
-        } catch (err) {
-            setError(err.message || "Failed to save details.");
-        } finally {
-            setLoading(false);
-        }
+        } catch (err) { setError(err.message); }
+        finally { setLoading(false); }
     };
 
-    const remarksOptions = [
+    const statusOptions = [
         "Submitted To Client", "Resume Is Under View", "Resume Shortlisted For Interview", 
         "Interview With Manager", "Client Reject Due To Candidate Not Up To Mark", 
         "Rejected Due To Some Other Reasons", "Candidate Selected", "Resume Submitted Posting Is Still Open",
@@ -143,150 +114,142 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
     ];
 
     return (
-        <Modal 
-            isOpen={isOpen} 
-            onClose={onClose} 
-            title={isEditMode ? "Update Talent Profile" : "Register New Candidate"} 
-            size="3xl"
-        >
-            {error && (
-                <div className="mb-6 bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-3 text-rose-600 animate-in fade-in slide-in-from-top-2">
-                    <AlertCircle size={20} />
-                    <p className="text-sm font-bold">{error}</p>
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-8">
+        <Modal isOpen={isOpen} onClose={onClose} size="5xl" padding="p-0 overflow-hidden">
+            <div className="flex flex-col md:flex-row min-h-[85vh] bg-slate-50">
                 
-                {/* --- Section 1: Job Context Cards --- */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <p className="text-[10px] font-black uppercase tracking-tighter text-slate-400 mb-1">Assigned Posting</p>
-                        <p className="text-sm font-bold text-slate-700">{formData.postingId || 'N/A'}</p>
-                    </div>
-                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <p className="text-[10px] font-black uppercase tracking-tighter text-slate-400 mb-1">Client Pipeline</p>
-                        <p className="text-sm font-bold text-slate-700">{formData.clientInfo || 'General'}</p>
-                    </div>
-                    <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
-                        <p className="text-[10px] font-black uppercase tracking-tighter text-indigo-400 mb-1">Recruiter</p>
-                        <p className="text-sm font-bold text-indigo-700">{formData.resumeWorkedBy || 'System'}</p>
-                    </div>
-                </div>
-
-                {/* --- Section 2: Personal Profile --- */}
-                <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-6">
-                    <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
-                        <div className="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-100">
-                            <User size={20} />
+                {/* --- Left Contextual Sidebar --- */}
+                <div className="w-full md:w-80 bg-slate-900 p-8 text-white flex flex-col shrink-0">
+                    <div className="mb-8">
+                        <div className="h-16 w-16 bg-indigo-500 rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-indigo-500/20 ring-4 ring-white/10">
+                            <Fingerprint size={32} />
                         </div>
-                        <h3 className="text-lg font-black text-slate-800 tracking-tight">Personal Profile</h3>
+                        <h2 className="text-2xl font-black tracking-tight leading-tight">
+                            {isEditMode ? 'Update' : 'Capture'} <br/>
+                            <span className="text-indigo-400 font-medium">Candidate</span>
+                        </h2>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <FormInput label="First Name" name="firstName" required value={formData.firstName} onChange={handleChange} disabled={!canEditDashboard} />
-                        <FormInput label="Middle Name" name="middleName" value={formData.middleName} onChange={handleChange} disabled={!canEditDashboard} />
-                        <FormInput label="Last Name" name="lastName" required value={formData.lastName} onChange={handleChange} disabled={!canEditDashboard} />
-                        
-                        <FormInput label="Mobile" name="mobileNumber" type="tel" required value={formData.mobileNumber} onChange={handleChange} disabled={!canEditDashboard} icon={Phone} />
-                        <FormInput 
-                            label="Email Address" name="email" type="email" required 
-                            value={formData.email} onChange={handleChange} 
-                            readOnly={isEditMode} disabled={isEditMode || !canEditDashboard} icon={Mail}
-                        />
-                        <FormInput label="Reference" name="referenceFrom" value={formData.referenceFrom} onChange={handleChange} disabled={!canEditDashboard} icon={Layers} />
-                    </div>
-                </div>
-                
-                {/* --- Section 3: Professional & Status --- */}
-                <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-6">
-                    <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
-                        <div className="p-2 bg-emerald-500 rounded-xl text-white shadow-lg shadow-emerald-100">
-                            <Briefcase size={20} />
-                        </div>
-                        <h3 className="text-lg font-black text-slate-800 tracking-tight">Experience & Status</h3>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <FormInput label="Current Role" name="currentRole" required value={formData.currentRole} onChange={handleChange} disabled={!canEditDashboard} icon={Briefcase} />
-                        <FormInput label="Location" name="currentLocation" required value={formData.currentLocation} onChange={handleChange} disabled={!canEditDashboard} icon={MapPin} />
-                        <FormInput 
-                            label="Application Status" name="remarks" options={remarksOptions} 
-                            value={formData.remarks} onChange={handleChange} disabled={!canEditDashboard} icon={ClipboardList}
-                        />
-                    </div>
-                </div>
-
-                {/* --- Section 4: Dynamic Skill Set --- */}
-                <div className="bg-slate-900 rounded-3xl p-6 shadow-xl shadow-slate-200 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white/10 rounded-xl text-white">
-                                <Tag size={20} />
+                    <div className="space-y-6 flex-1">
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Metadata</p>
+                            <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
+                                <Hash size={14} className="text-indigo-400" /> {formData.postingId}
                             </div>
-                            <h3 className="text-lg font-black text-white tracking-tight">Skill Inventory</h3>
                         </div>
-                        <span className="text-[10px] font-black uppercase text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-                            {skills.length} Total Skills
-                        </span>
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Client</p>
+                            <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
+                                <Globe size={14} className="text-indigo-400" /> {formData.clientInfo || 'General Intake'}
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Handler</p>
+                            <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
+                                <UserCheck size={14} className="text-indigo-400" /> {formData.resumeWorkedBy}
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <input
-                            type="text"
-                            value={currentSkill}
-                            onChange={(e) => setCurrentSkill(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSkill(); } }}
-                            className="flex-grow bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-500"
-                            placeholder="Add a core competency (e.g. React, Python)..."
-                            disabled={!canEditDashboard}
-                        />
-                        <button 
-                            type="button" 
-                            onClick={handleAddSkill} 
-                            className="p-3 bg-indigo-500 text-white rounded-2xl hover:bg-indigo-600 transition-all shadow-lg active:scale-95 disabled:opacity-50"
-                            disabled={!canEditDashboard}
-                        >
-                            <Plus size={24} />
-                        </button>
+                    <div className="mt-auto pt-8 border-t border-white/10">
+                        <p className="text-[10px] font-medium text-slate-400 leading-relaxed italic">
+                            All fields marked with an asterisk are required for database integrity.
+                        </p>
                     </div>
+                </div>
 
-                    <div className="flex flex-wrap gap-2 pt-2">
-                        {skills.length === 0 && <p className="text-xs text-slate-500 italic px-1">No skills listed yet...</p>}
-                        {skills.map(skill => (
-                            <div key={skill} className="flex items-center gap-2 bg-white/10 text-white text-xs font-bold px-4 py-2 rounded-xl border border-white/10 hover:bg-white/20 transition-all">
-                                {skill}
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveSkill(skill)}
-                                    className="text-slate-400 hover:text-rose-400"
-                                    disabled={!canEditDashboard}
-                                >
-                                    <X size={14} />
+                {/* --- Main Content Pane --- */}
+                <div className="flex-1 p-10 overflow-y-auto bg-white rounded-l-[40px] shadow-2xl z-10 -ml-4">
+                    {error && (
+                        <div className="mb-8 p-4 bg-rose-50 border border-rose-100 rounded-3xl flex items-center gap-3 text-rose-600 animate-in fade-in slide-in-from-top-4">
+                            <AlertCircle size={18} />
+                            <p className="text-xs font-black uppercase tracking-tight">{error}</p>
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSave} className="space-y-10">
+                        {/* Section: Identity */}
+                        <section className="space-y-6">
+                            <div className="flex items-center gap-3">
+                                <div className="h-2 w-2 bg-indigo-500 rounded-full" />
+                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">Identity Details</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <Field label="First Name" name="firstName" required value={formData.firstName} onChange={handleChange} disabled={!canEditDashboard} />
+                                <Field label="Middle Name" name="middleName" value={formData.middleName} onChange={handleChange} disabled={!canEditDashboard} />
+                                <Field label="Last Name" name="lastName" required value={formData.lastName} onChange={handleChange} disabled={!canEditDashboard} />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <Field label="Email" name="email" type="email" required value={formData.email} onChange={handleChange} readOnly={isEditMode} icon={Mail} />
+                                <Field label="Phone" name="mobileNumber" required value={formData.mobileNumber} onChange={handleChange} icon={Phone} />
+                            </div>
+                        </section>
+
+                        {/* Section: Career Status */}
+                        <section className="space-y-6">
+                            <div className="flex items-center gap-3">
+                                <div className="h-2 w-2 bg-indigo-500 rounded-full" />
+                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">Professional Standing</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <Field label="Current Role" name="currentRole" required value={formData.currentRole} onChange={handleChange} icon={Briefcase} />
+                                <Field label="Location" name="currentLocation" required value={formData.currentLocation} onChange={handleChange} icon={MapPin} />
+                                <Field label="Pipeline Status" name="remarks" options={statusOptions} value={formData.remarks} onChange={handleChange} icon={Zap} />
+                            </div>
+                            <Field label="Reference Source" name="referenceFrom" value={formData.referenceFrom} onChange={handleChange} placeholder="Where did you find this candidate?" />
+                        </section>
+
+                        {/* Section: Skills (Interactive UX) */}
+                        <section className="p-8 bg-slate-50 rounded-[32px] border border-slate-100 space-y-4">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">Core Competencies</h3>
+                                <span className="text-[10px] font-bold px-3 py-1 bg-white rounded-full text-indigo-600 shadow-sm border border-slate-100">
+                                    {skills.length} Detected
+                                </span>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={currentSkill}
+                                    onChange={(e) => setCurrentSkill(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddSkill(e)}
+                                    className="flex-1 bg-white border-none rounded-2xl px-5 py-3 text-sm font-bold shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    placeholder="Add skill (e.g. Node.js)..."
+                                />
+                                <button type="button" onClick={handleAddSkill} className="p-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 active:scale-95 transition-all">
+                                    <Plus size={20} />
                                 </button>
                             </div>
-                        ))}
-                    </div>
-                </div>
 
-                {/* --- Footer Actions --- */}
-                <div className="flex justify-end items-center gap-4 pt-4">
-                    <button 
-                        type="button" 
-                        onClick={onClose} 
-                        className="px-6 py-3 text-sm font-bold text-slate-400 hover:text-slate-900 transition-colors"
-                    >
-                        Discard
-                    </button>
-                    <button 
-                        type="submit" 
-                        className="px-10 py-3 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95 flex items-center gap-3 disabled:opacity-50" 
-                        disabled={loading || !canEditDashboard}
-                    >
-                        {loading ? <Spinner size="4" color="white" /> : 'Update Candidate'}
-                    </button>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                                {skills.map(s => (
+                                    <div key={s} className="flex items-center gap-2 bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-xs font-black shadow-sm group">
+                                        {s}
+                                        <button type="button" onClick={() => setSkills(skills.filter(x => x !== s))} className="hover:text-rose-500 transition-colors">
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        {/* Sticky Footer Actions */}
+                        <div className="flex items-center justify-between pt-10 border-t border-slate-100">
+                            <button type="button" onClick={onClose} className="text-sm font-black text-slate-400 hover:text-slate-800 transition-colors">
+                                Abandon Changes
+                            </button>
+                            <button 
+                                type="submit" 
+                                disabled={loading || !canEditDashboard}
+                                className="px-12 py-4 bg-slate-900 text-white rounded-[24px] font-black text-sm hover:bg-black hover:translate-y-[-2px] active:scale-95 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 disabled:opacity-50"
+                            >
+                                {loading ? <Spinner size="4" /> : <UserCheck size={18} />}
+                                {isEditMode ? 'Sync Profile' : 'Commit Candidate'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </Modal>
     );
 };
