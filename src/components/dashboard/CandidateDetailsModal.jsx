@@ -4,21 +4,17 @@ import Spinner from '../Spinner.jsx';
 import { usePermissions } from '../../hooks/usePermissions.js';
 import { 
     User, Briefcase, MapPin, Mail, Phone, Plus, X, 
-    AlertCircle, Sparkles, ShieldCheck, 
-    AtSign, Smartphone, ExternalLink, Command
+    AlertCircle, CheckCircle2, UserPlus, Fingerprint, 
+    AtSign, Smartphone, Globe, Layers, ArrowRight
 } from 'lucide-react';
 
-// --- Premium Input Component ---
-const InputField = ({ label, name, type = 'text', required, readOnly, value, onChange, options, disabled, icon: Icon }) => (
-    <div className="flex flex-col gap-2 group">
-        <div className="flex items-center justify-between px-1">
-            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em] flex items-center gap-1.5">
-                {Icon && <Icon size={12} className="text-indigo-500/70" />}
-                {label}
-            </label>
-            {required && <span className="text-[10px] bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded font-bold tracking-tighter">REQUIRED</span>}
-        </div>
-        
+// --- Ultra-Sleek Input Field ---
+const ModernField = ({ label, name, type = 'text', required, readOnly, value, onChange, options, disabled, icon: Icon }) => (
+    <div className="relative group flex flex-col gap-1.5">
+        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] ml-1 flex items-center gap-1.5">
+            {Icon && <Icon size={12} className="text-indigo-400" />}
+            {label} {required && <span className="text-rose-500">*</span>}
+        </label>
         {options ? (
             <div className="relative">
                 <select 
@@ -26,13 +22,13 @@ const InputField = ({ label, name, type = 'text', required, readOnly, value, onC
                     value={value || ''} 
                     onChange={onChange} 
                     disabled={readOnly || disabled}
-                    className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-700 focus:bg-white focus:border-indigo-500/20 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none appearance-none cursor-pointer"
+                    className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus:bg-white focus:border-indigo-500/20 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none appearance-none cursor-pointer"
                 >
-                    <option value="">Choose status...</option>
+                    <option value="">Select Option</option>
                     {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
-                    <Command size={14} />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                    <ArrowRight size={14} className="rotate-90" />
                 </div>
             </div>
         ) : (
@@ -43,8 +39,8 @@ const InputField = ({ label, name, type = 'text', required, readOnly, value, onC
                 onChange={onChange} 
                 readOnly={readOnly}
                 disabled={readOnly || disabled} 
-                placeholder={`Type ${label.toLowerCase()}...`}
-                className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-300 focus:bg-white focus:border-indigo-500/20 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
+                className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-300 focus:bg-white focus:border-indigo-500/20 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
+                placeholder={`Enter ${label.toLowerCase()}...`}
             />
         )}
     </div>
@@ -60,6 +56,7 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
 
     const isEditMode = !!candidateToEdit;
 
+    // --- Original Logic Audited & Preserved ---
     useEffect(() => {
         if (isOpen) {
             const initialData = isEditMode ? {
@@ -79,38 +76,60 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                 referenceFrom: ''
             };
             setFormData(initialData);
-            
+
+            // Re-implementation of original Skill Parsing Logic
             if (isEditMode && candidateToEdit.skillSet) {
                 try {
-                    const parsed = typeof candidateToEdit.skillSet === 'string' ? JSON.parse(candidateToEdit.skillSet) : candidateToEdit.skillSet;
-                    setSkills(Array.isArray(parsed) ? parsed : []);
-                } catch { setSkills([]); }
-            } else { setSkills([]); }
+                    const parsedSkills = typeof candidateToEdit.skillSet === 'string'
+                        ? JSON.parse(candidateToEdit.skillSet)
+                        : candidateToEdit.skillSet;
+                    setSkills(Array.isArray(parsedSkills) ? parsedSkills : []);
+                } catch (e) {
+                    setSkills([]);
+                }
+            } else {
+                setSkills([]);
+            }
+            setCurrentSkill('');
             setError('');
         }
     }, [isOpen, candidateToEdit, jobInfo, isEditMode]);
 
-    const handleChange = (e) => setFormData(p => ({ ...p, [e.target.name]: e.target.value }));
+    const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-    const handleAddSkill = (e) => {
-        e?.preventDefault();
+    const handleAddSkill = () => {
         if (currentSkill.trim() && !skills.includes(currentSkill.trim())) {
             setSkills([...skills, currentSkill.trim()]);
             setCurrentSkill('');
         }
     };
 
-    const handleSave = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            await onSave({ ...formData, skillSet: skills }, jobInfo?.candidateSlot);
-            onClose();
-        } catch (err) { setError(err.message); }
-        finally { setLoading(false); }
+    const handleRemoveSkill = (skillToRemove) => {
+        setSkills(skills.filter(skill => skill !== skillToRemove));
     };
 
-    const statusOptions = [
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!canEditDashboard) {
+            setError("Permission denied.");
+            return;
+        }
+
+        setError('');
+        setLoading(true);
+        try {
+            // Preservation of skills array injection
+            const finalFormData = { ...formData, skillSet: skills };
+            await onSave(finalFormData, jobInfo?.candidateSlot);
+            onClose();
+        } catch (err) {
+            setError(err.message || "Failed to save candidate details.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const remarksOptions = [
         "Submitted To Client", "Resume Is Under View", "Resume Shortlisted For Interview", 
         "Interview With Manager", "Client Reject Due To Candidate Not Up To Mark", 
         "Rejected Due To Some Other Reasons", "Candidate Selected", "Resume Submitted Posting Is Still Open",
@@ -118,124 +137,152 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
     ];
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} size="4xl" padding="p-0 overflow-hidden">
-            <div className="flex flex-col max-h-[90vh] bg-white">
+        <Modal isOpen={isOpen} onClose={onClose} size="5xl" padding="p-0 overflow-hidden">
+            <div className="flex flex-col md:flex-row min-h-[80vh] bg-white">
                 
-                {/* --- Dynamic Profile Header --- */}
-                <div className="relative px-8 pt-8 pb-6 bg-slate-900 overflow-hidden shrink-0">
-                    <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
-                        <Sparkles size={160} className="text-white" />
+                {/* --- Left Column: Summary & Meta --- */}
+                <div className="w-full md:w-80 bg-slate-50 border-r border-slate-100 p-8 flex flex-col shrink-0">
+                    <div className="mb-10">
+                        <div className="h-14 w-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-200 mb-6">
+                            {isEditMode ? <Fingerprint size={28} /> : <UserPlus size={28} />}
+                        </div>
+                        <h2 className="text-2xl font-black text-slate-900 leading-tight tracking-tight">
+                            {isEditMode ? "Modify" : "Create"} <br/>
+                            <span className="text-indigo-600 font-medium tracking-normal">Candidate</span>
+                        </h2>
                     </div>
-                    
-                    <div className="relative flex items-end justify-between">
-                        <div className="flex items-center gap-6">
-                            <div className="h-20 w-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2rem] flex items-center justify-center text-white shadow-2xl ring-4 ring-white/10">
-                                <User size={40} strokeWidth={1.5} />
-                            </div>
-                            <div>
-                                <div className="flex items-center gap-3 mb-1">
-                                    <h2 className="text-3xl font-black text-white tracking-tight leading-none">
-                                        {formData.firstName ? `${formData.firstName} ${formData.lastName}` : "New Talent"}
-                                    </h2>
-                                    {isEditMode && (
-                                        <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase rounded-md border border-emerald-500/30">
-                                            Verified Record
-                                        </span>
-                                    )}
+
+                    <div className="space-y-8 flex-1">
+                        <div className="group">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <Globe size={12} className="text-indigo-400" /> Source Context
+                            </p>
+                            <div className="space-y-3">
+                                <div>
+                                    <span className="text-[10px] text-slate-400 font-medium">Posting ID</span>
+                                    <p className="text-xs font-bold text-slate-700">{formData.postingId || '---'}</p>
                                 </div>
-                                <div className="flex items-center gap-4 text-slate-400 text-sm font-medium">
-                                    <span className="flex items-center gap-1.5"><ShieldCheck size={14} className="text-indigo-400" /> {formData.postingId || 'Intake'}</span>
-                                    <span className="w-1 h-1 bg-slate-600 rounded-full" />
-                                    <span className="flex items-center gap-1.5"><MapPin size={14} className="text-indigo-400" /> {formData.currentLocation || 'Location TBD'}</span>
+                                <div>
+                                    <span className="text-[10px] text-slate-400 font-medium">Recruiter</span>
+                                    <p className="text-xs font-bold text-slate-700">{formData.resumeWorkedBy || '---'}</p>
                                 </div>
                             </div>
+                        </div>
+
+                        <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
+                            <p className="text-[10px] font-black text-indigo-700 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                                <CheckCircle2 size={12}/> Profile Health
+                            </p>
+                            <p className="text-[10px] text-indigo-600/70 font-medium leading-relaxed">
+                                Ensure all required fields are populated for client submission readiness.
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                {/* --- Content Body --- */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-8 bg-slate-50/50">
+                {/* --- Right Column: Interactive Form --- */}
+                <div className="flex-1 p-10 overflow-y-auto custom-scrollbar">
                     {error && (
-                        <div className="mb-8 p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-700 animate-in fade-in slide-in-from-top-4">
-                            <AlertCircle size={20} />
-                            <p className="text-xs font-bold uppercase tracking-tight">{error}</p>
+                        <div className="mb-8 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 animate-in fade-in slide-in-from-top-2">
+                            <AlertCircle size={18} />
+                            <p className="text-xs font-bold">{error}</p>
                         </div>
                     )}
 
-                    <form onSubmit={handleSave} className="space-y-8">
-                        {/* Section: Contact Intelligence */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <section className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
-                                <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] border-b border-slate-50 pb-4">Personal Identifiers</h3>
-                                <div className="grid grid-cols-1 gap-5">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <InputField label="First Name" name="firstName" required value={formData.firstName} onChange={handleChange} disabled={!canEditDashboard} />
-                                        <InputField label="Last Name" name="lastName" required value={formData.lastName} onChange={handleChange} disabled={!canEditDashboard} />
-                                    </div>
-                                    <InputField label="Email Address" name="email" type="email" required icon={AtSign} value={formData.email} onChange={handleChange} readOnly={isEditMode} />
-                                    <InputField label="Mobile Connection" name="mobileNumber" required icon={Smartphone} value={formData.mobileNumber} onChange={handleChange} />
-                                </div>
-                            </section>
-
-                            <section className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
-                                <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] border-b border-slate-50 pb-4">Career Context</h3>
-                                <div className="grid grid-cols-1 gap-5">
-                                    <InputField label="Current Professional Role" name="currentRole" required icon={Briefcase} value={formData.currentRole} onChange={handleChange} />
-                                    <InputField label="Geographic Location" name="currentLocation" required icon={MapPin} value={formData.currentLocation} onChange={handleChange} />
-                                    <InputField label="Placement Status" name="remarks" options={statusOptions} value={formData.remarks} onChange={handleChange} />
-                                </div>
-                            </section>
+                    <form onSubmit={handleSubmit} className="space-y-12">
+                        {/* Section 1: Contact Detail */}
+                        <div className="space-y-6">
+                            <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-3">
+                                <User size={14} className="text-indigo-500" />
+                                Basic Identity
+                                <div className="flex-1 h-px bg-slate-100" />
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <ModernField label="First Name" name="firstName" required value={formData.firstName} onChange={handleChange} disabled={!canEditDashboard} />
+                                <ModernField label="Middle Name" name="middleName" value={formData.middleName} onChange={handleChange} disabled={!canEditDashboard} />
+                                <ModernField label="Last Name" name="lastName" required value={formData.lastName} onChange={handleChange} disabled={!canEditDashboard} />
+                                
+                                <ModernField label="Email Address" name="email" type="email" required icon={AtSign} value={formData.email} onChange={handleChange} readOnly={isEditMode} disabled={isEditMode || !canEditDashboard} />
+                                <ModernField label="Phone" name="mobileNumber" type="tel" required icon={Smartphone} value={formData.mobileNumber} onChange={handleChange} disabled={!canEditDashboard} />
+                                <ModernField label="Reference" name="referenceFrom" icon={Layers} value={formData.referenceFrom} onChange={handleChange} disabled={!canEditDashboard} />
+                            </div>
                         </div>
 
-                        {/* Section: Technical Stack (Visual Chips) */}
-                        <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Core Competencies</h3>
-                                <span className="text-[10px] font-bold text-slate-400">{skills.length} skills indexed</span>
+                        {/* Section 2: Job Progress */}
+                        <div className="space-y-6">
+                            <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-3">
+                                <Briefcase size={14} className="text-indigo-500" />
+                                Professional Status
+                                <div className="flex-1 h-px bg-slate-100" />
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <ModernField label="Current Role" name="currentRole" required value={formData.currentRole} onChange={handleChange} disabled={!canEditDashboard} />
+                                <ModernField label="Location" name="currentLocation" required icon={MapPin} value={formData.currentLocation} onChange={handleChange} disabled={!canEditDashboard} />
+                                <ModernField label="Application Status" name="remarks" options={remarksOptions} value={formData.remarks} onChange={handleChange} disabled={!canEditDashboard} />
                             </div>
-                            
-                            <div className="flex gap-3">
+                        </div>
+
+                        {/* Section 3: Skill Set */}
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-3">
+                                <Plus size={14} className="text-indigo-500" />
+                                Skill Repository
+                                <div className="flex-1 h-px bg-slate-100" />
+                            </h3>
+                            <div className="flex gap-2">
                                 <input
                                     type="text"
                                     value={currentSkill}
                                     onChange={(e) => setCurrentSkill(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleAddSkill(e)}
-                                    className="flex-1 bg-slate-50 rounded-2xl px-6 py-4 text-sm font-bold border-2 border-transparent focus:bg-white focus:border-indigo-500/20 outline-none transition-all shadow-inner"
-                                    placeholder="Enter technical skill..."
+                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSkill(); } }}
+                                    className="flex-grow bg-slate-50 rounded-2xl px-5 py-3 text-sm font-semibold text-slate-700 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all placeholder:text-slate-300"
+                                    placeholder="Add a competence (e.g. React.js)..."
+                                    disabled={!canEditDashboard}
                                 />
-                                <button type="button" onClick={handleAddSkill} className="px-6 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg active:scale-95">
-                                    <Plus size={24} />
+                                <button 
+                                    type="button" 
+                                    onClick={handleAddSkill} 
+                                    className="px-6 bg-slate-900 text-white font-bold rounded-2xl hover:bg-black transition-all active:scale-95"
+                                    disabled={!canEditDashboard}
+                                >
+                                    Add
                                 </button>
                             </div>
-
-                            <div className="flex flex-wrap gap-2">
-                                {skills.map(s => (
-                                    <div key={s} className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-5 py-2 rounded-xl text-xs font-bold border border-indigo-100 group hover:bg-indigo-600 hover:text-white transition-all duration-300">
-                                        {s}
-                                        <X size={14} className="cursor-pointer opacity-50 hover:opacity-100" onClick={() => setSkills(skills.filter(x => x !== s))} />
+                            <div className="flex flex-wrap gap-2 pt-2 min-h-[44px]">
+                                {skills.map(skill => (
+                                    <div key={skill} className="flex items-center bg-indigo-50 text-indigo-700 text-xs font-bold px-4 py-2 rounded-xl border border-indigo-100 group">
+                                        {skill}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveSkill(skill)}
+                                            className="ml-2 text-indigo-300 hover:text-indigo-600 transition-colors"
+                                            disabled={!canEditDashboard}
+                                        >
+                                            <X size={14} />
+                                        </button>
                                     </div>
                                 ))}
                             </div>
-                        </section>
-                    </form>
-                </div>
+                        </div>
 
-                {/* --- Precision Footer --- */}
-                <div className="px-10 py-6 bg-white border-t border-slate-100 flex items-center justify-between shrink-0">
-                    <button onClick={onClose} className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-slate-900 transition-colors group">
-                        <X size={16} /> Close Without Sync
-                    </button>
-                    <div className="flex items-center gap-6">
-                        {loading && <div className="flex items-center gap-2 text-xs font-black text-indigo-500 animate-pulse"><Sparkles size={14}/> Processing...</div>}
-                        <button 
-                            onClick={handleSave} 
-                            disabled={loading || !canEditDashboard}
-                            className="bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95 disabled:opacity-30 flex items-center gap-3"
-                        >
-                            {isEditMode ? 'Synchronize Record' : 'Commit to Database'}
-                            <ExternalLink size={14} />
-                        </button>
-                    </div>
+                        {/* Sticky Footer */}
+                        <div className="pt-10 border-t border-slate-50 flex items-center justify-between bg-white">
+                            <button 
+                                type="button" 
+                                onClick={onClose} 
+                                className="text-sm font-bold text-slate-400 hover:text-slate-900 transition-colors"
+                            >
+                                Discard Changes
+                            </button>
+                            <button 
+                                type="submit" 
+                                className="px-12 py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95 flex items-center gap-2"
+                                disabled={loading || !canEditDashboard}
+                            >
+                                {loading ? <Spinner size="4" color="white" /> : (isEditMode ? 'Update Record' : 'Create Profile')}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </Modal>
