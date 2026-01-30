@@ -1,125 +1,194 @@
 import React from 'react';
+import { 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Briefcase, 
+  Calendar, 
+  User, 
+  Tag, 
+  FileText, 
+  ExternalLink,
+  ClipboardCheck,
+  Building2,
+  X
+} from 'lucide-react';
 import Modal from '../Modal';
 
 const CandidateProfileViewModal = ({ isOpen, onClose, candidate }) => {
-    if (!candidate) {
-        return null;
-    }
+  if (!candidate) return null;
 
-    const DetailItem = ({ label, value, large = false, icon }) => (
-        <div className={`flex flex-col p-3 bg-gray-50 rounded-lg ${large ? 'md:col-span-2' : ''}`}>
-            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center space-x-1">
-                {icon}
-                <span>{label}</span>
-            </h4>
-            <p className="text-gray-800 font-medium break-words pt-1">{value || 'N/A'}</p>
+  const DetailItem = ({ label, value, icon: Icon, fullWidth = false }) => (
+    <div className={`group p-4 bg-white border border-slate-100 rounded-xl hover:border-indigo-200 transition-colors shadow-sm ${fullWidth ? 'md:col-span-2' : ''}`}>
+      <div className="flex items-center space-x-3 mb-1">
+        <div className="p-1.5 bg-slate-50 rounded-md group-hover:bg-indigo-50 transition-colors">
+          <Icon size={16} className="text-slate-500 group-hover:text-indigo-600" />
         </div>
-    );
+        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{label}</span>
+      </div>
+      <p className="text-slate-900 font-semibold leading-relaxed pl-9">
+        {value || <span className="text-slate-300 font-normal italic">Not specified</span>}
+      </p>
+    </div>
+  );
 
-    // Placeholder icons using Tailwind-style SVG
-    const getIcon = (d) => (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
-            {d === 'user' && <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />}
-            {d === 'email' && <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884zM18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />}
-            {d === 'phone' && <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l1.38 8.049a3 3 0 00.866 1.343l2.87 2.87a3 3 0 001.343.866l8.049 1.38a1 1 0 01.836.986V17a1 1 0 01-1 1h-2.153a1 1 0 01-.986-.836l-1.38-8.049a3 3 0 00-.866-1.343l-2.87-2.87a3 3 0 00-1.343-.866L3.836 3.986A1 1 0 013 3H2z" />}
-            {d === 'role' && <path fillRule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.586l.707.707a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l.707-.707V8a2 2 0 012-2h2zm2 5a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />}
-            {d === 'location' && <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />}
-            {d === 'date' && <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />}
-            {d === 'tag' && <path fillRule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A1 1 0 013 9V5a1 1 0 011-1h4a1 1 0 01.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />}
-            {d === 'post' && <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h12l-4 4 4 4v2a2 2 0 002-2V6a2 2 0 00-2-2H4z" clipRule="evenodd" />}
-        </svg>
-    );
-    
-    // Ensure skillSet is an array, parsing if necessary
-    const skillSet = Array.isArray(candidate.skillSet) ? candidate.skillSet : (candidate.skillSet && typeof candidate.skillSet === 'string' ? JSON.parse(candidate.skillSet) : []);
-    const submissionDate = new Date(candidate.submissionDate).toLocaleDateString();
+  const skillSet = Array.isArray(candidate.skillSet) 
+    ? candidate.skillSet 
+    : (candidate.skillSet && typeof candidate.skillSet === 'string' ? JSON.parse(candidate.skillSet) : []);
 
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Candidate Profile`} size="4xl">
-            <div className="space-y-8">
-                {/* --- HEADER SECTION: NAME & ROLE --- */}
-                <div className="flex items-center space-x-4 pb-4 border-b border-indigo-100">
-                    <span className="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center text-3xl font-bold text-white shadow-xl">
-                        {candidate.firstName.charAt(0)}{candidate.lastName.charAt(0)}
+  const submissionDate = new Date(candidate.submissionDate).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Candidate Intelligence" size="5xl">
+      <div className="relative">
+        {/* --- HEADER SECTION --- */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-700 p-8 mb-8 text-white shadow-lg">
+          <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+            <div className="h-24 w-24 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-4xl font-bold shadow-inner">
+              {candidate.firstName.charAt(0)}{candidate.lastName.charAt(0)}
+            </div>
+            <div className="text-center md:text-left">
+              <h2 className="text-3xl font-extrabold tracking-tight">
+                {`${candidate.firstName} ${candidate.middleName || ''} ${candidate.lastName}`.trim()}
+              </h2>
+              <div className="mt-2 flex flex-wrap justify-center md:justify-start gap-3 items-center opacity-90 font-medium">
+                <span className="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full text-sm">
+                  <Briefcase size={14} /> {candidate.currentRole}
+                </span>
+                <span className="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full text-sm">
+                  <MapPin size={14} /> {candidate.currentLocation}
+                </span>
+              </div>
+            </div>
+            <div className="md:ml-auto flex gap-3">
+               <span className="px-4 py-2 bg-emerald-400/20 border border-emerald-400/30 rounded-lg text-emerald-50 text-xs font-bold uppercase tracking-wider">
+                {candidate.remarks || 'New Lead'}
+              </span>
+            </div>
+          </div>
+          
+          {/* Abstract background shapes */}
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl"></div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* --- MAIN COLUMN --- */}
+          <div className="lg:col-span-2 space-y-8">
+            <section>
+              <div className="flex items-center gap-2 mb-4 text-slate-800">
+                <div className="h-6 w-1 bg-indigo-500 rounded-full"></div>
+                <h3 className="font-bold text-lg">Contact Information</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <DetailItem icon={Mail} label="Email Address" value={candidate.email} />
+                <DetailItem icon={Phone} label="Mobile Number" value={candidate.mobileNumber} />
+                <DetailItem icon={MapPin} label="Location" value={candidate.currentLocation} />
+                <DetailItem icon={Briefcase} label="Current Designation" value={candidate.currentRole} />
+              </div>
+            </section>
+
+            <section>
+              <div className="flex items-center gap-2 mb-4 text-slate-800">
+                <div className="h-6 w-1 bg-violet-500 rounded-full"></div>
+                <h3 className="font-bold text-lg">Detailed Remarks</h3>
+              </div>
+              <div className="p-5 bg-slate-50 border border-slate-200 rounded-xl italic text-slate-700 leading-relaxed shadow-sm">
+                "{candidate.remarks || 'No specific interview notes or feedback provided for this candidate yet.'}"
+              </div>
+            </section>
+
+            <section>
+              <div className="flex items-center gap-2 mb-4 text-slate-800">
+                <div className="h-6 w-1 bg-sky-500 rounded-full"></div>
+                <h3 className="font-bold text-lg">Expertise & Skills</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {skillSet.length > 0 ? (
+                  skillSet.map((skill, index) => (
+                    <span key={index} className="px-4 py-1.5 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:border-indigo-300 hover:text-indigo-600 transition-all cursor-default shadow-sm">
+                      {skill}
                     </span>
-                    <div>
-                        <h2 className="text-2xl font-extrabold text-gray-900">{`${candidate.firstName} ${candidate.middleName || ''} ${candidate.lastName}`.trim()}</h2>
-                        <p className="text-md text-indigo-700 font-semibold">{candidate.currentRole} at {candidate.currentLocation}</p>
-                    </div>
+                  ))
+                ) : (
+                  <p className="text-slate-400 text-sm italic">No skills listed.</p>
+                )}
+              </div>
+            </section>
+          </div>
+
+          {/* --- SIDEBAR COLUMN --- */}
+          <div className="lg:col-span-1 space-y-6">
+            <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                <ClipboardCheck size={14} className="text-indigo-400" /> Submission Data
+              </h3>
+              
+              <div className="space-y-5">
+                <div className="flex flex-col gap-1">
+                  <span className="text-slate-500 text-[10px] font-bold uppercase">Posting Reference</span>
+                  <span className="text-indigo-300 font-mono text-sm">{candidate.postingId || 'REF-N/A'}</span>
+                </div>
+                
+                <div className="flex flex-col gap-1 border-t border-slate-800 pt-4">
+                  <span className="text-slate-500 text-[10px] font-bold uppercase">Submission Date</span>
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    <Calendar size={14} className="text-slate-400" /> {submissionDate}
+                  </span>
                 </div>
 
-                {/* --- SECTION 1: CORE CONTACT DETAILS --- */}
-                <div className="space-y-4">
-                    <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Primary Contact Information</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <DetailItem icon={getIcon('email')} label="Email Address" value={candidate.email} />
-                        <DetailItem icon={getIcon('phone')} label="Mobile Number" value={candidate.mobileNumber} />
-                        <DetailItem icon={getIcon('location')} label="Current Location" value={candidate.currentLocation} />
-                        <DetailItem icon={getIcon('role')} label="Current Role" value={candidate.currentRole} />
-                    </div>
+                <div className="flex flex-col gap-1 border-t border-slate-800 pt-4">
+                  <span className="text-slate-500 text-[10px] font-bold uppercase">Source / Agency</span>
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    <Building2 size={14} className="text-slate-400" /> {candidate.clientInfo || 'Direct Hire'}
+                  </span>
                 </div>
 
-                {/* --- SECTION 2: SUBMISSION CONTEXT --- */}
-                <div className="space-y-4 pt-4 border-t">
-                    <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Submission Context</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <DetailItem icon={getIcon('post')} label="Submitted For (Posting ID)" value={candidate.postingId} />
-                        <DetailItem icon={getIcon('date')} label="Submission Date" value={submissionDate} />
-                        <DetailItem icon={getIcon('user')} label="Submitted By" value={candidate.submittedBy} />
-                        <DetailItem icon={getIcon('user')} label="Resume Worked By" value={candidate.resumeWorkedBy} />
-                        
-                        <DetailItem large icon={getIcon('role')} label="Client/Agency Info" value={candidate.clientInfo} />
-                        <DetailItem large icon={getIcon('user')} label="Reference From" value={candidate.referenceFrom} />
+                <div className="flex flex-col gap-1 border-t border-slate-800 pt-4">
+                  <span className="text-slate-500 text-[10px] font-bold uppercase">Recruiter / Owner</span>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-[10px] border border-indigo-500/40">
+                      {candidate.submittedBy?.charAt(0) || 'U'}
                     </div>
+                    <span className="text-sm text-slate-300">{candidate.submittedBy}</span>
+                  </div>
                 </div>
-
-                {/* --- SECTION 3: REMARKS, STATUS & SKILLS --- */}
-                <div className="space-y-4 pt-4 border-t">
-                    <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Status, Remarks, & Skill Set</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Status Badge */}
-                        <div className="flex flex-col p-3 bg-indigo-50 rounded-lg">
-                            <h4 className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">Current Status:</h4>
-                            <span className={`mt-1 inline-block px-3 py-1 text-sm font-bold rounded-full ${candidate.remarks ? 'bg-teal-100 text-teal-800' : 'bg-gray-100 text-gray-700'}`}>
-                                {candidate.remarks || 'Pending Review'}
-                            </span>
-                        </div>
-                        
-                        {/* Remarks Detail */}
-                        <div className="md:col-span-2 flex flex-col p-3 bg-gray-50 rounded-lg">
-                            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Detailed Remarks:</h4>
-                            <p className="text-gray-800 font-medium pt-1">{candidate.remarks || 'No detailed remarks provided.'}</p>
-                        </div>
-                    </div>
-
-                    {/* Skills List */}
-                    <div className="space-y-2 pt-4">
-                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center space-x-1">
-                            {getIcon('tag')}
-                            <span>Skill Set</span>
-                        </h4>
-                        <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg" style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                            {skillSet.length > 0 ? (
-                                skillSet.map((skill, index) => (
-                                    <span key={index} className="px-3 py-1 text-xs font-semibold bg-indigo-50 text-indigo-700 rounded-full shadow-sm">
-                                        {skill}
-                                    </span>
-                                ))
-                            ) : (
-                                <p className="text-gray-500 text-sm">No detailed skill list available.</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
+              </div>
             </div>
-            
-            <div className="flex justify-end mt-8 pt-4 border-t">
-                <button onClick={onClose} className="px-6 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition">
-                    Close Profile
-                </button>
+
+            {/* Mini Call-to-action or reference */}
+            <div className="p-4 rounded-xl border border-dashed border-slate-300 flex items-center justify-between group cursor-pointer hover:bg-slate-50 transition-colors">
+              <div className="flex items-center gap-3">
+                <FileText className="text-slate-400 group-hover:text-indigo-500" />
+                <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900">Reference From</span>
+              </div>
+              <span className="text-xs text-slate-400">{candidate.referenceFrom || 'None'}</span>
             </div>
-        </Modal>
-    );
+          </div>
+        </div>
+
+        {/* --- FOOTER ACTIONS --- */}
+        <div className="flex items-center justify-end gap-3 mt-10 pt-6 border-t border-slate-100">
+          <button 
+            onClick={onClose} 
+            className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={onClose} 
+            className="px-8 py-2.5 bg-slate-900 text-white text-sm font-bold rounded-xl shadow-lg shadow-slate-200 hover:bg-slate-800 active:scale-95 transition-all"
+          >
+            Close Profile
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
 };
 
 export default CandidateProfileViewModal;
