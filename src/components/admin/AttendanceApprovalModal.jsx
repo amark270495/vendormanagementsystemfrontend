@@ -34,8 +34,9 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             return { 
                 status: 'On Leave', 
                 label: 'Leave', 
-                color: `${baseClasses} bg-violet-50/60 border-violet-200 text-violet-700 hover:bg-violet-100 hover:border-violet-300 hover:shadow-sm`,
-                badgeColor: "bg-violet-100 text-violet-700"
+                // Increased to 100 for visibility
+                color: `${baseClasses} bg-violet-100 border-violet-200 text-violet-700 hover:bg-violet-200 hover:border-violet-300 hover:shadow-sm`,
+                badgeColor: "bg-white/80 text-violet-700 backdrop-blur-sm"
             };
         }
         
@@ -44,8 +45,9 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             return { 
                 status: 'Holiday', 
                 label: 'Holiday', 
-                color: `${baseClasses} bg-orange-50/60 border-orange-200 text-orange-700 hover:bg-orange-100 hover:shadow-sm`,
-                badgeColor: "bg-orange-100 text-orange-800",
+                // Increased to 100 for visibility
+                color: `${baseClasses} bg-orange-100 border-orange-200 text-orange-800 hover:bg-orange-200 hover:shadow-sm`,
+                badgeColor: "bg-white/80 text-orange-800 backdrop-blur-sm",
                 description: holidays[dateKey] 
             };
         }
@@ -55,7 +57,8 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             return { 
                 status: 'Weekend', 
                 label: 'WKND', 
-                color: `${baseClasses} bg-slate-50/50 border-transparent text-slate-400 opacity-80`,
+                // Plain slate-50 for subtle weekend distinction
+                color: `${baseClasses} bg-slate-50 border-slate-100 text-slate-400`,
                 badgeColor: "hidden"
             };
         }
@@ -69,9 +72,9 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             return {
                 status: 'Pending',
                 label: requestedText,
-                // Distinct styling for actionable items: Dashed border, cursor pointer, lift effect
-                color: `${baseClasses} bg-amber-50 border-2 border-dashed border-amber-300 text-amber-800 cursor-pointer hover:bg-amber-100 hover:border-amber-400 hover:shadow-md hover:-translate-y-0.5 z-10`,
-                badgeColor: "bg-amber-100 text-amber-800 font-bold",
+                // Stronger Amber background for pending
+                color: `${baseClasses} bg-amber-100 border-2 border-dashed border-amber-300 text-amber-900 cursor-pointer hover:bg-amber-200 hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 z-10`,
+                badgeColor: "bg-amber-200 text-amber-900 font-bold border border-amber-300",
                 description: `Pending Approval: ${attendanceRecord.requestedStatus}`,
                 isPending: true,
                 request: requestObj 
@@ -84,16 +87,18 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
                 return { 
                     status: 'Present', 
                     label: 'Present', 
-                    color: `${baseClasses} bg-emerald-50/60 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 hover:shadow-sm`,
-                    badgeColor: "bg-emerald-100 text-emerald-700"
+                    // Increased to 100 for visibility (Green)
+                    color: `${baseClasses} bg-emerald-100 border-emerald-200 text-emerald-800 hover:bg-emerald-200 hover:border-emerald-300 hover:shadow-sm`,
+                    badgeColor: "bg-white/80 text-emerald-800 backdrop-blur-sm"
                 };
              }
              if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') {
                 return { 
                     status: attendanceRecord.status, 
                     label: 'Absent', 
-                    color: `${baseClasses} bg-rose-50/60 border-rose-200 text-rose-700 hover:bg-rose-100 hover:border-rose-300 hover:shadow-sm`,
-                    badgeColor: "bg-rose-100 text-rose-700"
+                    // Increased to 100 for visibility (Red)
+                    color: `${baseClasses} bg-rose-100 border-rose-200 text-rose-800 hover:bg-rose-200 hover:border-rose-300 hover:shadow-sm`,
+                    badgeColor: "bg-white/80 text-rose-800 backdrop-blur-sm"
                 };
              }
         }
@@ -103,8 +108,8 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             return { 
                 status: 'Absent (Unmarked)', 
                 label: 'N/A', 
-                color: `${baseClasses} bg-gray-50 border-gray-100 text-gray-400 italic`,
-                badgeColor: "bg-gray-100 text-gray-500"
+                color: `${baseClasses} bg-gray-100 border-gray-200 text-gray-500 italic`,
+                badgeColor: "bg-gray-200 text-gray-600"
             };
         }
 
@@ -166,7 +171,7 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
                             <>
                                 {/* Top Row: Date Number */}
                                 <div className="flex justify-between items-start w-full px-1">
-                                    <span className={`text-sm ${cell.statusInfo.isPending ? 'font-bold text-amber-700' : 'font-medium'}`}>
+                                    <span className={`text-sm ${cell.statusInfo.isPending ? 'font-bold text-amber-900' : 'font-medium'}`}>
                                         {cell.day}
                                     </span>
                                     
