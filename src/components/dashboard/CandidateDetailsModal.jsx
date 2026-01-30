@@ -215,7 +215,7 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <ModernField label="Current Role" name="currentRole" required value={formData.currentRole} onChange={handleChange} />
                                 <ModernField label="Location" name="currentLocation" required icon={MapPin} value={formData.currentLocation} onChange={handleChange} />
-                                <ModernField label="Pipeline Status" name="remarks" options={remarksOptions} value={formData.remarks} onChange={handleChange} />
+                                <ModernField label="Candidate Status" name="remarks" options={remarksOptions} value={formData.remarks} onChange={handleChange} />
                             </div>
                         </div>
 
