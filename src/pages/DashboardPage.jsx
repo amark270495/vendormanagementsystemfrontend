@@ -75,8 +75,7 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
                 <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             {isOpen && (
-                /* z-index 100 and absolute positioning to float over other rows */
-                <div className="absolute z-[100] left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto ring-1 ring-black ring-opacity-5 min-w-[180px]">
+                <div className="absolute z-[100] left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto ring-1 ring-black ring-opacity-5 min-w-[200px]">
                     <ul>
                         <li
                             onClick={() => handleToggleSelect("Need To Update")}
@@ -142,7 +141,6 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
-    // Using your original old code column widths
     const colWidths = useMemo(() => ({
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
@@ -490,10 +488,11 @@ const DashboardPage = ({ sheetKey }) => {
             {error && <div className="text-rose-600 bg-rose-50 border border-rose-100 p-4 rounded-xl font-bold text-[14px] flex items-center gap-2"><XCircle className="h-5 w-5" /> Error: {error}</div>}
             
             {!loading && !error && (
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    {/* Fixed clipping issue: Removed overflow-hidden from container */}
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                    {/* Fixed: Allows horizontal scrolling but shows full headers */}
                     <div className="overflow-x-auto overflow-y-visible" style={{ maxHeight: '70vh' }}>
-                        <table className="w-full text-left table-fixed border-collapse">
+                        {/* Fixed: Removed 'table-fixed' so headers expand to show full text */}
+                        <table className="min-w-full text-left border-collapse">
                             <colgroup>
                                 {displayHeader.map(h => <col key={h} className={colWidths[h] || 'w-auto'} />)}
                                 <col className={colWidths['Actions'] || 'w-15'} />
@@ -502,12 +501,12 @@ const DashboardPage = ({ sheetKey }) => {
                                 <tr>
                                     {displayHeader.map((h, idx) => (
                                         <th key={idx} scope="col" className="relative p-0 border-r border-slate-200 last:border-r-0">
-                                            {/* Fix Header Crossing: added truncate and min-w-0 */}
+                                            {/* Fixed: Added whitespace-nowrap and removed truncate to align text */}
                                             <div onClick={() => setActiveMenu(activeMenu === h ? null : h)} className="flex items-center justify-between px-3 py-3 cursor-pointer hover:bg-slate-100 transition-all min-w-0">
-                                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider leading-none truncate block">
+                                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider leading-none whitespace-nowrap">
                                                     {h}
                                                 </span>
-                                                <div className="flex items-center gap-1 shrink-0 ml-1">
+                                                <div className="flex items-center gap-1 shrink-0 ml-2">
                                                     {columnFilters[h] && <Filter className="h-3 w-3 text-indigo-500" />}
                                                     <span className="text-slate-400 text-[10px]">{sortConfig.key === h ? (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼') : ''}</span>
                                                 </div>
@@ -538,7 +537,6 @@ const DashboardPage = ({ sheetKey }) => {
                                             }
 
                                             return (
-                                                /* Added overflow-visible to TD and DIV to ensure menu shows fully */
                                                 <td key={cellIndex} onClick={() => handleCellClick(rowIndex, cellIndex)} className={`px-3 py-3.5 border-r border-slate-100 last:border-r-0 align-top transition-all overflow-visible relative ${isUnsaved ? 'bg-amber-50 shadow-inner' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-slate-900'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer' : ''}`}>
                                                     <div className="text-[14px] font-medium leading-relaxed break-words relative overflow-visible">
                                                         {isEditing && headerName === 'Working By' && canEditDashboard ? (
