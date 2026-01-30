@@ -13,9 +13,18 @@ import ColumnSettingsModal from '../components/dashboard/ColumnSettingsModal';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-
-// --- SVG Icons ---
-const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
+import { 
+  Search, 
+  Settings, 
+  Save, 
+  Download, 
+  ChevronDown, 
+  Filter, 
+  FileText, 
+  Columns,
+  CheckCircle2,
+  XCircle
+} from 'lucide-react';
 
 // *** MultiSelectDropdown Component ***
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
@@ -62,28 +71,24 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="block w-full border-gray-300 rounded-md shadow-sm p-2 text-sm bg-white text-left"
+                className="flex items-center justify-between w-full border border-slate-300 rounded-lg shadow-sm px-3 py-2 text-sm bg-white text-left focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
             >
-                {displayValue}
-                <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                     <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                </span>
+                <span className="truncate">{displayValue}</span>
+                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             {isOpen && (
-                <div className="absolute z-20 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto min-w-full w-auto">
-                    <ul>
+                <div className="absolute z-[100] left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                    <ul className="p-1">
                         <li
                             key="unassigned"
                             onClick={() => handleToggleSelect("Need To Update")}
-                            className="flex items-center px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-indigo-50"
+                            className="flex items-center px-3 py-2 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors"
                         >
                             <input
                                 type="checkbox"
                                 readOnly
                                 checked={displayArray.includes("Need To Update")}
-                                className="mr-2 h-4 w-4"
+                                className="mr-3 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                             />
                             Unassigned
                         </li>
@@ -91,13 +96,13 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
                             <li
                                 key={name}
                                 onClick={() => handleToggleSelect(name)}
-                                className="flex items-center px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-indigo-50"
+                                className="flex items-center px-3 py-2 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors"
                             >
                                 <input
                                     type="checkbox"
                                     readOnly
                                     checked={displayArray.includes(name)}
-                                    className="mr-2 h-4 w-4"
+                                    className="mr-3 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                                 />
                                 {name}
                             </li>
@@ -136,16 +141,14 @@ const REMARKS_OPTIONS = [
 
 const DashboardPage = ({ sheetKey }) => {
     const { user, updatePreferences } = useAuth();
-    const { canEditDashboard, canViewDashboards } = usePermissions(); 
+    const { canEditDashboard } = usePermissions(); 
 
     const [rawData, setRawData] = useState({ header: [], rows: [] });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [activeMenu, setActiveMenu] = useState(null); // Local state to manage HeaderMenu open/close
 
-    // ** Default Sorting: Posting Date from Old to New (Ascending) **
     const [sortConfig, setSortConfig] = useState({ key: 'Posting Date', direction: 'ascending' });
-    
-    // ** Pagination State **
     const [batchSize, setBatchSize] = useState(15);
     const [visibleCount, setVisibleCount] = useState(15);
 
@@ -160,26 +163,21 @@ const DashboardPage = ({ sheetKey }) => {
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
     const colWidths = useMemo(() => ({
-        'Posting ID': 'w-23',
-        'Posting Title': 'w-30',
-        'Posting Date': 'w-22',
-        'Last Submission Date': 'w-20',
-        'Deadline': 'w-25',
-        'Max Submissions': 'w-25',
-        'Max C2C Rate': 'w-25',
-        'Client Info': 'w-30',
+        'Posting ID': 'w-24',
+        'Posting Title': 'w-48',
+        'Posting Date': 'w-24',
+        'Deadline': 'w-24',
+        'Max Submissions': 'w-20',
+        'Max C2C Rate': 'w-20',
+        'Client Info': 'w-40',
         'Required Skill Set': 'w-64',
-        'Any Required Certificates': 'w-30',
-        'Work Position Type': 'w-23',
-        'Working By': 'w-28',
-        'No. of Resumes Submitted': 'w-24',
-        '# Submitted': 'w-22',
-        'Remarks': 'w-30',
-        '1st Candidate Name': 'w-25',
-        '2nd Candidate Name': 'w-25',
-        '3rd Candidate Name': 'w-25',
-        'Status': 'w-25',
-        'Actions': 'w-15'
+        'Any Required Certificates': 'w-32',
+        'Work Position Type': 'w-24',
+        'Working By': 'w-32',
+        '# Submitted': 'w-24',
+        'Remarks': 'w-32',
+        'Status': 'w-24',
+        'Actions': 'w-20'
     }), []);
 
     const userPrefs = useMemo(() => {
@@ -205,7 +203,6 @@ const DashboardPage = ({ sheetKey }) => {
             const result = await apiService.getDashboardData(sheetKey, user.userIdentifier);
             if (result.data.success) {
                 setRawData({ header: result.data.header, rows: result.data.rows });
-                // ** Reset visible count to batch size when data reloads or sheet changes **
                 setVisibleCount(batchSize); 
             } else {
                 setError(result.data.message);
@@ -388,7 +385,6 @@ const DashboardPage = ({ sheetKey }) => {
         return data;
     }, [displayData, sortConfig, generalFilter, statusFilter, displayHeader, columnFilters]);
 
-    // ** Handlers for Pagination **
     const handleLoadMore = () => {
         setVisibleCount(prev => prev + batchSize);
     };
@@ -396,7 +392,7 @@ const DashboardPage = ({ sheetKey }) => {
     const handleBatchSizeChange = (e) => {
         const val = parseInt(e.target.value);
         setBatchSize(val);
-        setVisibleCount(val); // Reset view to new batch size
+        setVisibleCount(val);
     };
 
     const handleSort = (key, direction) => setSortConfig({ key, direction });
@@ -406,9 +402,7 @@ const DashboardPage = ({ sheetKey }) => {
         if (!canEditDashboard) return;
         const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
         const headerName = displayHeader[cellIndex];
-        
         const finalValue = Array.isArray(value) ? value.join(', ') : value;
-        
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
@@ -429,21 +423,6 @@ const DashboardPage = ({ sheetKey }) => {
         setLoading(true);
         try {
             await apiService.updateJobPosting(updates, user.userIdentifier);
-
-            for (const [postingId, changes] of Object.entries(unsavedChanges)) {
-                if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
-                    const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
-                    if (jobRow) {
-                        const jobTitle = jobRow[displayHeader.indexOf('Posting Title')];
-                        const assignedUsers = changes['Working By'].split(',').map(s => s.trim()).filter(Boolean);
-                        for (const assignedUser of assignedUsers) {
-                            if (assignedUser !== 'Need To Update') {
-                                await apiService.sendAssignmentEmail(jobTitle, postingId, assignedUser, user.userIdentifier);
-                            }
-                        }
-                    }
-                }
-            }
             setUnsavedChanges({});
             loadData();
         } catch (err) {
@@ -478,17 +457,14 @@ const DashboardPage = ({ sheetKey }) => {
             await apiService.addCandidateDetails(candidateData, user.userIdentifier);
             const fullName = `${candidateData.firstName} ${candidateData.middleName || ''} ${candidateData.lastName}`.replace(/\s+/g, ' ').trim();
             const headerMap = { '1st Candidate Name': 'candidateName1', '2nd Candidate Name': 'candidateName2', '3rd Candidate Name': 'candidateName3' };
-            const fieldToUpdate = headerMap[candidateSlot];
-
             const updatePayload = [{
                 rowKey: candidateData.postingId,
-                changes: { [fieldToUpdate]: fullName }
+                changes: { [headerMap[candidateSlot]]: fullName }
             }];
-
             await apiService.updateJobPosting(updatePayload, user.userIdentifier);
             loadData();
         } catch (error) {
-            setError(error.response?.data?.message || error.message || "An error occurred while saving the candidate.");
+            setError(error.response?.data?.message || error.message || "An error occurred.");
             throw error;
         } finally {
             setLoading(false);
@@ -508,7 +484,7 @@ const DashboardPage = ({ sheetKey }) => {
                 columnVisibility: JSON.stringify(newPrefs.visibility) 
             });
         } catch(err) {
-            setError(`Failed to save column settings: ${err.message}`);
+            setError(`Failed to save settings: ${err.message}`);
         } finally {
             setLoading(false);
             setColumnModalOpen(false);
@@ -522,22 +498,16 @@ const DashboardPage = ({ sheetKey }) => {
                 row.map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')
             )
         ].join('\n');
-
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
         link.download = `${sheetKey}_report.csv`;
-        document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
     };
 
     const downloadPdf = () => {
         const doc = new jsPDF('landscape');
-        doc.autoTable({
-            head: [displayHeader],
-            body: filteredAndSortedData,
-        });
+        doc.autoTable({ head: [displayHeader], body: filteredAndSortedData });
         doc.save(`${sheetKey}_report.pdf`);
     };
     
@@ -546,134 +516,158 @@ const DashboardPage = ({ sheetKey }) => {
     const handleCellClick = (rowIndex, cellIndex) => {
         if (!canEditDashboard) return; 
         const headerName = displayHeader[cellIndex];
-        
         if (EDITABLE_COLUMNS.includes(headerName)) {
             setEditingCell({ rowIndex, cellIndex });
         } else if (CANDIDATE_COLUMNS.includes(headerName)) {
-            // Note: Use absolute index from filtered data for row data access
             const rowData = filteredAndSortedData[rowIndex];
-            const jobInfo = {
+            setModalState({ type: 'addCandidate', data: {
                 postingId: rowData[displayHeader.indexOf('Posting ID')],
                 clientInfo: rowData[displayHeader.indexOf('Client Info')],
                 resumeWorkedBy: rowData[displayHeader.indexOf('Working By')],
                 candidateSlot: headerName
-            };
-            setModalState({ type: 'addCandidate', data: jobInfo });
+            }});
         }
     };
     
     const getStatusBadge = (status) => {
         const lowerStatus = String(status || '').toLowerCase();
-        if (lowerStatus === 'open') {
-            return 'bg-green-100 text-green-700';
-        }
-        if (lowerStatus === 'closed') {
-            return 'bg-red-100 text-red-700';
-        }
-        return 'bg-gray-100 text-gray-700';
+        if (lowerStatus === 'open') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        if (lowerStatus === 'closed') return 'bg-rose-50 text-rose-700 border-rose-200';
+        return 'bg-slate-50 text-slate-700 border-slate-200';
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6 pb-12">
             {/* Page Header */}
-            <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
-                <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
+            <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                <div>
+                    <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">
+                        {DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}
+                    </h2>
+                    <p className="text-sm text-slate-500 font-medium">Manage job postings and recruiter assignments.</p>
+                </div>
             </div>
             
-            {/* Filter Bar with Toolbar */}
-            <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-                    <input type="text" placeholder="Search all jobs..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-lg px-4 py-2 w-full md:w-64 focus:ring-2 focus:ring-indigo-500 transition"/>
-                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-lg px-4 py-2 w-full md:w-auto focus:ring-2 focus:ring-indigo-500 transition">
-                        <option value="">All Statuses</option>
-                        <option value="Open">Open</option>
-                        <option value="Closed">Closed</option>
-                    </select>
+            {/* Filter & Action Bar */}
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row items-center justify-between gap-4">
+                <div className="flex flex-col md:flex-row items-center gap-3 w-full lg:w-auto">
+                    <div className="relative w-full md:w-80 group">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                        <input 
+                            type="text" 
+                            placeholder="Quick search all columns..." 
+                            value={generalFilter} 
+                            onChange={(e) => setGeneralFilter(e.target.value)} 
+                            className="w-full pl-10 pr-4 py-2 bg-slate-50 border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                        />
+                    </div>
+                    
+                    <div className="relative w-full md:w-auto">
+                        <select 
+                            value={statusFilter} 
+                            onChange={(e) => setStatusFilter(e.target.value)} 
+                            className="w-full md:w-40 appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer"
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="Open">Open</option>
+                            <option value="Closed">Closed</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                    </div>
                 </div>
-                <div className="flex items-center space-x-2 w-full md:w-auto">
-                    {/* Save Changes Button - MOVED HERE */}
+
+                <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
                     {canEditDashboard && Object.keys(unsavedChanges).length > 0 && (
                         <button 
                             onClick={handleSaveChanges} 
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold shadow-md transition-all flex items-center justify-center gap-2" 
                             disabled={loading}
+                            className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold text-sm shadow-lg shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50"
                         >
-                            {loading ? <Spinner size="4" /> : (
-                                <>
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                                    Save ({Object.keys(unsavedChanges).length})
-                                </>
-                            )}
+                            {loading ? <Spinner size="4" /> : <Save className="h-4 w-4" />}
+                            Save Changes ({Object.keys(unsavedChanges).length})
                         </button>
                     )}
 
                     <Dropdown 
                         trigger={
-                            <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-semibold flex items-center justify-center w-full md:w-auto shadow-sm transition border border-gray-300">
-                                Options 
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 h-4 w-4"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            <button className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-xl hover:bg-slate-50 font-bold text-sm border border-slate-200 shadow-sm transition-all active:scale-95">
+                                <Settings className="h-4 w-4 text-slate-500" />
+                                Options
+                                <ChevronDown className="h-4 w-4 text-slate-400" />
                             </button>
                         }
                     >
-                        <a href="#" onClick={(e) => { e.preventDefault(); setColumnModalOpen(true); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50">Column Settings</a>
-                        <a href="#" onClick={(e) => { e.preventDefault(); downloadPdf(); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50">Download PDF</a>
-                        <a href="#" onClick={(e) => { e.preventDefault(); downloadCsv(); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50">Download CSV</a>
+                        <div className="p-1 min-w-[180px]">
+                            <button onClick={() => setColumnModalOpen(true)} className="flex items-center w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors">
+                                <Columns className="h-4 w-4 mr-2 text-slate-400" /> Column Settings
+                            </button>
+                            <button onClick={downloadPdf} className="flex items-center w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors">
+                                <Download className="h-4 w-4 mr-2 text-slate-400" /> Download PDF
+                            </button>
+                        </div>
                     </Dropdown>
                 </div>
             </div>
 
-            {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
-            {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
+            {loading && !rawData.rows.length && <div className="flex justify-center items-center h-64"><Spinner /></div>}
+            {error && <div className="text-rose-600 bg-rose-50 border border-rose-100 p-4 rounded-xl font-bold flex items-center gap-2"><XCircle className="h-5 w-5" /> Error: {error}</div>}
             
             {!loading && !error && (
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                    <div> 
-                        <table className="w-full text-sm text-left text-gray-500 table-fixed">
-                            <colgroup>
-                                {displayHeader.map(h => (
-                                    <col key={h} className={colWidths[h] || 'w-auto'} />
-                                ))}
-                                <col className={colWidths['Actions'] || 'w-15'} />
-                            </colgroup>
-                            <thead className="text-xs text-slate-800 uppercase bg-slate-100 sticky top-0 z-10 border-b border-slate-300">
+                <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
+                    <div style={{ maxHeight: 'calc(100vh - 350px)', overflowY: 'auto' }} className="scrollbar-thin scrollbar-thumb-slate-200">
+                        <table className="w-full text-sm text-left table-fixed border-collapse">
+                            {/* THEAD with high Z-index and visible overflow for Menu */}
+                            <thead className="sticky top-0 z-40 bg-slate-50/90 backdrop-blur-md border-b border-slate-200">
                                 <tr>
-                                    {displayHeader.map(h => (
-                                        <th key={h} scope="col" className="p-0 border-r border-slate-200 last:border-r-0">
-                                            <Dropdown width="64" trigger={
-                                                <div className="flex items-center justify-between w-full h-full cursor-pointer px-3 py-3 hover:bg-slate-200 transition-colors">
-                                                    <span className="font-semibold break-words flex items-center">
-                                                        {h}
+                                    {displayHeader.map((h, index) => (
+                                        <th 
+                                            key={h} 
+                                            className={`${colWidths[h] || 'w-auto'} relative overflow-visible p-0 border-r border-slate-100 last:border-r-0`}
+                                        >
+                                            <div 
+                                                className="flex items-center justify-between px-4 py-4 cursor-pointer hover:bg-white/50 transition-all group"
+                                                onClick={() => setActiveMenu(activeMenu === h ? null : h)}
+                                            >
+                                                <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest group-hover:text-indigo-600 transition-colors">
+                                                    {h}
+                                                </span>
+                                                <div className="flex items-center gap-1">
+                                                    {columnFilters[h] && <Filter className="h-3 w-3 text-indigo-500" />}
+                                                    <span className="text-slate-300 font-bold">
+                                                        {sortConfig.key === h ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}
                                                     </span>
-                                                    {sortConfig.key === h && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
                                                 </div>
-                                            }>
+                                            </div>
+
+                                            {activeMenu === h && (
                                                 <HeaderMenu 
                                                     header={h} 
+                                                    isFirstColumn={index === 0}
                                                     onSort={(dir) => handleSort(h, dir)} 
                                                     filterConfig={columnFilters[h]} 
                                                     onFilterChange={handleFilterChange}
+                                                    onClose={() => setActiveMenu(null)}
                                                 />
-                                            </Dropdown>
+                                            )}
                                         </th>
                                     ))}
-                                    <th scope="col" className="px-4 py-3 border-r border-slate-200 last:border-r-0 font-semibold text-slate-800">Action</th>
+                                    <th className="w-24 px-4 py-4 text-[11px] font-extrabold text-slate-500 uppercase tracking-widest text-center border-l border-slate-100">Action</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                {/* ** PAGINATION: Slice the data to show only visible rows ** */}
+                            <tbody className="divide-y divide-slate-100">
                                 {filteredAndSortedData.slice(0, visibleCount).map((row, rowIndex) => (
-                                    <tr key={row[displayHeader.indexOf('Posting ID')] || rowIndex} className="bg-white border-b border-gray-200 odd:bg-white even:bg-slate-50 hover:bg-indigo-50 transition-colors">
+                                    <tr key={row[displayHeader.indexOf('Posting ID')] || rowIndex} className="group hover:bg-slate-50/50 transition-all">
                                         {row.map((cell, cellIndex) => {
                                             const headerName = displayHeader[cellIndex];
                                             const postingId = row[displayHeader.indexOf('Posting ID')];
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
+                                            const isUnsaved = unsavedChanges[postingId]?.[headerName] !== undefined;
                                             
                                             let selectedWorkingBy = [];
                                             if (headerName === 'Working By') {
                                                 const workingByValue = (unsavedChanges[postingId]?.[headerName] !== undefined
                                                     ? unsavedChanges[postingId][headerName]
                                                     : cell) || "Need To Update";
-                                                
                                                 const stringValue = Array.isArray(workingByValue) ? workingByValue.join(', ') : String(workingByValue);
                                                 selectedWorkingBy = stringValue.split(',').map(s => s.trim()).filter(s => s && s !== "Need To Update");
                                                 if (selectedWorkingBy.length === 0) selectedWorkingBy = ["Need To Update"];
@@ -682,65 +676,57 @@ const DashboardPage = ({ sheetKey }) => {
                                             return (
                                                 <td key={cellIndex} 
                                                     onClick={() => handleCellClick(rowIndex, cellIndex)} 
-                                                    className={`px-4 py-3 border-r border-gray-200 font-medium ${unsavedChanges[postingId]?.[headerName] !== undefined ? 'bg-yellow-100' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-gray-800'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer' : ''} whitespace-normal break-words align-top`}
+                                                    className={`px-4 py-4 border-r border-slate-50 last:border-r-0 align-top transition-colors ${isUnsaved ? 'bg-amber-50/70' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-slate-600'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer' : ''}`}
                                                 >
-                                                    {isEditing && headerName === 'Working By' && canEditDashboard ? (
-                                                        <MultiSelectDropdown
-                                                            options={recruiters}
-                                                            selectedNames={selectedWorkingBy} 
-                                                            onBlur={() => setEditingCell(null)}
-                                                            onChange={(selectedNames) => {
-                                                                handleCellEdit(rowIndex, cellIndex, selectedNames);
-                                                            }}
-                                                        />
-                                                    ) : isEditing && headerName === 'Remarks' && canEditDashboard ? (
-                                                        <select
-                                                            value={unsavedChanges[postingId]?.[headerName] || cell}
-                                                            onBlur={() => setEditingCell(null)}
-                                                            onChange={(e) => {
-                                                                handleCellEdit(rowIndex, cellIndex, e.target.value);
-                                                                setEditingCell(null);
-                                                            }}
-                                                            className="block w-full border-gray-300 rounded-md shadow-sm p-2 text-sm"
-                                                            autoFocus
-                                                        >
-                                                            <option value="">Select Remark</option>
-                                                            {REMARKS_OPTIONS.map(option => (
-                                                                <option key={option} value={option}>{option}</option>
-                                                            ))}
-                                                        </select>
-                                                    ) : (
-                                                        <div contentEditable={isEditing && headerName !== 'Working By' && headerName !== 'Remarks' && canEditDashboard} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}>
-                                                            {headerName === 'Status' ? (
-                                                                <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusBadge(cell)}`}>
-                                                                    {cell}
-                                                                </span>
-                                                            ) : DATE_COLUMNS.includes(headerName) ? (
-                                                                formatDate(cell)
-                                                            ) : CANDIDATE_COLUMNS.includes(headerName) ? (
-                                                                <span className={canEditDashboard && (cell === 'Need To Update' || !cell) ? 'text-indigo-600 hover:underline font-semibold' : 'text-gray-700'}>
-                                                                    {cell}
-                                                                </span>
-                                                            ) : (
-                                                                headerName === 'Working By' ? (
+                                                    <div className="text-[13px] font-medium leading-relaxed">
+                                                        {isEditing && headerName === 'Working By' && canEditDashboard ? (
+                                                            <MultiSelectDropdown
+                                                                options={recruiters}
+                                                                selectedNames={selectedWorkingBy} 
+                                                                onBlur={() => setEditingCell(null)}
+                                                                onChange={(selectedNames) => handleCellEdit(rowIndex, cellIndex, selectedNames)}
+                                                            />
+                                                        ) : isEditing && headerName === 'Remarks' && canEditDashboard ? (
+                                                            <select
+                                                                value={unsavedChanges[postingId]?.[headerName] || cell}
+                                                                onBlur={() => setEditingCell(null)}
+                                                                onChange={(e) => { handleCellEdit(rowIndex, cellIndex, e.target.value); setEditingCell(null); }}
+                                                                className="block w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                                                                autoFocus
+                                                            >
+                                                                <option value="">Select Remark</option>
+                                                                {REMARKS_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                                                            </select>
+                                                        ) : (
+                                                            <div contentEditable={isEditing && headerName !== 'Working By' && headerName !== 'Remarks'} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}>
+                                                                {headerName === 'Status' ? (
+                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(cell)}`}>
+                                                                        {cell}
+                                                                    </span>
+                                                                ) : DATE_COLUMNS.includes(headerName) ? (
+                                                                    formatDate(cell)
+                                                                ) : CANDIDATE_COLUMNS.includes(headerName) ? (
+                                                                    <span className={canEditDashboard && (cell === 'Need To Update' || !cell) ? 'text-indigo-600 hover:text-indigo-700 hover:underline font-bold transition-all' : 'text-slate-700'}>
+                                                                        {cell || 'Need To Update'}
+                                                                    </span>
+                                                                ) : headerName === 'Working By' ? (
                                                                     <div className="flex flex-wrap gap-1">
                                                                         {selectedWorkingBy.map((name, idx) => (
-                                                                            <span key={idx} className="px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-800 rounded-full">
+                                                                            <span key={idx} className="px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-600 rounded-md border border-slate-200 uppercase tracking-tight">
                                                                                 {name}
                                                                             </span>
                                                                         ))}
                                                                     </div>
                                                                 ) : (
                                                                     cell
-                                                                )
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             );
-            
                                         })}
-                                        <td className="px-4 py-3 align-top text-center border-r border-gray-200">
+                                        <td className="px-4 py-4 text-center align-top border-l border-slate-50">
                                             {canEditDashboard && <ActionMenu job={jobToObject(row)} onAction={(type, job) => setModalState({type, data: job})} />}
                                         </td>
                                     </tr>
@@ -751,41 +737,40 @@ const DashboardPage = ({ sheetKey }) => {
                 </div>
             )}
 
-            {/* ** Pagination Controls Footer ** */}
+            {/* Pagination Footer */}
             {!loading && !error && filteredAndSortedData.length > 0 && (
-                <div className="flex justify-between items-center mt-4 bg-gray-50 p-4 rounded-lg border border-gray-200 sticky bottom-0 z-20">
-                    <div className="flex items-center space-x-2">
-                        <label htmlFor="batchSize" className="text-sm font-medium text-gray-700">Rows to load:</label>
-                        <select
-                            id="batchSize"
-                            value={batchSize}
-                            onChange={handleBatchSizeChange}
-                            className="block w-24 border-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                        >
-                            <option value={15}>15</option>
-                            <option value={30}>30</option>
-                            <option value={50}>50</option>
-                            <option value={100}>100</option>
-                            <option value={filteredAndSortedData.length}>All</option>
-                        </select>
-                        <span className="text-sm text-gray-500 ml-2">
-                            Showing {Math.min(visibleCount, filteredAndSortedData.length)} of {filteredAndSortedData.length} entries
+                <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-slate-200 shadow-sm sticky bottom-0 z-20">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Show:</span>
+                            <select
+                                value={batchSize}
+                                onChange={handleBatchSizeChange}
+                                className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            >
+                                <option value={15}>15</option>
+                                <option value={50}>50</option>
+                                <option value={filteredAndSortedData.length}>All</option>
+                            </select>
+                        </div>
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
+                            Viewing {Math.min(visibleCount, filteredAndSortedData.length)} of {filteredAndSortedData.length} records
                         </span>
                     </div>
                     
                     {visibleCount < filteredAndSortedData.length && (
                         <button
                             onClick={handleLoadMore}
-                            className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors shadow-sm"
+                            className="px-6 py-2 bg-slate-800 text-white text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-slate-900 transition-all shadow-md active:scale-95"
                         >
-                            Load Next {batchSize}
+                            Load More
                         </button>
                     )}
                 </div>
             )}
             
             {/* Modals */}
-            <ConfirmationModal isOpen={['close', 'archive', 'delete'].includes(modalState.type)} onClose={() => setModalState({type: null, data: null})} onConfirm={() => handleAction(modalState.type, modalState.data)} title={`Confirm ${modalState.type}`} message={`Are you sure you want to ${modalState.type} the job "${modalState.data?.['Posting Title']}"?`} confirmText={modalState.type}/>
+            <ConfirmationModal isOpen={['close', 'archive', 'delete'].includes(modalState.type)} onClose={() => setModalState({type: null, data: null})} onConfirm={() => handleAction(modalState.type, modalState.data)} title={`${modalState.type?.toUpperCase()}`} message={`Are you sure you want to ${modalState.type} "${modalState.data?.['Posting Title']}"?`} confirmText={modalState.type}/>
             <ViewDetailsModal isOpen={modalState.type === 'details'} onClose={() => setModalState({type: null, data: null})} job={modalState.data}/>
             <ColumnSettingsModal isOpen={isColumnModalOpen} onClose={() => setColumnModalOpen(false)} allHeaders={transformedData.header} userPrefs={userPrefs} onSave={handleSaveColumnSettings}/>
             <CandidateDetailsModal isOpen={modalState.type === 'addCandidate'} onClose={() => setModalState({type: null, data: null})} onSave={handleSaveCandidate} jobInfo={modalState.data} />
