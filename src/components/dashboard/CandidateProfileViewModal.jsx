@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Mail, Phone, MapPin, Briefcase, Calendar, 
-  User, Tag, FileText, CheckCircle2, UserCheck, Settings
+  User, Tag, FileText, CheckCircle2, UserCheck, Settings, Building2
 } from 'lucide-react';
 import Modal from '../Modal';
 
