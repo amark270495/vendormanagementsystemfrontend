@@ -1,27 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  SortAsc, 
-  SortDesc, 
-  Filter, 
-  RotateCcw, 
-  Check, 
-  ChevronDown 
-} from 'lucide-react';
 
+// These constants should match the ones in DashboardPage.jsx for consistency
 const DATE_COLUMNS = ['Posting Date', 'Deadline'];
 const NUMBER_COLUMNS = ['# Submitted', 'Max Submissions'];
 
-const HeaderMenu = ({ header, onSort, filterConfig, onFilterChange, isFirstColumn }) => {
+const HeaderMenu = ({ header, onSort, filterConfig, onFilterChange }) => {
+    // State to manage the filter inputs within the dropdown
     const [type, setType] = useState(filterConfig?.type || 'contains');
     const [value1, setValue1] = useState(filterConfig?.value1 || '');
     const [value2, setValue2] = useState(filterConfig?.value2 || '');
 
+    // Effect to reset the state if the filter config changes from outside
     useEffect(() => {
         setType(filterConfig?.type || 'contains');
         setValue1(filterConfig?.value1 || '');
         setValue2(filterConfig?.value2 || '');
     }, [filterConfig]);
 
+    // Handlers to apply or clear the filter
     const handleApply = () => {
         onFilterChange(header, { type, value1, value2 });
     };
@@ -30,6 +26,7 @@ const HeaderMenu = ({ header, onSort, filterConfig, onFilterChange, isFirstColum
         onFilterChange(header, null);
     };
 
+    // Determine the correct input type based on the column name
     const isDate = DATE_COLUMNS.includes(header);
     const isNumber = NUMBER_COLUMNS.includes(header);
     const inputType = isDate ? 'date' : isNumber ? 'number' : 'text';
@@ -37,103 +34,60 @@ const HeaderMenu = ({ header, onSort, filterConfig, onFilterChange, isFirstColum
     const getFilterOptions = () => {
         const common = [
             { value: 'contains', label: 'Contains' },
-            { value: 'equals', label: 'Exactly' },
-            { value: 'not_contains', label: 'Excludes' }
+            { value: 'equals', label: 'Equals' },
+            { value: 'not_contains', label: 'Does not contain' }
         ];
         const specific = [
-            { value: 'above', label: 'Greater than' },
-            { value: 'below', label: 'Less than' },
-            { value: 'between', label: 'Between range' }
+            { value: 'above', label: 'Above' },
+            { value: 'below', label: 'Below' },
+            { value: 'between', label: 'Between' }
         ];
         return (isDate || isNumber) ? [...common, ...specific] : common;
     };
 
     return (
-        <div 
-            /* ALIGMENT FIX: 
-               If isFirstColumn is true, we use left-0. 
-               Otherwise, we use right-0 to stay inside the table container.
-            */
-            className={`
-                absolute top-full mt-2 min-w-[260px] bg-white rounded-xl shadow-2xl border border-slate-200 z-[100] overflow-hidden
-                ${isFirstColumn ? 'left-0' : 'right-0'}
-            `}
-            onClick={(e) => e.stopPropagation()}
-        >
-            {/* Sorting Section */}
-            <div className="p-2 space-y-1">
-                <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sort Order</p>
-                <button 
-                    onClick={() => onSort('ascending')} 
-                    className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors group"
-                >
-                    <SortAsc className="mr-2.5 h-4 w-4 text-slate-400 group-hover:text-indigo-600" />
-                    <span className="font-medium">Sort Ascending</span>
-                </button>
-                <button 
-                    onClick={() => onSort('descending')} 
-                    className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors group"
-                >
-                    <SortDesc className="mr-2.5 h-4 w-4 text-slate-400 group-hover:text-indigo-600" />
-                    <span className="font-medium">Sort Descending</span>
-                </button>
+        // Stop click propagation to prevent the dropdown from closing when interacting with inputs
+        <div className="p-3 w-full" onClick={(e) => e.stopPropagation()}>
+            {/* Sorting options */}
+            <div className="space-y-1">
+                <button onClick={() => onSort('ascending')} className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 rounded-md">Sort Ascending</button>
+                <button onClick={() => onSort('descending')} className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 rounded-md">Sort Descending</button>
             </div>
 
-            {/* Filter Section */}
-            <div className="border-t border-slate-100 bg-slate-50/50 p-4">
-                <div className="flex items-center mb-3">
-                    <Filter className="h-3.5 w-3.5 text-slate-500 mr-2" />
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filter Column</p>
-                </div>
+            {/* Filtering section */}
+            <div className="mt-2 pt-2 border-t border-gray-200">
+                <p className="text-xs font-semibold text-gray-500 uppercase px-1 mb-2">Filter</p>
                 
-                <div className="space-y-3">
-                    <div className="relative">
-                        <select 
-                            value={type} 
-                            onChange={(e) => setType(e.target.value)} 
-                            className="w-full pl-3 pr-10 py-2 bg-white border border-slate-200 rounded-lg text-sm appearance-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer shadow-sm font-medium text-slate-700"
-                        >
-                            {getFilterOptions().map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                        </select>
-                        <ChevronDown className="absolute right-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
-                    </div>
+                {/* This is the corrected layout: using a vertical stack (space-y-2) */}
+                <div className="space-y-2">
+                    <select value={type} onChange={(e) => setType(e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        {getFilterOptions().map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>
                     
-                    <div className="space-y-2">
+                    <input
+                        type={inputType}
+                        placeholder="Value..."
+                        value={value1}
+                        onChange={(e) => setValue1(e.target.value)}
+                        className="w-full border-gray-300 rounded-md shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+
+                    {/* Conditionally show the second input for the "between" filter type */}
+                    {type === 'between' && (
                         <input
                             type={inputType}
-                            placeholder={type === 'between' ? "From..." : "Value..."}
-                            value={value1}
-                            onChange={(e) => setValue1(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm placeholder:text-slate-400"
+                            placeholder="Value 2..."
+                            value={value2}
+                            onChange={(e) => setValue2(e.target.value)}
+                            className="w-full border-gray-300 rounded-md shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500"
                         />
-
-                        {type === 'between' && (
-                            <input
-                                type={inputType}
-                                placeholder="To..."
-                                value={value2}
-                                onChange={(e) => setValue2(e.target.value)}
-                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
-                            />
-                        )}
-                    </div>
+                    )}
                 </div>
 
-                <div className="flex items-center gap-2 mt-5">
-                    <button 
-                        onClick={handleClear} 
-                        className="flex-1 inline-flex items-center justify-center px-3 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-red-600 transition-all active:scale-95 shadow-sm"
-                    >
-                        <RotateCcw className="mr-1.5 h-3 w-3" />
-                        Reset
-                    </button>
-                    <button 
-                        onClick={handleApply} 
-                        className="flex-1 inline-flex items-center justify-center px-3 py-2 text-xs font-bold text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-95"
-                    >
-                        <Check className="mr-1.5 h-3 w-3" />
-                        Apply
-                    </button>
+                {/* Action buttons for the filter */}
+                <div className="flex justify-end space-x-2 mt-3">
+                    <button onClick={handleClear} className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Clear</button>
+                    <button onClick={handleApply} className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700">Apply</button>
                 </div>
             </div>
         </div>
