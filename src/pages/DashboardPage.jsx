@@ -142,10 +142,7 @@ const DashboardPage = ({ sheetKey }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    // ** Default Sorting: Posting Date from Old to New (Ascending) **
     const [sortConfig, setSortConfig] = useState({ key: 'Posting Date', direction: 'ascending' });
-    
-    // ** Pagination State **
     const [batchSize, setBatchSize] = useState(15);
     const [visibleCount, setVisibleCount] = useState(15);
 
@@ -205,7 +202,6 @@ const DashboardPage = ({ sheetKey }) => {
             const result = await apiService.getDashboardData(sheetKey, user.userIdentifier);
             if (result.data.success) {
                 setRawData({ header: result.data.header, rows: result.data.rows });
-                // ** Reset visible count to batch size when data reloads or sheet changes **
                 setVisibleCount(batchSize); 
             } else {
                 setError(result.data.message);
@@ -388,7 +384,6 @@ const DashboardPage = ({ sheetKey }) => {
         return data;
     }, [displayData, sortConfig, generalFilter, statusFilter, displayHeader, columnFilters]);
 
-    // ** Handlers for Pagination **
     const handleLoadMore = () => {
         setVisibleCount(prev => prev + batchSize);
     };
@@ -396,7 +391,7 @@ const DashboardPage = ({ sheetKey }) => {
     const handleBatchSizeChange = (e) => {
         const val = parseInt(e.target.value);
         setBatchSize(val);
-        setVisibleCount(val); // Reset view to new batch size
+        setVisibleCount(val); 
     };
 
     const handleSort = (key, direction) => setSortConfig({ key, direction });
@@ -550,7 +545,6 @@ const DashboardPage = ({ sheetKey }) => {
         if (EDITABLE_COLUMNS.includes(headerName)) {
             setEditingCell({ rowIndex, cellIndex });
         } else if (CANDIDATE_COLUMNS.includes(headerName)) {
-            // Note: Use absolute index from filtered data for row data access
             const rowData = filteredAndSortedData[rowIndex];
             const jobInfo = {
                 postingId: rowData[displayHeader.indexOf('Posting ID')],
@@ -575,12 +569,10 @@ const DashboardPage = ({ sheetKey }) => {
 
     return (
         <div className="space-y-4">
-            {/* Page Header */}
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
                 <h2 className="text-xl font-bold text-gray-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
             </div>
             
-            {/* Filter Bar with Toolbar */}
             <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
                     <input type="text" placeholder="Search all jobs..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-lg px-4 py-2 w-full md:w-64 focus:ring-2 focus:ring-indigo-500 transition"/>
@@ -591,7 +583,6 @@ const DashboardPage = ({ sheetKey }) => {
                     </select>
                 </div>
                 <div className="flex items-center space-x-2 w-full md:w-auto">
-                    {/* Save Changes Button - MOVED HERE */}
                     {canEditDashboard && Object.keys(unsavedChanges).length > 0 && (
                         <button 
                             onClick={handleSaveChanges} 
@@ -660,7 +651,6 @@ const DashboardPage = ({ sheetKey }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {/* ** PAGINATION: Slice the data to show only visible rows ** */}
                                 {filteredAndSortedData.slice(0, visibleCount).map((row, rowIndex) => (
                                     <tr key={row[displayHeader.indexOf('Posting ID')] || rowIndex} className="bg-white border-b border-gray-200 odd:bg-white even:bg-slate-50 hover:bg-indigo-50 transition-colors">
                                         {row.map((cell, cellIndex) => {
@@ -738,7 +728,6 @@ const DashboardPage = ({ sheetKey }) => {
                                                     )}
                                                 </td>
                                             );
-            
                                         })}
                                         <td className="px-4 py-3 align-top text-center border-r border-gray-200">
                                             {canEditDashboard && <ActionMenu job={jobToObject(row)} onAction={(type, job) => setModalState({type, data: job})} />}
@@ -751,7 +740,6 @@ const DashboardPage = ({ sheetKey }) => {
                 </div>
             )}
 
-            {/* ** Pagination Controls Footer ** */}
             {!loading && !error && filteredAndSortedData.length > 0 && (
                 <div className="flex justify-between items-center mt-4 bg-gray-50 p-4 rounded-lg border border-gray-200 sticky bottom-0 z-20">
                     <div className="flex items-center space-x-2">
@@ -784,7 +772,6 @@ const DashboardPage = ({ sheetKey }) => {
                 </div>
             )}
             
-            {/* Modals */}
             <ConfirmationModal isOpen={['close', 'archive', 'delete'].includes(modalState.type)} onClose={() => setModalState({type: null, data: null})} onConfirm={() => handleAction(modalState.type, modalState.data)} title={`Confirm ${modalState.type}`} message={`Are you sure you want to ${modalState.type} the job "${modalState.data?.['Posting Title']}"?`} confirmText={modalState.type}/>
             <ViewDetailsModal isOpen={modalState.type === 'details'} onClose={() => setModalState({type: null, data: null})} job={modalState.data}/>
             <ColumnSettingsModal isOpen={isColumnModalOpen} onClose={() => setColumnModalOpen(false)} allHeaders={transformedData.header} userPrefs={userPrefs} onSave={handleSaveColumnSettings}/>
