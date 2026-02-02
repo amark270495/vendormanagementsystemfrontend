@@ -65,7 +65,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
     const prevMsgCountRef = useRef(0);
     const audioRef = useRef(null);
 
-    // Initialize Audio
     useEffect(() => {
         audioRef.current = {
             notification: new Audio('/sounds/notification.mp3'),
@@ -79,7 +78,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
         }
     };
 
-    // --- Fetch Logic ---
     const fetchNotifications = useCallback(async () => {
         if (!user?.userIdentifier) return;
         try {
@@ -91,7 +89,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
             }
             prevNotifLengthRef.current = newNotifications.length;
             setNotifications(newNotifications); 
-
         } catch (err) {
             console.error('Fetch notifications error', err);
         }
@@ -115,7 +112,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
         }
     }, [user?.userIdentifier, canMessage]);
 
-    // --- Intervals ---
     useEffect(() => {
         fetchNotifications();
         fetchUnreadMessages();
@@ -258,6 +254,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
 
                     {/* RIGHT: Notifications & User */}
                     <div className="flex items-center gap-4">
+                        {/* UPDATED: Increased width to 96 and container to w-96 */}
                         <Dropdown width="96" trigger={
                             <button className="relative p-2 text-slate-500 hover:text-indigo-600 transition-colors focus:outline-none">
                                 <BellIcon />
@@ -268,7 +265,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                                 )}
                             </button>
                         }>
-                            <div className="w-80">
+                            <div className="w-96">
                                 <div className="flex justify-between items-center p-3 border-b border-slate-100 bg-slate-50">
                                     <h4 className="font-semibold text-slate-800 text-sm">Notifications</h4>
                                     {notifications.length > 0 && (
@@ -278,7 +275,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                                 <div className="max-h-[300px] overflow-y-auto scrollbar-thin">
                                     {notifications.length > 0 ? notifications.map((n, idx) => (
                                         <div key={n.id || idx} className="p-3 border-b border-slate-50 hover:bg-slate-50">
-                                            <p className="text-sm text-slate-700 leading-snug">{n.message}</p>
+                                            <p className="text-sm text-slate-700 leading-snug break-words">{n.message}</p>
                                             <p className="text-xs text-slate-400 mt-1">{new Date(n.timestamp).toLocaleString()}</p>
                                         </div>
                                     )) : (
@@ -290,7 +287,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
                             </div>
                         </Dropdown>
 
-                        <Dropdown trigger={
+                        <Dropdown width="96" trigger={
                              <button className="flex items-center gap-3 hover:bg-slate-50 rounded-full pr-3 py-1 transition-all">
                                 <div className="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-sm ring-2 ring-white">
                                     <span className="text-sm font-bold">{user?.userName ? user.userName.charAt(0).toUpperCase() : 'U'}</span>
@@ -301,7 +298,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
                                 <ChevronDownIcon className="h-4 w-4 text-slate-400" />
                             </button>
                         }>
-                            {/* UPDATED: Increased width to w-96 (approx 384px) to fit long emails */}
                             <div className="w-96">
                                 <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
                                     <p className="text-sm font-bold text-slate-900 break-words">{user?.userName || 'User'}</p>
