@@ -426,27 +426,31 @@ const DashboardPage = ({ sheetKey }) => {
         try {
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
-            // EMAIL ASSIGNMENT LOGIC (RESTORED FULLY & FIXED)
+            // EMAIL ASSIGNMENT LOGIC (FIXED)
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
-                if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
+                if (changes['Working By']) {
                     const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
                     if (jobRow) {
                         const jobTitle = jobRow[displayHeader.indexOf('Posting Title')];
                         const clientName = jobRow[displayHeader.indexOf('Client Info')];
-                        const assignedUserNames = changes['Working By'].split(',').map(s => s.trim()).filter(Boolean);
                         
-                        for (const name of assignedUserNames) {
-                            if (name !== 'Need To Update') {
-                                const recruiterObj = recruiters.find(r => r.displayName === name);
-                                if (recruiterObj && recruiterObj.email) {
-                                    await apiService.sendAssignmentEmail({
-                                        candidateName: recruiterObj.displayName,
-                                        candidateEmail: recruiterObj.email,
-                                        jobTitle: jobTitle,
-                                        clientName: clientName,
-                                        triggeredBy: user.displayName
-                                    }, user.userIdentifier);
-                                }
+                        const oldVal = String(jobRow[displayHeader.indexOf('Working By')] || '');
+                        const oldNames = oldVal.split(',').map(s => s.trim());
+                        const newNames = changes['Working By'].split(',').map(s => s.trim()).filter(Boolean);
+                        
+                        // Find only newly added recruiters to prevent duplicate emails
+                        const newlyAdded = newNames.filter(name => name !== 'Need To Update' && !oldNames.includes(name));
+                        
+                        for (const name of newlyAdded) {
+                            const recruiterObj = recruiters.find(r => r.displayName === name);
+                            if (recruiterObj && recruiterObj.email) {
+                                await apiService.sendAssignmentEmail({
+                                    candidateName: recruiterObj.displayName,
+                                    candidateEmail: recruiterObj.email,
+                                    jobTitle: jobTitle,
+                                    clientName: clientName,
+                                    triggeredBy: user.displayName
+                                }, user.userIdentifier);
                             }
                         }
                     }
