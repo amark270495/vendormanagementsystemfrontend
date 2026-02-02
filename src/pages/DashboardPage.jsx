@@ -14,7 +14,7 @@ import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-// --- SVG Icons (RESTORED FULLY) ---
+// --- SVG Icons (FULL SET RESTORED) ---
 const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
 
 // *** MultiSelectDropdown Component (Restored) ***
@@ -156,7 +156,6 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
-    // EXACT WIDTHS FROM PERFECT FIX
     const colWidths = useMemo(() => ({
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
@@ -232,7 +231,6 @@ const DashboardPage = ({ sheetKey }) => {
         loadData();
     }, [loadData, user.userIdentifier]);
 
-    // FULL DATA TRANSFORMATION (RESTORED)
     const transformedData = useMemo(() => {
         let { header, rows } = rawData;
         if (!header?.length) return { header: [], rows: [] };
@@ -408,60 +406,94 @@ const DashboardPage = ({ sheetKey }) => {
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
-    // --- FULL SAVE CHANGES LOGIC RESTORED & EMAILS FIXED ---
+    /* =========================================================
+       ✅ FULL SAVE CHANGES LOGIC RESTORED & EMAILS FIXED
+       ========================================================= */
     const handleSaveChanges = async () => {
         if (!canEditDashboard) return;
-        const headerMap = { 'Working By': 'workingBy', '# Submitted': 'noOfResumesSubmitted', 'Remarks': 'remarks' };
-        const updates = Object.entries(unsavedChanges).map(([postingId, changes]) => ({
-            rowKey: postingId,
-            changes: Object.entries(changes).reduce((acc, [header, value]) => {
-                if (headerMap[header]) {
-                    acc[headerMap[header]] = value;
-                }
-                return acc;
-            }, {})
-        })).filter(u => Object.keys(u.changes).length > 0);
+
+        const headerMap = {
+            'Working By': 'workingBy',
+            '# Submitted': 'noOfResumesSubmitted',
+            'Remarks': 'remarks'
+        };
+
+        const updates = Object.entries(unsavedChanges)
+            .map(([postingId, changes]) => ({
+                rowKey: postingId,
+                changes: Object.entries(changes).reduce((acc, [header, value]) => {
+                    if (headerMap[header]) {
+                        acc[headerMap[header]] = value;
+                    }
+                    return acc;
+                }, {})
+            }))
+            .filter(u => Object.keys(u.changes).length > 0);
 
         if (updates.length === 0) return;
+
         setLoading(true);
+
         try {
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
-            // EMAIL ASSIGNMENT LOGIC (FIXED TO CALL THE API CORRECTLY)
+            /* =========================================================
+               ✅ EMAIL ASSIGNMENT LOGIC — FIXED TO MATCH BACKEND
+               ========================================================= */
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
-                if (changes['Working By']) {
-                    const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
-                    if (jobRow) {
-                        const jobTitle = jobRow[displayHeader.indexOf('Posting Title')];
-                        const clientName = jobRow[displayHeader.indexOf('Client Info')];
-                        
-                        const currentAssigned = String(jobRow[displayHeader.indexOf('Working By')] || '');
-                        const oldNames = currentAssigned.split(',').map(s => s.trim());
-                        const newNames = String(changes['Working By']).split(',').map(s => s.trim()).filter(Boolean);
-                        
-                        // Detect newly assigned names
-                        const newlyAddedRecruiters = newNames.filter(name => name !== 'Need To Update' && !oldNames.includes(name));
-                        
-                        for (const name of newlyAddedRecruiters) {
-                            const recruiterObj = recruiters.find(r => r.displayName === name);
-                            if (recruiterObj && recruiterObj.email) {
-                                // CALLING THE sendAssignmentEmail API
-                                await apiService.sendAssignmentEmail({
-                                    candidateName: recruiterObj.displayName,
-                                    candidateEmail: recruiterObj.email,
-                                    jobTitle: jobTitle,
-                                    clientName: clientName,
-                                    triggeredBy: user.displayName
-                                }, user.userIdentifier);
-                            }
-                        }
-                    }
+                if (!changes['Working By']) continue;
+
+                const jobRow = filteredAndSortedData.find(
+                    row => row[displayHeader.indexOf('Posting ID')] === postingId
+                );
+
+                if (!jobRow) continue;
+
+                const jobTitle = jobRow[displayHeader.indexOf('Posting Title')] || '';
+                const rawClientInfo = jobRow[displayHeader.indexOf('Client Info')] || '';
+                const cleanClientName = rawClientInfo.split('/')[0].trim();
+
+                const currentAssigned =
+                    String(jobRow[displayHeader.indexOf('Working By')] || '');
+
+                const oldNames = currentAssigned
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean);
+
+                const newNames = String(changes['Working By'])
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(name => name && name !== 'Need To Update');
+
+                const newlyAddedRecruiters = newNames.filter(
+                    name => !oldNames.includes(name)
+                );
+
+                for (const name of newlyAddedRecruiters) {
+                    const recruiterObj = recruiters.find(
+                        r => r.displayName === name
+                    );
+
+                    if (!recruiterObj?.email) continue;
+
+                    await apiService.sendAssignmentEmail({
+                        candidateName: recruiterObj.displayName,
+                        candidateEmail: recruiterObj.email,
+                        jobTitle: jobTitle,
+                        clientName: cleanClientName,
+                        triggeredBy: user.displayName
+                    }, user.userIdentifier);
                 }
             }
+
             setUnsavedChanges({});
             loadData();
+
         } catch (err) {
-            setError(`Failed to save: ${err.response?.data?.message || err.message}`);
+            setError(
+                `Failed to save: ${err.response?.data?.message || err.message}`
+            );
         } finally {
             setLoading(false);
         }
