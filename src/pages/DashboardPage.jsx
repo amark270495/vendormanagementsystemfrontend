@@ -17,7 +17,7 @@ import 'jspdf-autotable';
 // --- SVG Icons (RESTORED FULLY) ---
 const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
 
-// *** MultiSelectDropdown Component ***
+// *** MultiSelectDropdown Component (Restored) ***
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -408,6 +408,7 @@ const DashboardPage = ({ sheetKey }) => {
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
+    // --- FULL SAVE CHANGES LOGIC RESTORED & EMAILS FIXED ---
     const handleSaveChanges = async () => {
         if (!canEditDashboard) return;
         const headerMap = { 'Working By': 'workingBy', '# Submitted': 'noOfResumesSubmitted', 'Remarks': 'remarks' };
@@ -426,7 +427,7 @@ const DashboardPage = ({ sheetKey }) => {
         try {
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
-            // EMAIL ASSIGNMENT LOGIC (FIXED)
+            // EMAIL ASSIGNMENT LOGIC (FIXED TO CALL THE API CORRECTLY)
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
                 if (changes['Working By']) {
                     const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
@@ -434,16 +435,17 @@ const DashboardPage = ({ sheetKey }) => {
                         const jobTitle = jobRow[displayHeader.indexOf('Posting Title')];
                         const clientName = jobRow[displayHeader.indexOf('Client Info')];
                         
-                        const oldVal = String(jobRow[displayHeader.indexOf('Working By')] || '');
-                        const oldNames = oldVal.split(',').map(s => s.trim());
-                        const newNames = changes['Working By'].split(',').map(s => s.trim()).filter(Boolean);
+                        const currentAssigned = String(jobRow[displayHeader.indexOf('Working By')] || '');
+                        const oldNames = currentAssigned.split(',').map(s => s.trim());
+                        const newNames = String(changes['Working By']).split(',').map(s => s.trim()).filter(Boolean);
                         
-                        // Find only newly added recruiters to prevent duplicate emails
-                        const newlyAdded = newNames.filter(name => name !== 'Need To Update' && !oldNames.includes(name));
+                        // Detect newly assigned names
+                        const newlyAddedRecruiters = newNames.filter(name => name !== 'Need To Update' && !oldNames.includes(name));
                         
-                        for (const name of newlyAdded) {
+                        for (const name of newlyAddedRecruiters) {
                             const recruiterObj = recruiters.find(r => r.displayName === name);
                             if (recruiterObj && recruiterObj.email) {
+                                // CALLING THE sendAssignmentEmail API
                                 await apiService.sendAssignmentEmail({
                                     candidateName: recruiterObj.displayName,
                                     candidateEmail: recruiterObj.email,
