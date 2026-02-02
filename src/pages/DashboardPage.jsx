@@ -14,7 +14,7 @@ import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-// --- SVG Icons (RESTORED) ---
+// --- SVG Icons (RESTORED FULLY) ---
 const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
 
 // *** MultiSelectDropdown Component ***
@@ -62,9 +62,9 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="block w-full border border-slate-300 rounded-md shadow-sm p-2 text-sm bg-white text-left focus:ring-2 focus:ring-blue-500"
+                className="block w-full border border-slate-300 rounded-md shadow-sm p-2 text-sm bg-white text-left focus:ring-2 focus:ring-blue-500 transition-all"
             >
-                {displayValue}
+                <span className="truncate block pr-4">{displayValue}</span>
                 <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                      <svg className="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fillRule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -72,18 +72,18 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
                 </span>
             </button>
             {isOpen && (
-                <div className="absolute z-30 right-0 mt-1 bg-white border border-slate-300 rounded-md shadow-lg max-h-60 overflow-y-auto min-w-full w-auto">
+                <div className="absolute z-50 left-0 mt-1 bg-white border border-slate-300 rounded-md shadow-xl max-h-60 overflow-y-auto min-w-full w-auto">
                     <ul>
                         <li
                             key="unassigned"
                             onClick={() => handleToggleSelect("Need To Update")}
-                            className="flex items-center px-4 py-2 text-sm text-slate-700 cursor-pointer hover:bg-blue-50"
+                            className="flex items-center px-4 py-2 text-sm text-slate-700 cursor-pointer hover:bg-slate-50"
                         >
                             <input
                                 type="checkbox"
                                 readOnly
                                 checked={displayArray.includes("Need To Update")}
-                                className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600"
+                                className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                             />
                             Unassigned
                         </li>
@@ -91,13 +91,13 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
                             <li
                                 key={name}
                                 onClick={() => handleToggleSelect(name)}
-                                className="flex items-center px-4 py-2 text-sm text-slate-700 cursor-pointer hover:bg-blue-50"
+                                className="flex items-center px-4 py-2 text-sm text-slate-700 cursor-pointer hover:bg-slate-50"
                             >
                                 <input
                                     type="checkbox"
                                     readOnly
                                     checked={displayArray.includes(name)}
-                                    className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600"
+                                    className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                                 />
                                 {name}
                             </li>
@@ -156,6 +156,7 @@ const DashboardPage = ({ sheetKey }) => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
+    // EXACT WIDTHS FROM PERFECT FIX
     const colWidths = useMemo(() => ({
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
@@ -232,6 +233,7 @@ const DashboardPage = ({ sheetKey }) => {
         loadData();
     }, [loadData, user.userIdentifier]);
 
+    // FULL DATA TRANSFORMATION (RESTORED)
     const transformedData = useMemo(() => {
         let { header, rows } = rawData;
         if (!header?.length) return { header: [], rows: [] };
@@ -425,7 +427,7 @@ const DashboardPage = ({ sheetKey }) => {
         try {
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
-            // EMAIL ASSIGNMENT LOGIC (RESTORED)
+            // EMAIL ASSIGNMENT LOGIC (RESTORED FULLY)
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
                 if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
                     const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
@@ -572,8 +574,10 @@ const DashboardPage = ({ sheetKey }) => {
         <div className="space-y-6 antialiased text-slate-900">
             <div className="flex flex-col md:flex-row justify-between md:items-end gap-2 border-b border-slate-200 pb-4">
                 <div>
-                    <h2 className="text-2xl font-extrabold tracking-tight text-slate-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
-                    <p className="text-sm text-slate-500 mt-1 font-medium">Manage and track recruitment progress.</p>
+                    <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">
+                        {DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}
+                    </h2>
+                    <p className="text-sm text-slate-500 font-medium">Manage and track recruitment progress.</p>
                 </div>
                 
                 <div className="flex items-center space-x-2">
@@ -594,7 +598,7 @@ const DashboardPage = ({ sheetKey }) => {
 
                     <Dropdown 
                         trigger={
-                            <button className="px-4 py-2 bg-white text-slate-700 rounded-lg hover:bg-slate-50 font-semibold flex items-center shadow-sm border border-slate-300 transition-all">
+                            <button className="px-4 py-2.5 bg-white text-slate-700 rounded-lg hover:bg-slate-50 font-semibold flex items-center shadow-sm border border-slate-300 transition-all">
                                 Tools
                                 <svg className="ml-2 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
                             </button>
@@ -626,7 +630,7 @@ const DashboardPage = ({ sheetKey }) => {
             
             {!loading && !error && (
                 <div className="bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                    <table className="w-full text-sm text-left border-collapse table-fixed min-w-[1200px]">
+                    <table className="w-full text-sm text-left border-collapse table-fixed min-w-[1250px]">
                         <colgroup>
                             {displayHeader.map(h => (
                                 <col key={h} className={colWidths[h] || 'w-auto'} />
@@ -637,8 +641,12 @@ const DashboardPage = ({ sheetKey }) => {
                             <tr>
                                 {displayHeader.map((h, i) => (
                                     <th key={h} scope="col" className="p-0 border-r border-slate-200 last:border-r-0">
-                                        <Dropdown width="64" align={i === 0 ? 'left' : 'right'} trigger={
+                                        <Dropdown 
+                                            width="64" 
+                                            align={i === 0 ? 'left' : 'right'} // FIX: FIRST COLUMN DROPDOWN LEFT ALIGNED
+                                            trigger={
                                             <div className="flex items-center justify-between w-full h-full cursor-pointer px-4 py-4 hover:bg-slate-200 transition-colors">
+                                                {/* FIX: HEADER TEXT WRAPPING PREVENTING OVERLAP */}
                                                 <span className="font-bold text-slate-700 tracking-tight uppercase text-[11px] flex flex-wrap leading-tight break-words max-w-full">
                                                     {h}
                                                 </span>
@@ -656,14 +664,14 @@ const DashboardPage = ({ sheetKey }) => {
                                         </Dropdown>
                                     </th>
                                 ))}
-                                <th scope="col" className="px-4 py-4 font-bold text-slate-700 uppercase text-[11px] text-center flex flex-wrap leading-tight">Action</th>
+                                <th scope="col" className="px-4 py-4 font-bold text-slate-700 uppercase text-[11px] text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {filteredAndSortedData.slice(0, visibleCount).map((row, rowIndex) => {
                                 const postingId = row[displayHeader.indexOf('Posting ID')];
                                 return (
-                                    <tr key={postingId || rowIndex} className="bg-white hover:bg-blue-50/40 transition-colors">
+                                    <tr key={postingId || rowIndex} className="bg-white hover:bg-blue-50/30 transition-colors">
                                         {row.map((cell, cellIndex) => {
                                             const headerName = displayHeader[cellIndex];
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
@@ -682,7 +690,7 @@ const DashboardPage = ({ sheetKey }) => {
                                             return (
                                                 <td key={cellIndex} 
                                                     onClick={() => handleCellClick(rowIndex, cellIndex)} 
-                                                    className={`px-4 py-4 border-r border-slate-50 font-medium ${hasUnsaved ? 'bg-amber-50' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-slate-600'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-blue-50' : ''} whitespace-normal break-words align-top text-[13px] leading-relaxed`}
+                                                    className={`px-4 py-4 border-r border-slate-50 font-medium ${hasUnsaved ? 'bg-amber-50 shadow-inner' : ''} ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-slate-600'} ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-blue-50' : ''} whitespace-normal break-words align-top text-[13px] leading-relaxed`}
                                                 >
                                                     {isEditing && headerName === 'Working By' && canEditDashboard ? (
                                                         <MultiSelectDropdown
@@ -723,9 +731,10 @@ const DashboardPage = ({ sheetKey }) => {
                                                                 </span>
                                                             ) : (
                                                                 headerName === 'Working By' ? (
+                                                                    /* FIX: RECRUITER NAME WRAPPING FIX */
                                                                     <div className="flex flex-wrap gap-1.5 max-w-full">
                                                                         {selectedWorkingBy.map((name, idx) => (
-                                                                            <span key={idx} className="px-2 py-0.5 text-[11px] font-bold rounded-md whitespace-nowrap bg-slate-200 text-slate-700 shadow-sm break-all leading-normal">
+                                                                            <span key={idx} className={`px-2 py-0.5 text-[11px] font-bold rounded-md bg-slate-200 text-slate-700 shadow-sm break-words leading-normal inline-block`}>
                                                                                 {name}
                                                                             </span>
                                                                         ))}
@@ -754,11 +763,11 @@ const DashboardPage = ({ sheetKey }) => {
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-sm sticky bottom-0 z-10">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Page Size</span>
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Rows</span>
                             <select
                                 value={batchSize}
                                 onChange={handleBatchSizeChange}
-                                className="block w-20 border-slate-300 rounded-lg py-1.5 text-sm font-bold text-slate-700 focus:ring-blue-500"
+                                className="block w-20 border-slate-300 rounded-lg py-1.5 text-sm font-bold text-slate-700 focus:ring-blue-500 shadow-sm bg-white"
                             >
                                 {[15, 30, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
                                 <option value={filteredAndSortedData.length}>All</option>
@@ -771,7 +780,7 @@ const DashboardPage = ({ sheetKey }) => {
                     </div>
                     
                     {visibleCount < filteredAndSortedData.length && (
-                        <button onClick={handleLoadMore} className="w-full sm:w-auto px-6 py-2.5 bg-slate-800 text-white text-sm font-bold rounded-lg hover:bg-slate-900 transition-all shadow-lg shadow-slate-200">
+                        <button onClick={handleLoadMore} className="w-full sm:w-auto px-6 py-2.5 bg-slate-800 text-white text-sm font-bold rounded-lg hover:bg-slate-900 transition-all shadow-lg shadow-slate-300">
                             Load More
                         </button>
                     )}
