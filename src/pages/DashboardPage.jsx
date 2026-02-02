@@ -640,13 +640,13 @@ const DashboardPage = ({ sheetKey }) => {
                         <thead className="bg-slate-100 sticky top-0 z-20 border-b border-slate-200">
                             <tr>
                                 {displayHeader.map((h, i) => (
-                                    <th key={h} scope="col" className="p-0 border-r border-slate-200 last:border-r-0">
+                                    <th key={h} scope="col" className="p-0 border-r border-slate-200 last:border-r-0 relative">
                                         <Dropdown 
-                                            width="64" 
-                                            align={i === 0 ? 'left' : 'right'} // FIX: FIRST COLUMN DROPDOWN LEFT ALIGNED
+                                            width="72" 
+                                            // FIX: First 2 columns align left, others align right
+                                            align={i < 2 ? 'left' : 'right'} 
                                             trigger={
                                             <div className="flex items-center justify-between w-full h-full cursor-pointer px-4 py-4 hover:bg-slate-200 transition-colors">
-                                                {/* FIX: HEADER TEXT WRAPPING PREVENTING OVERLAP */}
                                                 <span className="font-bold text-slate-700 tracking-tight uppercase text-[11px] flex flex-wrap leading-tight break-words max-w-full">
                                                     {h}
                                                 </span>
@@ -731,7 +731,6 @@ const DashboardPage = ({ sheetKey }) => {
                                                                 </span>
                                                             ) : (
                                                                 headerName === 'Working By' ? (
-                                                                    /* FIX: RECRUITER NAME WRAPPING FIX */
                                                                     <div className="flex flex-wrap gap-1.5 max-w-full">
                                                                         {selectedWorkingBy.map((name, idx) => (
                                                                             <span key={idx} className={`px-2 py-0.5 text-[11px] font-bold rounded-md bg-slate-200 text-slate-700 shadow-sm break-words leading-normal inline-block`}>
