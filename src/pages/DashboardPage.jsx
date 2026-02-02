@@ -653,7 +653,7 @@ const DashboardPage = ({ sheetKey }) => {
                             </button>
                         }
                     >
-                        <a href="#" onClick={(e) => { e.preventDefault(); setColumnModalOpen(true); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium border-b border-slate-100">Settings</a>
+                        <a href="#" onClick={(e) => { e.preventDefault(); setColumnModalOpen(true); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium border-b border-slate-100">Column Settings</a>
                         <a href="#" onClick={(e) => { e.preventDefault(); downloadPdf(); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium border-b border-slate-100">Download PDF</a>
                         <a href="#" onClick={(e) => { e.preventDefault(); downloadCsv(); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium">Download CSV</a>
                     </Dropdown>
