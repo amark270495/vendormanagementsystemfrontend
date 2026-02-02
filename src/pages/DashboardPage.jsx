@@ -14,7 +14,7 @@ import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-// --- SVG Icons ---
+// --- SVG Icons (RESTORED) ---
 const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
 
 // *** MultiSelectDropdown Component ***
@@ -66,13 +66,13 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
             >
                 {displayValue}
                 <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                     <svg className="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                     <svg className="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fillRule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                 </span>
             </button>
             {isOpen && (
-                <div className="absolute z-30 left-0 mt-1 bg-white border border-slate-300 rounded-md shadow-xl max-h-60 overflow-y-auto min-w-full">
+                <div className="absolute z-30 right-0 mt-1 bg-white border border-slate-300 rounded-md shadow-lg max-h-60 overflow-y-auto min-w-full w-auto">
                     <ul>
                         <li
                             key="unassigned"
@@ -83,7 +83,7 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
                                 type="checkbox"
                                 readOnly
                                 checked={displayArray.includes("Need To Update")}
-                                className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600"
                             />
                             Unassigned
                         </li>
@@ -97,7 +97,7 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
                                     type="checkbox"
                                     readOnly
                                     checked={displayArray.includes(name)}
-                                    className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                    className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600"
                                 />
                                 {name}
                             </li>
@@ -136,7 +136,7 @@ const REMARKS_OPTIONS = [
 
 const DashboardPage = ({ sheetKey }) => {
     const { user, updatePreferences } = useAuth();
-    const { canEditDashboard } = usePermissions(); 
+    const { canEditDashboard, canViewDashboards } = usePermissions(); 
 
     const [rawData, setRawData] = useState({ header: [], rows: [] });
     const [loading, setLoading] = useState(true);
@@ -425,6 +425,7 @@ const DashboardPage = ({ sheetKey }) => {
         try {
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
+            // EMAIL ASSIGNMENT LOGIC (RESTORED)
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
                 if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
                     const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
@@ -559,22 +560,20 @@ const DashboardPage = ({ sheetKey }) => {
     const getStatusBadge = (status) => {
         const lowerStatus = String(status || '').toLowerCase();
         if (lowerStatus === 'open') {
-            return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+            return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
         }
         if (lowerStatus === 'closed') {
-            return 'bg-rose-100 text-rose-700 border border-rose-200';
+            return 'bg-rose-50 text-rose-700 border border-rose-200';
         }
-        return 'bg-slate-100 text-slate-700 border border-slate-200';
+        return 'bg-slate-50 text-slate-700 border border-slate-200';
     };
 
     return (
-        <div className="space-y-4 antialiased text-slate-900">
-            <div className="flex flex-col md:flex-row justify-between md:items-end gap-2">
+        <div className="space-y-6 antialiased text-slate-900">
+            <div className="flex flex-col md:flex-row justify-between md:items-end gap-2 border-b border-slate-200 pb-4">
                 <div>
-                    <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">
-                        {DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}
-                    </h2>
-                    <p className="text-sm text-slate-500 font-medium">Manage and track recruitment progress.</p>
+                    <h2 className="text-2xl font-extrabold tracking-tight text-slate-800">{DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}</h2>
+                    <p className="text-sm text-slate-500 mt-1 font-medium">Manage and track recruitment progress.</p>
                 </div>
                 
                 <div className="flex items-center space-x-2">
@@ -627,7 +626,7 @@ const DashboardPage = ({ sheetKey }) => {
             
             {!loading && !error && (
                 <div className="bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                    <table className="w-full text-sm text-left border-collapse table-fixed min-w-[1300px]">
+                    <table className="w-full text-sm text-left border-collapse table-fixed min-w-[1200px]">
                         <colgroup>
                             {displayHeader.map(h => (
                                 <col key={h} className={colWidths[h] || 'w-auto'} />
@@ -640,7 +639,7 @@ const DashboardPage = ({ sheetKey }) => {
                                     <th key={h} scope="col" className="p-0 border-r border-slate-200 last:border-r-0">
                                         <Dropdown width="64" align={i === 0 ? 'left' : 'right'} trigger={
                                             <div className="flex items-center justify-between w-full h-full cursor-pointer px-4 py-4 hover:bg-slate-200 transition-colors">
-                                                <span className="font-bold text-slate-700 tracking-tight uppercase text-[11px] truncate">
+                                                <span className="font-bold text-slate-700 tracking-tight uppercase text-[11px] flex flex-wrap leading-tight break-words max-w-full">
                                                     {h}
                                                 </span>
                                                 {sortConfig.key === h && (
@@ -657,7 +656,7 @@ const DashboardPage = ({ sheetKey }) => {
                                         </Dropdown>
                                     </th>
                                 ))}
-                                <th scope="col" className="px-4 py-4 font-bold text-slate-700 uppercase text-[11px] text-center">Action</th>
+                                <th scope="col" className="px-4 py-4 font-bold text-slate-700 uppercase text-[11px] text-center flex flex-wrap leading-tight">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -724,9 +723,9 @@ const DashboardPage = ({ sheetKey }) => {
                                                                 </span>
                                                             ) : (
                                                                 headerName === 'Working By' ? (
-                                                                    <div className="flex flex-wrap gap-1.5">
+                                                                    <div className="flex flex-wrap gap-1.5 max-w-full">
                                                                         {selectedWorkingBy.map((name, idx) => (
-                                                                            <span key={idx} className={`px-2 py-0.5 text-[11px] font-bold rounded-md whitespace-nowrap ${name === 'Need To Update' ? 'bg-slate-100 text-slate-400' : 'bg-slate-200 text-slate-700 shadow-sm'}`}>
+                                                                            <span key={idx} className="px-2 py-0.5 text-[11px] font-bold rounded-md whitespace-nowrap bg-slate-200 text-slate-700 shadow-sm break-all leading-normal">
                                                                                 {name}
                                                                             </span>
                                                                         ))}
