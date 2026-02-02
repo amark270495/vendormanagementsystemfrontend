@@ -87,19 +87,19 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
                             />
                             Unassigned
                         </li>
-                        {options.map(name => (
+                        {options.map(userObj => (
                             <li
-                                key={name}
-                                onClick={() => handleToggleSelect(name)}
+                                key={userObj.displayName}
+                                onClick={() => handleToggleSelect(userObj.displayName)}
                                 className="flex items-center px-4 py-2 text-sm text-slate-700 cursor-pointer hover:bg-slate-50"
                             >
                                 <input
                                     type="checkbox"
                                     readOnly
-                                    checked={displayArray.includes(name)}
+                                    checked={displayArray.includes(userObj.displayName)}
                                     className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                                 />
-                                {name}
+                                {userObj.displayName}
                             </li>
                         ))}
                     </ul>
@@ -221,8 +221,7 @@ const DashboardPage = ({ sheetKey }) => {
                 if (result.data.success) {
                     const recruitmentRoles = ['Recruitment Team', 'Recruitment Manager'];
                     const filteredUsers = result.data.users
-                        .filter(u => recruitmentRoles.includes(u.backendOfficeRole))
-                        .map(u => u.displayName); 
+                        .filter(u => recruitmentRoles.includes(u.backendOfficeRole));
                     setRecruiters(filteredUsers);
                 }
             } catch (err) {
@@ -427,16 +426,27 @@ const DashboardPage = ({ sheetKey }) => {
         try {
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
-            // EMAIL ASSIGNMENT LOGIC (RESTORED FULLY)
+            // EMAIL ASSIGNMENT LOGIC (RESTORED FULLY & FIXED)
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
                 if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
                     const jobRow = filteredAndSortedData.find(row => row[displayHeader.indexOf('Posting ID')] === postingId);
                     if (jobRow) {
                         const jobTitle = jobRow[displayHeader.indexOf('Posting Title')];
-                        const assignedUsers = changes['Working By'].split(',').map(s => s.trim()).filter(Boolean);
-                        for (const assignedUser of assignedUsers) {
-                            if (assignedUser !== 'Need To Update') {
-                                await apiService.sendAssignmentEmail(jobTitle, postingId, assignedUser, user.userIdentifier);
+                        const clientName = jobRow[displayHeader.indexOf('Client Info')];
+                        const assignedUserNames = changes['Working By'].split(',').map(s => s.trim()).filter(Boolean);
+                        
+                        for (const name of assignedUserNames) {
+                            if (name !== 'Need To Update') {
+                                const recruiterObj = recruiters.find(r => r.displayName === name);
+                                if (recruiterObj && recruiterObj.email) {
+                                    await apiService.sendAssignmentEmail({
+                                        candidateName: recruiterObj.displayName,
+                                        candidateEmail: recruiterObj.email,
+                                        jobTitle: jobTitle,
+                                        clientName: clientName,
+                                        triggeredBy: user.displayName
+                                    }, user.userIdentifier);
+                                }
                             }
                         }
                     }
@@ -599,13 +609,13 @@ const DashboardPage = ({ sheetKey }) => {
                     <Dropdown 
                         trigger={
                             <button className="px-4 py-2.5 bg-white text-slate-700 rounded-lg hover:bg-slate-50 font-semibold flex items-center shadow-sm border border-slate-300 transition-all">
-                                Options
+                                Tools
                                 <svg className="ml-2 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
                             </button>
                         }
                     >
-                        <a href="#" onClick={(e) => { e.preventDefault(); setColumnModalOpen(true); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium border-b border-slate-100">Column Settings</a>
-                        <a href="#" onClick={(e) => { e.preventDefault(); downloadPdf(); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium">Download PDF</a>
+                        <a href="#" onClick={(e) => { e.preventDefault(); setColumnModalOpen(true); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium border-b border-slate-100">Settings</a>
+                        <a href="#" onClick={(e) => { e.preventDefault(); downloadPdf(); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium border-b border-slate-100">Download PDF</a>
                         <a href="#" onClick={(e) => { e.preventDefault(); downloadCsv(); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium">Download CSV</a>
                     </Dropdown>
                 </div>
@@ -643,7 +653,6 @@ const DashboardPage = ({ sheetKey }) => {
                                     <th key={h} scope="col" className="p-0 border-r border-slate-200 last:border-r-0 relative">
                                         <Dropdown 
                                             width="72" 
-                                            // FIX: First 2 columns align left, others align right
                                             align={i < 2 ? 'left' : 'right'} 
                                             trigger={
                                             <div className="flex items-center justify-between w-full h-full cursor-pointer px-4 py-4 hover:bg-slate-200 transition-colors">
@@ -720,7 +729,7 @@ const DashboardPage = ({ sheetKey }) => {
                                                     ) : (
                                                         <div contentEditable={isEditing && headerName !== 'Working By' && headerName !== 'Remarks' && canEditDashboard} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}>
                                                             {headerName === 'Status' ? (
-                                                                <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full uppercase tracking-wider whitespace-nowrap ${getStatusBadge(cell)}`}>
+                                                                <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full border uppercase tracking-wider whitespace-nowrap ${getStatusBadge(cell)}`}>
                                                                     {cell}
                                                                 </span>
                                                             ) : DATE_COLUMNS.includes(headerName) ? (
