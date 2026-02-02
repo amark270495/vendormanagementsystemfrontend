@@ -14,10 +14,10 @@ import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-// --- SVG Icons ---
+// --- SVG Icons (FULL SET RESTORED) ---
 const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
 
-// *** MultiSelectDropdown Component ***
+// *** MultiSelectDropdown Component (Restored) ***
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -182,10 +182,10 @@ const DashboardPage = ({ sheetKey }) => {
     const userPrefs = useMemo(() => {
         const safeParse = (jsonString, def = []) => {
             try {
-                const parsed = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+                const parsed = JSON.parse(jsonString);
                 return Array.isArray(parsed) ? parsed : def;
             } catch (e) {
-                return def;
+                return Array.isArray(jsonString) ? jsonString : def;
             }
         };
         return {
@@ -400,12 +400,14 @@ const DashboardPage = ({ sheetKey }) => {
         if (!canEditDashboard) return;
         const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
         const headerName = displayHeader[cellIndex];
+        
         const finalValue = Array.isArray(value) ? value.join(', ') : value;
+        
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
     /* =========================================================
-       ✅ FIX INTEGRATED: handleSaveChanges with Correct Email Payload
+       ✅ FULL SAVE CHANGES LOGIC RESTORED & EMAILS FIXED
        ========================================================= */
     const handleSaveChanges = async () => {
         if (!canEditDashboard) return;
@@ -433,44 +435,56 @@ const DashboardPage = ({ sheetKey }) => {
         setLoading(true);
 
         try {
-            // 1️⃣ Save dashboard changes
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
-            // 2️⃣ Send assignment emails ONLY to newly added recruiters
+            /* =========================================================
+               ✅ EMAIL ASSIGNMENT LOGIC — FIXED TO MATCH BACKEND
+               ========================================================= */
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
                 if (!changes['Working By']) continue;
 
                 const jobRow = filteredAndSortedData.find(
                     row => row[displayHeader.indexOf('Posting ID')] === postingId
                 );
+
                 if (!jobRow) continue;
 
                 const jobTitle = jobRow[displayHeader.indexOf('Posting Title')] || '';
                 const rawClientInfo = jobRow[displayHeader.indexOf('Client Info')] || '';
                 const cleanClientName = rawClientInfo.split('/')[0].trim();
 
-                const currentAssigned = String(jobRow[displayHeader.indexOf('Working By')] || '');
-                const oldNames = currentAssigned.split(',').map(n => n.trim()).filter(Boolean);
+                const currentAssigned =
+                    String(jobRow[displayHeader.indexOf('Working By')] || '');
+
+                const oldNames = currentAssigned
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean);
 
                 const newNames = String(changes['Working By'])
                     .split(',')
-                    .map(n => n.trim())
-                    .filter(n => n && n !== 'Need To Update');
+                    .map(s => s.trim())
+                    .filter(name => name && name !== 'Need To Update');
 
-                const newlyAddedRecruiters = newNames.filter(n => !oldNames.includes(n));
+                const newlyAddedRecruiters = newNames.filter(
+                    name => !oldNames.includes(name)
+                );
 
                 for (const name of newlyAddedRecruiters) {
-                    const recruiterObj = recruiters.find(r => r.displayName === name);
+                    const recruiterObj = recruiters.find(
+                        r => r.displayName === name
+                    );
+
                     if (!recruiterObj?.email) continue;
 
-                    // ✅ FIXED: Corrected Email Calling Signature
+                    // ✅ FIXED: Correct Payload Signature for sendAssignmentEmail
                     await apiService.sendAssignmentEmail({
                         candidateName: recruiterObj.displayName,
                         candidateEmail: recruiterObj.email,
                         jobTitle: jobTitle,
                         clientName: cleanClientName,
                         triggeredBy: user.displayName
-                    });
+                    }, user.userIdentifier);
                 }
             }
 
@@ -478,7 +492,9 @@ const DashboardPage = ({ sheetKey }) => {
             loadData();
 
         } catch (err) {
-            setError(`Failed to save: ${err.response?.data?.message || err.message}`);
+            setError(
+                `Failed to save: ${err.response?.data?.message || err.message}`
+            );
         } finally {
             setLoading(false);
         }
@@ -594,14 +610,17 @@ const DashboardPage = ({ sheetKey }) => {
     
     const getStatusBadge = (status) => {
         const lowerStatus = String(status || '').toLowerCase();
-        if (lowerStatus === 'open') return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
-        if (lowerStatus === 'closed') return 'bg-rose-50 text-rose-700 border border-rose-200';
+        if (lowerStatus === 'open') {
+            return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+        }
+        if (lowerStatus === 'closed') {
+            return 'bg-rose-50 text-rose-700 border border-rose-200';
+        }
         return 'bg-slate-50 text-slate-700 border border-slate-200';
     };
 
     return (
         <div className="space-y-6 antialiased text-slate-900">
-            {/* Header / Titles */}
             <div className="flex flex-col md:flex-row justify-between md:items-end gap-2 border-b border-slate-200 pb-4">
                 <div>
                     <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">
@@ -641,7 +660,6 @@ const DashboardPage = ({ sheetKey }) => {
                 </div>
             </div>
             
-            {/* Filter Bar */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row items-center gap-4">
                 <div className="relative w-full md:w-80">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -656,16 +674,9 @@ const DashboardPage = ({ sheetKey }) => {
                 </select>
             </div>
 
-            {loading && !rawData.rows.length && (
-                <div className="flex flex-col items-center justify-center h-64 bg-white rounded-xl border border-slate-200 shadow-sm">
-                    <Spinner />
-                    <p className="mt-4 text-slate-500 font-medium">Refreshing dashboard...</p>
-                </div>
-            )}
+            {loading && !rawData.rows.length && <div className="flex flex-col items-center justify-center h-64 bg-white rounded-xl border border-slate-200 shadow-sm"><Spinner /><p className="mt-4 text-slate-500 font-medium">Refreshing dashboard...</p></div>}
+            {error && <div className="text-rose-600 bg-rose-50 p-4 rounded-xl border border-rose-200 font-medium flex items-center gap-3"><svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg> Error: {error}</div>}
             
-            {error && <div className="text-rose-600 bg-rose-50 p-4 rounded-xl border border-rose-200 font-medium flex items-center gap-3">Error: {error}</div>}
-            
-            {/* Table Area */}
             {!loading && !error && (
                 <div className="bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                     <table className="w-full text-sm text-left border-collapse table-fixed min-w-[1250px]">
@@ -673,7 +684,7 @@ const DashboardPage = ({ sheetKey }) => {
                             {displayHeader.map(h => (
                                 <col key={h} className={colWidths[h] || 'w-auto'} />
                             ))}
-                            <col className="w-15" />
+                            <col className={colWidths['Actions'] || 'w-15'} />
                         </colgroup>
                         <thead className="bg-slate-100 sticky top-0 z-20 border-b border-slate-200">
                             <tr>
@@ -734,18 +745,26 @@ const DashboardPage = ({ sheetKey }) => {
                                                             options={recruiters}
                                                             selectedNames={selectedWorkingBy} 
                                                             onBlur={() => setEditingCell(null)}
-                                                            onChange={(selectedNames) => handleCellEdit(rowIndex, cellIndex, selectedNames)}
+                                                            onChange={(selectedNames) => {
+                                                                handleCellEdit(rowIndex, cellIndex, selectedNames);
+                                                            }}
                                                         />
                                                     ) : isEditing && headerName === 'Remarks' && canEditDashboard ? (
                                                         <select
                                                             value={unsavedChanges[postingId]?.[headerName] || cell}
                                                             onBlur={() => setEditingCell(null)}
-                                                            onChange={(e) => { handleCellEdit(rowIndex, cellIndex, e.target.value); setEditingCell(null); }}
+                                                            onChange={(e) => {
+                                                                handleCellEdit(rowIndex, cellIndex, e.target.value);
+                                                                setEditingCell(null);
+                                                            }}
                                                             className="block w-full border-slate-300 rounded-md p-2 text-sm focus:ring-blue-500"
                                                             autoFocus
                                                         >
                                                             <option value="">Select Remark</option>
-                                                            {REMARKS_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                                                            <option value="">Select Remark</option>
+                                                            {REMARKS_OPTIONS.map(option => (
+                                                                <option key={option} value={option}>{option}</option>
+                                                            ))}
                                                         </select>
                                                     ) : (
                                                         <div contentEditable={isEditing && headerName !== 'Working By' && headerName !== 'Remarks' && canEditDashboard} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}>
@@ -768,7 +787,9 @@ const DashboardPage = ({ sheetKey }) => {
                                                                             </span>
                                                                         ))}
                                                                     </div>
-                                                                ) : cell
+                                                                ) : (
+                                                                    cell
+                                                                )
                                                             )}
                                                         </div>
                                                     )}
@@ -786,7 +807,6 @@ const DashboardPage = ({ sheetKey }) => {
                 </div>
             )}
 
-            {/* Pagination Controls */}
             {!loading && !error && filteredAndSortedData.length > 0 && (
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-sm sticky bottom-0 z-10">
                     <div className="flex items-center gap-4">
