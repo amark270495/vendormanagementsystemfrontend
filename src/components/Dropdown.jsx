@@ -1,47 +1,36 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 /**
- * A reusable Dropdown component.
- * It takes a `trigger` element and `children` to display in the dropdown menu.
- * @param {object} props - The component props.
- * @param {React.ReactNode} props.trigger - The element that opens the dropdown when clicked.
- * @param {React.ReactNode} props.children - The content to be displayed inside the dropdown.
- * @param {string} [props.width='48'] - The width of the dropdown menu (maps to Tailwind's w- class).
+ * @param {string} [props.align='right'] - 'left' or 'right' alignment.
  */
-const Dropdown = ({ trigger, children, width = '48' }) => {
+const Dropdown = ({ trigger, children, width = '48', align = 'right' }) => {
     const [isOpen, setIsOpen] = useState(false);
     const node = useRef();
 
-    // This effect adds an event listener to the document to handle clicks outside the dropdown.
     useEffect(() => {
         const handleClickOutside = (e) => {
-            // If the click is outside the dropdown's DOM node, close the dropdown.
             if (node.current && !node.current.contains(e.target)) {
                 setIsOpen(false);
             }
         };
-
         document.addEventListener("mousedown", handleClickOutside);
-
-        // Cleanup function to remove the event listener when the component is unmounted.
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Determine alignment class based on prop
+    const alignmentClass = align === 'left' ? 'left-0' : 'right-0';
+
     return (
-        <div className="relative inline-block text-left z-50" ref={node}>
-            {/* The trigger element. Clicking it toggles the dropdown's visibility. */}
-            <div onClick={() => setIsOpen(!isOpen)}>
+        <div className="relative inline-block text-left" ref={node}>
+            <div onClick={() => setIsOpen(!isOpen)} className="h-full w-full">
                 {trigger}
             </div>
 
-            {/* The dropdown menu, which is rendered conditionally based on the `isOpen` state. */}
             {isOpen && (
                 <div 
-                    className={`absolute right-0 mt-2 w-${width} bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none py-1`}
-                    // Clicking inside the dropdown content will also close it (optional, depends on UX)
-                    onClick={() => setIsOpen(false)}
+                    className={`absolute ${alignmentClass} z-[100] mt-2 w-${width} bg-white rounded-md shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none py-1`}
+                    // Note: Removed onClick={() => setIsOpen(false)} because 
+                    // HeaderMenu has internal clicks (inputs/buttons) that shouldn't close the menu.
                 >
                     {children}
                 </div>
