@@ -648,7 +648,7 @@ const DashboardPage = ({ sheetKey }) => {
                     <Dropdown 
                         trigger={
                             <button className="px-4 py-2.5 bg-white text-slate-700 rounded-lg hover:bg-slate-50 font-semibold flex items-center shadow-sm border border-slate-300 transition-all">
-                                Tools
+                                Options
                                 <svg className="ml-2 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
                             </button>
                         }
