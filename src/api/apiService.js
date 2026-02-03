@@ -70,9 +70,14 @@ export const apiService = {
   markMessagesAsRead: (recipient, sender, authenticatedUsername) =>
     apiClient.post('/markMessagesAsRead', { recipient, sender, authenticatedUsername }),
   
-  // --- UPDATED: Matches the 4-argument call from DashboardPage.jsx ---
-  sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) =>
-    apiClient.post('/sendAssignmentEmail', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
+  // --- UPDATED: Matches the bulk assignment logic in sendAssignmentEmail.js ---
+  sendAssignmentEmail: ({ jobTitle, postingId, assignedUsers, authenticatedUsername }) =>
+    apiClient.post('/sendAssignmentEmail', { 
+        jobTitle, 
+        postingId, 
+        assignedUsers, 
+        authenticatedUsername 
+    }),
 
   // --- Permissions Functions ---
   getUserPermissionsList: (authenticatedUsername) =>
@@ -84,7 +89,7 @@ export const apiService = {
   createCompany: (companyData, authenticatedUsername) =>
     apiClient.post('/createCompany', { companyData, authenticatedUsername }),
   updateCompany: (originalCompanyName, updatedCompanyData, authenticatedUsername) =>
-    apiClient.post('/updateCompany', { originalCompanyName: originalCompanyName, updatedCompanyData: updatedCompanyData, authenticatedUsername }),
+    apiClient.post('/updateCompany', { originalCompanyName, updatedCompanyData, authenticatedUsername }),
   deleteCompany: (companyNameToDelete, authenticatedUsername) =>
     apiClient.post('/deleteCompany', { companyNameToDelete, authenticatedUsername }),
   saveEmployeeLogHours: (timesheetData, authenticatedUsername) =>

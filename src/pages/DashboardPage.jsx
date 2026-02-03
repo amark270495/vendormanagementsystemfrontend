@@ -213,7 +213,6 @@ const DashboardPage = ({ sheetKey }) => {
         }
     }, [sheetKey, user.userIdentifier, batchSize]);
 
-    // --- Fetch Recruiters as simple Strings (Working Version) ---
     useEffect(() => {
         const fetchRecruiters = async () => {
             try {
@@ -409,7 +408,7 @@ const DashboardPage = ({ sheetKey }) => {
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
-    // --- REVERTED & DEBUGGED: Handle Save Changes ---
+    // --- UPDATED: Handle Save Changes with Bulk Emails ---
     const handleSaveChanges = async () => {
         if (!canEditDashboard) return;
 
@@ -441,17 +440,15 @@ const DashboardPage = ({ sheetKey }) => {
         setLoading(true);
 
         try {
-            // 1. Update Backend
+            // 1. Update Backend Database
             console.log("Calling updateJobPosting API...");
             await apiService.updateJobPosting(updates, user.userIdentifier);
             console.log("Job posting updated successfully.");
 
-            // 2. Process Emails (Using Simple "Old" Logic)
+            // 2. Process Emails (Bulk per Posting)
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
                 if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
-                    console.log(`Processing email trigger for Posting ID: ${postingId}`);
                     
-                    // Robust lookup: Try rawData first, then filteredData
                     let jobRow = rawData.rows.find(row => String(row[rawData.header.indexOf('Posting ID')]) === String(postingId));
                     let headers = rawData.header;
 
@@ -463,22 +460,25 @@ const DashboardPage = ({ sheetKey }) => {
                     if (jobRow) {
                         const jobTitle = jobRow[headers.indexOf('Posting Title')] || '';
                         
+                        // Create the array of names
                         const assignedUsers = String(changes['Working By'])
                             .split(',')
                             .map(s => s.trim())
-                            .filter(Boolean);
+                            .filter(s => s && s !== 'Need To Update');
 
-                        for (const name of assignedUsers) {
-                            if (name !== 'Need To Update') {
-                                console.log(`Sending email to: ${name} for Job: ${jobTitle}`);
-                                try {
-                                    // Calls the Old API signature: (jobTitle, postingId, name, authUser)
-                                    // Backend will handle the email lookup
-                                    await apiService.sendAssignmentEmail(jobTitle, postingId, name, user.userIdentifier);
-                                    console.log("Email sent successfully.");
-                                } catch (emailErr) {
-                                    console.error("Error sending email:", emailErr);
-                                }
+                        if (assignedUsers.length > 0) {
+                            console.log(`Sending bulk assignment email for Job: ${jobTitle} to:`, assignedUsers);
+                            try {
+                                // ✅ UPDATED: Calling the API ONCE with the full array per posting
+                                await apiService.sendAssignmentEmail({
+                                    jobTitle,
+                                    postingId,
+                                    assignedUsers,
+                                    authenticatedUsername: user.userIdentifier
+                                });
+                                console.log("Bulk assignment emails triggered successfully.");
+                            } catch (emailErr) {
+                                console.error("Error sending bulk emails:", emailErr);
                             }
                         }
                     } else {
@@ -706,7 +706,7 @@ const DashboardPage = ({ sheetKey }) => {
                                                     filterConfig={columnFilters[h]} 
                                                     onFilterChange={handleFilterChange}
                                                 />
-                                            </Dropdown>
+                                        </Dropdown>
                                     </th>
                                 ))}
                                 <th scope="col" className="px-4 py-4 font-bold text-slate-700 uppercase text-[11px] text-center">Action</th>
@@ -757,7 +757,6 @@ const DashboardPage = ({ sheetKey }) => {
                                                             className="block w-full border-slate-300 rounded-md p-2 text-sm focus:ring-blue-500"
                                                             autoFocus
                                                         >
-                                                            <option value="">Select Remark</option>
                                                             <option value="">Select Remark</option>
                                                             {REMARKS_OPTIONS.map(option => (
                                                                 <option key={option} value={option}>{option}</option>
