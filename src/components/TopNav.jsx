@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
-import Dropdown from './Dropdown';
+// CHANGE 1: Import the useDropdown hook
+import Dropdown, { useDropdown } from './Dropdown';
 
 // --- Static Config ---
 const DASHBOARD_CONFIGS = {
@@ -40,14 +41,25 @@ const NavButton = memo(({ label, target, isActive, onClick }) => {
     );
 });
 
-const DropdownItem = memo(({ label, target, onClick, isDestructive }) => (
-    <button 
-        onClick={() => onClick(target)} 
-        className={`w-full text-left block px-4 py-2.5 text-sm transition-colors ${isDestructive ? 'text-red-600 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-50 hover:text-indigo-600'}`}
-    >
-        {label}
-    </button>
-));
+// CHANGE 2: Updated DropdownItem to use the context close function
+const DropdownItem = memo(({ label, target, onClick, isDestructive }) => {
+    // Safely access the context (handle cases where it might be used outside a Dropdown)
+    const { close } = useDropdown() || {};
+
+    const handleClick = () => {
+        onClick(target); // Navigate
+        if (close) close(); // Close the dropdown
+    };
+
+    return (
+        <button 
+            onClick={handleClick} 
+            className={`w-full text-left block px-4 py-2.5 text-sm transition-colors ${isDestructive ? 'text-red-600 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-50 hover:text-indigo-600'}`}
+        >
+            {label}
+        </button>
+    );
+});
 
 const TopNav = ({ onNavigate, currentPage }) => {
     const { user, logout } = useAuth();
