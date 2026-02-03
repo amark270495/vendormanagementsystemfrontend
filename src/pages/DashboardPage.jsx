@@ -17,7 +17,7 @@ import 'jspdf-autotable';
 // --- SVG Icons ---
 const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
 
-// *** MultiSelectDropdown Component ***
+// *** MultiSelectDropdown Component (Kept String-based for UI stability) ***
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -151,7 +151,10 @@ const DashboardPage = ({ sheetKey }) => {
     const [columnFilters, setColumnFilters] = useState({});
     const [unsavedChanges, setUnsavedChanges] = useState({});
     const [editingCell, setEditingCell] = useState(null);
-    const [recruiters, setRecruiters] = useState([]);
+    
+    // Split Recruiter State: Names for Dropdown, Objects for Data/Email
+    const [recruiters, setRecruiters] = useState([]); // Array of strings (names)
+    const [recruiterDetails, setRecruiterDetails] = useState([]); // Array of user objects
     
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
@@ -213,17 +216,20 @@ const DashboardPage = ({ sheetKey }) => {
         }
     }, [sheetKey, user.userIdentifier, batchSize]);
 
-    // --- REVERTED: Fetch Recruiters as simple Strings to match Old API logic ---
+    // --- FETCH USERS AND STORE DETAILS FOR EMAIL LOOKUP ---
     useEffect(() => {
         const fetchRecruiters = async () => {
             try {
                 const result = await apiService.getUsers(user.userIdentifier);
                 if (result.data.success) {
                     const recruitmentRoles = ['Recruitment Team', 'Recruitment Manager'];
-                    const filteredUsers = result.data.users
-                        .filter(u => recruitmentRoles.includes(u.backendOfficeRole))
-                        .map(u => u.displayName); 
-                    setRecruiters(filteredUsers);
+                    const filteredUsers = result.data.users.filter(u => recruitmentRoles.includes(u.backendOfficeRole));
+                    
+                    // 1. Set simple list of names for the Dropdown UI
+                    setRecruiters(filteredUsers.map(u => u.displayName));
+                    
+                    // 2. Store full details (including email) for backend logic
+                    setRecruiterDetails(filteredUsers);
                 }
             } catch (err) {
                 console.error("Failed to fetch recruiters:", err);
@@ -409,7 +415,7 @@ const DashboardPage = ({ sheetKey }) => {
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
-    // --- REVERTED: Handle Save Changes restored to use OLD API Service Signature (4 args) ---
+    // --- FIX: Handle Save Changes with Email Lookup & Payload Construction ---
     const handleSaveChanges = async () => {
         if (!canEditDashboard) return;
 
@@ -439,11 +445,11 @@ const DashboardPage = ({ sheetKey }) => {
             // 1. Update Backend
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
-            // 2. Process Emails (Using Simple "Old" Logic)
+            // 2. Process Emails
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
                 if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
                     
-                    // Look in rawData first (robustness), then fallback to filtered
+                    // Robust Lookup
                     let jobRow = rawData.rows.find(row => String(row[rawData.header.indexOf('Posting ID')]) === String(postingId));
                     let headers = rawData.header;
 
@@ -454,7 +460,8 @@ const DashboardPage = ({ sheetKey }) => {
 
                     if (jobRow) {
                         const jobTitle = jobRow[headers.indexOf('Posting Title')] || '';
-                        
+                        const clientName = jobRow[headers.indexOf('Client Name')] || jobRow[headers.indexOf('Client Info')] || '';
+
                         const assignedUsers = String(changes['Working By'])
                             .split(',')
                             .map(s => s.trim())
@@ -462,8 +469,30 @@ const DashboardPage = ({ sheetKey }) => {
 
                         for (const name of assignedUsers) {
                             if (name !== 'Need To Update') {
-                                // Calls the Old API signature: (jobTitle, postingId, name, authUser)
-                                await apiService.sendAssignmentEmail(jobTitle, postingId, name, user.userIdentifier);
+                                // --- FIX: EMAIL LOOKUP using recruiterDetails state ---
+                                const recruiter = recruiterDetails.find(r => r.displayName === name);
+                                const email = recruiter?.email || '';
+
+                                if (email) {
+                                    // --- FIX: Construct Payload to satisfy backend Requirements ---
+                                    const emailPayload = {
+                                        candidateName: name,
+                                        candidateEmail: email,
+                                        jobTitle: jobTitle,
+                                        clientName: clientName.split('/')[0].trim(),
+                                        postingId: postingId,
+                                        triggeredBy: user.displayName
+                                    };
+                                    
+                                    try {
+                                        // Uses the updated API service that handles object payloads
+                                        await apiService.sendAssignmentEmail(emailPayload, user.userIdentifier);
+                                    } catch (e) {
+                                        console.error(`Failed to send email to ${name}`, e);
+                                    }
+                                } else {
+                                    console.warn(`No email found for recruiter: ${name}`);
+                                }
                             }
                         }
                     } else {
