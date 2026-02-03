@@ -475,11 +475,10 @@ const DashboardPage = ({ sheetKey }) => {
                         r => r.displayName === name
                     );
 
-                    // Backend requires candidateEmail, so we must have a recruiter object with email.
-                    if (!recruiterObj?.email) continue;
+                    // Skip if recruiter object not found.
+                    if (!recruiterObj) continue;
 
                     // ✅ FIXED: Construct the exact payload object the backend requires
-                    // NOTE: Ensure your apiService.sendAssignmentEmail is updated to accept this object as first arg.
                     const emailPayload = {
                         candidateName: recruiterObj.displayName,
                         candidateEmail: recruiterObj.email,
@@ -489,6 +488,7 @@ const DashboardPage = ({ sheetKey }) => {
                         triggeredBy: user.displayName
                     };
 
+                    // Pass payload object as first arg, matching backend expectation
                     await apiService.sendAssignmentEmail(emailPayload, user.userIdentifier);
                 }
             }
