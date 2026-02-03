@@ -463,10 +463,18 @@ const DashboardPage = ({ sheetKey }) => {
                             if (name !== 'Need To Update') {
                                 const recruiterObj = recruiters.find(r => r.displayName === name);
                                 
+                                // --- CRITICAL FIX: Validate Email Existence ---
+                                const candidateEmail = recruiterObj?.email || '';
+
+                                if (!candidateEmail) {
+                                    console.warn(`Skipping email notification for '${name}' - Email address missing.`);
+                                    continue; // Skip this user to prevent API failure
+                                }
+
                                 // Construct the payload your backend REQUIRES
                                 const emailPayload = {
                                     candidateName: name, 
-                                    candidateEmail: recruiterObj?.email || '', // Ensure email is passed
+                                    candidateEmail: candidateEmail, 
                                     jobTitle: jobTitle,
                                     clientName: cleanClientName,
                                     postingId: postingId,
@@ -474,7 +482,6 @@ const DashboardPage = ({ sheetKey }) => {
                                 };
 
                                 // Pass the object payload. 
-                                // NOTE: Ensure apiService.sendAssignmentEmail is updated to accept this object as the first arg.
                                 await apiService.sendAssignmentEmail(emailPayload, user.userIdentifier);
                             }
                         }
@@ -764,20 +771,20 @@ const DashboardPage = ({ sheetKey }) => {
                                                         <div contentEditable={isEditing && headerName !== 'Working By' && headerName !== 'Remarks' && canEditDashboard} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}>
                                                             {headerName === 'Status' ? (
                                                                 <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full border uppercase tracking-wider whitespace-nowrap ${getStatusBadge(cell)}`}>
-                                                                    {cell}
+                                                                        {cell}
                                                                 </span>
                                                             ) : DATE_COLUMNS.includes(headerName) ? (
                                                                 formatDate(cell)
                                                             ) : CANDIDATE_COLUMNS.includes(headerName) ? (
                                                                 <span className={canEditDashboard && (cell === 'Need To Update' || !cell) ? 'text-blue-600 hover:text-blue-800 underline decoration-blue-200 underline-offset-4 font-bold' : 'text-slate-700 font-semibold'}>
-                                                                    {cell || 'Add Candidate'}
+                                                                        {cell || 'Add Candidate'}
                                                                 </span>
                                                             ) : (
                                                                 headerName === 'Working By' ? (
                                                                     <div className="flex flex-wrap gap-1.5 max-w-full">
                                                                         {selectedWorkingBy.map((name, idx) => (
                                                                             <span key={idx} className={`px-2 py-0.5 text-[11px] font-bold rounded-md bg-slate-200 text-slate-700 shadow-sm break-words leading-normal inline-block`}>
-                                                                                {name}
+                                                                                    {name}
                                                                             </span>
                                                                         ))}
                                                                     </div>
