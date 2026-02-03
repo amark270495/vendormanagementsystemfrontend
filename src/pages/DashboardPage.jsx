@@ -438,11 +438,11 @@ const DashboardPage = ({ sheetKey }) => {
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
             /* =========================================================
-               ✅ EMAIL ASSIGNMENT LOGIC — MATCHING OLD BEHAVIOR BUT WITH PAYLOAD
+               ✅ EMAIL ASSIGNMENT LOGIC — ITERATE ALL ASSIGNED USERS
                ========================================================= */
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
                 
-                // Only proceed if 'Working By' has changed and is valid
+                // Only proceed if 'Working By' has changed
                 if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
                     
                     const jobRow = filteredAndSortedData.find(
@@ -461,20 +461,20 @@ const DashboardPage = ({ sheetKey }) => {
 
                         for (const name of assignedUsers) {
                             if (name !== 'Need To Update') {
-                                // Must find recruiter object to get email for backend
                                 const recruiterObj = recruiters.find(r => r.displayName === name);
                                 
                                 // Construct the payload your backend REQUIRES
                                 const emailPayload = {
-                                    candidateName: name, // Fallback to name if obj not found, but better if found
-                                    candidateEmail: recruiterObj?.email || '', // Fallback empty string if not found (backend will error, but call happens)
+                                    candidateName: name, 
+                                    candidateEmail: recruiterObj?.email || '', // Ensure email is passed
                                     jobTitle: jobTitle,
                                     clientName: cleanClientName,
                                     postingId: postingId,
                                     triggeredBy: user.displayName
                                 };
 
-                                // Call API with the payload object as first argument
+                                // Pass the object payload. 
+                                // NOTE: Ensure apiService.sendAssignmentEmail is updated to accept this object as the first arg.
                                 await apiService.sendAssignmentEmail(emailPayload, user.userIdentifier);
                             }
                         }

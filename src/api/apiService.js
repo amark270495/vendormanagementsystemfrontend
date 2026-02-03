@@ -69,8 +69,10 @@ export const apiService = {
     apiClient.get('/getUnreadMessages', { params: { authenticatedUsername } }),
   markMessagesAsRead: (recipient, sender, authenticatedUsername) =>
     apiClient.post('/markMessagesAsRead', { recipient, sender, authenticatedUsername }),
-  sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) =>
-    apiClient.post('/sendAssignmentEmail', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
+  
+  // ✅ UPDATED: Now accepts a payload object to support full email details
+  sendAssignmentEmail: (payload, authenticatedUsername) =>
+    apiClient.post('/sendAssignmentEmail', { ...payload, authenticatedUsername }),
 
   // --- Permissions Functions ---
   getUserPermissionsList: (authenticatedUsername) =>
@@ -82,7 +84,7 @@ export const apiService = {
   createCompany: (companyData, authenticatedUsername) =>
     apiClient.post('/createCompany', { companyData, authenticatedUsername }),
   updateCompany: (originalCompanyName, updatedCompanyData, authenticatedUsername) =>
-    apiClient.post('/updateCompany', { originalCompanyName, updatedCompanyData, authenticatedUsername }),
+    apiClient.post('/updateCompany', { originalCompanyName: originalVendorName, updatedCompanyData: vendorData, authenticatedUsername }),
   deleteCompany: (companyNameToDelete, authenticatedUsername) =>
     apiClient.post('/deleteCompany', { companyNameToDelete, authenticatedUsername }),
   saveEmployeeLogHours: (timesheetData, authenticatedUsername) =>
@@ -149,8 +151,6 @@ export const apiService = {
     apiClient.post('/employeeSignIn', { token, tempPassword }),
   updateOfferLetterStatus: (token, signerData) =>
     apiClient.post('/updateOfferLetterStatus', { token, signerData }),
-  
-  // *** NEW FUNCTION ADDED HERE ***
   resendOfferLetter: (rowKey, authenticatedUsername) =>
     apiClient.post('/resendOfferLetter', { rowKey, authenticatedUsername }),
 
