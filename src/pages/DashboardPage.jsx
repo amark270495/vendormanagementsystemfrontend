@@ -438,7 +438,7 @@ const DashboardPage = ({ sheetKey }) => {
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
             /* =========================================================
-               ✅ EMAIL ASSIGNMENT LOGIC — FIXED TO MATCH BACKEND
+               ✅ EMAIL ASSIGNMENT LOGIC — FIXED FOR BACKEND COMPATIBILITY
                ========================================================= */
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
                 if (!changes['Working By']) continue;
@@ -475,18 +475,21 @@ const DashboardPage = ({ sheetKey }) => {
                         r => r.displayName === name
                     );
 
-                    // REMOVED EMAIL CHECK: The API only requires display name, not email.
-                    // Checking for email might cause silent failures if user objects lack email field.
-                    if (!recruiterObj) continue; 
+                    // Backend requires candidateEmail, so we must have a recruiter object with email.
+                    if (!recruiterObj?.email) continue;
 
-                    // ✅ FIXED: Correct Payload Signature matching apiService.js
-                    // apiService expects: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername)
-                    await apiService.sendAssignmentEmail(
-                        jobTitle, 
-                        postingId, 
-                        recruiterObj.displayName, 
-                        user.userIdentifier
-                    );
+                    // ✅ FIXED: Construct the exact payload object the backend requires
+                    // NOTE: Ensure your apiService.sendAssignmentEmail is updated to accept this object as first arg.
+                    const emailPayload = {
+                        candidateName: recruiterObj.displayName,
+                        candidateEmail: recruiterObj.email,
+                        jobTitle: jobTitle,
+                        clientName: cleanClientName,
+                        postingId: postingId,
+                        triggeredBy: user.displayName
+                    };
+
+                    await apiService.sendAssignmentEmail(emailPayload, user.userIdentifier);
                 }
             }
 
