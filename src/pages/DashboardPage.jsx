@@ -477,14 +477,14 @@ const DashboardPage = ({ sheetKey }) => {
 
                     if (!recruiterObj?.email) continue;
 
-                    // ✅ FIXED: Correct Payload Signature for sendAssignmentEmail
-                    await apiService.sendAssignmentEmail({
-                        candidateName: recruiterObj.displayName,
-                        candidateEmail: recruiterObj.email,
-                        jobTitle: jobTitle,
-                        clientName: cleanClientName,
-                        triggeredBy: user.displayName
-                    }, user.userIdentifier);
+                    // ✅ FIXED: Correct Payload Signature matching apiService.js
+                    // apiService expects: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername)
+                    await apiService.sendAssignmentEmail(
+                        jobTitle, 
+                        postingId, 
+                        recruiterObj.displayName, 
+                        user.userIdentifier
+                    );
                 }
             }
 
@@ -633,8 +633,8 @@ const DashboardPage = ({ sheetKey }) => {
                     {canEditDashboard && Object.keys(unsavedChanges).length > 0 && (
                         <button 
                             onClick={handleSaveChanges} 
-                            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2" 
                             disabled={loading}
+                            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2" 
                         >
                             {loading ? <Spinner size="4" /> : (
                                 <>
@@ -702,13 +702,13 @@ const DashboardPage = ({ sheetKey }) => {
                                                     <span className="text-blue-600 ml-1 font-bold">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
                                                 )}
                                             </div>
-                                        }>
-                                            <HeaderMenu 
-                                                header={h} 
-                                                onSort={(dir) => handleSort(h, dir)} 
-                                                filterConfig={columnFilters[h]} 
-                                                onFilterChange={handleFilterChange}
-                                            />
+                                            }>
+                                                <HeaderMenu 
+                                                    header={h} 
+                                                    onSort={(dir) => handleSort(h, dir)} 
+                                                    filterConfig={columnFilters[h]} 
+                                                    onFilterChange={handleFilterChange}
+                                                />
                                         </Dropdown>
                                     </th>
                                 ))}
