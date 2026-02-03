@@ -438,58 +438,47 @@ const DashboardPage = ({ sheetKey }) => {
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
             /* =========================================================
-               ✅ EMAIL ASSIGNMENT LOGIC — FIXED FOR BACKEND COMPATIBILITY
+               ✅ EMAIL ASSIGNMENT LOGIC — MATCHING OLD BEHAVIOR BUT WITH PAYLOAD
                ========================================================= */
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
-                if (!changes['Working By']) continue;
-
-                const jobRow = filteredAndSortedData.find(
-                    row => row[displayHeader.indexOf('Posting ID')] === postingId
-                );
-
-                if (!jobRow) continue;
-
-                const jobTitle = jobRow[displayHeader.indexOf('Posting Title')] || '';
-                const rawClientInfo = jobRow[displayHeader.indexOf('Client Info')] || '';
-                const cleanClientName = rawClientInfo.split('/')[0].trim();
-
-                const currentAssigned =
-                    String(jobRow[displayHeader.indexOf('Working By')] || '');
-
-                const oldNames = currentAssigned
-                    .split(',')
-                    .map(s => s.trim())
-                    .filter(Boolean);
-
-                const newNames = String(changes['Working By'])
-                    .split(',')
-                    .map(s => s.trim())
-                    .filter(name => name && name !== 'Need To Update');
-
-                const newlyAddedRecruiters = newNames.filter(
-                    name => !oldNames.includes(name)
-                );
-
-                for (const name of newlyAddedRecruiters) {
-                    const recruiterObj = recruiters.find(
-                        r => r.displayName === name
+                
+                // Only proceed if 'Working By' has changed and is valid
+                if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
+                    
+                    const jobRow = filteredAndSortedData.find(
+                        row => row[displayHeader.indexOf('Posting ID')] === postingId
                     );
 
-                    // Skip if recruiter object not found.
-                    if (!recruiterObj) continue;
+                    if (jobRow) {
+                        const jobTitle = jobRow[displayHeader.indexOf('Posting Title')] || '';
+                        const rawClientInfo = jobRow[displayHeader.indexOf('Client Info')] || '';
+                        const cleanClientName = rawClientInfo.split('/')[0].trim();
 
-                    // ✅ FIXED: Construct the exact payload object the backend requires
-                    const emailPayload = {
-                        candidateName: recruiterObj.displayName,
-                        candidateEmail: recruiterObj.email,
-                        jobTitle: jobTitle,
-                        clientName: cleanClientName,
-                        postingId: postingId,
-                        triggeredBy: user.displayName
-                    };
+                        const assignedUsers = String(changes['Working By'])
+                            .split(',')
+                            .map(s => s.trim())
+                            .filter(Boolean);
 
-                    // Pass payload object as first arg, matching backend expectation
-                    await apiService.sendAssignmentEmail(emailPayload, user.userIdentifier);
+                        for (const name of assignedUsers) {
+                            if (name !== 'Need To Update') {
+                                // Must find recruiter object to get email for backend
+                                const recruiterObj = recruiters.find(r => r.displayName === name);
+                                
+                                // Construct the payload your backend REQUIRES
+                                const emailPayload = {
+                                    candidateName: name, // Fallback to name if obj not found, but better if found
+                                    candidateEmail: recruiterObj?.email || '', // Fallback empty string if not found (backend will error, but call happens)
+                                    jobTitle: jobTitle,
+                                    clientName: cleanClientName,
+                                    postingId: postingId,
+                                    triggeredBy: user.displayName
+                                };
+
+                                // Call API with the payload object as first argument
+                                await apiService.sendAssignmentEmail(emailPayload, user.userIdentifier);
+                            }
+                        }
+                    }
                 }
             }
 
