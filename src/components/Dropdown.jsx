@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, createContext, useContext, useCallback } from 'react';
+
+// 1. Create a Context to share the close function
+const DropdownContext = createContext();
+
+// 2. Export a hook for children to use
+export const useDropdown = () => useContext(DropdownContext);
 
 /**
  * @param {string} [props.align='right'] - 'left' or 'right' alignment.
@@ -17,7 +23,9 @@ const Dropdown = ({ trigger, children, width = '48', align = 'right' }) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Determine alignment class based on prop
+    // 3. Create a stable close function
+    const close = useCallback(() => setIsOpen(false), []);
+
     const alignmentClass = align === 'left' ? 'left-0' : 'right-0';
 
     return (
@@ -27,13 +35,14 @@ const Dropdown = ({ trigger, children, width = '48', align = 'right' }) => {
             </div>
 
             {isOpen && (
-                <div 
-                    className={`absolute ${alignmentClass} z-[100] mt-2 w-${width} bg-white rounded-md shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none py-1`}
-                    // Note: Removed onClick={() => setIsOpen(false)} because 
-                    // HeaderMenu has internal clicks (inputs/buttons) that shouldn't close the menu.
-                >
-                    {children}
-                </div>
+                // 4. Wrap children in the Provider
+                <DropdownContext.Provider value={{ close }}>
+                    <div 
+                        className={`absolute ${alignmentClass} z-[100] mt-2 w-${width} bg-white rounded-md shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none py-1`}
+                    >
+                        {children}
+                    </div>
+                </DropdownContext.Provider>
             )}
         </div>
     );
