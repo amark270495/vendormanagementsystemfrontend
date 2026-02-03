@@ -14,10 +14,10 @@ import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-// --- SVG Icons (FULL SET RESTORED) ---
+// --- SVG Icons ---
 const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
 
-// *** MultiSelectDropdown Component (Restored) ***
+// *** MultiSelectDropdown Component ***
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -62,44 +62,44 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="block w-full border border-slate-300 rounded-md shadow-sm p-2 text-sm bg-white text-left focus:ring-2 focus:ring-blue-500 transition-all"
+                className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-white text-left focus:ring-2 focus:ring-blue-500 transition-all"
             >
                 <span className="truncate block pr-4">{displayValue}</span>
                 <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                     <svg className="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                     <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fillRule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                 </span>
             </button>
             {isOpen && (
-                <div className="absolute z-50 left-0 mt-1 bg-white border border-slate-300 rounded-md shadow-xl max-h-60 overflow-y-auto min-w-full w-auto">
+                <div className="absolute z-50 left-0 mt-1 bg-white border border-gray-300 rounded-md shadow-xl max-h-60 overflow-y-auto min-w-full w-auto">
                     <ul>
                         <li
                             key="unassigned"
                             onClick={() => handleToggleSelect("Need To Update")}
-                            className="flex items-center px-4 py-2 text-sm text-slate-700 cursor-pointer hover:bg-slate-50"
+                            className="flex items-center px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
                         >
                             <input
                                 type="checkbox"
                                 readOnly
                                 checked={displayArray.includes("Need To Update")}
-                                className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                             Unassigned
                         </li>
-                        {options.map(userObj => (
+                        {options.map(name => (
                             <li
-                                key={userObj.displayName}
-                                onClick={() => handleToggleSelect(userObj.displayName)}
-                                className="flex items-center px-4 py-2 text-sm text-slate-700 cursor-pointer hover:bg-slate-50"
+                                key={name}
+                                onClick={() => handleToggleSelect(name)}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
                             >
                                 <input
                                     type="checkbox"
                                     readOnly
-                                    checked={displayArray.includes(userObj.displayName)}
-                                    className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                    checked={displayArray.includes(name)}
+                                    className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                 />
-                                {userObj.displayName}
+                                {name}
                             </li>
                         ))}
                     </ul>
@@ -213,22 +213,17 @@ const DashboardPage = ({ sheetKey }) => {
         }
     }, [sheetKey, user.userIdentifier, batchSize]);
 
-    // --- FIX 1: Normalize Recruiters (Keep Object with Email) ---
+    // --- REVERTED: Fetch Recruiters as simple Strings to match Old API logic ---
     useEffect(() => {
         const fetchRecruiters = async () => {
             try {
                 const result = await apiService.getUsers(user.userIdentifier);
                 if (result.data.success) {
                     const recruitmentRoles = ['Recruitment Team', 'Recruitment Manager'];
-
-                    const normalized = result.data.users
+                    const filteredUsers = result.data.users
                         .filter(u => recruitmentRoles.includes(u.backendOfficeRole))
-                        .map(u => ({
-                            displayName: u.displayName,
-                            email: u.email
-                        }));
-
-                    setRecruiters(normalized);
+                        .map(u => u.displayName); 
+                    setRecruiters(filteredUsers);
                 }
             } catch (err) {
                 console.error("Failed to fetch recruiters:", err);
@@ -414,7 +409,7 @@ const DashboardPage = ({ sheetKey }) => {
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
-    // --- FIX 2: Corrected Handle Save Changes (Using Old Code Logic but Robust) ---
+    // --- REVERTED: Handle Save Changes restored to use OLD API Service Signature (4 args) ---
     const handleSaveChanges = async () => {
         if (!canEditDashboard) return;
 
@@ -444,12 +439,11 @@ const DashboardPage = ({ sheetKey }) => {
             // 1. Update Backend
             await apiService.updateJobPosting(updates, user.userIdentifier);
 
-            // 2. Process Emails
+            // 2. Process Emails (Using Simple "Old" Logic)
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
                 if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
                     
-                    // --- CRITICAL FIX: Robust Lookup ---
-                    // Try finding row in rawData first (handles hidden rows), fallback to filtered data
+                    // Look in rawData first (robustness), then fallback to filtered
                     let jobRow = rawData.rows.find(row => String(row[rawData.header.indexOf('Posting ID')]) === String(postingId));
                     let headers = rawData.header;
 
@@ -460,9 +454,7 @@ const DashboardPage = ({ sheetKey }) => {
 
                     if (jobRow) {
                         const jobTitle = jobRow[headers.indexOf('Posting Title')] || '';
-                        // Flexible client name lookup
-                        const clientName = jobRow[headers.indexOf('Client Name')] || jobRow[headers.indexOf('Client Info')] || '';
-
+                        
                         const assignedUsers = String(changes['Working By'])
                             .split(',')
                             .map(s => s.trim())
@@ -470,29 +462,8 @@ const DashboardPage = ({ sheetKey }) => {
 
                         for (const name of assignedUsers) {
                             if (name !== 'Need To Update') {
-                                // --- EMAIL LOOKUP ---
-                                const recruiter = recruiters.find(r => r.displayName === name);
-                                const email = recruiter?.email || '';
-
-                                if (email) {
-                                    // Construct Payload expected by new Backend
-                                    const emailPayload = {
-                                        candidateName: name,
-                                        candidateEmail: email,
-                                        jobTitle: jobTitle,
-                                        clientName: clientName.split('/')[0].trim(),
-                                        postingId: postingId,
-                                        triggeredBy: user.displayName
-                                    };
-                                    
-                                    try {
-                                        await apiService.sendAssignmentEmail(emailPayload, user.userIdentifier);
-                                    } catch (e) {
-                                        console.error(`Failed to send email to ${name}`, e);
-                                    }
-                                } else {
-                                    console.warn(`No email found for recruiter: ${name}`);
-                                }
+                                // Calls the Old API signature: (jobTitle, postingId, name, authUser)
+                                await apiService.sendAssignmentEmail(jobTitle, postingId, name, user.userIdentifier);
                             }
                         }
                     } else {
@@ -719,7 +690,7 @@ const DashboardPage = ({ sheetKey }) => {
                                                     filterConfig={columnFilters[h]} 
                                                     onFilterChange={handleFilterChange}
                                                 />
-                                        </Dropdown>
+                                            </Dropdown>
                                     </th>
                                 ))}
                                 <th scope="col" className="px-4 py-4 font-bold text-slate-700 uppercase text-[11px] text-center">Action</th>
@@ -780,20 +751,20 @@ const DashboardPage = ({ sheetKey }) => {
                                                         <div contentEditable={isEditing && headerName !== 'Working By' && headerName !== 'Remarks' && canEditDashboard} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}>
                                                             {headerName === 'Status' ? (
                                                                 <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full border uppercase tracking-wider whitespace-nowrap ${getStatusBadge(cell)}`}>
-                                                                        {cell}
+                                                                            {cell}
                                                                 </span>
                                                             ) : DATE_COLUMNS.includes(headerName) ? (
                                                                 formatDate(cell)
                                                             ) : CANDIDATE_COLUMNS.includes(headerName) ? (
                                                                 <span className={canEditDashboard && (cell === 'Need To Update' || !cell) ? 'text-blue-600 hover:text-blue-800 underline decoration-blue-200 underline-offset-4 font-bold' : 'text-slate-700 font-semibold'}>
-                                                                        {cell || 'Add Candidate'}
+                                                                            {cell || 'Add Candidate'}
                                                                 </span>
                                                             ) : (
                                                                 headerName === 'Working By' ? (
                                                                     <div className="flex flex-wrap gap-1.5 max-w-full">
                                                                         {selectedWorkingBy.map((name, idx) => (
                                                                             <span key={idx} className={`px-2 py-0.5 text-[11px] font-bold rounded-md bg-slate-200 text-slate-700 shadow-sm break-words leading-normal inline-block`}>
-                                                                                    {name}
+                                                                                        {name}
                                                                             </span>
                                                                         ))}
                                                                     </div>

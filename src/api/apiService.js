@@ -69,10 +69,8 @@ export const apiService = {
     apiClient.get('/getUnreadMessages', { params: { authenticatedUsername } }),
   markMessagesAsRead: (recipient, sender, authenticatedUsername) =>
     apiClient.post('/markMessagesAsRead', { recipient, sender, authenticatedUsername }),
-  
-  // ✅ FIXED: Updated to correctly spread the payload object to the root of the request body
-  sendAssignmentEmail: (payload, authenticatedUsername) =>
-    apiClient.post('/sendAssignmentEmail', { ...payload, authenticatedUsername }),
+  sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) =>
+    apiClient.post('/sendAssignmentEmail', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
 
   // --- Permissions Functions ---
   getUserPermissionsList: (authenticatedUsername) =>
