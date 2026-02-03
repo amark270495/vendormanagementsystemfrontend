@@ -17,7 +17,7 @@ import 'jspdf-autotable';
 // --- SVG Icons ---
 const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727.46l4 5a1 1 0 01.23 1.02l-1 8a1 1 0 01-.958.79H7.758a1 1 0 01-.958-.79l-1-8a1 1 0 01.23-1.02l4-5a1 1 0 01.727-.46zM10 12a1 1 0 100-2 1 1 0 000 2zM9 16a1 1 0 112 0 1 1 0 01-2 0z" clipRule="evenodd" /></svg>;
 
-// *** MultiSelectDropdown Component (Kept String-based for UI stability) ***
+// *** MultiSelectDropdown Component ***
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -151,10 +151,7 @@ const DashboardPage = ({ sheetKey }) => {
     const [columnFilters, setColumnFilters] = useState({});
     const [unsavedChanges, setUnsavedChanges] = useState({});
     const [editingCell, setEditingCell] = useState(null);
-    
-    // Split Recruiter State: Names for Dropdown, Objects for Data/Email
-    const [recruiters, setRecruiters] = useState([]); // Array of strings (names)
-    const [recruiterDetails, setRecruiterDetails] = useState([]); // Array of user objects
+    const [recruiters, setRecruiters] = useState([]);
     
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
@@ -216,20 +213,17 @@ const DashboardPage = ({ sheetKey }) => {
         }
     }, [sheetKey, user.userIdentifier, batchSize]);
 
-    // --- FETCH USERS AND STORE DETAILS FOR EMAIL LOOKUP ---
+    // --- Fetch Recruiters as simple Strings (Working Version) ---
     useEffect(() => {
         const fetchRecruiters = async () => {
             try {
                 const result = await apiService.getUsers(user.userIdentifier);
                 if (result.data.success) {
                     const recruitmentRoles = ['Recruitment Team', 'Recruitment Manager'];
-                    const filteredUsers = result.data.users.filter(u => recruitmentRoles.includes(u.backendOfficeRole));
-                    
-                    // 1. Set simple list of names for the Dropdown UI
-                    setRecruiters(filteredUsers.map(u => u.displayName));
-                    
-                    // 2. Store full details (including email) for backend logic
-                    setRecruiterDetails(filteredUsers);
+                    const filteredUsers = result.data.users
+                        .filter(u => recruitmentRoles.includes(u.backendOfficeRole))
+                        .map(u => u.displayName); 
+                    setRecruiters(filteredUsers);
                 }
             } catch (err) {
                 console.error("Failed to fetch recruiters:", err);
@@ -415,9 +409,11 @@ const DashboardPage = ({ sheetKey }) => {
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
-    // --- FIX: Handle Save Changes with Email Lookup & Payload Construction ---
+    // --- REVERTED & DEBUGGED: Handle Save Changes ---
     const handleSaveChanges = async () => {
         if (!canEditDashboard) return;
+
+        console.log("Handle Save Changes triggered.");
 
         const headerMap = {
             'Working By': 'workingBy',
@@ -437,19 +433,25 @@ const DashboardPage = ({ sheetKey }) => {
             }))
             .filter(u => Object.keys(u.changes).length > 0);
 
-        if (updates.length === 0) return;
+        if (updates.length === 0) {
+            console.log("No updates to save.");
+            return;
+        }
 
         setLoading(true);
 
         try {
             // 1. Update Backend
+            console.log("Calling updateJobPosting API...");
             await apiService.updateJobPosting(updates, user.userIdentifier);
+            console.log("Job posting updated successfully.");
 
-            // 2. Process Emails
+            // 2. Process Emails (Using Simple "Old" Logic)
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
                 if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
+                    console.log(`Processing email trigger for Posting ID: ${postingId}`);
                     
-                    // Robust Lookup
+                    // Robust lookup: Try rawData first, then filteredData
                     let jobRow = rawData.rows.find(row => String(row[rawData.header.indexOf('Posting ID')]) === String(postingId));
                     let headers = rawData.header;
 
@@ -460,8 +462,7 @@ const DashboardPage = ({ sheetKey }) => {
 
                     if (jobRow) {
                         const jobTitle = jobRow[headers.indexOf('Posting Title')] || '';
-                        const clientName = jobRow[headers.indexOf('Client Name')] || jobRow[headers.indexOf('Client Info')] || '';
-
+                        
                         const assignedUsers = String(changes['Working By'])
                             .split(',')
                             .map(s => s.trim())
@@ -469,34 +470,19 @@ const DashboardPage = ({ sheetKey }) => {
 
                         for (const name of assignedUsers) {
                             if (name !== 'Need To Update') {
-                                // --- FIX: EMAIL LOOKUP using recruiterDetails state ---
-                                const recruiter = recruiterDetails.find(r => r.displayName === name);
-                                const email = recruiter?.email || '';
-
-                                if (email) {
-                                    // --- FIX: Construct Payload to satisfy backend Requirements ---
-                                    const emailPayload = {
-                                        candidateName: name,
-                                        candidateEmail: email,
-                                        jobTitle: jobTitle,
-                                        clientName: clientName.split('/')[0].trim(),
-                                        postingId: postingId,
-                                        triggeredBy: user.displayName
-                                    };
-                                    
-                                    try {
-                                        // Uses the updated API service that handles object payloads
-                                        await apiService.sendAssignmentEmail(emailPayload, user.userIdentifier);
-                                    } catch (e) {
-                                        console.error(`Failed to send email to ${name}`, e);
-                                    }
-                                } else {
-                                    console.warn(`No email found for recruiter: ${name}`);
+                                console.log(`Sending email to: ${name} for Job: ${jobTitle}`);
+                                try {
+                                    // Calls the Old API signature: (jobTitle, postingId, name, authUser)
+                                    // Backend will handle the email lookup
+                                    await apiService.sendAssignmentEmail(jobTitle, postingId, name, user.userIdentifier);
+                                    console.log("Email sent successfully.");
+                                } catch (emailErr) {
+                                    console.error("Error sending email:", emailErr);
                                 }
                             }
                         }
                     } else {
-                        console.warn(`Could not find row data for Posting ID: ${postingId}`);
+                        console.warn(`Could not find row data for Posting ID: ${postingId}. Email skipped.`);
                     }
                 }
             }
@@ -504,6 +490,7 @@ const DashboardPage = ({ sheetKey }) => {
             setUnsavedChanges({});
             loadData();
         } catch (err) {
+            console.error("Save Changes Failed:", err);
             setError(`Failed to save: ${err.response?.data?.message || err.message}`);
         } finally {
             setLoading(false);

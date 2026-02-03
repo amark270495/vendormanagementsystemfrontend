@@ -70,9 +70,9 @@ export const apiService = {
   markMessagesAsRead: (recipient, sender, authenticatedUsername) =>
     apiClient.post('/markMessagesAsRead', { recipient, sender, authenticatedUsername }),
   
-  // --- UPDATED: Accepts a payload object to satisfy backend requirements ---
-  sendAssignmentEmail: (payload, authenticatedUsername) =>
-    apiClient.post('/sendAssignmentEmail', { ...payload, authenticatedUsername }),
+  // --- UPDATED: Matches the 4-argument call from DashboardPage.jsx ---
+  sendAssignmentEmail: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername) =>
+    apiClient.post('/sendAssignmentEmail', { jobTitle, postingId, assignedUserDisplayName, authenticatedUsername }),
 
   // --- Permissions Functions ---
   getUserPermissionsList: (authenticatedUsername) =>
