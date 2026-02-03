@@ -213,7 +213,7 @@ const DashboardPage = ({ sheetKey }) => {
         }
     }, [sheetKey, user.userIdentifier, batchSize]);
 
-    // --- FIX 1: NORMALIZE RECRUITER DATA (Ensure displayName & email exist) ---
+    // --- FIX 1: Normalize Recruiters (Keep Object with Email) ---
     useEffect(() => {
         const fetchRecruiters = async () => {
             try {
@@ -414,16 +414,16 @@ const DashboardPage = ({ sheetKey }) => {
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
-    // --- FIX 2: PRODUCTION-SAFE HANDLE SAVE CHANGES ---
+    // --- FIX 2: Corrected Handle Save Changes (Using Old Code Logic but Robust) ---
     const handleSaveChanges = async () => {
         if (!canEditDashboard) return;
-    
+
         const headerMap = {
             'Working By': 'workingBy',
             '# Submitted': 'noOfResumesSubmitted',
             'Remarks': 'remarks'
         };
-    
+
         const updates = Object.entries(unsavedChanges)
             .map(([postingId, changes]) => ({
                 rowKey: postingId,
@@ -435,76 +435,76 @@ const DashboardPage = ({ sheetKey }) => {
                 }, {})
             }))
             .filter(u => Object.keys(u.changes).length > 0);
-    
+
         if (updates.length === 0) return;
-    
+
         setLoading(true);
-    
+
         try {
-            // 1️⃣ Save job updates first
+            // 1. Update Backend
             await apiService.updateJobPosting(updates, user.userIdentifier);
-    
-            // 2️⃣ Send assignment emails (SAFE + GUARDED)
+
+            // 2. Process Emails
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
-    
-                if (!changes['Working By'] || changes['Working By'] === 'Need To Update') continue;
-    
-                // 🔐 Always use RAW DATA (not filtered table) to find job details
-                const rawHeader = rawData.header;
-                const rawRow = rawData.rows.find(
-                    r => r[rawHeader.indexOf('Posting ID')] === postingId
-                );
-    
-                if (!rawRow) continue;
-    
-                const jobTitle = rawRow[rawHeader.indexOf('Posting Title')] || '';
-                const rawClient = rawRow[rawHeader.indexOf('Client Name')] || '';
-    
-                const assignedUsers = String(changes['Working By'])
-                    .split(',')
-                    .map(s => s.trim())
-                    .filter(Boolean);
-    
-                for (const name of assignedUsers) {
-                    if (name === 'Need To Update') continue;
-    
-                    const recruiter = recruiters.find(r => r.displayName === name);
-    
-                    if (!recruiter?.email) {
-                        console.warn(`Email not sent. Missing email for recruiter: ${name}`);
-                        continue;
+                if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
+                    
+                    // --- CRITICAL FIX: Robust Lookup ---
+                    // Try finding row in rawData first (handles hidden rows), fallback to filtered data
+                    let jobRow = rawData.rows.find(row => String(row[rawData.header.indexOf('Posting ID')]) === String(postingId));
+                    let headers = rawData.header;
+
+                    if (!jobRow) {
+                        jobRow = filteredAndSortedData.find(row => String(row[displayHeader.indexOf('Posting ID')]) === String(postingId));
+                        headers = displayHeader;
                     }
-    
-                    const emailPayload = {
-                        candidateName: name,
-                        candidateEmail: recruiter.email,
-                        jobTitle,
-                        clientName: rawClient,
-                        postingId,
-                        triggeredBy: user.displayName
-                    };
-    
-                    try {
-                        await apiService.sendAssignmentEmail(
-                            emailPayload,
-                            user.userIdentifier
-                        );
-                    } catch (mailErr) {
-                        console.error(
-                            'Assignment email failed:',
-                            mailErr.response?.data || mailErr.message
-                        );
+
+                    if (jobRow) {
+                        const jobTitle = jobRow[headers.indexOf('Posting Title')] || '';
+                        // Flexible client name lookup
+                        const clientName = jobRow[headers.indexOf('Client Name')] || jobRow[headers.indexOf('Client Info')] || '';
+
+                        const assignedUsers = String(changes['Working By'])
+                            .split(',')
+                            .map(s => s.trim())
+                            .filter(Boolean);
+
+                        for (const name of assignedUsers) {
+                            if (name !== 'Need To Update') {
+                                // --- EMAIL LOOKUP ---
+                                const recruiter = recruiters.find(r => r.displayName === name);
+                                const email = recruiter?.email || '';
+
+                                if (email) {
+                                    // Construct Payload expected by new Backend
+                                    const emailPayload = {
+                                        candidateName: name,
+                                        candidateEmail: email,
+                                        jobTitle: jobTitle,
+                                        clientName: clientName.split('/')[0].trim(),
+                                        postingId: postingId,
+                                        triggeredBy: user.displayName
+                                    };
+                                    
+                                    try {
+                                        await apiService.sendAssignmentEmail(emailPayload, user.userIdentifier);
+                                    } catch (e) {
+                                        console.error(`Failed to send email to ${name}`, e);
+                                    }
+                                } else {
+                                    console.warn(`No email found for recruiter: ${name}`);
+                                }
+                            }
+                        }
+                    } else {
+                        console.warn(`Could not find row data for Posting ID: ${postingId}`);
                     }
                 }
             }
-    
+
             setUnsavedChanges({});
-            await loadData();
-    
+            loadData();
         } catch (err) {
-            setError(
-                `Failed to save changes: ${err.response?.data?.message || err.message}`
-            );
+            setError(`Failed to save: ${err.response?.data?.message || err.message}`);
         } finally {
             setLoading(false);
         }
