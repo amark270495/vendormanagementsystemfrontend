@@ -213,20 +213,28 @@ const DashboardPage = ({ sheetKey }) => {
         }
     }, [sheetKey, user.userIdentifier, batchSize]);
 
+    // --- FIX 1: NORMALIZE RECRUITER DATA (Ensure displayName & email exist) ---
     useEffect(() => {
         const fetchRecruiters = async () => {
             try {
                 const result = await apiService.getUsers(user.userIdentifier);
                 if (result.data.success) {
                     const recruitmentRoles = ['Recruitment Team', 'Recruitment Manager'];
-                    const filteredUsers = result.data.users
-                        .filter(u => recruitmentRoles.includes(u.backendOfficeRole));
-                    setRecruiters(filteredUsers);
+
+                    const normalized = result.data.users
+                        .filter(u => recruitmentRoles.includes(u.backendOfficeRole))
+                        .map(u => ({
+                            displayName: u.displayName,
+                            email: u.email
+                        }));
+
+                    setRecruiters(normalized);
                 }
             } catch (err) {
-                console.error("Failed to fetch users for dropdown:", err);
+                console.error("Failed to fetch recruiters:", err);
             }
         };
+
         fetchRecruiters();
         loadData();
     }, [loadData, user.userIdentifier]);
@@ -406,18 +414,16 @@ const DashboardPage = ({ sheetKey }) => {
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
-    /* =========================================================
-       ✅ FULL SAVE CHANGES LOGIC RESTORED & EMAILS FIXED
-       ========================================================= */
+    // --- FIX 2: PRODUCTION-SAFE HANDLE SAVE CHANGES ---
     const handleSaveChanges = async () => {
         if (!canEditDashboard) return;
-
+    
         const headerMap = {
             'Working By': 'workingBy',
             '# Submitted': 'noOfResumesSubmitted',
             'Remarks': 'remarks'
         };
-
+    
         const updates = Object.entries(unsavedChanges)
             .map(([postingId, changes]) => ({
                 rowKey: postingId,
@@ -429,72 +435,75 @@ const DashboardPage = ({ sheetKey }) => {
                 }, {})
             }))
             .filter(u => Object.keys(u.changes).length > 0);
-
+    
         if (updates.length === 0) return;
-
+    
         setLoading(true);
-
+    
         try {
+            // 1️⃣ Save job updates first
             await apiService.updateJobPosting(updates, user.userIdentifier);
-
-            /* =========================================================
-               ✅ EMAIL ASSIGNMENT LOGIC — ITERATE ALL ASSIGNED USERS
-               ========================================================= */
+    
+            // 2️⃣ Send assignment emails (SAFE + GUARDED)
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
-                
-                // Only proceed if 'Working By' has changed
-                if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
-                    
-                    const jobRow = filteredAndSortedData.find(
-                        row => row[displayHeader.indexOf('Posting ID')] === postingId
-                    );
-
-                    if (jobRow) {
-                        const jobTitle = jobRow[displayHeader.indexOf('Posting Title')] || '';
-                        const rawClientInfo = jobRow[displayHeader.indexOf('Client Info')] || '';
-                        const cleanClientName = rawClientInfo.split('/')[0].trim();
-
-                        const assignedUsers = String(changes['Working By'])
-                            .split(',')
-                            .map(s => s.trim())
-                            .filter(Boolean);
-
-                        for (const name of assignedUsers) {
-                            if (name !== 'Need To Update') {
-                                const recruiterObj = recruiters.find(r => r.displayName === name);
-                                
-                                // --- CRITICAL FIX: Validate Email Existence ---
-                                const candidateEmail = recruiterObj?.email || '';
-
-                                if (!candidateEmail) {
-                                    console.warn(`Skipping email notification for '${name}' - Email address missing.`);
-                                    continue; // Skip this user to prevent API failure
-                                }
-
-                                // Construct the payload your backend REQUIRES
-                                const emailPayload = {
-                                    candidateName: name, 
-                                    candidateEmail: candidateEmail, 
-                                    jobTitle: jobTitle,
-                                    clientName: cleanClientName,
-                                    postingId: postingId,
-                                    triggeredBy: user.displayName
-                                };
-
-                                // Pass the object payload. 
-                                await apiService.sendAssignmentEmail(emailPayload, user.userIdentifier);
-                            }
-                        }
+    
+                if (!changes['Working By'] || changes['Working By'] === 'Need To Update') continue;
+    
+                // 🔐 Always use RAW DATA (not filtered table) to find job details
+                const rawHeader = rawData.header;
+                const rawRow = rawData.rows.find(
+                    r => r[rawHeader.indexOf('Posting ID')] === postingId
+                );
+    
+                if (!rawRow) continue;
+    
+                const jobTitle = rawRow[rawHeader.indexOf('Posting Title')] || '';
+                const rawClient = rawRow[rawHeader.indexOf('Client Name')] || '';
+    
+                const assignedUsers = String(changes['Working By'])
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean);
+    
+                for (const name of assignedUsers) {
+                    if (name === 'Need To Update') continue;
+    
+                    const recruiter = recruiters.find(r => r.displayName === name);
+    
+                    if (!recruiter?.email) {
+                        console.warn(`Email not sent. Missing email for recruiter: ${name}`);
+                        continue;
+                    }
+    
+                    const emailPayload = {
+                        candidateName: name,
+                        candidateEmail: recruiter.email,
+                        jobTitle,
+                        clientName: rawClient,
+                        postingId,
+                        triggeredBy: user.displayName
+                    };
+    
+                    try {
+                        await apiService.sendAssignmentEmail(
+                            emailPayload,
+                            user.userIdentifier
+                        );
+                    } catch (mailErr) {
+                        console.error(
+                            'Assignment email failed:',
+                            mailErr.response?.data || mailErr.message
+                        );
                     }
                 }
             }
-
+    
             setUnsavedChanges({});
-            loadData();
-
+            await loadData();
+    
         } catch (err) {
             setError(
-                `Failed to save: ${err.response?.data?.message || err.message}`
+                `Failed to save changes: ${err.response?.data?.message || err.message}`
             );
         } finally {
             setLoading(false);
