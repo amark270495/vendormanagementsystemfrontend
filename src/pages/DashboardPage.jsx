@@ -475,7 +475,9 @@ const DashboardPage = ({ sheetKey }) => {
                         r => r.displayName === name
                     );
 
-                    if (!recruiterObj?.email) continue;
+                    // REMOVED EMAIL CHECK: The API only requires display name, not email.
+                    // Checking for email might cause silent failures if user objects lack email field.
+                    if (!recruiterObj) continue; 
 
                     // ✅ FIXED: Correct Payload Signature matching apiService.js
                     // apiService expects: (jobTitle, postingId, assignedUserDisplayName, authenticatedUsername)
