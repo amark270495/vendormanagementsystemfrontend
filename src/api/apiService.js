@@ -70,7 +70,7 @@ export const apiService = {
   markMessagesAsRead: (recipient, sender, authenticatedUsername) =>
     apiClient.post('/markMessagesAsRead', { recipient, sender, authenticatedUsername }),
   
-  // ✅ UPDATED: Now accepts a payload object to support full email details
+  // ✅ FIXED: Updated to correctly spread the payload object to the root of the request body
   sendAssignmentEmail: (payload, authenticatedUsername) =>
     apiClient.post('/sendAssignmentEmail', { ...payload, authenticatedUsername }),
 
@@ -84,7 +84,7 @@ export const apiService = {
   createCompany: (companyData, authenticatedUsername) =>
     apiClient.post('/createCompany', { companyData, authenticatedUsername }),
   updateCompany: (originalCompanyName, updatedCompanyData, authenticatedUsername) =>
-    apiClient.post('/updateCompany', { originalCompanyName: originalVendorName, updatedCompanyData: vendorData, authenticatedUsername }),
+    apiClient.post('/updateCompany', { originalCompanyName: originalCompanyName, updatedCompanyData: updatedCompanyData, authenticatedUsername }),
   deleteCompany: (companyNameToDelete, authenticatedUsername) =>
     apiClient.post('/deleteCompany', { companyNameToDelete, authenticatedUsername }),
   saveEmployeeLogHours: (timesheetData, authenticatedUsername) =>
@@ -161,15 +161,15 @@ export const apiService = {
     apiClient.get('/getPublicKey', { params: { username, authenticatedUsername } }),
 
   // --- Attendance & Leave ---
-  markAttendance: (attendanceData) => // { date, requestedStatus, authenticatedUsername }
+  markAttendance: (attendanceData) => 
     apiClient.post('/markAttendance', attendanceData),
-  approveAttendance: (payload) => // { targetUsername, attendanceDate, action, approverComments, authenticatedUsername }
+  approveAttendance: (payload) => 
     apiClient.post('/approveAttendance', payload),
-  getAttendance: (params) => // { authenticatedUsername, username?, startDate?, endDate?, month?, year? }
+  getAttendance: (params) => 
     apiClient.get('/getAttendance', { params }),
-  getHolidays: (params) => // { authenticatedUsername, year? }
+  getHolidays: (params) => 
     apiClient.get('/getHolidays', { params }),
-  manageHoliday: (holidayData, method = 'POST', authenticatedUsername) => { // { date, description? }
+  manageHoliday: (holidayData, method = 'POST', authenticatedUsername) => { 
     if (method === 'DELETE') {
       return apiClient.delete('/manageHoliday', {
           data: { ...holidayData, authenticatedUsername }
@@ -178,20 +178,20 @@ export const apiService = {
       return apiClient.post('/manageHoliday', { ...holidayData, authenticatedUsername });
     }
   },
-  calculateMonthlyAttendance: (params) => { // { authenticatedUsername, username, month, details? }
+  calculateMonthlyAttendance: (params) => { 
     return apiClient.get('/calculateMonthlyAttendance', { params: params });
   },
-  sendConsolidatedReport: (payload) => { // { authenticatedUsername, month }
+  sendConsolidatedReport: (payload) => { 
     return apiClient.post('/sendConsolidatedReport', payload);
   },
-  requestLeave: (leaveData, authenticatedUsername) => // { leaveType, startDate, endDate, reason }
+  requestLeave: (leaveData, authenticatedUsername) => 
     apiClient.post('/requestLeave', { ...leaveData, authenticatedUsername }),
-  approveLeave: (approvalData) => // { requestId, requestUsername, action, approverComments?, authenticatedUsername }
+  approveLeave: (approvalData) => 
     apiClient.post('/approveLeave', approvalData),
-  getLeaveConfig: (params) => // { authenticatedUsername, targetUsername? }
+  getLeaveConfig: (params) => 
     apiClient.get('/manageLeaveConfig', { params }),
-  manageLeaveConfig: (configData, authenticatedUsername) => // { targetUsername, sickLeave, casualLeave }
+  manageLeaveConfig: (configData, authenticatedUsername) => 
     apiClient.post('/manageLeaveConfig', { ...configData, authenticatedUsername }),
-  getLeaveRequests: (params) => // { authenticatedUsername, targetUsername?, statusFilter?, startDateFilter?, endDateFilter? }
+  getLeaveRequests: (params) => 
     apiClient.get('/getLeaveRequests', { params }),
 };
