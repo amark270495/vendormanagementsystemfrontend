@@ -121,7 +121,9 @@ const UserManagementPage = () => {
             'Data Entry': 'bg-teal-100 text-teal-800',
             'Taproot Director': 'bg-teal-100 text-teal-800',
             'Director': 'bg-pink-100 text-pink-800',
-            'Standard User': 'bg-gray-100 text-gray-800'
+            'Standard User': 'bg-gray-100 text-gray-800',
+            // --- NEW BENCH SALES ROLE COLOR ---
+            'Bench Sales Recruiter': 'bg-orange-100 text-orange-800'
         }[role] || 'bg-gray-100 text-gray-800';
         return <span className={`px-2 py-1 text-xs font-medium rounded-full ${roleColor}`}>{role}</span>
     };
