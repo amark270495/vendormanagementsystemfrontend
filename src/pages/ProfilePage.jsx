@@ -23,6 +23,9 @@ const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 const ChevronDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>;
 const ChevronUpIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>;
 
+// ✅ NEW: Laptop Icon for Asset Details
+const LaptopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
+
 // --- UPDATED Attendance Marker Component ---
 const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUser }) => {
     const [statusInfo, setStatusInfo] = useState({ 
@@ -262,6 +265,9 @@ const ProfilePage = () => {
     
     const [leaveQuota, setLeaveQuota] = useState(null);
     const [leaveHistory, setLeaveHistory] = useState([]);
+    // ✅ NEW: State for user's assigned hardware asset
+    const [myAsset, setMyAsset] = useState(null);
+    
     const [loading, setLoading] = useState(true);
     
     const [selectedDate, setSelectedDate] = useState(
@@ -331,13 +337,33 @@ const ProfilePage = () => {
         setLoading(true);
         setError('');
         try {
-            const configRes = await apiService.getLeaveConfig({ authenticatedUsername: user.userIdentifier, targetUsername: user.userIdentifier });
+            const configRes = await apiService.getLeaveConfig({ authenticatedUsername: user.userIdentifier, targetUsername: user.userIdentifier }).catch(() => null);
             if (configRes?.data?.success && configRes.data.config) {
                 setLeaveQuota(configRes.data.config);
             } else {
                  setLeaveQuota(null);
             }
             await fetchLeaveHistory();
+            
+            // ✅ NEW: Fetch Asset Details assigned to the user
+            try {
+                const assetRes = await apiService.getAssets(user.userIdentifier);
+                if (assetRes.data && Array.isArray(assetRes.data)) {
+                    // Find the asset where the assignment matches the user's email, username, or display name
+                    const assignedAsset = assetRes.data.find(a => 
+                        a.assignedToEmail === user.userIdentifier || 
+                        a.AssetAssignedToEmail === user.userIdentifier ||
+                        a.AssetAssignedTo === user.displayName ||
+                        a.AssetAssignedTo === user.userName ||
+                        a.AssetAssignedTo === user.userIdentifier
+                    );
+                    setMyAsset(assignedAsset || null);
+                }
+            } catch (assetErr) {
+                // If user lacks permission to call getAssets, fail silently so the profile still loads
+                console.log("Asset fetch skipped or forbidden.", assetErr);
+            }
+            
         } catch (err) {
             setError(`Could not load profile data.`);
             setLeaveQuota(null);
@@ -558,6 +584,11 @@ const ProfilePage = () => {
                                 <DetailItem label="Reports To" icon={<UsersIcon />} isEditing={isEditing} value={user?.reportsTo}>
                                     <input type="text" name="reportsTo" value={formData.reportsTo} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
                                 </DetailItem>
+                                
+                                {/* ✅ NEW: Added Asset Information below */}
+                                <DetailItem label="Asset Tag (ID)" icon={<LaptopIcon />} value={myAsset?.rowKey} />
+                                <DetailItem label="Asset Model" icon={<LaptopIcon />} value={myAsset ? `${myAsset.AssetBrandName || ''} ${myAsset.AssetModelName || ''}`.trim() : null} />
+
                                 <DetailItem label="LinkedIn Profile" icon={<LinkIcon />} isEditing={isEditing} value={user?.linkedInProfile}>
                                     {renderEditInput('linkedInProfile', 'url')}
                                 </DetailItem>
