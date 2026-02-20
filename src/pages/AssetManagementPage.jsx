@@ -21,11 +21,14 @@ const AssetManagementPage = () => {
     // ✅ NEW: Session Tracking States
     const [assetSessions, setAssetSessions] = useState([]);
     const [loadingSessions, setLoadingSessions] = useState(false);
+    // Default the date picker to today's date
+    const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0]);
 
     // Fetch Data
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
+            // Fetch both Assets and Users simultaneously
             const [assetRes, userRes] = await Promise.all([
                 apiService.getAssets(user.userIdentifier),
                 apiService.getUsers(user.userIdentifier)
@@ -60,15 +63,16 @@ const AssetManagementPage = () => {
         setAssetSessions([]); // Clear sessions on close
     };
 
-    // ✅ NEW: Fetch and open the sessions log modal
-    const viewAssetSessions = async (asset) => {
+    // ✅ NEW: Fetch and open the sessions log modal for a specific date
+    const viewAssetSessions = async (asset, selectedDate = sessionDate) => {
         setSelectedAsset(asset);
         setActiveModal('sessions');
         setLoadingSessions(true);
         setAssetSessions([]); 
         
         try {
-            const response = await apiService.getAssetSessions(asset.rowKey, user.userIdentifier);
+            // Pass the selectedDate to the API
+            const response = await apiService.getAssetSessions(asset.rowKey, selectedDate, user.userIdentifier);
             if (response.data && response.data.success) {
                 setAssetSessions(response.data.sessions);
             } else {
@@ -79,6 +83,15 @@ const AssetManagementPage = () => {
             alert("Error loading tracking logs from the server.");
         } finally {
             setLoadingSessions(false);
+        }
+    };
+
+    // ✅ NEW: Handle when the admin changes the date in the calendar picker
+    const handleDateChange = (e) => {
+        const newDate = e.target.value;
+        setSessionDate(newDate);
+        if (selectedAsset) {
+            viewAssetSessions(selectedAsset, newDate);
         }
     };
 
@@ -116,6 +129,7 @@ const AssetManagementPage = () => {
                 }, user.userIdentifier);
             }
 
+            // Refresh grid and close modal on success
             await fetchData();
             closeModal();
         } catch (err) {
@@ -237,14 +251,27 @@ const AssetManagementPage = () => {
                             {activeModal === 'sessions' && `Tracking Logs for ${selectedAsset.rowKey}`}
                         </h3>
                         
-                        {/* ✅ NEW: Sessions Table Display */}
+                        {/* ✅ NEW: Sessions Table Display with Calendar Picker */}
                         {activeModal === 'sessions' && (
                             <div className="space-y-4">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50 p-3 rounded-lg border border-slate-200 mb-4 gap-2">
+                                    <span className="text-sm font-medium text-slate-700">
+                                        Select Date to view logs:
+                                    </span>
+                                    <input 
+                                        type="date" 
+                                        value={sessionDate}
+                                        onChange={handleDateChange}
+                                        max={new Date().toISOString().split('T')[0]} // Cannot pick future dates
+                                        className="px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium w-full sm:w-auto"
+                                    />
+                                </div>
+
                                 {loadingSessions ? (
-                                    <div className="py-12 text-center text-slate-500 font-medium">Loading tracking data...</div>
+                                    <div className="py-12 text-center text-slate-500 font-medium">Loading tracking data for {sessionDate}...</div>
                                 ) : assetSessions.length === 0 ? (
                                     <div className="py-8 text-center text-slate-500 bg-slate-50 rounded-lg border border-slate-200">
-                                        No tracking data available for this device yet.
+                                        No tracking data found for {sessionDate}.
                                     </div>
                                 ) : (
                                     <div className="max-h-96 overflow-y-auto border border-slate-200 rounded-lg shadow-inner">
@@ -266,7 +293,7 @@ const AssetManagementPage = () => {
                                                         </td>
                                                         <td className="px-4 py-3 text-slate-700">{session.userEmail}</td>
                                                         <td className="px-4 py-3 text-slate-500">
-                                                            {new Date(session.eventTimestamp).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                                                            {new Date(session.eventTimestamp).toLocaleString([], { timeStyle: 'medium' })}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -292,7 +319,7 @@ const AssetManagementPage = () => {
                                             required
                                             value={modalData.userEmail || ''} 
                                             onChange={(e) => setModalData({...modalData, userEmail: e.target.value})}
-                                            className="w-full border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 p-2 border"
+                                            className="w-full border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 p-2 border bg-white"
                                         >
                                             <option value="" disabled>-- Select an employee --</option>
                                             {users.map(u => (
@@ -310,7 +337,7 @@ const AssetManagementPage = () => {
                                                 required
                                                 value={modalData.isRepair || ''} 
                                                 onChange={(e) => setModalData({...modalData, isRepair: e.target.value})}
-                                                className="w-full border-slate-300 rounded-md shadow-sm p-2 border"
+                                                className="w-full border-slate-300 rounded-md shadow-sm p-2 border bg-white"
                                             >
                                                 <option value="" disabled>-- Select type --</option>
                                                 <option value="false">Routine Service / Maintenance</option>
@@ -332,10 +359,10 @@ const AssetManagementPage = () => {
                                 )}
 
                                 <div className="flex justify-end gap-3 mt-6">
-                                    <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50">
+                                    <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors">
                                         Cancel
                                     </button>
-                                    <button type="submit" disabled={processing} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 disabled:bg-indigo-400">
+                                    <button type="submit" disabled={processing} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 disabled:bg-indigo-400 transition-colors">
                                         {processing ? 'Processing...' : 'Confirm'}
                                     </button>
                                 </div>
