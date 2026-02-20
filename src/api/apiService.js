@@ -251,6 +251,8 @@ export const apiService = {
     apiClient.post('/serviceRepairAsset', { ...serviceData, authenticatedUsername }),
   reassignAsset: (reassignData, authenticatedUsername) =>
     apiClient.post('/reassignAsset', { ...reassignData, authenticatedUsername }),
+  getUserTrackingLogs: (targetUser, date, authenticatedUsername) => 
+    apiClient.get('/getUserTrackingLogs', { params: { targetUser, date, authenticatedUsername } }),
   
   // ✅ NEW: Fetch asset session logs (Login/Logout history)
   getAssetSessions: (assetId, authenticatedUsername) =>

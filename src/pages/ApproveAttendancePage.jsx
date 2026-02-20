@@ -21,9 +21,9 @@ const ApproveAttendancePage = () => {
     const { user } = useAuth();
     const { canApproveAttendance } = usePermissions();
 
-    const [allUsers, setAllUsers] = useState([]); // List of all users for the admin to view
-    const [pendingRequests, setPendingRequests] = useState([]); // Raw pending requests
-    const [groupedPending, setGroupedPending] = useState({}); // Grouped by user
+    const [allUsers, setAllUsers] = useState([]); 
+    const [pendingRequests, setPendingRequests] = useState([]); 
+    const [groupedPending, setGroupedPending] = useState({}); 
     
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -34,7 +34,6 @@ const ApproveAttendancePage = () => {
     const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
     const [selectedUsername, setSelectedUsername] = useState(null);
 
-    // 1. Fetch All Users (for the list)
     const fetchUsers = useCallback(async () => {
         try {
             const response = await apiService.getUsers(user.userIdentifier);
@@ -46,10 +45,8 @@ const ApproveAttendancePage = () => {
         }
     }, [user.userIdentifier]);
 
-    // 2. Fetch Pending Requests (for the badges)
     const fetchPendingRequests = useCallback(async () => {
         try {
-            // Fetching all attendance for current year to find pending
             const currentYear = new Date().getFullYear().toString();
             const result = await apiService.getAttendance({
                  authenticatedUsername: user.userIdentifier,
@@ -82,7 +79,6 @@ const ApproveAttendancePage = () => {
         loadData();
     }, [loadData]);
 
-    // Filter users based on search
     const filteredUsers = useMemo(() => {
         if (!searchTerm) return allUsers;
         const lowerSearch = searchTerm.toLowerCase();
@@ -103,7 +99,7 @@ const ApproveAttendancePage = () => {
         setIsCalendarModalOpen(false); 
         setSelectedUsername(null);
         setSuccess('Attendance action completed successfully.');
-        fetchPendingRequests(); // Reload only the pending count
+        fetchPendingRequests(); 
         setTimeout(() => setSuccess(''), 3000);
     };
 
