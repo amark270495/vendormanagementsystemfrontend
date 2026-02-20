@@ -188,7 +188,9 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                         statusInfo.status === 'Holiday' ? 'bg-pink-100 text-pink-800 ring-1 ring-pink-200' :
                         'bg-gray-100 text-gray-700 ring-1 ring-gray-200'
                     }`}>
-                        {statusInfo.status === 'Pending' ? `Pending (${statusInfo.requestedStatus})` : statusInfo.status}
+                        {statusInfo.status === 'Pending' ? `Pending (${statusInfo.requestedStatus})` : 
+                         (statusInfo.status === 'Present' && statusInfo.requestedStatus === 'System Auto-Marked') ? '✅ Auto-Marked Present' : 
+                         statusInfo.status}
                         {statusInfo.isHoliday ? ` (${statusInfo.holidayDescription || 'Holiday'})` : ''}
                     </span>
                 ) : (
@@ -215,7 +217,11 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             )}
              {isFutureDate && <p className="mt-4 text-xs text-gray-500">Cannot mark attendance for future dates.</p>}
              {!canMarkSelectedDate && !isFutureDate && !statusInfo.isLoading && statusInfo.status !== null && (
-                 <p className="mt-4 text-sm text-gray-500">Attendance status is final or not applicable for this date.</p>
+                 <p className="mt-4 text-sm text-gray-500">
+                    {statusInfo.status === 'Present' && statusInfo.requestedStatus === 'System Auto-Marked' 
+                        ? 'Your attendance was automatically logged by your device.' 
+                        : 'Attendance status is final or not applicable for this date.'}
+                 </p>
              )}
              {localError && <p className="mt-4 text-sm text-red-600 animate-pulse">{localError}</p>}
              {localSuccess && <p className="mt-4 text-sm text-green-600">{localSuccess}</p>}
