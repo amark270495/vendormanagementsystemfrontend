@@ -9,7 +9,9 @@ const defaultPermissions = {
     canManageHolidays: false, canApproveLeave: false, canManageLeaveConfig: false,
     canRequestLeave: false, canSendMonthlyReport: false,
     canApproveAttendance: false, 
-    canManageBenchSales: false // <-- NEWLY ADDED FOR BENCH SALES
+    canManageBenchSales: false, // <-- FOR BENCH SALES
+    canManageAssets: false,     // <-- NEWLY ADDED FOR ASSET MANAGEMENT
+    canAssignAssets: false      // <-- NEWLY ADDED FOR ASSET MANAGEMENT
 };
 
 

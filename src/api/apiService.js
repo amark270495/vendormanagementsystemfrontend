@@ -209,4 +209,20 @@ export const apiService = {
     apiClient.post('/manageLeaveConfig', { ...configData, authenticatedUsername }),
   getLeaveRequests: (params) => 
     apiClient.get('/getLeaveRequests', { params }),
+
+  // --- Asset Management Functions (NEW) ---
+  createAsset: (assetData, authenticatedUsername) =>
+    apiClient.post('/createAsset', { ...assetData, authenticatedUsername }),
+  getAssets: (authenticatedUsername, assetId = null) =>
+    apiClient.get('/getAssets', { params: { authenticatedUsername, assetId } }),
+  updateAsset: (assetId, assetData, authenticatedUsername) =>
+    apiClient.post('/updateAsset', { ...assetData, authenticatedUsername }, { params: { assetId } }),
+  deleteAsset: (assetId, authenticatedUsername) =>
+    apiClient.delete('/deleteAsset', { data: { authenticatedUsername }, params: { assetId } }),
+  assignAsset: (assignmentData, authenticatedUsername) =>
+    apiClient.post('/assignAsset', { ...assignmentData, authenticatedUsername }),
+  serviceRepairAsset: (serviceData, authenticatedUsername) =>
+    apiClient.post('/serviceRepairAsset', { ...serviceData, authenticatedUsername }),
+  reassignAsset: (reassignData, authenticatedUsername) =>
+    apiClient.post('/reassignAsset', { ...reassignData, authenticatedUsername }),
 };

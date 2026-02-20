@@ -21,7 +21,9 @@ const defaultPermissions = {
     canRequestLeave: false,        // NEW PERMISSION
     canSendMonthlyReport: false,   // NEW PERMISSION
     canApproveAttendance: false,   // NEW PERMISSION
-    canManageBenchSales: false     // NEW PERMISSION FOR BENCH SALES
+    canManageBenchSales: false,    // NEW PERMISSION FOR BENCH SALES
+    canManageAssets: false,        // NEW: For Asset Management CRUD (Create, Edit, Service, Delete)
+    canAssignAssets: false         // NEW: For Assigning and Reassigning assets to users
 };
 
 
