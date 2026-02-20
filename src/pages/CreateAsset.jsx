@@ -3,6 +3,25 @@ import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
 
+// 1. FIXED: Move InputField OUTSIDE of the main component
+// It receives formData and handleChange as props now to maintain functionality
+const InputField = ({ label, name, type = "text", required = false, placeholder = "", value, onChange }) => (
+    <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+            {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        <input
+            type={type}
+            name={name}
+            value={value}
+            onChange={onChange}
+            required={required}
+            placeholder={placeholder}
+            className="w-full border-slate-300 rounded-md shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+        />
+    </div>
+);
+
 const CreateAsset = () => {
     const { user } = useAuth();
     const { canManageAssets } = usePermissions();
@@ -14,7 +33,7 @@ const CreateAsset = () => {
     // State for the 24 Asset Fields
     const [formData, setFormData] = useState({
         // General Information
-        AssetType: 'Laptop', // Default
+        AssetType: 'Laptop', 
         AssetBrandName: '',
         AssetModelName: '',
         SerialNumber: '',
@@ -84,7 +103,6 @@ const CreateAsset = () => {
                 InvoiceNumber: '', PurchaseCost: '', PurchaseDate: '', WarrantyExpiryDate: '', Notes: ''
             });
 
-            // Auto-hide success message after 5 seconds
             setTimeout(() => setSuccessMessage(''), 5000);
         } catch (error) {
             setErrorMessage(error.response?.data?.error || error.message || 'Failed to create asset.');
@@ -92,24 +110,6 @@ const CreateAsset = () => {
             setIsSubmitting(false);
         }
     };
-
-    // Reusable Input Field Component to keep code DRY
-    const InputField = ({ label, name, type = "text", required = false, placeholder = "" }) => (
-        <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-                {label} {required && <span className="text-red-500">*</span>}
-            </label>
-            <input
-                type={type}
-                name={name}
-                value={formData[name]}
-                onChange={handleChange}
-                required={required}
-                placeholder={placeholder}
-                className="w-full border-slate-300 rounded-md shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-            />
-        </div>
-    );
 
     return (
         <div className="max-w-7xl mx-auto py-6">
@@ -150,9 +150,10 @@ const CreateAsset = () => {
                                     <option value="Accessory">Accessory</option>
                                 </select>
                             </div>
-                            <InputField label="Brand Name" name="AssetBrandName" placeholder="e.g., Lenovo, Dell" required />
-                            <InputField label="Model Name" name="AssetModelName" placeholder="e.g., ThinkPad T14" required />
-                            <InputField label="Serial Number / Tag" name="SerialNumber" required />
+                            {/* 2. FIXED: Pass value and onChange to the separated component */}
+                            <InputField label="Brand Name" name="AssetBrandName" placeholder="e.g., Lenovo, Dell" required value={formData.AssetBrandName} onChange={handleChange} />
+                            <InputField label="Model Name" name="AssetModelName" placeholder="e.g., ThinkPad T14" required value={formData.AssetModelName} onChange={handleChange} />
+                            <InputField label="Serial Number / Tag" name="SerialNumber" required value={formData.SerialNumber} onChange={handleChange} />
                         </div>
                     </section>
 
@@ -160,8 +161,8 @@ const CreateAsset = () => {
                     <section>
                         <h3 className="text-md font-semibold text-indigo-700 mb-4 border-b pb-2">2. Hardware Specifications</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <InputField label="CPU Brand" name="AssetCPUBrand" placeholder="e.g., Intel, AMD, Apple" />
-                            <InputField label="CPU Model" name="AssetCPUModel" placeholder="e.g., i9-14900K, M3 Max" />
+                            <InputField label="CPU Brand" name="AssetCPUBrand" placeholder="e.g., Intel, AMD, Apple" value={formData.AssetCPUBrand} onChange={handleChange} />
+                            <InputField label="CPU Model" name="AssetCPUModel" placeholder="e.g., i9-14900K, M3 Max" value={formData.AssetCPUModel} onChange={handleChange} />
                             
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">RAM Type</label>
@@ -171,7 +172,7 @@ const CreateAsset = () => {
                                     <option value="Unified Memory">Unified Memory</option>
                                 </select>
                             </div>
-                            <InputField label="RAM Size" name="AssetRamSize" placeholder="e.g., 32GB, 64GB" />
+                            <InputField label="RAM Size" name="AssetRamSize" placeholder="e.g., 32GB, 64GB" value={formData.AssetRamSize} onChange={handleChange} />
                             
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Storage Type</label>
@@ -181,12 +182,12 @@ const CreateAsset = () => {
                                     <option value="HDD">HDD</option>
                                 </select>
                             </div>
-                            <InputField label="Storage Size" name="AssetStorageSize" placeholder="e.g., 1TB, 2TB" />
+                            <InputField label="Storage Size" name="AssetStorageSize" placeholder="e.g., 1TB, 2TB" value={formData.AssetStorageSize} onChange={handleChange} />
                             
-                            <InputField label="GPU Make" name="AssetGPUMake" placeholder="e.g., NVIDIA, AMD" />
-                            <InputField label="GPU Model" name="AssetGPUModel" placeholder="e.g., RTX 5090" />
-                            <InputField label="GPU VRAM" name="AssetGPUVram" placeholder="e.g., 16GB, 24GB" />
-                            <InputField label="Display Size/Res" name="DisplaySize" placeholder="e.g., 16-inch 4K" />
+                            <InputField label="GPU Make" name="AssetGPUMake" placeholder="e.g., NVIDIA, AMD" value={formData.AssetGPUMake} onChange={handleChange} />
+                            <InputField label="GPU Model" name="AssetGPUModel" placeholder="e.g., RTX 5090" value={formData.AssetGPUModel} onChange={handleChange} />
+                            <InputField label="GPU VRAM" name="AssetGPUVram" placeholder="e.g., 16GB, 24GB" value={formData.AssetGPUVram} onChange={handleChange} />
+                            <InputField label="Display Size/Res" name="DisplaySize" placeholder="e.g., 16-inch 4K" value={formData.DisplaySize} onChange={handleChange} />
                         </div>
                     </section>
 
@@ -204,10 +205,10 @@ const CreateAsset = () => {
                                     <option value="None/Other">None / Other</option>
                                 </select>
                             </div>
-                            <InputField label="OS Version/Build" name="AssetOSVersion" placeholder="e.g., 23H2" />
-                            <InputField label="MAC Address (Wi-Fi)" name="MacAddressWifi" placeholder="00:00:00:00:00:00" />
-                            <InputField label="MAC Address (Ethernet)" name="MacAddressEthernet" placeholder="00:00:00:00:00:00" />
-                            <InputField label="Static IP (If any)" name="IpAddress" placeholder="e.g., 192.168.1.50" />
+                            <InputField label="OS Version/Build" name="AssetOSVersion" placeholder="e.g., 23H2" value={formData.AssetOSVersion} onChange={handleChange} />
+                            <InputField label="MAC Address (Wi-Fi)" name="MacAddressWifi" placeholder="00:00:00:00:00:00" value={formData.MacAddressWifi} onChange={handleChange} />
+                            <InputField label="MAC Address (Ethernet)" name="MacAddressEthernet" placeholder="00:00:00:00:00:00" value={formData.MacAddressEthernet} onChange={handleChange} />
+                            <InputField label="Static IP (If any)" name="IpAddress" placeholder="e.g., 192.168.1.50" value={formData.IpAddress} onChange={handleChange} />
                         </div>
                     </section>
 
@@ -215,11 +216,11 @@ const CreateAsset = () => {
                     <section>
                         <h3 className="text-md font-semibold text-indigo-700 mb-4 border-b pb-2">4. Purchase Details</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <InputField label="Vendor / Supplier" name="VendorName" required />
-                            <InputField label="Invoice Number" name="InvoiceNumber" />
-                            <InputField label="Purchase Cost ($/₹)" name="PurchaseCost" type="number" />
-                            <InputField label="Purchase Date" name="PurchaseDate" type="date" required />
-                            <InputField label="Warranty Expiry Date" name="WarrantyExpiryDate" type="date" />
+                            <InputField label="Vendor / Supplier" name="VendorName" required value={formData.VendorName} onChange={handleChange} />
+                            <InputField label="Invoice Number" name="InvoiceNumber" value={formData.InvoiceNumber} onChange={handleChange} />
+                            <InputField label="Purchase Cost ($/₹)" name="PurchaseCost" type="number" value={formData.PurchaseCost} onChange={handleChange} />
+                            <InputField label="Purchase Date" name="PurchaseDate" type="date" required value={formData.PurchaseDate} onChange={handleChange} />
+                            <InputField label="Warranty Expiry Date" name="WarrantyExpiryDate" type="date" value={formData.WarrantyExpiryDate} onChange={handleChange} />
                         </div>
                     </section>
 
