@@ -9,6 +9,33 @@ const apiClient = axios.create({
   },
 });
 
+// =========================================================================
+// === REQUEST INTERCEPTOR: Inject Security Headers into every call =======
+// =========================================================================
+apiClient.interceptors.request.use((config) => {
+    try {
+        const savedUser = sessionStorage.getItem('vms_user');
+        if (savedUser) {
+            const userData = JSON.parse(savedUser);
+            
+            // Map session data to the headers expected by tableUtils.js verifyAccess
+            config.headers['x-user-email'] = userData.userIdentifier;
+            config.headers['x-user-role'] = userData.userRole;
+            
+            // Permissions must be passed as a stringified array of keys where value is true
+            const activePermissions = Object.keys(userData.permissions || {})
+                .filter(key => userData.permissions[key] === true);
+                
+            config.headers['x-user-permissions'] = JSON.stringify(activePermissions);
+        }
+    } catch (err) {
+        console.error("Critical: Failed to attach security headers to API request", err);
+    }
+    return config;
+}, (error) => {
+    return Promise.reject(error);
+});
+
 export const apiService = {
   // --- User & Auth Functions ---
   authenticateUser: (username, password) =>
@@ -50,7 +77,7 @@ export const apiService = {
   getCandidateDetail: (postingId, email, authenticatedUsername) =>
     apiClient.get('/getCandidateDetail', { params: { postingId, email, authenticatedUsername } }),
 
-  // --- Bench Sales Functions (NEW) ---
+  // --- Bench Sales Functions ---
   addBenchCandidate: (candidateData, authenticatedUsername) =>
     apiClient.post('/addBenchCandidate', { candidateData, authenticatedUsername }),
   updateBenchCandidate: (rowKey, updateData, authenticatedUsername) =>
@@ -80,7 +107,6 @@ export const apiService = {
   markMessagesAsRead: (recipient, sender, authenticatedUsername) =>
     apiClient.post('/markMessagesAsRead', { recipient, sender, authenticatedUsername }),
   
-  // --- UPDATED: Matches the bulk assignment logic in sendAssignmentEmail.js ---
   sendAssignmentEmail: ({ jobTitle, postingId, assignedUsers, authenticatedUsername }) =>
     apiClient.post('/sendAssignmentEmail', { 
         jobTitle, 
@@ -210,7 +236,7 @@ export const apiService = {
   getLeaveRequests: (params) => 
     apiClient.get('/getLeaveRequests', { params }),
 
-  // --- Asset Management Functions (NEW) ---
+  // --- Asset Management Functions ---
   createAsset: (assetData, authenticatedUsername) =>
     apiClient.post('/createAsset', { ...assetData, authenticatedUsername }),
   getAssets: (authenticatedUsername, assetId = null) =>
