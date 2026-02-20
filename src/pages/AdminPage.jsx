@@ -6,6 +6,7 @@ import LeaveApprovalPage from './LeaveApprovalPage';
 import LeaveConfigPage from './LeaveConfigPage';
 import ApproveAttendancePage from './ApproveAttendancePage';
 import MonthlyAttendanceReportPage from './MonthlyAttendanceReportPage'; 
+import AssetManagementPage from './AssetManagementPage'; // NEW: Import the Asset Management view
 import { usePermissions } from '../hooks/usePermissions';
 
 const AdminPage = ({ onNavigate }) => {
@@ -16,12 +17,14 @@ const AdminPage = ({ onNavigate }) => {
         canApproveLeave, 
         canManageLeaveConfig, 
         canApproveAttendance, 
-        canSendMonthlyReport 
+        canSendMonthlyReport,
+        canManageAssets // NEW: Add the permission from the hook
     } = usePermissions();
 
     // Determine the default view based on available permissions
     const getDefaultView = () => {
         if (canEditUsers) return 'users';
+        if (canManageAssets) return 'assets'; // NEW: Check asset permission for default routing
         if (canManageHolidays) return 'holidays';
         if (canApproveLeave) return 'approve_leave';
         if (canManageLeaveConfig) return 'leave_config';
@@ -48,6 +51,8 @@ const AdminPage = ({ onNavigate }) => {
                 return canEditUsers ? <UserManagementPage /> : null;
             case 'permissions':
                 return canEditUsers ? <PermissionsPage /> : null; 
+            case 'assets':
+                return canManageAssets ? <AssetManagementPage /> : null; // NEW: Render the Asset component
             case 'holidays':
                 return canManageHolidays ? <HolidayManagementPage /> : null;
             case 'approve_leave':
@@ -71,7 +76,7 @@ const AdminPage = ({ onNavigate }) => {
     };
 
     // Check if user has ANY admin permissions to show the console at all
-    const hasAnyAdminPermission = canEditUsers || canManageHolidays || canApproveLeave || canManageLeaveConfig || canApproveAttendance || canSendMonthlyReport;
+    const hasAnyAdminPermission = canEditUsers || canManageHolidays || canApproveLeave || canManageLeaveConfig || canApproveAttendance || canSendMonthlyReport || canManageAssets;
 
     return (
         <div className="space-y-6">
@@ -95,6 +100,14 @@ const AdminPage = ({ onNavigate }) => {
                                     </button>
                                 </>
                             )}
+                            
+                            {/* NEW: Asset Management Tab */}
+                            {canManageAssets && (
+                                <button onClick={() => setView('assets')} className={getButtonClasses('assets')}>
+                                    Asset Management
+                                </button>
+                            )}
+
                             {canManageHolidays && (
                                 <button onClick={() => setView('holidays')} className={getButtonClasses('holidays')}>
                                     Manage Holidays

@@ -65,7 +65,7 @@ const TopNav = ({ onNavigate, currentPage }) => {
         canViewDashboards, canAddPosting, canViewReports, canViewCandidates, canEditUsers,
         canMessage, canManageTimesheets, canManageMSAWO, canManageOfferLetters, 
         canManageHolidays, canApproveLeave, canManageLeaveConfig, canApproveAttendance, canSendMonthlyReport,
-        canManageBenchSales // NEW: Imported Bench Sales Permission
+        canManageBenchSales, canManageAssets, canAssignAssets // NEW: Imported Asset Permissions
     } = usePermissions();
 
     const [notifications, setNotifications] = useState([]);
@@ -146,6 +146,8 @@ const TopNav = ({ onNavigate, currentPage }) => {
     };
 
     const showAdminDropdown = canEditUsers || canManageHolidays || canApproveLeave || canManageLeaveConfig || canApproveAttendance || canSendMonthlyReport;
+    const showAssetDropdown = canManageAssets || canAssignAssets; // NEW: Conditionally show Asset Dropdown
+
     const isPageActive = (target) => Array.isArray(target) ? target.includes(currentPage) : currentPage === target;
 
     const handleNav = useCallback((target) => {
@@ -190,7 +192,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
                             {canAddPosting && <NavButton label="New Posting" target="new_posting" isActive={currentPage === 'new_posting'} onClick={handleNav} />}
                             {canViewCandidates && <NavButton label="Candidates" target="candidate_details" isActive={currentPage === 'candidate_details'} onClick={handleNav} />}
                             
-                            {/* NEW: Bench Sales Link */}
                             {(canManageBenchSales || canAddPosting || canEditUsers) && (
                                 <NavButton label="Bench Sales" target="bench_sales" isActive={currentPage === 'bench_sales'} onClick={handleNav} />
                             )}
@@ -221,6 +222,22 @@ const TopNav = ({ onNavigate, currentPage }) => {
                                     <div className="border-t border-slate-100 my-1" />
                                     <DropdownItem label="Log Hours" target="log_hours" onClick={handleNav} />
                                     <DropdownItem label="Dashboard" target="timesheets_dashboard" onClick={handleNav} />
+                                </Dropdown>
+                            )}
+
+                            {/* NEW: Asset Management Dropdown */}
+                            {showAssetDropdown && (
+                                <Dropdown trigger={
+                                    <button className={`flex items-center gap-1 ${getLinkClass(['create_asset', 'asset_dashboard'])}`}>
+                                        Assets <ChevronDownIcon className="text-slate-400" />
+                                    </button>
+                                }>
+                                    {canManageAssets && (
+                                        <DropdownItem label="Create Asset" target="create_asset" onClick={handleNav} />
+                                    )}
+                                    {showAssetDropdown && (
+                                        <DropdownItem label="Asset Dashboard" target="asset_dashboard" onClick={handleNav} />
+                                    )}
                                 </Dropdown>
                             )}
 
