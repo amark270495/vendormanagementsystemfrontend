@@ -25,9 +25,11 @@ import LeaveApprovalPage from './pages/LeaveApprovalPage';
 import LeaveConfigPage from './pages/LeaveConfigPage';
 import ApproveAttendancePage from './pages/ApproveAttendancePage';
 import MonthlyAttendanceReportPage from './pages/MonthlyAttendanceReportPage';
-
-// *** NEW IMPORT ***
 import BenchSalesDashboard from './pages/BenchSalesDashboard';
+
+// *** NEW ASSET MANAGEMENT IMPORTS ***
+import CreateAsset from './pages/CreateAsset';
+import AssetManagementPage from './pages/AssetManagementPage';
 
 
 const MainApp = () => {
@@ -104,10 +106,14 @@ const MainApp = () => {
                 return <ApproveAttendancePage />;
             case 'monthly_attendance_report':
                 return <MonthlyAttendanceReportPage />;
-                
-            // *** ADDED NEW BENCH SALES ROUTE HERE ***
             case 'bench_sales':
                 return <BenchSalesDashboard />;
+                
+            // *** ADDED NEW ASSET MANAGEMENT ROUTES HERE ***
+            case 'create_asset':
+                return <CreateAsset />;
+            case 'asset_dashboard':
+                return <AssetManagementPage />;
                 
             default:
                 return <HomePage onNavigate={handleNavigate} />;
