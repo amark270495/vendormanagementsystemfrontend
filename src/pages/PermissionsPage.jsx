@@ -5,7 +5,7 @@ import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import EditPermissionsModal from '../components/admin/EditPermissionsModal'; 
 
-// *** UPDATED: Added canManageBenchSales to the list ***
+// *** UPDATED: Added Asset Management permissions to the list ***
 const permissionKeys = [
     { key: 'canViewDashboards', name: 'View Dashboards', description: 'Access dashboard pages.' },
     { key: 'canAddPosting', name: 'Add/Edit Jobs', description: 'Submit new job postings via the form.' },
@@ -14,8 +14,12 @@ const permissionKeys = [
     { key: 'canEmailReports', name: 'Email Reports', description: 'Send aggregated job reports via email.' },
     { key: 'canViewCandidates', name: 'View Candidates', description: 'Access the Candidate Details page.' },
     
-    // --- NEW BENCH SALES PERMISSION ---
+    // --- BENCH SALES PERMISSION ---
     { key: 'canManageBenchSales', name: 'Manage Bench Sales', description: 'Allows user to view, edit, and assign candidates on the Bench Sales dashboard.' },
+    
+    // --- NEW ASSET MANAGEMENT PERMISSIONS ---
+    { key: 'canManageAssets', name: 'Manage Hardware Assets', description: 'Create, update, delete, and log service for company hardware.' },
+    { key: 'canAssignAssets', name: 'Assign Assets', description: 'Assign or reassign hardware to employees.' },
     
     { key: 'canMessage', name: 'Send Messages', description: 'Use the internal messaging system.' },
     { key: 'canManageTimesheets', name: 'Manage Timesheets (Full)', description: 'Create companies/employees, log/edit/delete hours.' },
