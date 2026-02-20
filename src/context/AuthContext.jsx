@@ -8,7 +8,8 @@ const defaultPermissions = {
     canRequestTimesheetApproval: false, canManageMSAWO: false, canManageOfferLetters: false,
     canManageHolidays: false, canApproveLeave: false, canManageLeaveConfig: false,
     canRequestLeave: false, canSendMonthlyReport: false,
-    canApproveAttendance: false // <-- NEWLY ADDED
+    canApproveAttendance: false, 
+    canManageBenchSales: false // <-- NEWLY ADDED FOR BENCH SALES
 };
 
 

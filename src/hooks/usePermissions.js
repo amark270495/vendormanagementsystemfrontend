@@ -20,7 +20,8 @@ const defaultPermissions = {
     canManageLeaveConfig: false,   // NEW PERMISSION
     canRequestLeave: false,        // NEW PERMISSION
     canSendMonthlyReport: false,   // NEW PERMISSION
-    canApproveAttendance: false    // NEW PERMISSION
+    canApproveAttendance: false,   // NEW PERMISSION
+    canManageBenchSales: false     // NEW PERMISSION FOR BENCH SALES
 };
 
 

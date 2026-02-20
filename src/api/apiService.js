@@ -50,6 +50,16 @@ export const apiService = {
   getCandidateDetail: (postingId, email, authenticatedUsername) =>
     apiClient.get('/getCandidateDetail', { params: { postingId, email, authenticatedUsername } }),
 
+  // --- Bench Sales Functions (NEW) ---
+  addBenchCandidate: (candidateData, authenticatedUsername) =>
+    apiClient.post('/addBenchCandidate', { candidateData, authenticatedUsername }),
+  updateBenchCandidate: (rowKey, updateData, authenticatedUsername) =>
+    apiClient.post('/updateBenchCandidate', { rowKey, updateData, authenticatedUsername }),
+  deleteBenchCandidate: (rowKey, authenticatedUsername) =>
+    apiClient.post('/deleteBenchCandidate', { rowKey, authenticatedUsername }),
+  getBenchCandidates: (authenticatedUsername) =>
+    apiClient.get('/getBenchCandidates', { params: { authenticatedUsername } }),
+
   // --- Report & Notification Functions ---
   getHomePageData: (authenticatedUsername) =>
     apiClient.get('/getHomePageData', { params: { authenticatedUsername } }),

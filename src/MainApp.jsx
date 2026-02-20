@@ -23,9 +23,11 @@ import ProfilePage from './pages/ProfilePage';
 import HolidayManagementPage from './pages/HolidayManagementPage';
 import LeaveApprovalPage from './pages/LeaveApprovalPage';
 import LeaveConfigPage from './pages/LeaveConfigPage';
-// *** Import the missing pages ***
 import ApproveAttendancePage from './pages/ApproveAttendancePage';
 import MonthlyAttendanceReportPage from './pages/MonthlyAttendanceReportPage';
+
+// *** NEW IMPORT ***
+import BenchSalesDashboard from './pages/BenchSalesDashboard';
 
 
 const MainApp = () => {
@@ -98,13 +100,14 @@ const MainApp = () => {
                 return <LeaveApprovalPage />;
             case 'leave_config':
                 return <LeaveConfigPage />;
-            
-            // *** ADDED MISSING CASES HERE ***
             case 'approve_attendance':
                 return <ApproveAttendancePage />;
             case 'monthly_attendance_report':
                 return <MonthlyAttendanceReportPage />;
-            // *** END FIX ***
+                
+            // *** ADDED NEW BENCH SALES ROUTE HERE ***
+            case 'bench_sales':
+                return <BenchSalesDashboard />;
                 
             default:
                 return <HomePage onNavigate={handleNavigate} />;

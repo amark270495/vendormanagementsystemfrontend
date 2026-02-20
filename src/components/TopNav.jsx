@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
-// CHANGE 1: Import the useDropdown hook
 import Dropdown, { useDropdown } from './Dropdown';
 
 // --- Static Config ---
@@ -41,14 +40,12 @@ const NavButton = memo(({ label, target, isActive, onClick }) => {
     );
 });
 
-// CHANGE 2: Updated DropdownItem to use the context close function
 const DropdownItem = memo(({ label, target, onClick, isDestructive }) => {
-    // Safely access the context (handle cases where it might be used outside a Dropdown)
     const { close } = useDropdown() || {};
 
     const handleClick = () => {
-        onClick(target); // Navigate
-        if (close) close(); // Close the dropdown
+        onClick(target); 
+        if (close) close(); 
     };
 
     return (
@@ -67,7 +64,8 @@ const TopNav = ({ onNavigate, currentPage }) => {
     const {
         canViewDashboards, canAddPosting, canViewReports, canViewCandidates, canEditUsers,
         canMessage, canManageTimesheets, canManageMSAWO, canManageOfferLetters, 
-        canManageHolidays, canApproveLeave, canManageLeaveConfig, canApproveAttendance, canSendMonthlyReport
+        canManageHolidays, canApproveLeave, canManageLeaveConfig, canApproveAttendance, canSendMonthlyReport,
+        canManageBenchSales // NEW: Imported Bench Sales Permission
     } = usePermissions();
 
     const [notifications, setNotifications] = useState([]);
@@ -191,6 +189,12 @@ const TopNav = ({ onNavigate, currentPage }) => {
 
                             {canAddPosting && <NavButton label="New Posting" target="new_posting" isActive={currentPage === 'new_posting'} onClick={handleNav} />}
                             {canViewCandidates && <NavButton label="Candidates" target="candidate_details" isActive={currentPage === 'candidate_details'} onClick={handleNav} />}
+                            
+                            {/* NEW: Bench Sales Link */}
+                            {(canManageBenchSales || canAddPosting || canEditUsers) && (
+                                <NavButton label="Bench Sales" target="bench_sales" isActive={currentPage === 'bench_sales'} onClick={handleNav} />
+                            )}
+
                             {canViewReports && <NavButton label="Reports" target="reports" isActive={currentPage === 'reports'} onClick={handleNav} />}
                             
                             {canMessage && (
@@ -266,7 +270,6 @@ const TopNav = ({ onNavigate, currentPage }) => {
 
                     {/* RIGHT: Notifications & User */}
                     <div className="flex items-center gap-4">
-                        {/* UPDATED: Increased width to 96 and container to w-96 */}
                         <Dropdown width="96" trigger={
                             <button className="relative p-2 text-slate-500 hover:text-indigo-600 transition-colors focus:outline-none">
                                 <BellIcon />
