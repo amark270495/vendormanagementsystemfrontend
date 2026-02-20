@@ -14,10 +14,11 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // --- Original Grouping Logic (Updated for Modern UI) ---
+    // --- Grouping Logic (Updated to include Bench Sales) ---
     const groups = useMemo(() => [
         { id: 'core', title: "Core Platform", icon: <Settings size={18} />, keys: ['canViewDashboards', 'canAddPosting', 'canEditDashboard', 'canViewReports', 'canEmailReports'] },
-        { id: 'talent', title: "Talent", icon: <Briefcase size={18} />, keys: ['canViewCandidates'] },
+        // NEW: Added 'canManageBenchSales' to the Talent tab
+        { id: 'talent', title: "Talent", icon: <Briefcase size={18} />, keys: ['canViewCandidates', 'canManageBenchSales'] },
         { id: 'comm', title: "Communication", icon: <MessageSquare size={18} />, keys: ['canMessage'] },
         { id: 'time', title: "Timesheets", icon: <Clock size={18} />, keys: ['canManageTimesheets', 'canRequestTimesheetApproval'] },
         { id: 'esign', title: "E-Signatures", icon: <FileSignature size={18} />, keys: ['canManageMSAWO', 'canManageOfferLetters'] },
@@ -25,7 +26,7 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
         { id: 'admin', title: "System", icon: <Lock size={18} />, keys: ['canEditUsers'] },
     ], []);
 
-    // --- Original Initialization Logic ---
+    // --- Initialization Logic ---
     useEffect(() => {
         if (userToEdit?.permissions && permissionKeys) { 
             const initialPerms = permissionKeys.reduce((acc, p) => {
@@ -45,11 +46,10 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
         setError('');
     }, [isOpen, userToEdit, permissionKeys]);
 
-    // --- Original Toggle Handler with Safety Lock ---
+    // --- Toggle Handler with Safety Lock ---
     const handleToggle = (permissionKey) => {
         if (userToEdit?.username === currentUsername && permissionKey === 'canEditUsers' && currentPermissions[permissionKey]) {
             setError("Safety Lock: You cannot revoke your own admin rights.");
-            // Original Timeout Logic
             setTimeout(() => setError(''), 3000);
             return;
         }
@@ -61,18 +61,17 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
         setError('');
     };
 
-    // --- Original Save Logic with Payload Reduction & Error Handling ---
+    // --- Save Logic ---
     const handleSaveChanges = async () => {
         setLoading(true);
         setError('');
         try {
-            // Re-introduced your original payload reduction logic
             const permissionsPayload = permissionKeys.reduce((acc, p) => {
                 acc[p.key] = Boolean(currentPermissions[p.key]); 
                 return acc;
             }, {});
             
-            // Re-introduced your original double-check safety logic
+            // Double-check safety logic
             if (userToEdit?.username === currentUsername && permissionsPayload.canEditUsers === false) {
                  throw new Error("Safety check failed: Cannot revoke own administrative permissions.");
             }
