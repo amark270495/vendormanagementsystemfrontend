@@ -5,7 +5,7 @@ import {
     ShieldCheck, ShieldAlert, Check, Lock, 
     Settings, Users, Briefcase, MessageSquare, 
     Clock, FileSignature, Calendar, ChevronRight,
-    UserCircle
+    UserCircle, MonitorSmartphone // NEW: Icon for the Assets tab
 } from 'lucide-react';
 
 const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionKeys, currentUsername }) => {
@@ -14,11 +14,14 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // --- Grouping Logic (Updated to include Bench Sales) ---
+    // --- Grouping Logic (Updated to include Asset Management) ---
     const groups = useMemo(() => [
         { id: 'core', title: "Core Platform", icon: <Settings size={18} />, keys: ['canViewDashboards', 'canAddPosting', 'canEditDashboard', 'canViewReports', 'canEmailReports'] },
-        // NEW: Added 'canManageBenchSales' to the Talent tab
         { id: 'talent', title: "Talent", icon: <Briefcase size={18} />, keys: ['canViewCandidates', 'canManageBenchSales'] },
+        
+        // --- NEW: Added Hardware Assets Tab ---
+        { id: 'assets', title: "Hardware Assets", icon: <MonitorSmartphone size={18} />, keys: ['canManageAssets', 'canAssignAssets'] },
+        
         { id: 'comm', title: "Communication", icon: <MessageSquare size={18} />, keys: ['canMessage'] },
         { id: 'time', title: "Timesheets", icon: <Clock size={18} />, keys: ['canManageTimesheets', 'canRequestTimesheetApproval'] },
         { id: 'esign', title: "E-Signatures", icon: <FileSignature size={18} />, keys: ['canManageMSAWO', 'canManageOfferLetters'] },
@@ -103,7 +106,7 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
                         </div>
                     </div>
 
-                    <nav className="flex-1 space-y-1 overflow-y-auto">
+                    <nav className="flex-1 space-y-1 overflow-y-auto custom-scrollbar pr-2">
                         {groups.map((group, idx) => (
                             <button
                                 key={group.id}
@@ -123,7 +126,7 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
                         ))}
                     </nav>
 
-                    <div className="mt-6 p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100">
+                    <div className="mt-6 p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 shrink-0">
                         <div className="flex items-center gap-2 mb-2">
                             <ShieldCheck className="text-indigo-600" size={16} />
                             <span className="text-[10px] font-black uppercase tracking-widest text-indigo-700">System Integrity</span>
@@ -136,7 +139,7 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
 
                 {/* --- Main Content Area --- */}
                 <div className="flex-1 flex flex-col min-w-0 bg-white">
-                    <header className="px-10 py-8 flex justify-between items-start">
+                    <header className="px-10 py-8 flex justify-between items-start shrink-0">
                         <div>
                             <h2 className="text-2xl font-black text-slate-900 tracking-tight">
                                 {groups[activeTab].title}
@@ -193,7 +196,7 @@ const EditPermissionsModal = ({ isOpen, onClose, userToEdit, onSave, permissionK
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="px-10 py-6 border-t border-slate-100 flex items-center justify-between">
+                    <div className="px-10 py-6 border-t border-slate-100 flex items-center justify-between shrink-0">
                         <button 
                             onClick={onClose}
                             className="text-sm font-bold text-slate-400 hover:text-slate-900 transition-colors"
