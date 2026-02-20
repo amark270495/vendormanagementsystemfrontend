@@ -63,18 +63,24 @@ const AssetManagementPage = () => {
 
         try {
             if (activeModal === 'assign') {
-                const targetUser = users.find(u => u.email === modalData.userEmail);
+                // FIXED: Use u.username instead of u.email
+                const targetUser = users.find(u => u.username === modalData.userEmail);
+                if (!targetUser) throw new Error("Please select a valid user.");
+
                 await apiService.assignAsset({
                     assetId: selectedAsset.rowKey,
-                    assignedToEmail: targetUser.email,
+                    assignedToEmail: targetUser.username,
                     assignedToName: targetUser.displayName
                 }, user.userIdentifier);
             } 
             else if (activeModal === 'reassign') {
-                const targetUser = users.find(u => u.email === modalData.userEmail);
+                // FIXED: Use u.username instead of u.email
+                const targetUser = users.find(u => u.username === modalData.userEmail);
+                if (!targetUser) throw new Error("Please select a valid user.");
+
                 await apiService.reassignAsset({
                     assetId: selectedAsset.rowKey,
-                    newAssignedToEmail: targetUser.email,
+                    newAssignedToEmail: targetUser.username,
                     newAssignedToName: targetUser.displayName
                 }, user.userIdentifier);
             } 
@@ -171,11 +177,11 @@ const AssetManagementPage = () => {
                                         {canAssignAssets && asset.AssetStatus === 'Assigned' && (
                                             <button onClick={() => openModal('reassign', asset)} className="text-indigo-600 hover:text-indigo-900">Reassign</button>
                                         )}
-                                        {canManageAssets && (asset.AssetStatus === 'Available' || asset.AssetStatus === 'Assigned') && (
-                                            <button onClick={() => openModal('service', asset)} className="text-yellow-600 hover:text-yellow-900">Service/Repair</button>
-                                        )}
                                         {canManageAssets && (
-                                            <button onClick={() => handleDelete(asset.rowKey)} className="text-red-600 hover:text-red-900">Delete</button>
+                                            <>
+                                                <button onClick={() => openModal('service', asset)} className="text-yellow-600 hover:text-yellow-900">Service/Repair</button>
+                                                <button onClick={() => handleDelete(asset.rowKey)} className="text-red-600 hover:text-red-900">Delete</button>
+                                            </>
                                         )}
                                     </td>
                                 </tr>
@@ -208,7 +214,8 @@ const AssetManagementPage = () => {
                                     >
                                         <option value="" disabled>-- Select an employee --</option>
                                         {users.map(u => (
-                                            <option key={u.email} value={u.email}>{u.displayName} ({u.email})</option>
+                                            // FIXED: Using u.username (email) for both key/value and display
+                                            <option key={u.username} value={u.username}>{u.displayName} ({u.username})</option>
                                         ))}
                                     </select>
                                 </div>
