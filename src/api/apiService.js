@@ -254,7 +254,7 @@ export const apiService = {
   getUserTrackingLogs: (targetUser, date, authenticatedUsername) => 
     apiClient.get('/getUserTrackingLogs', { params: { targetUser, date, authenticatedUsername } }),
   
-  // ✅ NEW: Fetch asset session logs (Login/Logout history)
-  getAssetSessions: (assetId, authenticatedUsername) =>
-    apiClient.get('/getAssetSessions', { params: { assetId, authenticatedUsername } }),
+  // ✅ FIXED: Added `date` parameter to function signature and params payload
+  getAssetSessions: (assetId, date, authenticatedUsername) =>
+    apiClient.get('/getAssetSessions', { params: { assetId, date, authenticatedUsername } }),
 };
