@@ -167,7 +167,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const [error, setError] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
 
-    // ✅ NEW: Review Panel State
+    // Review Panel State
     const [reviewingRequest, setReviewingRequest] = useState(null);
     const [trackingLogs, setTrackingLogs] = useState([]);
     const [logsLoading, setLogsLoading] = useState(false);
@@ -253,7 +253,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             const initialMonth = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1));
             setCurrentMonthDate(initialMonth);
             fetchDataForUserAndMonth(initialMonth);
-            setReviewingRequest(null); // Reset review panel on open
+            setReviewingRequest(null);
         }
     }, [isOpen, selectedUsername]);
 
@@ -271,7 +271,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         });
     };
 
-    // ✅ NEW: Handle Day Click -> Fetch logs and open review panel
     const handleDayClick = async (request) => {
         if (request && request.status === 'Pending') {
             if (!request.username || !request.date) {
@@ -301,7 +300,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         }
     };
 
-    // ✅ NEW: Submits the approval/rejection from the review panel
     const handleConfirmAction = async (action) => {
         if (!reviewingRequest) return;
         setActionLoading(true);
@@ -319,7 +317,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
 
             if (response.data.success) {
                 await fetchDataForUserAndMonth(currentMonthDate); 
-                setReviewingRequest(null); // Return back to calendar
+                setReviewingRequest(null);
                 
                 const remainingPendingInMonth = Object.values(pendingRequestsMap).some(p => 
                     p.date !== reviewingRequest.date && p.status === 'Pending'
@@ -348,7 +346,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 </div>
             )}
 
-            {/* ✅ NEW: Toggle between Calendar View and Review Panel */}
             {reviewingRequest ? (
                 <div className="bg-white rounded-xl border border-slate-200 p-6 animate-fadeIn">
                     <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
@@ -368,15 +365,29 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                          </div>
                     ) : (
                         <div className="space-y-6">
+                            {/* ✅ NEW: Display User Reason (if outside shift) */}
+                            {reviewingRequest.userReason && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-sm">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">User Explanation (Outside Shift)</p>
+                                    </div>
+                                    <p className="text-sm text-amber-900 italic leading-relaxed">"{reviewingRequest.userReason}"</p>
+                                    {reviewingRequest.shiftValidation && (
+                                        <p className="text-[10px] text-amber-600 mt-2 font-medium">Validated as: {reviewingRequest.shiftValidation}</p>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center justify-between">
                                 <div>
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Calculated Work Time</p>
                                     <p className="text-2xl font-black text-indigo-700 mt-1">{totalWorkTime}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">System Auto-Marked?</p>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Source</p>
                                     <p className="text-sm font-bold text-slate-800 mt-1">
-                                        {reviewingRequest.requestedStatus === 'System Auto-Marked' ? '✅ Yes' : '❌ Manual'}
+                                        {reviewingRequest.attendanceSource || 'Manual Entry'}
                                     </p>
                                 </div>
                             </div>
@@ -423,56 +434,28 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 </div>
             ) : (
                 <>
-                    {/* Header Controls for Calendar */}
                     <div className="flex justify-between items-center mb-6 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
-                        <button 
-                            onClick={() => changeMonth(-1)} 
-                            className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors disabled:opacity-30" 
-                            disabled={loading || actionLoading}
-                        >
-                            <ChevronLeftIcon />
-                        </button>
-                        
+                        <button onClick={() => changeMonth(-1)} className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors disabled:opacity-30" disabled={loading || actionLoading}><ChevronLeftIcon /></button>
                         <h3 className="text-lg font-bold text-slate-800 tracking-tight">{monthName}</h3>
-                        
-                        <button 
-                            onClick={() => changeMonth(1)} 
-                            className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors disabled:opacity-30" 
-                            disabled={loading || actionLoading}
-                        >
-                            <ChevronRightIcon />
-                        </button>
+                        <button onClick={() => changeMonth(1)} className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors disabled:opacity-30" disabled={loading || actionLoading}><ChevronRightIcon /></button>
                     </div>
 
-                    {/* Content Area */}
                     {loading ? (
                         <div className="flex flex-col justify-center items-center h-[28rem] text-slate-400">
-                            <Spinner size="10"/>
-                            <p className="mt-3 text-sm font-medium animate-pulse">Loading calendar data...</p>
+                            <Spinner size="10"/><p className="mt-3 text-sm font-medium animate-pulse">Loading calendar data...</p>
                         </div>
                     ) : actionLoading ? (
                          <div className="flex flex-col justify-center items-center h-[28rem] text-slate-400">
-                            <Spinner size="10"/>
-                            <p className="mt-3 text-sm font-medium animate-pulse text-indigo-500">Processing approval...</p>
+                            <Spinner size="10"/><p className="mt-3 text-sm font-medium animate-pulse text-indigo-500">Processing approval...</p>
                         </div>
                     ) : (
                         <div className="min-h-[28rem]">
-                            <CalendarDisplay
-                                monthDate={currentMonthDate}
-                                attendanceData={attendanceData}
-                                holidays={holidays}
-                                leaveDaysSet={leaveDaysSet}
-                                onDayClick={handleDayClick} 
-                                pendingRequestsMap={pendingRequestsMap} 
-                            />
+                            <CalendarDisplay monthDate={currentMonthDate} attendanceData={attendanceData} holidays={holidays} leaveDaysSet={leaveDaysSet} onDayClick={handleDayClick} pendingRequestsMap={pendingRequestsMap} />
                         </div>
                     )}
 
                     <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
-                        <button 
-                            onClick={onClose} 
-                            className="px-6 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition shadow hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
-                        >
+                        <button onClick={onClose} className="px-6 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition shadow hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2">
                             Close Review
                         </button>
                     </div>

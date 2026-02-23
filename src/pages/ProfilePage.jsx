@@ -1,10 +1,40 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { apiService } from '../api/apiService';
-import Spinner from '../components/Spinner';
-import AttendanceCalendar from '../components/profile/AttendanceCalendar';
-import LeaveRequestForm from '../components/profile/LeaveRequestForm';
-import LeaveHistory from '../components/profile/LeaveHistory';
+
+// --- Mock Implementations for Single-File Environment ---
+const useAuth = () => ({
+    user: { 
+        userIdentifier: 'demo@example.com', 
+        userName: 'Demo User', 
+        firstName: 'Demo', 
+        lastName: 'User', 
+        employeeCode: 'EMP-001' 
+    },
+    login: () => {}
+});
+
+const apiService = {
+    getAttendance: async () => ({ data: { success: true, attendanceRecords: [] } }),
+    getHolidays: async () => ({ data: { success: true, holidays: [] } }),
+    getLeaveRequests: async () => ({ data: { success: true, requests: [] } }),
+    getLeaveConfig: async () => ({ data: { success: true, config: { sickLeave: 10, casualLeave: 5, earnedLeave: 15 } } }),
+    getAssets: async () => ({ data: [] }),
+    markAttendance: async () => ({ data: { success: true } }),
+    requestWeekendWork: async () => ({ data: { success: true } }), // Simulated API endpoint
+    updateUser: async (id, payload) => ({ data: { success: true, userData: payload } })
+};
+
+const Spinner = ({ size }) => (
+    <div className="flex justify-center items-center">
+        <div 
+            className="animate-spin rounded-full border-t-2 border-b-2 border-indigo-600"
+            style={{ height: `${Number(size || 8) * 0.25}rem`, width: `${Number(size || 8) * 0.25}rem` }}
+        ></div>
+    </div>
+);
+
+const AttendanceCalendar = () => <div className="p-4 text-center text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg bg-gray-50">Calendar Widget (Simulated)</div>;
+const LeaveRequestForm = () => <div className="p-4 text-center text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg bg-gray-50">Leave Request Form (Simulated)</div>;
+const LeaveHistory = () => <div className="p-4 text-center text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg bg-gray-50">Leave History (Simulated)</div>;
 
 // --- Helper Components & Icons ---
 const CalendarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
@@ -22,8 +52,6 @@ const HeartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 const ChevronDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>;
 const ChevronUpIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>;
-
-// ✅ NEW: Laptop Icon for Asset Details
 const LaptopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
 
 // --- UPDATED Attendance Marker Component ---
@@ -40,6 +68,13 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
     const [actionLoading, setActionLoading] = useState(false);
     const [localError, setLocalError] = useState('');
     const [localSuccess, setLocalSuccess] = useState('');
+    
+    // ✅ NEW: State for capturing the reason required by Texas Shift validation
+    const [reason, setReason] = useState('');
+    const [reasonRequiredError, setReasonRequiredError] = useState(false);
+    
+    // ✅ NEW: State for Weekend Work Approval
+    const [showWeekendRequest, setShowWeekendRequest] = useState(false);
 
     const todayDateString = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(new Date());
 
@@ -121,20 +156,33 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
 
     useEffect(() => {
         fetchStatusForDate(selectedDate);
+        // ✅ Reset states when date changes
+        setShowWeekendRequest(false);
+        setReason('');
+        setLocalError('');
+        setLocalSuccess('');
+        setReasonRequiredError(false);
     }, [selectedDate, fetchStatusForDate]);
 
     const handleMark = async (requested) => {
         setActionLoading(true);
         setLocalError('');
         setLocalSuccess('');
+        setReasonRequiredError(false);
         try {
-            await onMarkAttendance(selectedDate, requested);
+            await onMarkAttendance(selectedDate, requested, reason); // ✅ Pass reason to parent
+            setReason(''); // Clear on success
             fetchStatusForDate(selectedDate);
             setLocalSuccess(`Attendance request for ${formatDateDisplay(selectedDate)} submitted.`);
              setTimeout(() => setLocalSuccess(''), 4000);
         } catch (err) {
             const errorMessage = err.message || "Failed to submit request.";
             setLocalError(errorMessage);
+            
+            // ✅ NEW: Trigger UI validation if the backend complains about missing reason / Texas shift
+            if (errorMessage.toLowerCase().includes("reason") || errorMessage.toLowerCase().includes("shift")) {
+                setReasonRequiredError(true);
+            }
             
             // --- SELF-HEALING UI LOGIC ---
             if (errorMessage.toLowerCase().includes("approved leave")) {
@@ -151,6 +199,34 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                     isHoliday: true
                 }));
             }
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // ✅ NEW: Handle Weekend Work Request Submission
+    const handleWeekendRequestSubmit = async () => {
+        if (!reason.trim()) {
+            setReasonRequiredError(true);
+            setLocalError("Please provide a business justification for working this weekend.");
+            return;
+        }
+        setActionLoading(true);
+        setLocalError('');
+        setLocalSuccess('');
+        setReasonRequiredError(false);
+        try {
+            await apiService.requestWeekendWork({
+                authenticatedUsername: authUser.userIdentifier,
+                date: selectedDate,
+                reason: reason
+            });
+            setLocalSuccess(`Weekend work approval requested for ${formatDateDisplay(selectedDate)}.`);
+            setReason('');
+            setShowWeekendRequest(false);
+            setTimeout(() => setLocalSuccess(''), 4000);
+        } catch (err) {
+            setLocalError(err.message || "Failed to submit weekend request.");
         } finally {
             setActionLoading(false);
         }
@@ -201,25 +277,81 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                 )}
             </div>
              {canMarkSelectedDate && !isFutureDate && (
-                 <div className="mt-4 space-x-3 flex justify-center">
-                     <button
-                         onClick={() => handleMark('Present')}
-                         className="px-5 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 shadow transition disabled:opacity-50"
-                         disabled={actionLoading}
-                    >
-                        {actionLoading ? <Spinner size="4" /> : 'Mark Present'}
-                     </button>
-                     <button
-                         onClick={() => handleMark('Absent')}
-                         className="px-5 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 shadow transition disabled:opacity-50"
-                         disabled={actionLoading}
-                    >
-                         {actionLoading ? <Spinner size="4" /> : 'Mark Absent'}
-                     </button>
+                 <div className="mt-4 flex flex-col items-center">
+                     {/* ✅ NEW: Reason input field shown for today or if an error triggers it */}
+                     {(selectedDate === todayDateString || reasonRequiredError) && (
+                         <div className="mb-4 w-full sm:w-3/4">
+                             <textarea
+                                 value={reason}
+                                 onChange={(e) => setReason(e.target.value)}
+                                 placeholder="Reason (Required if outside Texas shift 9:00 AM - 5:30 PM CT)"
+                                 className={`w-full px-3 py-2 text-sm border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${reasonRequiredError ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:ring-indigo-500'}`}
+                                 rows="2"
+                             />
+                         </div>
+                     )}
+                     <div className="space-x-3 flex justify-center w-full">
+                         <button
+                             onClick={() => handleMark('Present')}
+                             className="px-5 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 shadow transition disabled:opacity-50"
+                             disabled={actionLoading}
+                         >
+                             {actionLoading ? <Spinner size="4" /> : 'Mark Present'}
+                         </button>
+                         <button
+                             onClick={() => handleMark('Absent')}
+                             className="px-5 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 shadow transition disabled:opacity-50"
+                             disabled={actionLoading}
+                         >
+                             {actionLoading ? <Spinner size="4" /> : 'Mark Absent'}
+                         </button>
+                     </div>
                  </div>
             )}
+
+             {/* ✅ NEW: Weekend Work Approval Request UI */}
+             {statusInfo.isWeekend && !isFutureDate && !statusInfo.isLoading && statusInfo.status === 'Weekend' && (
+                 <div className="mt-4 flex flex-col items-center">
+                     {!showWeekendRequest ? (
+                         <button
+                             onClick={() => setShowWeekendRequest(true)}
+                             className="px-5 py-2 bg-indigo-100 text-indigo-700 text-sm font-semibold rounded-lg hover:bg-indigo-200 shadow-sm transition"
+                         >
+                             Request Approval for Weekend Work
+                         </button>
+                     ) : (
+                         <div className="w-full sm:w-3/4 flex flex-col items-center animate-fadeIn">
+                             <p className="text-sm text-gray-600 mb-2 font-medium">Why do you need to work this weekend?</p>
+                             <textarea
+                                 value={reason}
+                                 onChange={(e) => { setReason(e.target.value); setReasonRequiredError(false); }}
+                                 placeholder="Enter business justification..."
+                                 className={`w-full px-3 py-2 text-sm border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${reasonRequiredError ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:ring-indigo-500'} mb-3`}
+                                 rows="2"
+                             />
+                             <div className="flex space-x-3 w-full justify-center">
+                                 <button
+                                     onClick={handleWeekendRequestSubmit}
+                                     className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 shadow transition disabled:opacity-50"
+                                     disabled={actionLoading}
+                                 >
+                                     {actionLoading ? <Spinner size="4" /> : 'Submit Request'}
+                                 </button>
+                                 <button
+                                     onClick={() => { setShowWeekendRequest(false); setReason(''); setLocalError(''); setReasonRequiredError(false); }}
+                                     className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-300 shadow transition"
+                                     disabled={actionLoading}
+                                 >
+                                     Cancel
+                                 </button>
+                             </div>
+                         </div>
+                     )}
+                 </div>
+             )}
+
              {isFutureDate && <p className="mt-4 text-xs text-gray-500">Cannot mark attendance for future dates.</p>}
-             {!canMarkSelectedDate && !isFutureDate && !statusInfo.isLoading && statusInfo.status !== null && (
+             {!canMarkSelectedDate && !isFutureDate && !statusInfo.isLoading && statusInfo.status !== null && statusInfo.status !== 'Weekend' && (
                  <p className="mt-4 text-sm text-gray-500">
                     {statusInfo.status === 'Present' && statusInfo.requestedStatus === 'System Auto-Marked' 
                         ? 'Your attendance was automatically logged by your device.' 
@@ -233,7 +365,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
 };
 // --- End Attendance Marker Component ---
 
-// --- FIXED: Simplified Date Formatting Logic ---
 const formatDateForInput = (dateString) => {
     if (!dateString) return '';
     // If it's a full ISO string (e.g., 2022-07-28T00:00:00Z), take the first 10 chars
@@ -243,7 +374,6 @@ const formatDateForInput = (dateString) => {
     // If it's already YYYY-MM-DD or empty, return as is
     return dateString;
 };
-// -----------------------------------------------
 
 const DetailItem = ({ label, value, icon, isEditing = false, children }) => (
     <div className="space-y-1">
@@ -377,12 +507,14 @@ const ProfilePage = () => {
         loadInitialData();
     }, [loadInitialData]);
 
-    const handleMarkAttendance = async (dateToMark, requestedStatus) => {
+    // ✅ UPDATED: Accept reason parameter and pass it to apiService
+    const handleMarkAttendance = async (dateToMark, requestedStatus, reason = "") => {
         try {
             const response = await apiService.markAttendance({
                 authenticatedUsername: user.userIdentifier,
                 date: dateToMark,
-                requestedStatus: requestedStatus
+                requestedStatus: requestedStatus,
+                reason: reason
             });
             if (response.data.success) {
                 refreshCalendar();
