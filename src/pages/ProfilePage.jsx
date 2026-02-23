@@ -1,40 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-
-// --- Mock Implementations for Single-File Environment ---
-const useAuth = () => ({
-    user: { 
-        userIdentifier: 'demo@example.com', 
-        userName: 'Demo User', 
-        firstName: 'Demo', 
-        lastName: 'User', 
-        employeeCode: 'EMP-001' 
-    },
-    login: () => {}
-});
-
-const apiService = {
-    getAttendance: async () => ({ data: { success: true, attendanceRecords: [] } }),
-    getHolidays: async () => ({ data: { success: true, holidays: [] } }),
-    getLeaveRequests: async () => ({ data: { success: true, requests: [] } }),
-    getLeaveConfig: async () => ({ data: { success: true, config: { sickLeave: 10, casualLeave: 5, earnedLeave: 15 } } }),
-    getAssets: async () => ({ data: [] }),
-    markAttendance: async () => ({ data: { success: true } }),
-    requestWeekendWork: async () => ({ data: { success: true } }), // Simulated API endpoint
-    updateUser: async (id, payload) => ({ data: { success: true, userData: payload } })
-};
-
-const Spinner = ({ size }) => (
-    <div className="flex justify-center items-center">
-        <div 
-            className="animate-spin rounded-full border-t-2 border-b-2 border-indigo-600"
-            style={{ height: `${Number(size || 8) * 0.25}rem`, width: `${Number(size || 8) * 0.25}rem` }}
-        ></div>
-    </div>
-);
-
-const AttendanceCalendar = () => <div className="p-4 text-center text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg bg-gray-50">Calendar Widget (Simulated)</div>;
-const LeaveRequestForm = () => <div className="p-4 text-center text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg bg-gray-50">Leave Request Form (Simulated)</div>;
-const LeaveHistory = () => <div className="p-4 text-center text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg bg-gray-50">Leave History (Simulated)</div>;
+import { useAuth } from '../context/AuthContext';
+import { apiService } from '../api/apiService';
+import Spinner from '../components/Spinner';
+import AttendanceCalendar from '../components/profile/AttendanceCalendar';
+import LeaveRequestForm from '../components/profile/LeaveRequestForm';
+import LeaveHistory from '../components/profile/LeaveHistory';
 
 // --- Helper Components & Icons ---
 const CalendarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
@@ -69,17 +39,17 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
     const [localError, setLocalError] = useState('');
     const [localSuccess, setLocalSuccess] = useState('');
     
-    // ✅ NEW: State for capturing the reason required by Texas Shift validation
+    // States for reason input and weekend requests
     const [reason, setReason] = useState('');
     const [reasonRequiredError, setReasonRequiredError] = useState(false);
-    
-    // ✅ NEW: State for Weekend Work Approval
     const [showWeekendRequest, setShowWeekendRequest] = useState(false);
 
     const todayDateString = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(new Date());
 
     const fetchStatusForDate = useCallback(async (dateString) => {
-        if (!authUser?.userIdentifier || !dateString) {
+        const userId = authUser?.userIdentifier;
+        
+        if (!userId || !dateString) {
             setStatusInfo({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: false });
             return;
         }
@@ -94,11 +64,11 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
             const [attendanceRes, holidayRes, leaveRes] = await Promise.all([
-                apiService.getAttendance({ authenticatedUsername: authUser.userIdentifier, username: authUser.userIdentifier, startDate: dateString, endDate: dateString })
+                apiService.getAttendance({ authenticatedUsername: userId, username: userId, startDate: dateString, endDate: dateString })
                     .catch(err => { console.error("Attendance fetch error:", err); return null; }),
-                apiService.getHolidays({ authenticatedUsername: authUser.userIdentifier, year: year })
+                apiService.getHolidays({ authenticatedUsername: userId, year: year })
                     .catch(err => { console.error("Holiday fetch error:", err); return null; }),
-                apiService.getLeaveRequests({ authenticatedUsername: authUser.userIdentifier, targetUsername: authUser.userIdentifier, statusFilter: 'Approved', startDateFilter: dateString, endDateFilter: dateString })
+                apiService.getLeaveRequests({ authenticatedUsername: userId, targetUsername: userId, statusFilter: 'Approved', startDateFilter: dateString, endDateFilter: dateString })
                     .catch(err => { console.error("Leave fetch error:", err); return null; })
             ]);
 
@@ -152,11 +122,10 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             setLocalError(`Failed to load status for ${dateString}.`);
             setStatusInfo({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: false });
         }
-    }, [authUser]);
+    }, [authUser?.userIdentifier]); 
 
     useEffect(() => {
         fetchStatusForDate(selectedDate);
-        // ✅ Reset states when date changes
         setShowWeekendRequest(false);
         setReason('');
         setLocalError('');
@@ -170,8 +139,8 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
         setLocalSuccess('');
         setReasonRequiredError(false);
         try {
-            await onMarkAttendance(selectedDate, requested, reason); // ✅ Pass reason to parent
-            setReason(''); // Clear on success
+            await onMarkAttendance(selectedDate, requested, reason); 
+            setReason(''); 
             fetchStatusForDate(selectedDate);
             setLocalSuccess(`Attendance request for ${formatDateDisplay(selectedDate)} submitted.`);
              setTimeout(() => setLocalSuccess(''), 4000);
@@ -179,12 +148,10 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             const errorMessage = err.message || "Failed to submit request.";
             setLocalError(errorMessage);
             
-            // ✅ NEW: Trigger UI validation if the backend complains about missing reason / Texas shift
             if (errorMessage.toLowerCase().includes("reason") || errorMessage.toLowerCase().includes("shift")) {
                 setReasonRequiredError(true);
             }
             
-            // --- SELF-HEALING UI LOGIC ---
             if (errorMessage.toLowerCase().includes("approved leave")) {
                 setStatusInfo(prev => ({
                     ...prev,
@@ -204,7 +171,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
         }
     };
 
-    // ✅ NEW: Handle Weekend Work Request Submission
     const handleWeekendRequestSubmit = async () => {
         if (!reason.trim()) {
             setReasonRequiredError(true);
@@ -216,6 +182,7 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
         setLocalSuccess('');
         setReasonRequiredError(false);
         try {
+            // Note: Update your apiService in your local project to export this method if it doesn't already exist.
             await apiService.requestWeekendWork({
                 authenticatedUsername: authUser.userIdentifier,
                 date: selectedDate,
@@ -236,7 +203,10 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
     const isFutureDate = selectedDate > todayDateString;
 
     const formatDateDisplay = (dateStr) => {
-        return new Date(dateStr + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        if (!dateStr) return '';
+        const date = new Date(dateStr + 'T00:00:00Z');
+        if (isNaN(date.getTime())) return '';
+        return date.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
     };
 
     return (
@@ -249,7 +219,7 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                     value={selectedDate}
                     onChange={(e) => onDateChange(e.target.value)}
                     max={todayDateString}
-                    className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                 />
             </div>
             <p className="text-sm font-medium text-indigo-800 mb-3">
@@ -278,14 +248,13 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             </div>
              {canMarkSelectedDate && !isFutureDate && (
                  <div className="mt-4 flex flex-col items-center">
-                     {/* ✅ NEW: Reason input field shown for today or if an error triggers it */}
                      {(selectedDate === todayDateString || reasonRequiredError) && (
                          <div className="mb-4 w-full sm:w-3/4">
                              <textarea
                                  value={reason}
                                  onChange={(e) => setReason(e.target.value)}
                                  placeholder="Reason (Required if outside Texas shift 9:00 AM - 5:30 PM CT)"
-                                 className={`w-full px-3 py-2 text-sm border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${reasonRequiredError ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:ring-indigo-500'}`}
+                                 className={`w-full px-3 py-2 text-sm border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${reasonRequiredError ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:ring-indigo-500'} bg-white`}
                                  rows="2"
                              />
                          </div>
@@ -309,7 +278,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                  </div>
             )}
 
-             {/* ✅ NEW: Weekend Work Approval Request UI */}
              {statusInfo.isWeekend && !isFutureDate && !statusInfo.isLoading && statusInfo.status === 'Weekend' && (
                  <div className="mt-4 flex flex-col items-center">
                      {!showWeekendRequest ? (
@@ -326,7 +294,7 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                                  value={reason}
                                  onChange={(e) => { setReason(e.target.value); setReasonRequiredError(false); }}
                                  placeholder="Enter business justification..."
-                                 className={`w-full px-3 py-2 text-sm border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${reasonRequiredError ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:ring-indigo-500'} mb-3`}
+                                 className={`w-full px-3 py-2 text-sm border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${reasonRequiredError ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:ring-indigo-500'} bg-white mb-3`}
                                  rows="2"
                              />
                              <div className="flex space-x-3 w-full justify-center">
@@ -358,20 +326,17 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                         : 'Attendance status is final or not applicable for this date.'}
                  </p>
              )}
-             {localError && <p className="mt-4 text-sm text-red-600 animate-pulse">{localError}</p>}
-             {localSuccess && <p className="mt-4 text-sm text-green-600">{localSuccess}</p>}
+             {localError && <p className="mt-4 text-sm text-red-600 animate-pulse font-medium">{localError}</p>}
+             {localSuccess && <p className="mt-4 text-sm text-green-600 font-medium">{localSuccess}</p>}
         </div>
     );
 };
-// --- End Attendance Marker Component ---
 
 const formatDateForInput = (dateString) => {
     if (!dateString) return '';
-    // If it's a full ISO string (e.g., 2022-07-28T00:00:00Z), take the first 10 chars
-    if (dateString.includes('T')) {
+    if (typeof dateString === 'string' && dateString.includes('T')) {
         return dateString.split('T')[0];
     }
-    // If it's already YYYY-MM-DD or empty, return as is
     return dateString;
 };
 
@@ -395,9 +360,7 @@ const ProfilePage = () => {
     
     const [leaveQuota, setLeaveQuota] = useState(null);
     const [leaveHistory, setLeaveHistory] = useState([]);
-    // ✅ NEW: State for user's assigned hardware asset
     const [myAsset, setMyAsset] = useState(null);
-    
     const [loading, setLoading] = useState(true);
     
     const [selectedDate, setSelectedDate] = useState(
@@ -415,6 +378,7 @@ const ProfilePage = () => {
     const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
     const relations = ['Spouse', 'Parent', 'Sibling', 'Child', 'Other'];
 
+    const userStr = JSON.stringify(user || {});
     useEffect(() => {
         if (user) {
             setFormData({
@@ -435,9 +399,9 @@ const ProfilePage = () => {
                 linkedInProfile: user.linkedInProfile || '',
             });
         }
-    }, [user]);
+    }, [userStr]);
 
-    const initialMonthString = selectedDate.substring(0, 7);
+    const initialMonthString = selectedDate ? selectedDate.substring(0, 7) : '';
     const [calendarRefreshKey, setCalendarRefreshKey] = useState(Date.now());
     const refreshCalendar = () => setCalendarRefreshKey(Date.now());
 
@@ -460,7 +424,6 @@ const ProfilePage = () => {
 
     const loadInitialData = useCallback(async () => {
         if (!user?.userIdentifier) {
-            setError("User not identified.");
             setLoading(false);
             return;
         }
@@ -475,11 +438,9 @@ const ProfilePage = () => {
             }
             await fetchLeaveHistory();
             
-            // ✅ NEW: Fetch Asset Details assigned to the user
             try {
                 const assetRes = await apiService.getAssets(user.userIdentifier);
                 if (assetRes.data && Array.isArray(assetRes.data)) {
-                    // Find the asset where the assignment matches the user's email, username, or display name
                     const assignedAsset = assetRes.data.find(a => 
                         a.assignedToEmail === user.userIdentifier || 
                         a.AssetAssignedToEmail === user.userIdentifier ||
@@ -490,7 +451,6 @@ const ProfilePage = () => {
                     setMyAsset(assignedAsset || null);
                 }
             } catch (assetErr) {
-                // If user lacks permission to call getAssets, fail silently so the profile still loads
                 console.log("Asset fetch skipped or forbidden.", assetErr);
             }
             
@@ -507,7 +467,6 @@ const ProfilePage = () => {
         loadInitialData();
     }, [loadInitialData]);
 
-    // ✅ UPDATED: Accept reason parameter and pass it to apiService
     const handleMarkAttendance = async (dateToMark, requestedStatus, reason = "") => {
         try {
             const response = await apiService.markAttendance({
@@ -591,7 +550,7 @@ const ProfilePage = () => {
             id={name}
             value={formData[name] || ''}
             onChange={handleFormChange}
-            className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+            className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white"
         />
     );
 
@@ -615,24 +574,21 @@ const ProfilePage = () => {
             value={formData[name] || ''}
             onChange={handleFormChange}
             rows="3"
-            className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+            className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white"
         />
     );
 
-    // --- Calculate Remaining Balance Logic ---
     const calculateBalance = (typeKey, typeLabel) => {
         if (!leaveQuota) return { total: 0, used: 0, remaining: 0 };
         
         const total = leaveQuota[typeKey] || 0;
-        // typeLabel matches the leaveType string stored in database from LeaveRequestForm
         const used = leaveHistory
             .filter(req => req.status === 'Approved' && req.leaveType === typeLabel)
             .reduce((acc, req) => {
-                // Helper to calculate days between two dates inclusive
                 const start = new Date(req.startDate);
                 const end = new Date(req.endDate);
                 const diffTime = Math.abs(end - start);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
+                const diffDays = isNaN(diffTime) ? 0 : Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
                 return acc + diffDays;
             }, 0);
             
@@ -645,17 +601,13 @@ const ProfilePage = () => {
     const maternityLeave = calculateBalance('maternityLeave', 'Maternity Leave');
     const paternityLeave = calculateBalance('paternityLeave', 'Paternity Leave');
     
-    // For LWP and LOP, usually there is no "Quota", just tracking used days. 
-    // But if admin set a limit (quota), we show it. If quota is 0/undefined, we can just show used.
-    // Here we assume quota logic applies if set.
     const lwp = calculateBalance('lwp', 'Leave Without Pay (LWP)');
     const lop = calculateBalance('lop', 'Loss of Pay (LOP)');
-
 
     if (loading) return <div className="flex justify-center items-center h-[70vh]"><Spinner size="12" /></div>;
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 max-w-7xl mx-auto font-sans">
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                  <h1 className="text-3xl font-bold text-gray-800">My Profile & Attendance</h1>
                  {!isEditing && (
@@ -684,12 +636,12 @@ const ProfilePage = () => {
                                     <input type="text" name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm" />
                                 </div>
                             ) : (
-                                <p className="text-xl font-bold text-gray-900">{user?.userName || 'User Name'}</p>
+                                <p className="text-xl font-bold text-gray-900">{user?.userName || 'Demo User'}</p>
                             )}
                         </div>
                         <DetailItem label="Username (Email)" icon={<UserIcon />} value={user?.userIdentifier} />
                         <DetailItem label="Date of Joining" icon={<CalendarIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfJoining)}>
-                            <input type="date" name="dateOfJoining" value={formData.dateOfJoining} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
+                            <input type="date" name="dateOfJoining" value={formData.dateOfJoining} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500" readOnly title="This field can only be changed by an admin." />
                         </DetailItem>
                         <DetailItem label="Personal Mobile" icon={<PhoneIcon />} isEditing={isEditing} value={user?.personalMobileNumber}>
                             {renderEditInput('personalMobileNumber', 'tel')}
@@ -708,16 +660,15 @@ const ProfilePage = () => {
                                 <DetailItem label="Employee Code" icon={<IdCardIcon />} value={user?.employeeCode} />
                                 <DetailItem label="Backend Role" icon={<BriefcaseIcon />} value={user?.backendOfficeRole} />
                                 <DetailItem label="Employment Type" icon={<BriefcaseIcon />} isEditing={isEditing} value={user?.employmentType}>
-                                    <input type="text" name="employmentType" value={formData.employmentType} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
+                                    <input type="text" name="employmentType" value={formData.employmentType} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500" readOnly title="This field can only be changed by an admin." />
                                 </DetailItem>
                                 <DetailItem label="Work Location" icon={<LocationIcon />} isEditing={isEditing} value={user?.workLocation}>
-                                    <input type="text" name="workLocation" value={formData.workLocation} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
+                                    <input type="text" name="workLocation" value={formData.workLocation} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500" readOnly title="This field can only be changed by an admin." />
                                 </DetailItem>
                                 <DetailItem label="Reports To" icon={<UsersIcon />} isEditing={isEditing} value={user?.reportsTo}>
-                                    <input type="text" name="reportsTo" value={formData.reportsTo} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" readOnly title="This field can only be changed by an admin." />
+                                    <input type="text" name="reportsTo" value={formData.reportsTo} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500" readOnly title="This field can only be changed by an admin." />
                                 </DetailItem>
                                 
-                                {/* ✅ NEW: Added Asset Information below */}
                                 <DetailItem label="Asset Tag (ID)" icon={<LaptopIcon />} value={myAsset?.rowKey} />
                                 <DetailItem label="Asset Model" icon={<LaptopIcon />} value={myAsset ? `${myAsset.AssetBrandName || ''} ${myAsset.AssetModelName || ''}`.trim() : null} />
 
