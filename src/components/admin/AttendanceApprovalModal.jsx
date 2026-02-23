@@ -8,15 +8,24 @@ import Modal from '../Modal';
 const calculateTotalWorkTime = (logs) => {
     if (!logs || logs.length === 0) return { text: "0h 0m", ms: 0 };
     
+    // 1. Sort logs chronologically (oldest first) to guarantee login comes before logout
+    const sortedLogs = [...logs].sort((a, b) => 
+        new Date(a.eventTimestamp) - new Date(b.eventTimestamp)
+    );
+    
     let totalMs = 0;
     let loginTime = null;
 
-    logs.forEach(log => {
-        if (log.actionType.toLowerCase() === 'login') {
+    sortedLogs.forEach(log => {
+        const action = log.actionType.toLowerCase();
+        
+        if (action === 'login' && !loginTime) {
+            // Only set loginTime if we aren't already in an active session
             loginTime = new Date(log.eventTimestamp);
-        } else if (log.actionType.toLowerCase() === 'logout' && loginTime) {
+        } else if (action === 'logout' && loginTime) {
+            // Calculate duration and reset for the next block
             totalMs += (new Date(log.eventTimestamp) - loginTime);
-            loginTime = null; // Reset for the next login block
+            loginTime = null; 
         }
     });
 
@@ -27,6 +36,7 @@ const calculateTotalWorkTime = (logs) => {
 
     const hours = Math.floor(totalMs / (1000 * 60 * 60));
     const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
+    
     return { text: `${hours}h ${minutes}m${activeString}`, ms: totalMs };
 };
 

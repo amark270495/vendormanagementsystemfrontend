@@ -3,6 +3,15 @@ import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
 
+// ✅ NEW: Helper to get the reliable local date string (YYYY-MM-DD)
+const getLocalDateString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const AssetManagementPage = () => {
     const { user } = useAuth();
     const { canManageAssets, canAssignAssets } = usePermissions();
@@ -13,22 +22,22 @@ const AssetManagementPage = () => {
     const [error, setError] = useState('');
 
     // Modal States
-    const [activeModal, setActiveModal] = useState(null); // 'assign', 'reassign', 'service', 'sessions', null
+    const [activeModal, setActiveModal] = useState(null); 
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [modalData, setModalData] = useState({});
     const [processing, setProcessing] = useState(false);
 
-    // ✅ NEW: Session Tracking States
+    // Session Tracking States
     const [assetSessions, setAssetSessions] = useState([]);
     const [loadingSessions, setLoadingSessions] = useState(false);
-    // Default the date picker to today's date
-    const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0]);
+    
+    // ✅ FIXED: Use local date instead of UTC to prevent timezone bugs
+    const [sessionDate, setSessionDate] = useState(getLocalDateString());
 
     // Fetch Data
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            // Fetch both Assets and Users simultaneously
             const [assetRes, userRes] = await Promise.all([
                 apiService.getAssets(user.userIdentifier),
                 apiService.getUsers(user.userIdentifier)
@@ -60,10 +69,11 @@ const AssetManagementPage = () => {
         setActiveModal(null);
         setSelectedAsset(null);
         setModalData({});
-        setAssetSessions([]); // Clear sessions on close
+        setAssetSessions([]);
+        // ✅ FIXED: Reset the filter so it doesn't leak into the next asset you click
+        setSessionDate(getLocalDateString());
     };
 
-    // ✅ NEW: Fetch and open the sessions log modal for a specific date
     const viewAssetSessions = async (asset, selectedDate = sessionDate) => {
         setSelectedAsset(asset);
         setActiveModal('sessions');
@@ -71,7 +81,6 @@ const AssetManagementPage = () => {
         setAssetSessions([]); 
         
         try {
-            // Pass the selectedDate to the API
             const response = await apiService.getAssetSessions(asset.rowKey, selectedDate, user.userIdentifier);
             if (response.data && response.data.success) {
                 setAssetSessions(response.data.sessions);
@@ -86,7 +95,6 @@ const AssetManagementPage = () => {
         }
     };
 
-    // ✅ NEW: Handle when the admin changes the date in the calendar picker
     const handleDateChange = (e) => {
         const newDate = e.target.value;
         setSessionDate(newDate);
@@ -95,7 +103,6 @@ const AssetManagementPage = () => {
         }
     };
 
-    // Action Execution
     const handleActionSubmit = async (e) => {
         e.preventDefault();
         setProcessing(true);
@@ -129,7 +136,6 @@ const AssetManagementPage = () => {
                 }, user.userIdentifier);
             }
 
-            // Refresh grid and close modal on success
             await fetchData();
             closeModal();
         } catch (err) {
@@ -139,7 +145,6 @@ const AssetManagementPage = () => {
         }
     };
 
-    // Delete Asset
     const handleDelete = async (assetId) => {
         if (!window.confirm(`Are you sure you want to permanently delete asset ${assetId}?`)) return;
         try {
@@ -150,7 +155,6 @@ const AssetManagementPage = () => {
         }
     };
 
-    // UI Helpers
     const getStatusBadge = (status) => {
         const styles = {
             'Available': 'bg-green-100 text-green-800',
@@ -195,7 +199,6 @@ const AssetManagementPage = () => {
                             assets.map((asset) => (
                                 <tr key={asset.rowKey} className="hover:bg-slate-50">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        {/* ✅ NEW: Clickable Asset Tag to view tracking logs */}
                                         <button 
                                             onClick={() => viewAssetSessions(asset)} 
                                             className="text-indigo-600 hover:text-indigo-900 hover:underline flex items-center gap-1 focus:outline-none"
@@ -241,7 +244,6 @@ const AssetManagementPage = () => {
             {/* ================= MODALS ================= */}
             {activeModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4">
-                    {/* Dynamically size the modal based on what is being displayed */}
                     <div className={`bg-white rounded-xl shadow-xl w-full p-6 ${activeModal === 'sessions' ? 'max-w-3xl' : 'max-w-md'}`}>
                         
                         <h3 className="text-lg font-bold text-slate-900 mb-4 border-b border-slate-100 pb-2">
@@ -251,7 +253,7 @@ const AssetManagementPage = () => {
                             {activeModal === 'sessions' && `Tracking Logs for ${selectedAsset.rowKey}`}
                         </h3>
                         
-                        {/* ✅ NEW: Sessions Table Display with Calendar Picker */}
+                        {/* Sessions Table Display with Calendar Picker */}
                         {activeModal === 'sessions' && (
                             <div className="space-y-4">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50 p-3 rounded-lg border border-slate-200 mb-4 gap-2">
@@ -262,16 +264,16 @@ const AssetManagementPage = () => {
                                         type="date" 
                                         value={sessionDate}
                                         onChange={handleDateChange}
-                                        max={new Date().toISOString().split('T')[0]} // Cannot pick future dates
+                                        max={getLocalDateString()} 
                                         className="px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium w-full sm:w-auto"
                                     />
                                 </div>
 
                                 {loadingSessions ? (
-                                    <div className="py-12 text-center text-slate-500 font-medium">Loading tracking data for {sessionDate}...</div>
+                                    <div className="py-12 text-center text-slate-500 font-medium">Loading tracking data...</div>
                                 ) : assetSessions.length === 0 ? (
                                     <div className="py-8 text-center text-slate-500 bg-slate-50 rounded-lg border border-slate-200">
-                                        No tracking data found for {sessionDate}.
+                                        No tracking data found for the selected filter.
                                     </div>
                                 ) : (
                                     <div className="max-h-96 overflow-y-auto border border-slate-200 rounded-lg shadow-inner">
@@ -293,7 +295,8 @@ const AssetManagementPage = () => {
                                                         </td>
                                                         <td className="px-4 py-3 text-slate-700">{session.userEmail}</td>
                                                         <td className="px-4 py-3 text-slate-500">
-                                                            {new Date(session.eventTimestamp).toLocaleString([], { timeStyle: 'medium' })}
+                                                            {/* ✅ FIXED: Added date formatting in case the filter is cleared to view all history */}
+                                                            {new Date(session.eventTimestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                                                         </td>
                                                     </tr>
                                                 ))}
