@@ -254,7 +254,11 @@ export const apiService = {
   getUserTrackingLogs: (targetUser, date, authenticatedUsername) => 
     apiClient.get('/getUserTrackingLogs', { params: { targetUser, date, authenticatedUsername } }),
   
-  // ✅ FIXED: Added `date` parameter to function signature and params payload
+  // ✅ Fetch merged asset session logs (Login/Logout, Idle, Usage history)
   getAssetSessions: (assetId, date, authenticatedUsername) =>
     apiClient.get('/getAssetSessions', { params: { assetId, date, authenticatedUsername } }),
+    
+  // ✅ NEW: Log asset sessions, idle time, and usage updates manually from the web portal
+  logAssetSession: (sessionData, authenticatedUsername) =>
+    apiClient.post('/logAssetSession', { ...sessionData, authenticatedUsername }),
 };
