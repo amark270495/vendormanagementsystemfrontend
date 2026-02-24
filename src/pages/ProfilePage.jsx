@@ -41,7 +41,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
     
     // States for reason input and weekend requests
     const [reason, setReason] = useState('');
-    const [reasonRequiredError, setReasonRequiredError] = useState(false);
     const [showWeekendRequest, setShowWeekendRequest] = useState(false);
 
     const todayDateString = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(new Date());
@@ -130,27 +129,21 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
         setReason('');
         setLocalError('');
         setLocalSuccess('');
-        setReasonRequiredError(false);
     }, [selectedDate, fetchStatusForDate]);
 
     const handleMark = async (requested) => {
         setActionLoading(true);
         setLocalError('');
         setLocalSuccess('');
-        setReasonRequiredError(false);
         try {
-            await onMarkAttendance(selectedDate, requested, reason); 
-            setReason(''); 
+            // Pass an empty string for the reason since it's no longer required for weekday shifts
+            await onMarkAttendance(selectedDate, requested, ""); 
             fetchStatusForDate(selectedDate);
             setLocalSuccess(`Attendance request for ${formatDateDisplay(selectedDate)} submitted.`);
              setTimeout(() => setLocalSuccess(''), 4000);
         } catch (err) {
             const errorMessage = err.message || "Failed to submit request.";
             setLocalError(errorMessage);
-            
-            if (errorMessage.toLowerCase().includes("reason") || errorMessage.toLowerCase().includes("shift")) {
-                setReasonRequiredError(true);
-            }
             
             if (errorMessage.toLowerCase().includes("approved leave")) {
                 setStatusInfo(prev => ({
@@ -173,16 +166,13 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
 
     const handleWeekendRequestSubmit = async () => {
         if (!reason.trim()) {
-            setReasonRequiredError(true);
             setLocalError("Please provide a business justification for working this weekend.");
             return;
         }
         setActionLoading(true);
         setLocalError('');
         setLocalSuccess('');
-        setReasonRequiredError(false);
         try {
-            // Note: Update your apiService in your local project to export this method if it doesn't already exist.
             await apiService.requestWeekendWork({
                 authenticatedUsername: authUser.userIdentifier,
                 date: selectedDate,
@@ -248,17 +238,7 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             </div>
              {canMarkSelectedDate && !isFutureDate && (
                  <div className="mt-4 flex flex-col items-center">
-                     {(selectedDate === todayDateString || reasonRequiredError) && (
-                         <div className="mb-4 w-full sm:w-3/4">
-                             <textarea
-                                 value={reason}
-                                 onChange={(e) => setReason(e.target.value)}
-                                 placeholder="Reason (Required if outside Texas shift 9:00 AM - 5:30 PM CT)"
-                                 className={`w-full px-3 py-2 text-sm border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${reasonRequiredError ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:ring-indigo-500'} bg-white`}
-                                 rows="2"
-                             />
-                         </div>
-                     )}
+                     {/* The weekday reason text area has been completely removed from here */}
                      <div className="space-x-3 flex justify-center w-full">
                          <button
                              onClick={() => handleMark('Present')}
@@ -276,7 +256,7 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                          </button>
                      </div>
                  </div>
-            )}
+             )}
 
              {statusInfo.isWeekend && !isFutureDate && !statusInfo.isLoading && statusInfo.status === 'Weekend' && (
                  <div className="mt-4 flex flex-col items-center">
@@ -292,9 +272,9 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                              <p className="text-sm text-gray-600 mb-2 font-medium">Why do you need to work this weekend?</p>
                              <textarea
                                  value={reason}
-                                 onChange={(e) => { setReason(e.target.value); setReasonRequiredError(false); }}
+                                 onChange={(e) => { setReason(e.target.value); }}
                                  placeholder="Enter business justification..."
-                                 className={`w-full px-3 py-2 text-sm border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${reasonRequiredError ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:ring-indigo-500'} bg-white mb-3`}
+                                 className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white mb-3`}
                                  rows="2"
                              />
                              <div className="flex space-x-3 w-full justify-center">
@@ -306,7 +286,7 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                                      {actionLoading ? <Spinner size="4" /> : 'Submit Request'}
                                  </button>
                                  <button
-                                     onClick={() => { setShowWeekendRequest(false); setReason(''); setLocalError(''); setReasonRequiredError(false); }}
+                                     onClick={() => { setShowWeekendRequest(false); setReason(''); setLocalError(''); }}
                                      className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-300 shadow transition"
                                      disabled={actionLoading}
                                  >
