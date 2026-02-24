@@ -253,14 +253,16 @@ export const apiService = {
     apiClient.post('/serviceRepairAsset', { ...serviceData, authenticatedUsername }),
   reassignAsset: (reassignData, authenticatedUsername) =>
     apiClient.post('/reassignAsset', { ...reassignData, authenticatedUsername }),
+  
+  // ✅ Fetch user tracking logs (now shift-aware based on the 'date' passed)
   getUserTrackingLogs: (targetUser, date, authenticatedUsername) => 
     apiClient.get('/getUserTrackingLogs', { params: { targetUser, date, authenticatedUsername } }),
   
-  // ✅ Fetch merged asset session logs (Login/Logout, Idle, Usage history)
+  // ✅ Fetch merged asset session logs 
   getAssetSessions: (assetId, date, authenticatedUsername) =>
     apiClient.get('/getAssetSessions', { params: { assetId, date, authenticatedUsername } }),
     
-  // ✅ NEW: Log asset sessions, idle time, and usage updates manually from the web portal
+  // ✅ Log asset sessions manually from the portal (now triggers IST shift logic in backend)
   logAssetSession: (sessionData, authenticatedUsername) =>
     apiClient.post('/logAssetSession', { ...sessionData, authenticatedUsername }),
 };
