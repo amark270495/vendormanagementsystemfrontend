@@ -8,6 +8,7 @@ import Modal from '../Modal';
 const calculateTotalWorkTime = (logs) => {
     if (!logs || logs.length === 0) return { text: "0h 0m", ms: 0 };
     
+    // 1. Sort logs chronologically to ensure logical flow
     const sortedLogs = [...logs].sort((a, b) => 
         new Date(a.eventTimestamp) - new Date(b.eventTimestamp)
     );
@@ -30,6 +31,7 @@ const calculateTotalWorkTime = (logs) => {
         }
     });
 
+    // Handle Active Sessions (if the user is currently working)
     let activeString = sessionStart ? " (Session Active)" : "";
 
     const hours = Math.floor(totalMs / (1000 * 60 * 60));
@@ -396,13 +398,18 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                                             trackingLogs.map(log => (
                                                 <tr key={log.id} className="hover:bg-slate-50">
                                                     <td className="px-4 py-3">
-                                                        <span className={`px-2 py-1 text-xs font-bold rounded-md ${['login', 'unlock', 'resume'].includes(log.actionType.toLowerCase()) ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
+                                                        <span className={`px-2 py-1 text-xs font-bold rounded-md ${['login', 'unlock', 'resume', 'active', 'wake'].includes(log.actionType.toLowerCase()) ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
                                                             {log.actionType}
                                                         </span>
                                                     </td>
                                                     <td className="px-4 py-3 text-right text-slate-600 font-medium">
-                                                        {/* ✅ Prioritize backend-formatted IST time */}
-                                                        {log.istTimeLogged || new Date(log.eventTimestamp).toLocaleTimeString([], { timeStyle: 'medium' })}
+                                                        {/* ✅ Prioritize backend-formatted IST time, with fallback for old records */}
+                                                        {log.istTimeLogged || new Date(log.eventTimestamp).toLocaleTimeString('en-IN', { 
+                                                            timeZone: 'Asia/Kolkata', 
+                                                            hour12: false, 
+                                                            hour: '2-digit', 
+                                                            minute: '2-digit' 
+                                                        })}
                                                     </td>
                                                 </tr>
                                             ))
