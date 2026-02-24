@@ -4,35 +4,33 @@ import { apiService } from '../../api/apiService';
 import Spinner from '../Spinner';
 import Modal from '../Modal';
 
-// --- Time Calculation Helper ---
+// --- Updated Time Calculation Helper (Shift & Wake Aware) ---
 const calculateTotalWorkTime = (logs) => {
     if (!logs || logs.length === 0) return { text: "0h 0m", ms: 0 };
     
-    // 1. Sort logs chronologically (oldest first) to guarantee login comes before logout
     const sortedLogs = [...logs].sort((a, b) => 
         new Date(a.eventTimestamp) - new Date(b.eventTimestamp)
     );
     
     let totalMs = 0;
-    let loginTime = null;
+    let sessionStart = null;
+
+    // ✅ Expanded triggers to include wake-from-sleep events
+    const startActions = ['login', 'unlock', 'resume', 'active', 'wake'];
+    const stopActions = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate'];
 
     sortedLogs.forEach(log => {
         const action = log.actionType.toLowerCase();
         
-        if (action === 'login' && !loginTime) {
-            // Only set loginTime if we aren't already in an active session
-            loginTime = new Date(log.eventTimestamp);
-        } else if (action === 'logout' && loginTime) {
-            // Calculate duration and reset for the next block
-            totalMs += (new Date(log.eventTimestamp) - loginTime);
-            loginTime = null; 
+        if (startActions.includes(action) && !sessionStart) {
+            sessionStart = new Date(log.eventTimestamp);
+        } else if (stopActions.includes(action) && sessionStart) {
+            totalMs += (new Date(log.eventTimestamp) - sessionStart);
+            sessionStart = null; 
         }
     });
 
-    let activeString = "";
-    if (loginTime) {
-        activeString = " (Session Active)";
-    }
+    let activeString = sessionStart ? " (Session Active)" : "";
 
     const hours = Math.floor(totalMs / (1000 * 60 * 60));
     const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
@@ -65,11 +63,11 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         const baseClasses = "relative transition-all duration-300 ease-out border flex flex-col justify-between p-1 overflow-hidden";
         
         if (leaveDaysSet.has(dateKey)) {
-            return { status: 'On Leave', label: 'Leave', color: `${baseClasses} bg-violet-100 border-violet-200 text-violet-700 hover:bg-violet-200 hover:border-violet-300 hover:shadow-sm`, badgeColor: "bg-white/80 text-violet-700 backdrop-blur-sm" };
+            return { status: 'On Leave', label: 'Leave', color: `${baseClasses} bg-violet-100 border-violet-200 text-violet-700 hover:bg-violet-200`, badgeColor: "bg-white/80 text-violet-700" };
         }
         
         if (holidays[dateKey]) {
-            return { status: 'Holiday', label: 'Holiday', color: `${baseClasses} bg-orange-100 border-orange-200 text-orange-800 hover:bg-orange-200 hover:shadow-sm`, badgeColor: "bg-white/80 text-orange-800 backdrop-blur-sm", description: holidays[dateKey] };
+            return { status: 'Holiday', label: 'Holiday', color: `${baseClasses} bg-orange-100 border-orange-200 text-orange-800 hover:bg-orange-200`, badgeColor: "bg-white/80 text-orange-800", description: holidays[dateKey] };
         }
 
         if (dayOfWeek === 0 || dayOfWeek === 6) {
@@ -83,18 +81,18 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             const requestObj = pendingRequestsMap[dateKey] || {};
             return {
                 status: 'Pending', label: requestedText,
-                color: `${baseClasses} bg-amber-100 border-2 border-dashed border-amber-300 text-amber-900 cursor-pointer hover:bg-amber-200 hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 z-10`,
-                badgeColor: "bg-amber-200 text-amber-900 font-bold border border-amber-300",
+                color: `${baseClasses} bg-amber-100 border-2 border-dashed border-amber-300 text-amber-900 cursor-pointer hover:bg-amber-200 hover:border-amber-500 hover:shadow-md`,
+                badgeColor: "bg-amber-200 text-amber-900 font-bold",
                 description: `Pending Approval: ${attendanceRecord.requestedStatus}`, isPending: true, request: requestObj 
             };
         }
         
         if (attendanceRecord) {
              if (attendanceRecord.status === 'Present') {
-                return { status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-100 border-emerald-200 text-emerald-800 hover:bg-emerald-200 hover:border-emerald-300 hover:shadow-sm`, badgeColor: "bg-white/80 text-emerald-800 backdrop-blur-sm" };
+                return { status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-100 border-emerald-200 text-emerald-800 hover:bg-emerald-200`, badgeColor: "bg-white/80 text-emerald-800" };
              }
              if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') {
-                return { status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-100 border-rose-200 text-rose-800 hover:bg-rose-200 hover:border-rose-300 hover:shadow-sm`, badgeColor: "bg-white/80 text-rose-800 backdrop-blur-sm" };
+                return { status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-100 border-rose-200 text-rose-800 hover:bg-rose-200`, badgeColor: "bg-white/80 text-rose-800" };
              }
         }
 
@@ -177,7 +175,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const [error, setError] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
 
-    // Review Panel State
     const [reviewingRequest, setReviewingRequest] = useState(null);
     const [trackingLogs, setTrackingLogs] = useState([]);
     const [logsLoading, setLogsLoading] = useState(false);
@@ -188,9 +185,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         try {
             const date = new Date(dateString + 'T00:00:00Z');
             return date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
-        } catch (e) {
-            return dateString;
-        }
+        } catch (e) { return dateString; }
     };
 
     const fetchDataForUserAndMonth = useCallback(async (monthDate) => {
@@ -217,15 +212,9 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             const pendingMap = {};
             if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendanceRecords)) {
                 attendanceRes.data.attendanceRecords.forEach(att => {
-                    const record = {
-                        ...att,
-                        username: att.username || selectedUsername,
-                        date: att.date || att.rowKey,
-                    };
+                    const record = { ...att, username: att.username || selectedUsername, date: att.date || att.rowKey };
                     attMap[record.date] = record;
-                    if (record.status === 'Pending') {
-                        pendingMap[record.date] = record;
-                    }
+                    if (record.status === 'Pending') pendingMap[record.date] = record;
                 });
             }
             setAttendanceData(attMap);
@@ -253,9 +242,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
 
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Failed to load calendar data.');
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     }, [user?.userIdentifier, selectedUsername]);
 
     useEffect(() => {
@@ -267,11 +254,9 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         }
     }, [isOpen, selectedUsername]);
 
-     useEffect(() => {
-        if (isOpen && selectedUsername) {
-             fetchDataForUserAndMonth(currentMonthDate);
-        }
-     }, [currentMonthDate]);
+    useEffect(() => {
+        if (isOpen && selectedUsername) { fetchDataForUserAndMonth(currentMonthDate); }
+    }, [currentMonthDate]);
 
     const changeMonth = (offset) => {
         setCurrentMonthDate(prev => {
@@ -292,6 +277,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             setLogsLoading(true);
             
             try {
+                // ✅ Now fetches grouped shift logs (e.g., 7PM Feb 23 to 4AM Feb 24)
                 const res = await apiService.getUserTrackingLogs(request.username, request.date, user.userIdentifier);
                 if (res.data && res.data.success) {
                     setTrackingLogs(res.data.logs);
@@ -304,9 +290,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 console.error("Failed to fetch tracking logs", err);
                 setTrackingLogs([]);
                 setTotalWorkTime("Error loading data");
-            } finally {
-                setLogsLoading(false);
-            }
+            } finally { setLogsLoading(false); }
         }
     };
 
@@ -335,19 +319,13 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 if (!remainingPendingInMonth && onApprovalComplete) {
                     onApprovalComplete(); 
                 }
-            } else {
-                throw new Error(response.data.message);
-            }
+            } else { throw new Error(response.data.message); }
         } catch (err) {
             setError(err.message || "Error processing request.");
-        } finally {
-            setActionLoading(false);
-        }
+        } finally { setActionLoading(false); }
     };
 
     const monthName = currentMonthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-
-    // Determine if we have any shift validation OR reason to show
     const hasExplanationDetails = reviewingRequest && (reviewingRequest.userReason || (reviewingRequest.shiftValidation && reviewingRequest.shiftValidation !== 'Within Shift'));
 
     return (
@@ -364,7 +342,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                     <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
                         <div>
                             <h3 className="text-xl font-bold text-slate-800">Verifying Request for {formatDate(reviewingRequest.date)}</h3>
-                            <p className="text-sm text-slate-500 mt-1">Requested Status: <span className="font-semibold text-amber-600">{reviewingRequest.requestedStatus}</span></p>
+                            <p className="text-sm text-slate-500 mt-1">Status: <span className="font-semibold text-amber-600">{reviewingRequest.requestedStatus}</span></p>
                         </div>
                         <button onClick={() => setReviewingRequest(null)} className="text-slate-400 hover:text-slate-600 text-sm font-medium underline">
                             &larr; Back to Calendar
@@ -373,25 +351,17 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
 
                     {logsLoading ? (
                          <div className="flex flex-col justify-center items-center h-48 text-slate-400">
-                             <Spinner size="8"/>
-                             <p className="mt-3 text-sm font-medium animate-pulse">Loading activity logs for {formatDate(reviewingRequest.date)}...</p>
+                             <Spinner size="8"/><p className="mt-3 text-sm font-medium animate-pulse">Loading activity logs...</p>
                          </div>
                     ) : (
                         <div className="space-y-6">
-                            {/* ✅ UPDATED: Display User Reason and/or Shift Validation even if reason is empty */}
                             {hasExplanationDetails && (
                                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-sm">
                                     <div className="flex items-center gap-2 mb-2">
                                         <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                         <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">Shift & Explanation Details</p>
                                     </div>
-                                    
-                                    {reviewingRequest.userReason ? (
-                                        <p className="text-sm text-amber-900 italic leading-relaxed mb-2">"{reviewingRequest.userReason}"</p>
-                                    ) : (
-                                        <p className="text-sm text-amber-800 italic leading-relaxed mb-2 opacity-80">No manual explanation provided.</p>
-                                    )}
-
+                                    <p className="text-sm text-amber-900 italic leading-relaxed mb-2">"{reviewingRequest.userReason || 'No manual explanation provided.'}"</p>
                                     {reviewingRequest.shiftValidation && reviewingRequest.shiftValidation !== 'Within Shift' && (
                                         <p className="text-[11px] text-amber-700 mt-1 font-medium bg-amber-100/50 inline-block px-2 py-1 rounded border border-amber-200/50">
                                             System Flag: {reviewingRequest.shiftValidation}
@@ -407,9 +377,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                                 </div>
                                 <div className="text-right">
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Source</p>
-                                    <p className="text-sm font-bold text-slate-800 mt-1">
-                                        {reviewingRequest.attendanceSource || 'Manual Entry'}
-                                    </p>
+                                    <p className="text-sm font-bold text-slate-800 mt-1">{reviewingRequest.attendanceSource || 'Manual Entry'}</p>
                                 </div>
                             </div>
 
@@ -418,22 +386,23 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                                     <thead className="bg-slate-100 sticky top-0">
                                         <tr>
                                             <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Event</th>
-                                            <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Timestamp (Local)</th>
+                                            <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Timestamp (IST)</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-slate-100 text-sm">
                                         {trackingLogs.length === 0 ? (
-                                            <tr><td colSpan="2" className="px-4 py-6 text-center text-slate-500 italic">No tracking logs found for this date.</td></tr>
+                                            <tr><td colSpan="2" className="px-4 py-6 text-center text-slate-500 italic">No tracking logs found.</td></tr>
                                         ) : (
                                             trackingLogs.map(log => (
                                                 <tr key={log.id} className="hover:bg-slate-50">
                                                     <td className="px-4 py-3">
-                                                        <span className={`px-2 py-1 text-xs font-bold rounded-md ${log.actionType.toLowerCase() === 'login' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
+                                                        <span className={`px-2 py-1 text-xs font-bold rounded-md ${['login', 'unlock', 'resume'].includes(log.actionType.toLowerCase()) ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
                                                             {log.actionType}
                                                         </span>
                                                     </td>
                                                     <td className="px-4 py-3 text-right text-slate-600 font-medium">
-                                                        {new Date(log.eventTimestamp).toLocaleTimeString([], { timeStyle: 'medium' })}
+                                                        {/* ✅ Prioritize backend-formatted IST time */}
+                                                        {log.istTimeLogged || new Date(log.eventTimestamp).toLocaleTimeString([], { timeStyle: 'medium' })}
                                                     </td>
                                                 </tr>
                                             ))
@@ -443,10 +412,10 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
-                                <button onClick={() => handleConfirmAction('Rejected')} disabled={actionLoading} className="px-5 py-2.5 bg-rose-100 text-rose-700 text-sm font-semibold rounded-lg hover:bg-rose-200 transition disabled:opacity-50">
+                                <button onClick={() => handleConfirmAction('Rejected')} disabled={actionLoading} className="px-5 py-2.5 bg-rose-100 text-rose-700 text-sm font-semibold rounded-lg hover:bg-rose-200 disabled:opacity-50">
                                     Reject Request
                                 </button>
-                                <button onClick={() => handleConfirmAction('Approved')} disabled={actionLoading} className="px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 shadow transition disabled:opacity-50 flex items-center">
+                                <button onClick={() => handleConfirmAction('Approved')} disabled={actionLoading} className="px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 shadow disabled:opacity-50 flex items-center">
                                     {actionLoading ? <Spinner size="4" /> : 'Approve Request'}
                                 </button>
                             </div>
@@ -456,18 +425,14 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             ) : (
                 <>
                     <div className="flex justify-between items-center mb-6 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
-                        <button onClick={() => changeMonth(-1)} className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors disabled:opacity-30" disabled={loading || actionLoading}><ChevronLeftIcon /></button>
+                        <button onClick={() => changeMonth(-1)} className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 disabled:opacity-30" disabled={loading || actionLoading}><ChevronLeftIcon /></button>
                         <h3 className="text-lg font-bold text-slate-800 tracking-tight">{monthName}</h3>
-                        <button onClick={() => changeMonth(1)} className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors disabled:opacity-30" disabled={loading || actionLoading}><ChevronRightIcon /></button>
+                        <button onClick={() => changeMonth(1)} className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 disabled:opacity-30" disabled={loading || actionLoading}><ChevronRightIcon /></button>
                     </div>
 
                     {loading ? (
                         <div className="flex flex-col justify-center items-center h-[28rem] text-slate-400">
-                            <Spinner size="10"/><p className="mt-3 text-sm font-medium animate-pulse">Loading calendar data...</p>
-                        </div>
-                    ) : actionLoading ? (
-                         <div className="flex flex-col justify-center items-center h-[28rem] text-slate-400">
-                            <Spinner size="10"/><p className="mt-3 text-sm font-medium animate-pulse text-indigo-500">Processing approval...</p>
+                            <Spinner size="10"/><p className="mt-3 text-sm font-medium animate-pulse">Loading data...</p>
                         </div>
                     ) : (
                         <div className="min-h-[28rem]">
@@ -476,7 +441,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                     )}
 
                     <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
-                        <button onClick={onClose} className="px-6 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition shadow hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2">
+                        <button onClick={onClose} className="px-6 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition shadow">
                             Close Review
                         </button>
                     </div>
