@@ -347,6 +347,9 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
 
     const monthName = currentMonthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
+    // Determine if we have any shift validation OR reason to show
+    const hasExplanationDetails = reviewingRequest && (reviewingRequest.userReason || (reviewingRequest.shiftValidation && reviewingRequest.shiftValidation !== 'Within Shift'));
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Attendance Review: ${selectedUsername || 'Unknown'}`} size="3xl">
             {error && (
@@ -375,16 +378,24 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                          </div>
                     ) : (
                         <div className="space-y-6">
-                            {/* ✅ NEW: Display User Reason (if outside shift) */}
-                            {reviewingRequest.userReason && (
+                            {/* ✅ UPDATED: Display User Reason and/or Shift Validation even if reason is empty */}
+                            {hasExplanationDetails && (
                                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-sm">
-                                    <div className="flex items-center gap-2 mb-1">
+                                    <div className="flex items-center gap-2 mb-2">
                                         <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                        <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">User Explanation (Outside Shift)</p>
+                                        <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">Shift & Explanation Details</p>
                                     </div>
-                                    <p className="text-sm text-amber-900 italic leading-relaxed">"{reviewingRequest.userReason}"</p>
-                                    {reviewingRequest.shiftValidation && (
-                                        <p className="text-[10px] text-amber-600 mt-2 font-medium">Validated as: {reviewingRequest.shiftValidation}</p>
+                                    
+                                    {reviewingRequest.userReason ? (
+                                        <p className="text-sm text-amber-900 italic leading-relaxed mb-2">"{reviewingRequest.userReason}"</p>
+                                    ) : (
+                                        <p className="text-sm text-amber-800 italic leading-relaxed mb-2 opacity-80">No manual explanation provided.</p>
+                                    )}
+
+                                    {reviewingRequest.shiftValidation && reviewingRequest.shiftValidation !== 'Within Shift' && (
+                                        <p className="text-[11px] text-amber-700 mt-1 font-medium bg-amber-100/50 inline-block px-2 py-1 rounded border border-amber-200/50">
+                                            System Flag: {reviewingRequest.shiftValidation}
+                                        </p>
                                     )}
                                 </div>
                             )}
