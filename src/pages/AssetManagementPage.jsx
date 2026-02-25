@@ -7,8 +7,9 @@ import { apiService } from '../api/apiService';
 const LaptopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
 const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-500 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
+const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 
-// ✅ NEW HELPER: Gets the IST Date String aligned with the 12:00 PM Noon Night Shift Cutoff
+// Helper: Gets the IST Date String aligned with the 12:00 PM Noon Night Shift Cutoff
 const getISTShiftDateString = () => {
     const d = new Date();
     const istFormatter = new Intl.DateTimeFormat('en-US', {
@@ -31,6 +32,22 @@ const getISTShiftDateString = () => {
     }).format(d);
 };
 
+// ✅ NEW HELPER: Formats timestamp securely into 12-hour AM/PM format
+const formatLogTime = (isoString) => {
+    if (!isoString) return '-';
+    try {
+        const dateObj = new Date(isoString);
+        return dateObj.toLocaleTimeString('en-US', {
+            timeZone: 'Asia/Kolkata',
+            hour12: true, // 12-hour AM/PM format (prevents the 24:xx bug completely)
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (e) {
+        return '-';
+    }
+};
+
 const AssetManagementPage = () => {
     const { user } = useAuth();
     const { canManageAssets, canAssignAssets } = usePermissions();
@@ -48,7 +65,6 @@ const AssetManagementPage = () => {
     const [assetSessions, setAssetSessions] = useState([]);
     const [loadingSessions, setLoadingSessions] = useState(false);
     
-    // ✅ Apply the new shift logic helper here
     const [sessionDate, setSessionDate] = useState(getISTShiftDateString());
     const [activeTab, setActiveTab] = useState('all');
 
@@ -86,7 +102,6 @@ const AssetManagementPage = () => {
         setModalData({});
         setAssetSessions([]);
         setActiveTab('all');
-        // Reset to shift date when closing
         setSessionDate(getISTShiftDateString());
     };
 
@@ -106,11 +121,10 @@ const AssetManagementPage = () => {
         }
     };
 
-    // Calculate working hours with expanded triggers (Wake/Active/Unlock)
+    // Calculate working hours with expanded triggers
     const formattedWorkingTime = useMemo(() => {
         if (!assetSessions.length) return '0h 0m';
 
-        // Include wake and active events from PowerShell or usage updates
         const startTriggers = ['login', 'unlock', 'resume', 'active', 'wake'];
         const endTriggers = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate'];
 
@@ -329,8 +343,9 @@ const AssetManagementPage = () => {
                                                         <tr key={idx} className="hover:bg-indigo-50/20 transition-colors">
                                                             <td className="px-5 py-3.5">{getEventBadge(session.actionType, session.eventCategory)}</td>
                                                             <td className="px-5 py-3.5 text-slate-700 font-bold">{session.userEmail}</td>
-                                                            <td className="px-5 py-3.5 text-indigo-600 font-bold">
-                                                                {session.istTimeLogged || new Date(session.eventTimestamp).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit' })}
+                                                            <td className="px-5 py-3.5 text-indigo-600 font-bold tracking-wide">
+                                                                {/* ✅ FIXED: Clean 12-hour AM/PM format injected here */}
+                                                                {formatLogTime(session.eventTimestamp)}
                                                             </td>
                                                             <td className="px-5 py-3.5 text-slate-600 italic font-medium">{session.workDoneNotes || '-'}</td>
                                                         </tr>
@@ -423,8 +438,5 @@ const AssetManagementPage = () => {
         </div>
     );
 };
-
-// --- Missing Icon Definition for Action Modals ---
-const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 
 export default AssetManagementPage;
