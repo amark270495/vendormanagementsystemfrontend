@@ -16,7 +16,7 @@ const calculateTotalWorkTime = (logs) => {
     let totalMs = 0;
     let sessionStart = null;
 
-    // ✅ Expanded triggers to include wake-from-sleep events
+    // Expanded triggers to include wake-from-sleep events
     const startActions = ['login', 'unlock', 'resume', 'active', 'wake'];
     const stopActions = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate'];
 
@@ -31,8 +31,12 @@ const calculateTotalWorkTime = (logs) => {
         }
     });
 
-    // Handle Active Sessions (if the user is currently working)
-    let activeString = sessionStart ? " (Session Active)" : "";
+    // ✅ FIXED: Handle Active Sessions by adding time up to the current moment
+    let activeString = "";
+    if (sessionStart) {
+        totalMs += Math.max(0, new Date() - sessionStart);
+        activeString = " (Active Now)";
+    }
 
     const hours = Math.floor(totalMs / (1000 * 60 * 60));
     const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
@@ -40,13 +44,11 @@ const calculateTotalWorkTime = (logs) => {
     return { text: `${hours}h ${minutes}m${activeString}`, ms: totalMs };
 };
 
-// Inline SVGs for UI controls
-const ChevronLeftIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-);
-const ChevronRightIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-);
+// --- Icons ---
+const ChevronLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>;
+const ChevronRightIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>;
+const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
 
 const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, onDayClick, pendingRequestsMap }) => {
 
@@ -62,18 +64,18 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         const today = new Date(); 
         today.setUTCHours(0,0,0,0);
 
-        const baseClasses = "relative transition-all duration-300 ease-out border flex flex-col justify-between p-1 overflow-hidden";
+        const baseClasses = "relative transition-all duration-300 ease-out border flex flex-col justify-between p-1.5 overflow-hidden shadow-sm";
         
         if (leaveDaysSet.has(dateKey)) {
-            return { status: 'On Leave', label: 'Leave', color: `${baseClasses} bg-violet-100 border-violet-200 text-violet-700 hover:bg-violet-200`, badgeColor: "bg-white/80 text-violet-700" };
+            return { status: 'On Leave', label: 'Leave', color: `${baseClasses} bg-violet-50 border-violet-200 text-violet-700`, badgeColor: "bg-violet-200 text-violet-800" };
         }
         
         if (holidays[dateKey]) {
-            return { status: 'Holiday', label: 'Holiday', color: `${baseClasses} bg-orange-100 border-orange-200 text-orange-800 hover:bg-orange-200`, badgeColor: "bg-white/80 text-orange-800", description: holidays[dateKey] };
+            return { status: 'Holiday', label: 'Holiday', color: `${baseClasses} bg-orange-50 border-orange-200 text-orange-800`, badgeColor: "bg-orange-200 text-orange-800", description: holidays[dateKey] };
         }
 
         if (dayOfWeek === 0 || dayOfWeek === 6) {
-            return { status: 'Weekend', label: 'WKND', color: `${baseClasses} bg-slate-50 border-slate-100 text-slate-400`, badgeColor: "hidden" };
+            return { status: 'Weekend', label: 'WKND', color: `${baseClasses} bg-slate-50 border-slate-200 text-slate-400`, badgeColor: "hidden" };
         }
 
         const attendanceRecord = attendanceData[dateKey];
@@ -83,26 +85,26 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             const requestObj = pendingRequestsMap[dateKey] || {};
             return {
                 status: 'Pending', label: requestedText,
-                color: `${baseClasses} bg-amber-100 border-2 border-dashed border-amber-300 text-amber-900 cursor-pointer hover:bg-amber-200 hover:border-amber-500 hover:shadow-md`,
-                badgeColor: "bg-amber-200 text-amber-900 font-bold",
+                color: `${baseClasses} bg-amber-50 border-2 border-dashed border-amber-400 text-amber-900 cursor-pointer hover:bg-amber-100 hover:border-amber-500 hover:shadow-md transform hover:-translate-y-0.5`,
+                badgeColor: "bg-amber-400 text-amber-900 font-extrabold shadow-sm",
                 description: `Pending Approval: ${attendanceRecord.requestedStatus}`, isPending: true, request: requestObj 
             };
         }
         
         if (attendanceRecord) {
              if (attendanceRecord.status === 'Present') {
-                return { status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-100 border-emerald-200 text-emerald-800 hover:bg-emerald-200`, badgeColor: "bg-white/80 text-emerald-800" };
+                return { status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-50 border-emerald-200 text-emerald-800`, badgeColor: "bg-emerald-200 text-emerald-900" };
              }
              if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') {
-                return { status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-100 border-rose-200 text-rose-800 hover:bg-rose-200`, badgeColor: "bg-white/80 text-rose-800" };
+                return { status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-800`, badgeColor: "bg-rose-200 text-rose-900" };
              }
         }
 
         if (date < today) {
-            return { status: 'Absent (Unmarked)', label: 'N/A', color: `${baseClasses} bg-gray-100 border-gray-200 text-gray-500 italic`, badgeColor: "bg-gray-200 text-gray-600" };
+            return { status: 'Absent (Unmarked)', label: 'N/A', color: `${baseClasses} bg-slate-100/50 border-slate-200 text-slate-500 italic`, badgeColor: "bg-slate-200 text-slate-600" };
         }
 
-        return { status: 'Future', label: '', color: `${baseClasses} bg-white border-slate-100 text-slate-300`, badgeColor: "hidden" };
+        return { status: 'Future', label: '', color: `${baseClasses} bg-white border-slate-100 text-slate-300 shadow-none`, badgeColor: "hidden" };
     };
 
     const calendarGrid = useMemo(() => {
@@ -130,29 +132,29 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         <div className="select-none">
             <div className="grid grid-cols-7 gap-2 mb-3">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="text-center text-[11px] font-bold text-slate-400 uppercase tracking-widest">{day}</div>
+                    <div key={day} className="text-center text-xs font-extrabold text-slate-400 uppercase tracking-widest">{day}</div>
                 ))}
             </div>
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-3">
                 {calendarGrid.flat().map((cell, index) => (
-                    <div key={index} className={`h-16 rounded-xl ${cell.day === null ? 'invisible' : cell.statusInfo.color}`}
+                    <div key={index} className={`h-20 sm:h-24 rounded-2xl ${cell.day === null ? 'invisible' : cell.statusInfo.color}`}
                         title={cell.statusInfo.description || cell.statusInfo.status}
                         onClick={() => cell.statusInfo.isPending && onDayClick(cell.statusInfo.request)} 
                     >
                         {cell.day !== null && (
                             <>
                                 <div className="flex justify-between items-start w-full px-1">
-                                    <span className={`text-sm ${cell.statusInfo.isPending ? 'font-bold text-amber-900' : 'font-medium'}`}>{cell.day}</span>
+                                    <span className={`text-sm sm:text-base ${cell.statusInfo.isPending ? 'font-black text-amber-900' : 'font-bold'}`}>{cell.day}</span>
                                     {cell.statusInfo.isPending && (
-                                        <span className="flex h-2 w-2 relative mt-1 mr-1">
+                                        <span className="flex h-2.5 w-2.5 relative mt-1 mr-1">
                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex justify-center w-full mb-0.5">
+                                <div className="flex justify-center w-full mb-1 mt-auto">
                                     {cell.statusInfo.label && (
-                                        <span className={`text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-full shadow-sm ${cell.statusInfo.badgeColor || 'bg-white/50 border border-black/5'}`}>
+                                        <span className={`text-[10px] sm:text-xs uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${cell.statusInfo.badgeColor || 'bg-white/50 border border-black/5'}`}>
                                             {cell.statusInfo.label}
                                         </span>
                                     )}
@@ -279,7 +281,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             setLogsLoading(true);
             
             try {
-                // ✅ Now fetches grouped shift logs (e.g., 7PM Feb 23 to 4AM Feb 24)
+                // Fetches grouped shift logs based on the date
                 const res = await apiService.getUserTrackingLogs(request.username, request.date, user.userIdentifier);
                 if (res.data && res.data.success) {
                     setTrackingLogs(res.data.logs);
@@ -327,132 +329,182 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         } finally { setActionLoading(false); }
     };
 
+    const getEventBadge = (actionType) => {
+        const action = actionType.toLowerCase();
+        if (['login', 'unlock', 'resume', 'active', 'wake'].includes(action)) 
+            return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">{actionType}</span>;
+        if (['logout', 'logoff', 'lock', 'sleep', 'hibernate'].includes(action)) 
+            return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-slate-200 text-slate-700 border border-slate-300">{actionType}</span>;
+        if (['idle'].includes(action)) 
+            return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-amber-100 text-amber-800 border border-amber-200">{actionType}</span>;
+        return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-gray-100 text-gray-700 border border-gray-200">{actionType}</span>;
+    };
+
     const monthName = currentMonthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
     const hasExplanationDetails = reviewingRequest && (reviewingRequest.userReason || (reviewingRequest.shiftValidation && reviewingRequest.shiftValidation !== 'Within Shift'));
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Attendance Review: ${selectedUsername || 'Unknown'}`} size="3xl">
+        <Modal isOpen={isOpen} onClose={onClose} title={`Attendance Review: ${selectedUsername || 'Unknown'}`} size="4xl">
             {error && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg mb-4 text-sm flex items-center shadow-sm">
+                <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 px-4 py-3 rounded-r-lg mb-5 text-sm flex items-center shadow-sm font-medium">
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     {error}
                 </div>
             )}
 
             {reviewingRequest ? (
-                <div className="bg-white rounded-xl border border-slate-200 p-6 animate-fadeIn">
-                    <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
+                <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm animate-fadeIn relative overflow-hidden">
+                    {/* Decorative background element */}
+                    <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-indigo-50 rounded-full blur-3xl opacity-60"></div>
+
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-slate-100 pb-5 relative z-10 gap-4">
                         <div>
-                            <h3 className="text-xl font-bold text-slate-800">Verifying Request for {formatDate(reviewingRequest.date)}</h3>
-                            <p className="text-sm text-slate-500 mt-1">Status: <span className="font-semibold text-amber-600">{reviewingRequest.requestedStatus}</span></p>
+                            <h3 className="text-2xl font-extrabold text-slate-800">Verify Shift: {formatDate(reviewingRequest.date)}</h3>
+                            <div className="flex items-center gap-2 mt-2">
+                                <span className="text-sm font-semibold text-slate-500">Requested Status:</span>
+                                <span className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold uppercase tracking-wider rounded-full border border-amber-200">
+                                    {reviewingRequest.requestedStatus}
+                                </span>
+                            </div>
                         </div>
-                        <button onClick={() => setReviewingRequest(null)} className="text-slate-400 hover:text-slate-600 text-sm font-medium underline">
-                            &larr; Back to Calendar
+                        <button onClick={() => setReviewingRequest(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition-colors border border-slate-200 shadow-sm flex items-center">
+                            <ChevronLeftIcon /> Back to Calendar
                         </button>
                     </div>
 
                     {logsLoading ? (
-                         <div className="flex flex-col justify-center items-center h-48 text-slate-400">
-                             <Spinner size="8"/><p className="mt-3 text-sm font-medium animate-pulse">Loading activity logs...</p>
+                         <div className="flex flex-col justify-center items-center h-64 text-slate-400 relative z-10">
+                             <Spinner size="10"/><p className="mt-4 text-sm font-bold tracking-wide uppercase animate-pulse">Loading activity logs...</p>
                          </div>
                     ) : (
-                        <div className="space-y-6">
-                            {hasExplanationDetails && (
-                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-sm">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                        <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">Shift & Explanation Details</p>
+                        <div className="space-y-8 relative z-10">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Time Calculation Card */}
+                                <div className="bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 rounded-2xl p-6 flex flex-col justify-center shadow-sm">
+                                    <div className="flex items-center text-indigo-500 mb-2">
+                                        <ClockIcon />
+                                        <p className="text-xs font-black uppercase tracking-wider">Calculated Shift Time</p>
                                     </div>
-                                    <p className="text-sm text-amber-900 italic leading-relaxed mb-2">"{reviewingRequest.userReason || 'No manual explanation provided.'}"</p>
-                                    {reviewingRequest.shiftValidation && reviewingRequest.shiftValidation !== 'Within Shift' && (
-                                        <p className="text-[11px] text-amber-700 mt-1 font-medium bg-amber-100/50 inline-block px-2 py-1 rounded border border-amber-200/50">
-                                            System Flag: {reviewingRequest.shiftValidation}
-                                        </p>
-                                    )}
+                                    <p className="text-3xl font-black text-indigo-700 mt-1">{totalWorkTime}</p>
+                                    <p className="text-xs font-medium text-slate-500 mt-2">Source: <span className="font-bold text-slate-700">{reviewingRequest.attendanceSource || 'Manual Entry'}</span></p>
                                 </div>
-                            )}
 
-                            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Calculated Work Time</p>
-                                    <p className="text-2xl font-black text-indigo-700 mt-1">{totalWorkTime}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Source</p>
-                                    <p className="text-sm font-bold text-slate-800 mt-1">{reviewingRequest.attendanceSource || 'Manual Entry'}</p>
-                                </div>
+                                {/* Details / Flags Card */}
+                                {hasExplanationDetails ? (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm flex flex-col justify-center">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            <p className="text-xs font-black text-amber-700 uppercase tracking-wider">Shift Context & Flags</p>
+                                        </div>
+                                        <p className="text-sm text-amber-900 font-medium italic leading-relaxed bg-amber-100/50 p-3 rounded-lg border border-amber-200/50">
+                                            "{reviewingRequest.userReason || 'No manual explanation provided by user.'}"
+                                        </p>
+                                        {reviewingRequest.shiftValidation && reviewingRequest.shiftValidation !== 'Within Shift' && (
+                                            <div className="mt-3 inline-block">
+                                                <span className="text-xs text-rose-700 font-bold bg-rose-100 px-3 py-1.5 rounded-lg border border-rose-200 shadow-sm flex items-center gap-1.5">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                                    {reviewingRequest.shiftValidation}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col items-center justify-center text-center shadow-sm">
+                                        <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center mb-2">
+                                            <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-700">No Flags Detected</p>
+                                        <p className="text-xs text-slate-500 mt-1">Shift looks normal.</p>
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-lg shadow-sm">
-                                <table className="min-w-full divide-y divide-slate-200">
-                                    <thead className="bg-slate-100 sticky top-0">
-                                        <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Event</th>
-                                            <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Timestamp (IST)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-slate-100 text-sm">
-                                        {trackingLogs.length === 0 ? (
-                                            <tr><td colSpan="2" className="px-4 py-6 text-center text-slate-500 italic">No tracking logs found.</td></tr>
-                                        ) : (
-                                            trackingLogs.map(log => (
-                                                <tr key={log.id} className="hover:bg-slate-50">
-                                                    <td className="px-4 py-3">
-                                                        <span className={`px-2 py-1 text-xs font-bold rounded-md ${['login', 'unlock', 'resume', 'active', 'wake'].includes(log.actionType.toLowerCase()) ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
-                                                            {log.actionType}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right text-slate-600 font-medium">
-                                                        {/* ✅ Prioritize backend-formatted IST time, with fallback for old records */}
-                                                        {log.istTimeLogged || new Date(log.eventTimestamp).toLocaleTimeString('en-IN', { 
-                                                            timeZone: 'Asia/Kolkata', 
-                                                            hour12: false, 
-                                                            hour: '2-digit', 
-                                                            minute: '2-digit' 
-                                                        })}
+                            <div className="border border-slate-200 rounded-2xl shadow-sm bg-white overflow-hidden">
+                                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center">
+                                    <ActivityIcon />
+                                    <h4 className="text-sm font-bold text-slate-700 ml-2 uppercase tracking-wider">Device Activity Log</h4>
+                                </div>
+                                <div className="max-h-64 overflow-y-auto">
+                                    <table className="min-w-full divide-y divide-slate-100">
+                                        <thead className="bg-white sticky top-0 shadow-sm z-10">
+                                            <tr>
+                                                <th className="px-6 py-3.5 text-left text-xs font-black text-slate-400 uppercase w-1/3">Event Action</th>
+                                                <th className="px-6 py-3.5 text-right text-xs font-black text-slate-400 uppercase w-2/3">Timestamp (IST)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50 text-sm">
+                                            {trackingLogs.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="2" className="px-6 py-10 text-center">
+                                                        <p className="text-slate-400 font-bold mb-1">No Activity Found</p>
+                                                        <p className="text-xs text-slate-400">The user did not log any asset events for this shift.</p>
                                                     </td>
                                                 </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
+                                            ) : (
+                                                trackingLogs.map(log => (
+                                                    <tr key={log.id} className="hover:bg-indigo-50/30 transition-colors">
+                                                        <td className="px-6 py-3">
+                                                            {getEventBadge(log.actionType)}
+                                                        </td>
+                                                        <td className="px-6 py-3 text-right text-slate-600 font-bold tracking-wide">
+                                                            {log.istTimeLogged || new Date(log.eventTimestamp).toLocaleTimeString('en-IN', { 
+                                                                timeZone: 'Asia/Kolkata', 
+                                                                hour12: false, 
+                                                                hour: '2-digit', 
+                                                                minute: '2-digit' 
+                                                            })}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
-                                <button onClick={() => handleConfirmAction('Rejected')} disabled={actionLoading} className="px-5 py-2.5 bg-rose-100 text-rose-700 text-sm font-semibold rounded-lg hover:bg-rose-200 disabled:opacity-50">
-                                    Reject Request
+                            <div className="flex justify-end gap-4 pt-6 border-t border-slate-100">
+                                <button 
+                                    onClick={() => handleConfirmAction('Rejected')} 
+                                    disabled={actionLoading} 
+                                    className="px-6 py-3 bg-white border border-rose-200 text-rose-700 text-sm font-bold rounded-xl hover:bg-rose-50 hover:shadow-sm disabled:opacity-50 transition-all min-w-[120px]"
+                                >
+                                    Reject Shift
                                 </button>
-                                <button onClick={() => handleConfirmAction('Approved')} disabled={actionLoading} className="px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 shadow disabled:opacity-50 flex items-center">
-                                    {actionLoading ? <Spinner size="4" /> : 'Approve Request'}
+                                <button 
+                                    onClick={() => handleConfirmAction('Approved')} 
+                                    disabled={actionLoading} 
+                                    className="px-6 py-3 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-500 shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 flex items-center justify-center min-w-[150px] transition-all"
+                                >
+                                    {actionLoading ? <Spinner size="5" /> : 'Approve Shift'}
                                 </button>
                             </div>
                         </div>
                     )}
                 </div>
             ) : (
-                <>
-                    <div className="flex justify-between items-center mb-6 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
-                        <button onClick={() => changeMonth(-1)} className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 disabled:opacity-30" disabled={loading || actionLoading}><ChevronLeftIcon /></button>
-                        <h3 className="text-lg font-bold text-slate-800 tracking-tight">{monthName}</h3>
-                        <button onClick={() => changeMonth(1)} className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 disabled:opacity-30" disabled={loading || actionLoading}><ChevronRightIcon /></button>
+                <div className="bg-slate-50/50 p-2 sm:p-6 rounded-2xl">
+                    <div className="flex justify-between items-center mb-6 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
+                        <button onClick={() => changeMonth(-1)} className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors disabled:opacity-30" disabled={loading || actionLoading}><ChevronLeftIcon /></button>
+                        <h3 className="text-xl font-black text-slate-800 tracking-tight">{monthName}</h3>
+                        <button onClick={() => changeMonth(1)} className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors disabled:opacity-30" disabled={loading || actionLoading}><ChevronRightIcon /></button>
                     </div>
 
                     {loading ? (
-                        <div className="flex flex-col justify-center items-center h-[28rem] text-slate-400">
-                            <Spinner size="10"/><p className="mt-3 text-sm font-medium animate-pulse">Loading data...</p>
+                        <div className="flex flex-col justify-center items-center h-[28rem] text-slate-400 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                            <Spinner size="10"/><p className="mt-4 text-sm font-bold uppercase tracking-widest animate-pulse">Loading Calendar...</p>
                         </div>
                     ) : (
-                        <div className="min-h-[28rem]">
+                        <div className="min-h-[28rem] bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm">
                             <CalendarDisplay monthDate={currentMonthDate} attendanceData={attendanceData} holidays={holidays} leaveDaysSet={leaveDaysSet} onDayClick={handleDayClick} pendingRequestsMap={pendingRequestsMap} />
                         </div>
                     )}
 
-                    <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
-                        <button onClick={onClose} className="px-6 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition shadow">
-                            Close Review
+                    <div className="mt-8 flex justify-end">
+                        <button onClick={onClose} className="px-8 py-3 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-700 hover:shadow-md transition-all">
+                            Close Dashboard
                         </button>
                     </div>
-                </>
+                </div>
             )}
         </Modal>
     );
