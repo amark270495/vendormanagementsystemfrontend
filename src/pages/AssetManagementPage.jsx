@@ -9,43 +9,26 @@ const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-500 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 
-// Helper: Gets the IST Date String aligned with the 12:00 PM Noon Night Shift Cutoff
 const getISTShiftDateString = () => {
     const d = new Date();
-    const istFormatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Kolkata',
-        hour: 'numeric',
-        hour12: false
-    });
+    const istFormatter = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false });
     const istHour = parseInt(istFormatter.format(d), 10);
-    
-    // If it is before 12:00 PM Noon IST, it belongs to the previous calendar day's shift
-    if (istHour < 12) {
-        d.setHours(d.getHours() - 12); 
-    }
-    
-    return new Intl.DateTimeFormat('en-CA', { 
-        timeZone: 'Asia/Kolkata',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    }).format(d);
+    if (istHour < 12) d.setHours(d.getHours() - 12); 
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 };
 
-// Formats timestamp securely into 12-hour AM/PM format to fix 24:xx bugs
 const formatLogTime = (isoString) => {
     if (!isoString) return '-';
     try {
         const dateObj = new Date(isoString);
-        return dateObj.toLocaleTimeString('en-US', {
-            timeZone: 'Asia/Kolkata',
-            hour12: true, 
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    } catch (e) {
-        return '-';
-    }
+        return dateObj.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour12: true, hour: '2-digit', minute: '2-digit' });
+    } catch (e) { return '-'; }
+};
+
+const formatMsToTime = (ms) => {
+    const h = Math.floor(ms / (1000 * 60 * 60));
+    const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    return `${h}h ${m}m`;
 };
 
 const AssetManagementPage = () => {
@@ -121,76 +104,90 @@ const AssetManagementPage = () => {
         }
     };
 
-    // ✅ FIXED: Calculate accurate working hours strictly capped to the 19:00 - 04:00 IST Shift
-    const formattedWorkingTime = useMemo(() => {
-        if (!assetSessions.length || !sessionDate) return '0h 0m';
+    // ✅ FIXED: Advanced split-time algorithm with PowerShell Shutdown detection
+    const timeCalculations = useMemo(() => {
+        if (!assetSessions.length || !sessionDate) return { standard: '0h 0m', extra: null, activeStr: '' };
 
-        // 1. Establish strict IST Shift Boundaries for the selected date
-        // Base shift start: 19:00 IST on `sessionDate`
+        // 1. Define Strict Shift Boundaries
         const shiftStartStr = `${sessionDate}T19:00:00.000+05:30`;
         const shiftStartIST = new Date(shiftStartStr);
 
-        // Base shift end: 04:00 IST on `sessionDate + 1 day`
         const shiftEndDate = new Date(shiftStartIST);
         shiftEndDate.setDate(shiftEndDate.getDate() + 1);
-        shiftEndDate.setHours(4, 0, 0, 0); // 04:00 AM local time of the Date object
-
-        // For string fallback construction if needed
+        shiftEndDate.setHours(4, 0, 0, 0); 
         const nextDayStr = shiftEndDate.toISOString().split('T')[0];
         const shiftEndIST = new Date(`${nextDayStr}T04:00:00.000+05:30`);
-
 
         const startTriggers = ['login', 'unlock', 'resume', 'active', 'wake'];
         const endTriggers = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate'];
 
         const sorted = [...assetSessions].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
         
-        let totalMs = 0;
+        let standardMs = 0;
+        let extraMs = 0;
         let sessionStart = null;
+        let activeString = "";
+
+        const processBlock = (start, end) => {
+            const blockTotal = end - start;
+            if (blockTotal <= 0) return;
+
+            // Calculate overlap with core shift (19:00 - 04:00)
+            const overlapStart = start > shiftStartIST ? start : shiftStartIST;
+            const overlapEnd = end < shiftEndIST ? end : shiftEndIST;
+
+            let blockStandard = 0;
+            if (overlapStart < overlapEnd) {
+                blockStandard = overlapEnd - overlapStart;
+            }
+
+            const blockExtra = blockTotal - blockStandard;
+            standardMs += blockStandard;
+            extraMs += blockExtra;
+        };
 
         sorted.forEach(log => {
             const act = log.actionType.toLowerCase();
             const logTime = new Date(log.eventTimestamp);
+            const notes = (log.workDoneNotes || "").toLowerCase();
 
             if (startTriggers.includes(act) && !sessionStart) {
-                // Clamp the start time so it doesn't count time before 7:00 PM
-                sessionStart = logTime < shiftStartIST ? shiftStartIST : logTime;
-            } else if (endTriggers.includes(act) && sessionStart) {
-                // Clamp the end time so it doesn't count time after 4:00 AM
-                let sessionEnd = logTime > shiftEndIST ? shiftEndIST : logTime;
-                
-                // Only add time if the end is actually after the start
-                if (sessionEnd > sessionStart) {
-                    totalMs += (sessionEnd - sessionStart);
+                sessionStart = logTime;
+            } 
+            else if (endTriggers.includes(act) && sessionStart) {
+                // 🛑 CRITICAL SHUTDOWN FIX: 
+                // If this is a delayed "Previous shutdown detected" event sent by PowerShell at next boot,
+                // we DO NOT process the time block using `logTime` because it represents the time they 
+                // turned the computer back on, NOT the time they actually shut down.
+                if (notes.includes("previous shutdown detected")) {
+                    // Just clear the session without adding the massive offline gap to their hours.
+                    sessionStart = null;
+                } else {
+                    processBlock(sessionStart, logTime);
+                    sessionStart = null;
                 }
-                sessionStart = null;
             }
         });
 
-        let activeString = "";
+        // Handle Active Session (No logout yet)
         if (sessionStart) {
             const now = new Date();
             
-            // Only add active time if "now" is still within the shift boundary
+            // Only add active time if "now" is still within the shift boundary,
+            // otherwise, they just forgot to log out.
             if (now < shiftEndIST) {
-                totalMs += Math.max(0, now - sessionStart);
+                processBlock(sessionStart, now);
                 activeString = " (Active Now)";
             } else {
-                // If they never logged out and the shift is over, cap it at the 4 AM boundary
-                if (shiftEndIST > sessionStart) {
-                    totalMs += (shiftEndIST - sessionStart);
-                }
                 activeString = " (Missing Logout)";
             }
         }
 
-        // Cap total hours at 9h (just as a final safety measure)
-        const maxShiftMs = 9 * 60 * 60 * 1000;
-        if (totalMs > maxShiftMs) totalMs = maxShiftMs;
-
-        const hours = Math.floor(totalMs / (1000 * 60 * 60));
-        const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
-        return `${hours}h ${minutes}m${activeString}`;
+        return { 
+            standard: formatMsToTime(standardMs), 
+            extra: extraMs > 60000 ? formatMsToTime(extraMs) : null, // Only show extra if > 1 minute
+            activeStr: activeString 
+        };
     }, [assetSessions, sessionDate]);
 
     const handleDateChange = (e) => {
@@ -236,9 +233,15 @@ const AssetManagementPage = () => {
         return <span className={`px-3 py-1 text-xs font-bold rounded-full border ${styles[status] || 'bg-gray-100 text-gray-800 border-gray-200'}`}>{status}</span>;
     };
 
-    const getEventBadge = (action, category) => {
+    const getEventBadge = (action, category, notes) => {
         const actionLower = action.toLowerCase();
         const catLower = (category || '').toLowerCase();
+        const noteLower = (notes || '').toLowerCase();
+
+        // Specific badge for the shutdown logic
+        if (noteLower.includes('previous shutdown detected'))
+            return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-rose-100 text-rose-800 border border-rose-200" title="Triggered by PowerShell on boot">Offline Shutdwn</span>;
+
         if (['login', 'unlock', 'resume', 'active', 'wake'].includes(actionLower)) 
             return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">{action}</span>;
         if (['logout', 'logoff', 'lock', 'sleep', 'hibernate'].includes(actionLower)) 
@@ -334,7 +337,7 @@ const AssetManagementPage = () => {
             {/* MODALS */}
             {activeModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
-                    <div className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col border border-slate-200 overflow-hidden transform transition-all ${activeModal === 'sessions' ? 'max-w-4xl max-h-[90vh]' : 'max-w-md'}`}>
+                    <div className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col border border-slate-200 overflow-hidden transform transition-all ${activeModal === 'sessions' ? 'max-w-5xl max-h-[90vh]' : 'max-w-md'}`}>
                         
                         {/* SESSIONS LOG MODAL */}
                         {activeModal === 'sessions' ? (
@@ -342,7 +345,7 @@ const AssetManagementPage = () => {
                                 <div className="px-6 py-5 border-b border-slate-200 bg-white flex justify-between items-center shadow-sm z-10">
                                     <div>
                                         <h3 className="text-xl font-extrabold text-slate-800 flex items-center"><ActivityIcon /> Tracking Logs: {selectedAsset.rowKey}</h3>
-                                        <p className="text-sm font-medium text-slate-500 mt-1">IST Shift Boundary: 19:00 - 04:00 (Cap applied)</p>
+                                        <p className="text-sm font-medium text-slate-500 mt-1">Split View: Core Shift vs Extra Time</p>
                                     </div>
                                     <button onClick={closeModal} className="text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 rounded-full p-1.5 border border-slate-200 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                 </div>
@@ -351,9 +354,17 @@ const AssetManagementPage = () => {
                                         <label className="text-sm font-bold text-slate-600">Shift Date:</label>
                                         <input type="date" value={sessionDate} onChange={handleDateChange} className="px-3 py-2 border border-slate-300 rounded-lg shadow-sm text-sm font-bold text-indigo-700 bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
                                     </div>
-                                    <div className="flex items-center px-4 py-2 bg-white border border-slate-200 shadow-sm rounded-xl">
-                                        <ClockIcon />
-                                        <span className="text-sm text-slate-600 font-bold ml-1 tracking-wide">Calculated Shift Time: <strong className="text-lg font-black text-indigo-600 ml-1.5">{formattedWorkingTime}</strong></span>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center px-4 py-2 bg-white border border-slate-200 shadow-sm rounded-xl">
+                                            <ClockIcon />
+                                            <span className="text-sm text-slate-600 font-bold ml-1 tracking-wide">Core Shift: <strong className="text-lg font-black text-indigo-600 ml-1.5">{timeCalculations.standard}</strong>{timeCalculations.activeStr}</span>
+                                        </div>
+                                        {/* Display Extra time clearly if it exists */}
+                                        {timeCalculations.extra && (
+                                            <div className="flex items-center px-4 py-2 bg-amber-50 border border-amber-200 shadow-sm rounded-xl text-amber-800 animate-fadeIn">
+                                                <span className="text-sm font-bold tracking-wide">Out-of-Shift: <strong className="text-lg font-black ml-1.5">{timeCalculations.extra}</strong></span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="px-6 pt-3 border-b border-slate-200 bg-white">
@@ -387,10 +398,9 @@ const AssetManagementPage = () => {
                                                 <tbody className="divide-y divide-slate-100 text-sm">
                                                     {filteredSessions.map((session, idx) => (
                                                         <tr key={idx} className="hover:bg-indigo-50/20 transition-colors">
-                                                            <td className="px-5 py-3.5">{getEventBadge(session.actionType, session.eventCategory)}</td>
+                                                            <td className="px-5 py-3.5">{getEventBadge(session.actionType, session.eventCategory, session.workDoneNotes)}</td>
                                                             <td className="px-5 py-3.5 text-slate-700 font-bold">{session.userEmail}</td>
                                                             <td className="px-5 py-3.5 text-indigo-600 font-bold tracking-wide whitespace-nowrap">
-                                                                {/* Perfectly formatted 12-hour timestamp string */}
                                                                 {formatLogTime(session.eventTimestamp)}
                                                             </td>
                                                             <td className="px-5 py-3.5 text-slate-600 italic font-medium">{session.workDoneNotes || '-'}</td>
@@ -404,7 +414,7 @@ const AssetManagementPage = () => {
                             </div>
                         ) : (
                             
-                            /* ACTION MODALS (Assign, Reassign, Service) */
+                            /* ACTION MODALS */
                             <form onSubmit={handleActionSubmit} className="flex flex-col h-full">
                                 <div className="px-6 py-5 border-b border-slate-100 bg-white">
                                     <h3 className="text-xl font-extrabold text-slate-800 flex items-center capitalize">
@@ -418,12 +428,7 @@ const AssetManagementPage = () => {
                                     {(activeModal === 'assign' || activeModal === 'reassign') && (
                                         <div>
                                             <label className="block text-sm font-bold text-slate-700 mb-2">Select Target Employee</label>
-                                            <select 
-                                                required 
-                                                value={modalData.userEmail || ''} 
-                                                onChange={(e) => setModalData({...modalData, userEmail: e.target.value})} 
-                                                className="w-full border-slate-300 rounded-xl p-3 shadow-sm focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700"
-                                            >
+                                            <select required value={modalData.userEmail || ''} onChange={(e) => setModalData({...modalData, userEmail: e.target.value})} className="w-full border-slate-300 rounded-xl p-3 shadow-sm focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700">
                                                 <option value="" disabled>-- Choose Employee --</option>
                                                 {users.map(u => <option key={u.username} value={u.username}>{u.displayName} ({u.username})</option>)}
                                             </select>
@@ -434,12 +439,7 @@ const AssetManagementPage = () => {
                                         <>
                                             <div>
                                                 <label className="block text-sm font-bold text-slate-700 mb-2">Service Type</label>
-                                                <select 
-                                                    required 
-                                                    value={modalData.isRepair || ''} 
-                                                    onChange={(e) => setModalData({...modalData, isRepair: e.target.value})} 
-                                                    className="w-full border-slate-300 rounded-xl p-3 shadow-sm focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700"
-                                                >
+                                                <select required value={modalData.isRepair || ''} onChange={(e) => setModalData({...modalData, isRepair: e.target.value})} className="w-full border-slate-300 rounded-xl p-3 shadow-sm focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700">
                                                     <option value="" disabled>-- Select Type --</option>
                                                     <option value="false">Routine Service / Maintenance</option>
                                                     <option value="true">Hardware Repair</option>
@@ -447,34 +447,15 @@ const AssetManagementPage = () => {
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-bold text-slate-700 mb-2">Service Details</label>
-                                                <textarea 
-                                                    required 
-                                                    rows="4" 
-                                                    value={modalData.details || ''} 
-                                                    onChange={(e) => setModalData({...modalData, details: e.target.value})} 
-                                                    className="w-full border-slate-300 rounded-xl p-3 shadow-sm focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 resize-none" 
-                                                    placeholder="Describe the issue or service performed..."
-                                                ></textarea>
+                                                <textarea required rows="4" value={modalData.details || ''} onChange={(e) => setModalData({...modalData, details: e.target.value})} className="w-full border-slate-300 rounded-xl p-3 shadow-sm focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 resize-none" placeholder="Describe the issue or service performed..."></textarea>
                                             </div>
                                         </>
                                     )}
                                 </div>
 
                                 <div className="px-6 py-4 border-t border-slate-100 bg-white flex justify-end gap-3 rounded-b-2xl">
-                                    <button 
-                                        type="button" 
-                                        onClick={closeModal} 
-                                        className="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button 
-                                        type="submit" 
-                                        disabled={processing} 
-                                        className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-sm transition-colors flex items-center justify-center min-w-[120px]"
-                                    >
-                                        {processing ? 'Processing...' : `Confirm ${activeModal}`}
-                                    </button>
+                                    <button type="button" onClick={closeModal} className="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors">Cancel</button>
+                                    <button type="submit" disabled={processing} className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-sm transition-colors flex items-center justify-center min-w-[120px]">{processing ? 'Processing...' : `Confirm ${activeModal}`}</button>
                                 </div>
                             </form>
                         )}
