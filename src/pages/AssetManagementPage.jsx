@@ -32,14 +32,14 @@ const getISTShiftDateString = () => {
     }).format(d);
 };
 
-// ✅ NEW HELPER: Formats timestamp securely into 12-hour AM/PM format
+// Formats timestamp securely into 12-hour AM/PM format to fix 24:xx bugs
 const formatLogTime = (isoString) => {
     if (!isoString) return '-';
     try {
         const dateObj = new Date(isoString);
         return dateObj.toLocaleTimeString('en-US', {
             timeZone: 'Asia/Kolkata',
-            hour12: true, // 12-hour AM/PM format (prevents the 24:xx bug completely)
+            hour12: true, 
             hour: '2-digit',
             minute: '2-digit'
         });
@@ -121,7 +121,7 @@ const AssetManagementPage = () => {
         }
     };
 
-    // Calculate working hours with expanded triggers
+    // ✅ FIXED: Calculate accurate working hours, aware of active/ongoing shifts
     const formattedWorkingTime = useMemo(() => {
         if (!assetSessions.length) return '0h 0m';
 
@@ -143,9 +143,23 @@ const AssetManagementPage = () => {
             }
         });
 
-        const totalMinutes = Math.floor(totalMs / 60000);
-        return `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`;
-    }, [assetSessions]);
+        let activeString = "";
+        if (sessionStart) {
+            const todayShiftDate = getISTShiftDateString();
+            if (sessionDate === todayShiftDate) {
+                // Currently ongoing shift: add time up to the exact present moment
+                totalMs += Math.max(0, new Date() - sessionStart);
+                activeString = " (Active Now)";
+            } else {
+                // Looking at a past day where they never logged out
+                activeString = " (Missing Logout)";
+            }
+        }
+
+        const hours = Math.floor(totalMs / (1000 * 60 * 60));
+        const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
+        return `${hours}h ${minutes}m${activeString}`;
+    }, [assetSessions, sessionDate]);
 
     const handleDateChange = (e) => {
         const newDate = e.target.value;
@@ -343,8 +357,8 @@ const AssetManagementPage = () => {
                                                         <tr key={idx} className="hover:bg-indigo-50/20 transition-colors">
                                                             <td className="px-5 py-3.5">{getEventBadge(session.actionType, session.eventCategory)}</td>
                                                             <td className="px-5 py-3.5 text-slate-700 font-bold">{session.userEmail}</td>
-                                                            <td className="px-5 py-3.5 text-indigo-600 font-bold tracking-wide">
-                                                                {/* ✅ FIXED: Clean 12-hour AM/PM format injected here */}
+                                                            <td className="px-5 py-3.5 text-indigo-600 font-bold tracking-wide whitespace-nowrap">
+                                                                {/* Perfectly formatted 12-hour timestamp string */}
                                                                 {formatLogTime(session.eventTimestamp)}
                                                             </td>
                                                             <td className="px-5 py-3.5 text-slate-600 italic font-medium">{session.workDoneNotes || '-'}</td>
