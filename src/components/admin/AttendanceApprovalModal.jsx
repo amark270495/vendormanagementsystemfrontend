@@ -4,44 +4,98 @@ import { apiService } from '../../api/apiService';
 import Spinner from '../Spinner';
 import Modal from '../Modal';
 
-// --- Updated Time Calculation Helper (Shift & Wake Aware) ---
-const calculateTotalWorkTime = (logs) => {
-    if (!logs || logs.length === 0) return { text: "0h 0m", ms: 0 };
-    
-    // 1. Sort logs chronologically to ensure logical flow
-    const sortedLogs = [...logs].sort((a, b) => 
-        new Date(a.eventTimestamp) - new Date(b.eventTimestamp)
-    );
-    
-    let totalMs = 0;
-    let sessionStart = null;
+const formatMsToTime = (ms) => {
+    const h = Math.floor(ms / (1000 * 60 * 60));
+    const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    return `${h}h ${m}m`;
+};
 
-    // Expanded triggers to include wake-from-sleep events
+// --- Updated Time Calculation Helper (FIXED TIMEZONE BUG) ---
+const calculateTotalWorkTime = (logs, shiftDateStr) => {
+    if (!logs || logs.length === 0 || !shiftDateStr) return { standard: "0h 0m", extra: null, activeStr: "" };
+    
+    // 1. Establish strict IST Shift Boundaries (Bypassing Browser Timezones)
+    const shiftStartIST = new Date(`${shiftDateStr}T19:00:00.000+05:30`);
+
+    // Safely calculate the "next day" string using pure UTC math
+    const [year, month, day] = shiftDateStr.split('-');
+    const nextDayUTC = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10) + 1));
+    const nextDayStr = nextDayUTC.toISOString().split('T')[0];
+    
+    const shiftEndIST = new Date(`${nextDayStr}T04:00:00.000+05:30`);
+
+    // 2. Sort logs
+    const sortedLogs = [...logs].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
+    
+    let standardMs = 0;
+    let extraMs = 0;
+    let sessionStart = null;
+    let activeString = "";
+
+    const processBlock = (start, end) => {
+        const blockTotal = end - start;
+        if (blockTotal <= 0) return;
+
+        // Calculate overlap with core shift (19:00 - 04:00)
+        const overlapStart = start > shiftStartIST ? start : shiftStartIST;
+        const overlapEnd = end < shiftEndIST ? end : shiftEndIST;
+
+        let blockStandard = 0;
+        if (overlapStart < overlapEnd) {
+            blockStandard = overlapEnd - overlapStart;
+        }
+
+        const blockExtra = blockTotal - blockStandard;
+        standardMs += blockStandard;
+        extraMs += blockExtra;
+    };
+
     const startActions = ['login', 'unlock', 'resume', 'active', 'wake'];
     const stopActions = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate'];
 
     sortedLogs.forEach(log => {
-        const action = log.actionType.toLowerCase();
+        const act = log.actionType.toLowerCase();
+        const logTime = new Date(log.eventTimestamp);
+        const notes = (log.workDoneNotes || "").toLowerCase();
         
-        if (startActions.includes(action) && !sessionStart) {
-            sessionStart = new Date(log.eventTimestamp);
-        } else if (stopActions.includes(action) && sessionStart) {
-            totalMs += (new Date(log.eventTimestamp) - sessionStart);
-            sessionStart = null; 
+        if (startActions.includes(act) && !sessionStart) {
+            sessionStart = logTime;
+        } else if (stopActions.includes(act) && sessionStart) {
+            
+            // Handle PowerShell delayed shutdown bug
+            if (notes.includes("previous shutdown detected")) {
+                sessionStart = null;
+            } else {
+                processBlock(sessionStart, logTime);
+                sessionStart = null; 
+            }
         }
     });
 
-    // ✅ FIXED: Handle Active Sessions by adding time up to the current moment
-    let activeString = "";
     if (sessionStart) {
-        totalMs += Math.max(0, new Date() - sessionStart);
-        activeString = " (Active Now)";
+        const now = new Date();
+        
+        if (now < shiftEndIST) {
+             processBlock(sessionStart, now);
+             activeString = " (Active Now)";
+        } else {
+             activeString = " (Missing Logout)";
+        }
     }
 
-    const hours = Math.floor(totalMs / (1000 * 60 * 60));
-    const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
-    
-    return { text: `${hours}h ${minutes}m${activeString}`, ms: totalMs };
+    return { 
+        standard: formatMsToTime(standardMs), 
+        extra: extraMs > 60000 ? formatMsToTime(extraMs) : null,
+        activeStr: activeString 
+    };
+};
+
+const formatLogTime = (isoString) => {
+    if (!isoString) return '-';
+    try {
+        const dateObj = new Date(isoString);
+        return dateObj.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour12: true, hour: '2-digit', minute: '2-digit' });
+    } catch (e) { return '-'; }
 };
 
 // --- Icons ---
@@ -51,7 +105,6 @@ const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
 
 const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, onDayClick, pendingRequestsMap }) => {
-
     const getDayStatus = (day) => {
         const year = monthDate.getUTCFullYear();
         const month = monthDate.getUTCMonth();
@@ -182,7 +235,8 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const [reviewingRequest, setReviewingRequest] = useState(null);
     const [trackingLogs, setTrackingLogs] = useState([]);
     const [logsLoading, setLogsLoading] = useState(false);
-    const [totalWorkTime, setTotalWorkTime] = useState("");
+    
+    const [timeCalculations, setTimeCalculations] = useState({ standard: "0h 0m", extra: null, activeStr: "" });
 
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
@@ -281,19 +335,18 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             setLogsLoading(true);
             
             try {
-                // Fetches grouped shift logs based on the date
                 const res = await apiService.getUserTrackingLogs(request.username, request.date, user.userIdentifier);
                 if (res.data && res.data.success) {
                     setTrackingLogs(res.data.logs);
-                    setTotalWorkTime(calculateTotalWorkTime(res.data.logs).text);
+                    setTimeCalculations(calculateTotalWorkTime(res.data.logs, request.date));
                 } else {
                     setTrackingLogs([]);
-                    setTotalWorkTime("0h 0m");
+                    setTimeCalculations({ standard: "0h 0m", extra: null, activeStr: "" });
                 }
             } catch (err) {
                 console.error("Failed to fetch tracking logs", err);
                 setTrackingLogs([]);
-                setTotalWorkTime("Error loading data");
+                setTimeCalculations({ standard: "Error", extra: null, activeStr: "" });
             } finally { setLogsLoading(false); }
         }
     };
@@ -329,8 +382,14 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         } finally { setActionLoading(false); }
     };
 
-    const getEventBadge = (actionType) => {
+    const getEventBadge = (actionType, notes) => {
         const action = actionType.toLowerCase();
+        const noteLower = (notes || '').toLowerCase();
+
+        // Specific badge for the shutdown logic
+        if (noteLower.includes('previous shutdown detected'))
+            return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-rose-100 text-rose-800 border border-rose-200">Offline Shutdwn</span>;
+
         if (['login', 'unlock', 'resume', 'active', 'wake'].includes(action)) 
             return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">{actionType}</span>;
         if (['logout', 'logoff', 'lock', 'sleep', 'hibernate'].includes(action)) 
@@ -354,7 +413,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
 
             {reviewingRequest ? (
                 <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm animate-fadeIn relative overflow-hidden">
-                    {/* Decorative background element */}
                     <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-indigo-50 rounded-full blur-3xl opacity-60"></div>
 
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-slate-100 pb-5 relative z-10 gap-4">
@@ -379,14 +437,30 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                     ) : (
                         <div className="space-y-8 relative z-10">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Time Calculation Card */}
-                                <div className="bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 rounded-2xl p-6 flex flex-col justify-center shadow-sm">
-                                    <div className="flex items-center text-indigo-500 mb-2">
+                                
+                                {/* Time Calculation Split Card */}
+                                <div className="bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 rounded-2xl p-6 flex flex-col justify-center shadow-sm relative">
+                                    <div className="flex items-center text-indigo-500 mb-3">
                                         <ClockIcon />
-                                        <p className="text-xs font-black uppercase tracking-wider">Calculated Shift Time</p>
+                                        <p className="text-xs font-black uppercase tracking-wider">Calculated Work Time</p>
                                     </div>
-                                    <p className="text-3xl font-black text-indigo-700 mt-1">{totalWorkTime}</p>
-                                    <p className="text-xs font-medium text-slate-500 mt-2">Source: <span className="font-bold text-slate-700">{reviewingRequest.attendanceSource || 'Manual Entry'}</span></p>
+                                    
+                                    <div className="flex items-end gap-3 mb-2">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Core Shift</p>
+                                            <p className="text-3xl font-black text-indigo-700 leading-none mt-1">
+                                                {timeCalculations.standard}
+                                                <span className="text-sm font-bold ml-1.5 text-indigo-500">{timeCalculations.activeStr}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    {timeCalculations.extra && (
+                                        <div className="mt-3 bg-amber-100/60 border border-amber-200 text-amber-800 px-3 py-2 rounded-lg self-start">
+                                            <p className="text-xs font-bold uppercase tracking-wider">Out-of-Shift Time Detected</p>
+                                            <p className="text-lg font-black">{timeCalculations.extra}</p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Details / Flags Card */}
@@ -420,9 +494,12 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                             </div>
 
                             <div className="border border-slate-200 rounded-2xl shadow-sm bg-white overflow-hidden">
-                                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center">
-                                    <ActivityIcon />
-                                    <h4 className="text-sm font-bold text-slate-700 ml-2 uppercase tracking-wider">Device Activity Log</h4>
+                                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                                    <div className="flex items-center">
+                                        <ActivityIcon />
+                                        <h4 className="text-sm font-bold text-slate-700 ml-2 uppercase tracking-wider">Device Activity Log</h4>
+                                    </div>
+                                    <span className="text-xs font-bold text-slate-500 uppercase">Shift Bounds: 19:00 - 04:00</span>
                                 </div>
                                 <div className="max-h-64 overflow-y-auto">
                                     <table className="min-w-full divide-y divide-slate-100">
@@ -444,15 +521,10 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                                                 trackingLogs.map(log => (
                                                     <tr key={log.id} className="hover:bg-indigo-50/30 transition-colors">
                                                         <td className="px-6 py-3">
-                                                            {getEventBadge(log.actionType)}
+                                                            {getEventBadge(log.actionType, log.workDoneNotes)}
                                                         </td>
                                                         <td className="px-6 py-3 text-right text-slate-600 font-bold tracking-wide">
-                                                            {log.istTimeLogged || new Date(log.eventTimestamp).toLocaleTimeString('en-IN', { 
-                                                                timeZone: 'Asia/Kolkata', 
-                                                                hour12: false, 
-                                                                hour: '2-digit', 
-                                                                minute: '2-digit' 
-                                                            })}
+                                                            {formatLogTime(log.eventTimestamp)}
                                                         </td>
                                                     </tr>
                                                 ))
