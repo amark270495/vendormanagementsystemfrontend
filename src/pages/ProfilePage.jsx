@@ -20,9 +20,37 @@ const LocationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const LinkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" /></svg>;
 const HeartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 015.13-1.424l.89.445.89-.445a4.5 4.5 0 015.13 1.424A4.5 4.5 0 0119.682 11.5a4.5 4.5 0 01-1.424 5.13l-.445.89-.445.89a4.5 4.5 0 01-5.13 1.424A4.5 4.5 0 0112 19.682a4.5 4.5 0 01-1.424-5.13l-.89-.445-.89-.445a4.5 4.5 0 01-1.424-5.13A4.5 4.5 0 014.318 6.318z" /></svg>;
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
-const ChevronDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>;
-const ChevronUpIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>;
+const ChevronDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>;
+const ChevronUpIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>;
 const LaptopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
+
+
+// ✅ NEW HELPER: Gets the IST Date String aligned with the 12:00 PM Noon Night Shift Cutoff
+const getISTShiftDateString = () => {
+    const d = new Date();
+    
+    // 1. Get the current hour in IST
+    const istFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric',
+        hour12: false
+    });
+    const istHour = parseInt(istFormatter.format(d), 10);
+    
+    // 2. If it is before 12:00 PM Noon IST, it belongs to the previous calendar day's shift
+    if (istHour < 12) {
+        d.setHours(d.getHours() - 12); // Safely push the underlying time back 12 hours
+    }
+    
+    // 3. Return the Date in YYYY-MM-DD format using IST timezone
+    return new Intl.DateTimeFormat('en-CA', { 
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(d);
+};
+
 
 // --- UPDATED Attendance Marker Component ---
 const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUser }) => {
@@ -43,7 +71,8 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
     const [reason, setReason] = useState('');
     const [showWeekendRequest, setShowWeekendRequest] = useState(false);
 
-    const todayDateString = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(new Date());
+    // ✅ FIXED: Using the new Shift helper instead of UTC
+    const todayDateString = getISTShiftDateString();
 
     const fetchStatusForDate = useCallback(async (dateString) => {
         const userId = authUser?.userIdentifier;
@@ -136,7 +165,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
         setLocalError('');
         setLocalSuccess('');
         try {
-            // Pass an empty string for the reason since it's no longer required for weekday shifts
             await onMarkAttendance(selectedDate, requested, ""); 
             fetchStatusForDate(selectedDate);
             setLocalSuccess(`Attendance request for ${formatDateDisplay(selectedDate)} submitted.`);
@@ -200,32 +228,37 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
     };
 
     return (
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl shadow-md border border-indigo-100 text-center">
-            <div className="mb-4">
-                <label htmlFor="attendanceDate" className="block text-sm font-medium text-gray-700 mb-1">Select Date:</label>
+        <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6 sm:p-8 rounded-2xl shadow-lg border border-indigo-100/60 text-center relative overflow-hidden">
+            {/* Subtle background decoration */}
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-indigo-100 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+            
+            <div className="mb-5 relative z-10">
+                <label htmlFor="attendanceDate" className="block text-sm font-semibold text-gray-700 mb-2">Select Date</label>
                 <input
                     type="date"
                     id="attendanceDate"
                     value={selectedDate}
                     onChange={(e) => onDateChange(e.target.value)}
                     max={todayDateString}
-                    className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    className="w-full sm:w-auto px-4 py-2.5 border border-indigo-200 text-indigo-900 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white/80 backdrop-blur-sm transition-all hover:bg-white cursor-pointer"
                 />
             </div>
-            <p className="text-sm font-medium text-indigo-800 mb-3">
+            
+            <p className="text-sm font-medium text-indigo-800 mb-4 relative z-10">
                 Status for {formatDateDisplay(selectedDate)}
             </p>
-            <div className="min-h-[40px] flex justify-center items-center mb-4">
+            
+            <div className="min-h-[40px] flex justify-center items-center mb-6 relative z-10">
                 {statusInfo.isLoading ? (
                     <Spinner size="8" />
                 ) : statusInfo.status ? (
-                    <span className={`px-4 py-2 text-base font-bold rounded-full shadow-sm ${
-                        statusInfo.status === 'Present' ? 'bg-green-100 text-green-800 ring-1 ring-green-200' :
-                        statusInfo.status === 'Absent' || statusInfo.status === 'Rejected' ? 'bg-red-100 text-red-800 ring-1 ring-red-200' :
-                        statusInfo.status === 'On Leave' ? 'bg-purple-100 text-purple-800 ring-1 ring-purple-200' :
-                        statusInfo.status === 'Pending' ? 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-200' :
-                        statusInfo.status === 'Holiday' ? 'bg-pink-100 text-pink-800 ring-1 ring-pink-200' :
-                        'bg-gray-100 text-gray-700 ring-1 ring-gray-200'
+                    <span className={`px-5 py-2.5 text-sm font-bold rounded-full shadow-sm tracking-wide ${
+                        statusInfo.status === 'Present' ? 'bg-green-100/80 text-green-800 border border-green-200' :
+                        statusInfo.status === 'Absent' || statusInfo.status === 'Rejected' ? 'bg-red-100/80 text-red-800 border border-red-200' :
+                        statusInfo.status === 'On Leave' ? 'bg-purple-100/80 text-purple-800 border border-purple-200' :
+                        statusInfo.status === 'Pending' ? 'bg-yellow-100/80 text-yellow-800 border border-yellow-200' :
+                        statusInfo.status === 'Holiday' ? 'bg-pink-100/80 text-pink-800 border border-pink-200' :
+                        'bg-gray-100/80 text-gray-700 border border-gray-200'
                     }`}>
                         {statusInfo.status === 'Pending' ? `Pending (${statusInfo.requestedStatus})` : 
                          (statusInfo.status === 'Present' && statusInfo.requestedStatus === 'System Auto-Marked') ? '✅ Auto-Marked Present' : 
@@ -233,23 +266,23 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                         {statusInfo.isHoliday ? ` (${statusInfo.holidayDescription || 'Holiday'})` : ''}
                     </span>
                 ) : (
-                    <span className="text-base text-gray-500 italic font-semibold">Not Marked</span>
+                    <span className="text-base text-gray-500 italic font-semibold px-4 py-2 bg-gray-50/50 rounded-full border border-gray-100">Not Marked</span>
                 )}
             </div>
+            
              {canMarkSelectedDate && !isFutureDate && (
-                 <div className="mt-4 flex flex-col items-center">
-                     {/* The weekday reason text area has been completely removed from here */}
-                     <div className="space-x-3 flex justify-center w-full">
+                 <div className="mt-2 flex flex-col items-center relative z-10">
+                     <div className="flex gap-4 justify-center w-full">
                          <button
                              onClick={() => handleMark('Present')}
-                             className="px-5 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 shadow transition disabled:opacity-50"
+                             className="px-6 py-2.5 bg-green-600 text-white text-sm font-bold rounded-xl hover:bg-green-500 hover:shadow-lg hover:-translate-y-0.5 shadow-md transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0"
                              disabled={actionLoading}
                          >
                              {actionLoading ? <Spinner size="4" /> : 'Mark Present'}
                          </button>
                          <button
                              onClick={() => handleMark('Absent')}
-                             className="px-5 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 shadow transition disabled:opacity-50"
+                             className="px-6 py-2.5 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-500 hover:shadow-lg hover:-translate-y-0.5 shadow-md transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0"
                              disabled={actionLoading}
                          >
                              {actionLoading ? <Spinner size="4" /> : 'Mark Absent'}
@@ -259,35 +292,35 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
              )}
 
              {statusInfo.isWeekend && !isFutureDate && !statusInfo.isLoading && statusInfo.status === 'Weekend' && (
-                 <div className="mt-4 flex flex-col items-center">
+                 <div className="mt-4 flex flex-col items-center relative z-10">
                      {!showWeekendRequest ? (
                          <button
                              onClick={() => setShowWeekendRequest(true)}
-                             className="px-5 py-2 bg-indigo-100 text-indigo-700 text-sm font-semibold rounded-lg hover:bg-indigo-200 shadow-sm transition"
+                             className="px-6 py-2.5 bg-white text-indigo-700 border border-indigo-200 text-sm font-bold rounded-xl hover:bg-indigo-50 hover:shadow-md transition-all duration-200"
                          >
                              Request Approval for Weekend Work
                          </button>
                      ) : (
-                         <div className="w-full sm:w-3/4 flex flex-col items-center animate-fadeIn">
-                             <p className="text-sm text-gray-600 mb-2 font-medium">Why do you need to work this weekend?</p>
+                         <div className="w-full sm:w-4/5 flex flex-col items-center animate-fadeIn bg-white/60 p-4 rounded-xl border border-indigo-100">
+                             <p className="text-sm text-gray-700 mb-3 font-semibold">Why do you need to work this weekend?</p>
                              <textarea
                                  value={reason}
                                  onChange={(e) => { setReason(e.target.value); }}
                                  placeholder="Enter business justification..."
-                                 className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white mb-3`}
+                                 className={`w-full px-4 py-3 text-sm border border-indigo-200 rounded-xl shadow-inner focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white mb-4 resize-none`}
                                  rows="2"
                              />
-                             <div className="flex space-x-3 w-full justify-center">
+                             <div className="flex gap-3 w-full justify-center">
                                  <button
                                      onClick={handleWeekendRequestSubmit}
-                                     className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 shadow transition disabled:opacity-50"
+                                     className="px-5 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 shadow transition-colors disabled:opacity-50"
                                      disabled={actionLoading}
                                  >
                                      {actionLoading ? <Spinner size="4" /> : 'Submit Request'}
                                  </button>
                                  <button
                                      onClick={() => { setShowWeekendRequest(false); setReason(''); setLocalError(''); }}
-                                     className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-300 shadow transition"
+                                     className="px-5 py-2 bg-gray-100 text-gray-700 text-sm font-bold rounded-lg hover:bg-gray-200 shadow-sm transition-colors border border-gray-200"
                                      disabled={actionLoading}
                                  >
                                      Cancel
@@ -298,16 +331,16 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                  </div>
              )}
 
-             {isFutureDate && <p className="mt-4 text-xs text-gray-500">Cannot mark attendance for future dates.</p>}
+             {isFutureDate && <p className="mt-5 text-sm font-medium text-gray-400 bg-gray-50/50 inline-block px-4 py-1.5 rounded-full relative z-10">Cannot mark attendance for future dates.</p>}
              {!canMarkSelectedDate && !isFutureDate && !statusInfo.isLoading && statusInfo.status !== null && statusInfo.status !== 'Weekend' && (
-                 <p className="mt-4 text-sm text-gray-500">
+                 <p className="mt-5 text-sm font-medium text-gray-500 bg-white/60 inline-block px-4 py-2 rounded-lg border border-gray-100 relative z-10 shadow-sm">
                     {statusInfo.status === 'Present' && statusInfo.requestedStatus === 'System Auto-Marked' 
                         ? 'Your attendance was automatically logged by your device.' 
                         : 'Attendance status is final or not applicable for this date.'}
                  </p>
              )}
-             {localError && <p className="mt-4 text-sm text-red-600 animate-pulse font-medium">{localError}</p>}
-             {localSuccess && <p className="mt-4 text-sm text-green-600 font-medium">{localSuccess}</p>}
+             {localError && <p className="mt-4 text-sm text-red-600 animate-pulse font-semibold bg-red-50 py-2 rounded-lg relative z-10">{localError}</p>}
+             {localSuccess && <p className="mt-4 text-sm text-green-600 font-semibold bg-green-50 py-2 rounded-lg relative z-10">{localSuccess}</p>}
         </div>
     );
 };
@@ -321,15 +354,15 @@ const formatDateForInput = (dateString) => {
 };
 
 const DetailItem = ({ label, value, icon, isEditing = false, children }) => (
-    <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-500 flex items-center">
+    <div className="space-y-1.5 p-3 rounded-lg hover:bg-slate-50 transition-colors duration-200">
+        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center">
             {icon} {label}
         </label>
         {isEditing ? (
             children
         ) : (
-            <p className="text-md font-semibold text-gray-700 min-h-[28px]">
-                {value || <span className="text-gray-400 italic">N/A</span>}
+            <p className="text-base font-semibold text-gray-800 min-h-[28px] break-words">
+                {value || <span className="text-gray-300 italic font-medium">N/A</span>}
             </p>
         )}
     </div>
@@ -343,9 +376,8 @@ const ProfilePage = () => {
     const [myAsset, setMyAsset] = useState(null);
     const [loading, setLoading] = useState(true);
     
-    const [selectedDate, setSelectedDate] = useState(
-        new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(new Date())
-    );
+    // ✅ FIXED: Using the new Shift helper instead of UTC
+    const [selectedDate, setSelectedDate] = useState(getISTShiftDateString());
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
@@ -530,7 +562,7 @@ const ProfilePage = () => {
             id={name}
             value={formData[name] || ''}
             onChange={handleFormChange}
-            className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white"
+            className="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white transition-shadow"
         />
     );
 
@@ -540,7 +572,7 @@ const ProfilePage = () => {
             id={name}
             value={formData[name] || ''}
             onChange={handleFormChange}
-            className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white h-[42px]"
+            className="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white h-[42px] transition-shadow cursor-pointer"
         >
             <option value="">Select...</option>
             {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -554,7 +586,7 @@ const ProfilePage = () => {
             value={formData[name] || ''}
             onChange={handleFormChange}
             rows="3"
-            className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white"
+            className="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white transition-shadow resize-y"
         />
     );
 
@@ -587,13 +619,16 @@ const ProfilePage = () => {
     if (loading) return <div className="flex justify-center items-center h-[70vh]"><Spinner size="12" /></div>;
 
     return (
-        <div className="space-y-8 max-w-7xl mx-auto font-sans">
-             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                 <h1 className="text-3xl font-bold text-gray-800">My Profile & Attendance</h1>
+        <div className="space-y-8 max-w-7xl mx-auto font-sans pb-12">
+             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                 <div>
+                    <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">My Profile</h1>
+                    <p className="text-slate-500 mt-1 font-medium text-sm">Manage your personal details and attendance</p>
+                 </div>
                  {!isEditing && (
                      <button
                         onClick={() => setIsEditing(true)}
-                        className="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition shadow-sm flex items-center"
+                        className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 hover:shadow-md transition-all flex items-center"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" /></svg>
                         Edit Profile
@@ -601,36 +636,36 @@ const ProfilePage = () => {
                  )}
              </div>
 
-            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 animate-shake">{error}</div>}
-            {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 animate-fadeIn">{success}</div>}
+            {error && <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r-lg shadow-sm animate-shake font-medium">{error}</div>}
+            {success && <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded-r-lg shadow-sm animate-fadeIn font-medium">{success}</div>}
              
             <form onSubmit={handleSaveChanges}>
-                <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium text-gray-500 flex items-center"><UserIcon /> Full Name</label>
+                <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-100 transition-colors">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="space-y-1.5 p-3">
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center"><UserIcon /> Full Name</label>
                             {isEditing ? (
-                                <div className="space-y-2">
-                                    <input type="text" name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm mb-2" />
-                                    <input type="text" name="middleName" placeholder="Middle (Optional)" value={formData.middleName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm mb-2" />
-                                    <input type="text" name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleFormChange} className="w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+                                <div className="space-y-3 mt-2">
+                                    <input type="text" name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleFormChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 bg-white" />
+                                    <input type="text" name="middleName" placeholder="Middle (Optional)" value={formData.middleName} onChange={handleFormChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 bg-white" />
+                                    <input type="text" name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleFormChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 bg-white" />
                                 </div>
                             ) : (
-                                <p className="text-xl font-bold text-gray-900">{user?.userName || 'Demo User'}</p>
+                                <p className="text-2xl font-extrabold text-slate-800 break-words">{user?.userName || 'Demo User'}</p>
                             )}
                         </div>
                         <DetailItem label="Username (Email)" icon={<UserIcon />} value={user?.userIdentifier} />
                         <DetailItem label="Date of Joining" icon={<CalendarIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfJoining)}>
-                            <input type="date" name="dateOfJoining" value={formData.dateOfJoining} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500" readOnly title="This field can only be changed by an admin." />
+                            <input type="date" name="dateOfJoining" value={formData.dateOfJoining} className="w-full px-4 py-2 border border-slate-200 rounded-lg shadow-sm bg-slate-50 text-slate-500 cursor-not-allowed" readOnly title="This field can only be changed by an admin." />
                         </DetailItem>
                         <DetailItem label="Personal Mobile" icon={<PhoneIcon />} isEditing={isEditing} value={user?.personalMobileNumber}>
                             {renderEditInput('personalMobileNumber', 'tel')}
                         </DetailItem>
                     </div>
 
-                    <div className={`transition-all duration-500 ease-in-out ${isExpanded || isEditing ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-                        <div className="mt-6 pt-6 border-t border-gray-200 space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
+                    <div className={`transition-all duration-500 ease-in-out origin-top ${isExpanded || isEditing ? 'max-h-[1200px] opacity-100 scale-y-100 mt-6' : 'max-h-0 opacity-0 scale-y-0 overflow-hidden m-0'}`}>
+                        <div className="pt-6 border-t border-slate-100 space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 <DetailItem label="Date of Birth" icon={<CakeIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfBirth)}>
                                     {renderEditInput('dateOfBirth', 'date')}
                                 </DetailItem>
@@ -639,14 +674,15 @@ const ProfilePage = () => {
                                 </DetailItem>
                                 <DetailItem label="Employee Code" icon={<IdCardIcon />} value={user?.employeeCode} />
                                 <DetailItem label="Backend Role" icon={<BriefcaseIcon />} value={user?.backendOfficeRole} />
+                                
                                 <DetailItem label="Employment Type" icon={<BriefcaseIcon />} isEditing={isEditing} value={user?.employmentType}>
-                                    <input type="text" name="employmentType" value={formData.employmentType} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500" readOnly title="This field can only be changed by an admin." />
+                                    <input type="text" name="employmentType" value={formData.employmentType} className="w-full px-4 py-2 border border-slate-200 rounded-lg shadow-sm bg-slate-50 text-slate-500 cursor-not-allowed" readOnly title="This field can only be changed by an admin." />
                                 </DetailItem>
                                 <DetailItem label="Work Location" icon={<LocationIcon />} isEditing={isEditing} value={user?.workLocation}>
-                                    <input type="text" name="workLocation" value={formData.workLocation} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500" readOnly title="This field can only be changed by an admin." />
+                                    <input type="text" name="workLocation" value={formData.workLocation} className="w-full px-4 py-2 border border-slate-200 rounded-lg shadow-sm bg-slate-50 text-slate-500 cursor-not-allowed" readOnly title="This field can only be changed by an admin." />
                                 </DetailItem>
                                 <DetailItem label="Reports To" icon={<UsersIcon />} isEditing={isEditing} value={user?.reportsTo}>
-                                    <input type="text" name="reportsTo" value={formData.reportsTo} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500" readOnly title="This field can only be changed by an admin." />
+                                    <input type="text" name="reportsTo" value={formData.reportsTo} className="w-full px-4 py-2 border border-slate-200 rounded-lg shadow-sm bg-slate-50 text-slate-500 cursor-not-allowed" readOnly title="This field can only be changed by an admin." />
                                 </DetailItem>
                                 
                                 <DetailItem label="Asset Tag (ID)" icon={<LaptopIcon />} value={myAsset?.rowKey} />
@@ -660,9 +696,9 @@ const ProfilePage = () => {
                                 </DetailItem>
                             </div>
                             
-                            <div className="pt-6 mt-6 border-t border-gray-200">
-                                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Emergency Contact</h3>
-                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
+                            <div className="p-6 bg-slate-50/50 rounded-xl border border-slate-100">
+                                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-5 flex items-center"><HeartIcon /> Emergency Contact</h3>
+                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                      <DetailItem label="Contact Name" icon={<UserIcon />} isEditing={isEditing} value={user?.emergencyContactName}>
                                          {renderEditInput('emergencyContactName')}
                                       </DetailItem>
@@ -678,94 +714,107 @@ const ProfilePage = () => {
                     </div>
 
                     {!isEditing && (
-                        <div className="mt-4 pt-4 border-t border-gray-200 flex justify-center">
+                        <div className="mt-4 pt-4 flex justify-center border-t border-slate-50">
                             <button
                                 type="button"
                                 onClick={() => setIsExpanded(!isExpanded)}
-                                className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 flex items-center"
+                                className="px-6 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-full flex items-center transition-colors"
                             >
-                                {isExpanded ? 'Show Less' : 'Show More Details'}
+                                {isExpanded ? 'Hide Details' : 'View Full Profile'}
                                 {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
                             </button>
                         </div>
                     )}
 
                     {isEditing && (
-                        <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
-                             <button type="button" onClick={() => setIsEditing(false)} className="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition-colors shadow-sm" disabled={editLoading}>Cancel</button>
-                            <button type="submit" className="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 flex items-center justify-center w-32 transition-colors shadow-md disabled:bg-indigo-400" disabled={editLoading}>{editLoading ? <Spinner size="5" /> : 'Save Changes'}</button>
+                        <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-slate-200">
+                             <button type="button" onClick={() => setIsEditing(false)} className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm" disabled={editLoading}>Cancel</button>
+                            <button type="submit" className="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 hover:shadow-md flex items-center justify-center min-w-[140px] transition-all disabled:bg-indigo-400" disabled={editLoading}>{editLoading ? <Spinner size="5" /> : 'Save Changes'}</button>
                         </div>
                     )}
                 </div>
             </form>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-6">
+                <div className="lg:col-span-2 space-y-8">
                     <AttendanceMarker selectedDate={selectedDate} onDateChange={handleDateChange} onMarkAttendance={handleMarkAttendance} authUser={user} />
-                    <div>
-                        <h3 className="text-xl font-semibold mb-3 flex items-center"><CalendarIcon /> Attendance Calendar</h3>
+                    
+                    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-extrabold text-slate-800 flex items-center"><CalendarIcon /> Attendance History</h3>
+                            <button onClick={refreshCalendar} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                Refresh
+                            </button>
+                        </div>
                          <AttendanceCalendar initialMonthString={initialMonthString} key={calendarRefreshKey} />
                     </div>
                 </div>
 
-                <div className="space-y-6">
-                    <div className="bg-white p-5 rounded-xl shadow-md border border-gray-100">
-                        <h3 className="text-md font-semibold mb-3 flex items-center text-gray-800"><QuotaIcon /> Annual Leave Balance</h3>
+                <div className="space-y-8">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 className="text-lg font-extrabold mb-5 flex items-center text-slate-800"><QuotaIcon /> Annual Leave Balance</h3>
                         {leaveQuota ? (
-                            <div className="text-sm space-y-2">
-                                <div className="grid grid-cols-3 font-medium text-gray-500 text-xs uppercase border-b pb-1 mb-1">
-                                    <span>Type</span><span className="text-center">Used / Total</span><span className="text-right">Left</span>
+                            <div className="text-sm">
+                                <div className="grid grid-cols-3 font-bold text-slate-400 text-xs uppercase tracking-wider border-b border-slate-100 pb-2 mb-3">
+                                    <span>Type</span><span className="text-center">Used/Total</span><span className="text-right">Left</span>
                                 </div>
                                 
-                                <div className="grid grid-cols-3 items-center">
-                                    <span className="text-gray-700 font-medium">Sick (SL)</span>
-                                    <span className="text-center text-gray-600">{sickLeave.used} / {sickLeave.total}</span>
-                                    <span className={`text-right font-bold ${sickLeave.remaining < 0 ? 'text-red-600' : 'text-blue-600'}`}>{sickLeave.remaining}</span>
-                                </div>
-                                <div className="grid grid-cols-3 items-center">
-                                    <span className="text-gray-700 font-medium">Casual (CL)</span>
-                                    <span className="text-center text-gray-600">{casualLeave.used} / {casualLeave.total}</span>
-                                    <span className={`text-right font-bold ${casualLeave.remaining < 0 ? 'text-red-600' : 'text-blue-600'}`}>{casualLeave.remaining}</span>
-                                </div>
-                                <div className="grid grid-cols-3 items-center">
-                                    <span className="text-gray-700 font-medium">Earned (EL)</span>
-                                    <span className="text-center text-gray-600">{earnedLeave.used} / {earnedLeave.total}</span>
-                                    <span className={`text-right font-bold ${earnedLeave.remaining < 0 ? 'text-red-600' : 'text-blue-600'}`}>{earnedLeave.remaining}</span>
-                                </div>
-                                <div className="grid grid-cols-3 items-center">
-                                    <span className="text-gray-700 font-medium">Maternity</span>
-                                    <span className="text-center text-gray-600">{maternityLeave.used} / {maternityLeave.total}</span>
-                                    <span className={`text-right font-bold ${maternityLeave.remaining < 0 ? 'text-red-600' : 'text-blue-600'}`}>{maternityLeave.remaining}</span>
-                                </div>
-                                <div className="grid grid-cols-3 items-center">
-                                    <span className="text-gray-700 font-medium">Paternity</span>
-                                    <span className="text-center text-gray-600">{paternityLeave.used} / {paternityLeave.total}</span>
-                                    <span className={`text-right font-bold ${paternityLeave.remaining < 0 ? 'text-red-600' : 'text-blue-600'}`}>{paternityLeave.remaining}</span>
+                                <div className="space-y-3 font-medium text-slate-600">
+                                    <div className="grid grid-cols-3 items-center hover:bg-slate-50 p-1.5 -mx-1.5 rounded-lg transition-colors">
+                                        <span className="text-slate-800">Sick (SL)</span>
+                                        <span className="text-center">{sickLeave.used} / {sickLeave.total}</span>
+                                        <span className={`text-right font-bold text-base ${sickLeave.remaining < 0 ? 'text-red-500' : 'text-blue-600'}`}>{sickLeave.remaining}</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 items-center hover:bg-slate-50 p-1.5 -mx-1.5 rounded-lg transition-colors">
+                                        <span className="text-slate-800">Casual (CL)</span>
+                                        <span className="text-center">{casualLeave.used} / {casualLeave.total}</span>
+                                        <span className={`text-right font-bold text-base ${casualLeave.remaining < 0 ? 'text-red-500' : 'text-blue-600'}`}>{casualLeave.remaining}</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 items-center hover:bg-slate-50 p-1.5 -mx-1.5 rounded-lg transition-colors">
+                                        <span className="text-slate-800">Earned (EL)</span>
+                                        <span className="text-center">{earnedLeave.used} / {earnedLeave.total}</span>
+                                        <span className={`text-right font-bold text-base ${earnedLeave.remaining < 0 ? 'text-red-500' : 'text-blue-600'}`}>{earnedLeave.remaining}</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 items-center hover:bg-slate-50 p-1.5 -mx-1.5 rounded-lg transition-colors">
+                                        <span className="text-slate-800">Maternity</span>
+                                        <span className="text-center">{maternityLeave.used} / {maternityLeave.total}</span>
+                                        <span className={`text-right font-bold text-base ${maternityLeave.remaining < 0 ? 'text-red-500' : 'text-blue-600'}`}>{maternityLeave.remaining}</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 items-center hover:bg-slate-50 p-1.5 -mx-1.5 rounded-lg transition-colors">
+                                        <span className="text-slate-800">Paternity</span>
+                                        <span className="text-center">{paternityLeave.used} / {paternityLeave.total}</span>
+                                        <span className={`text-right font-bold text-base ${paternityLeave.remaining < 0 ? 'text-red-500' : 'text-blue-600'}`}>{paternityLeave.remaining}</span>
+                                    </div>
                                 </div>
                                 
-                                <div className="border-t pt-2 mt-2">
+                                <div className="border-t border-slate-100 pt-3 mt-3 space-y-3 font-medium text-slate-500">
                                     <div className="grid grid-cols-3 items-center">
-                                        <span className="text-gray-700 font-medium">LWP</span>
-                                        <span className="text-center text-gray-600">{lwp.used} used</span>
-                                        <span className="text-right text-gray-400">-</span>
+                                        <span className="text-slate-800">LWP</span>
+                                        <span className="text-center">{lwp.used} used</span>
+                                        <span className="text-right text-slate-300">-</span>
                                     </div>
                                     <div className="grid grid-cols-3 items-center">
-                                        <span className="text-gray-700 font-medium">LOP</span>
-                                        <span className="text-center text-gray-600">{lop.used} used</span>
-                                        <span className="text-right text-gray-400">-</span>
+                                        <span className="text-slate-800">LOP</span>
+                                        <span className="text-center">{lop.used} used</span>
+                                        <span className="text-right text-slate-300">-</span>
                                     </div>
                                 </div>
                             </div>
                         ) : (
-                            <p className="text-sm text-gray-500 italic">Leave quotas not configured.</p>
+                            <div className="bg-slate-50 rounded-lg p-4 text-center border border-slate-100">
+                                <p className="text-sm text-slate-500 font-medium">Leave quotas not configured yet.</p>
+                            </div>
                         )}
                     </div>
-                    <div className="bg-white p-5 rounded-xl shadow-md border border-gray-100">
-                         <h3 className="text-md font-semibold mb-3 flex items-center text-gray-800"><RequestIcon /> Request Leave</h3>
+                    
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                         <h3 className="text-lg font-extrabold mb-5 flex items-center text-slate-800"><RequestIcon /> Request Leave</h3>
                         <LeaveRequestForm onLeaveRequested={handleLeaveRequested} />
                     </div>
-                    <div className="bg-white p-5 rounded-xl shadow-md border border-gray-100">
-                        <h3 className="text-md font-semibold mb-3 flex items-center text-gray-800"><HistoryIcon /> Leave History</h3>
+                    
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 className="text-lg font-extrabold mb-5 flex items-center text-slate-800"><HistoryIcon /> Leave History</h3>
                          <LeaveHistory leaveHistory={leaveHistory} />
                     </div>
                 </div>
