@@ -121,9 +121,24 @@ const AssetManagementPage = () => {
         }
     };
 
-    // ✅ FIXED: Calculate accurate working hours, aware of active/ongoing shifts
+    // ✅ FIXED: Calculate accurate working hours strictly capped to the 19:00 - 04:00 IST Shift
     const formattedWorkingTime = useMemo(() => {
-        if (!assetSessions.length) return '0h 0m';
+        if (!assetSessions.length || !sessionDate) return '0h 0m';
+
+        // 1. Establish strict IST Shift Boundaries for the selected date
+        // Base shift start: 19:00 IST on `sessionDate`
+        const shiftStartStr = `${sessionDate}T19:00:00.000+05:30`;
+        const shiftStartIST = new Date(shiftStartStr);
+
+        // Base shift end: 04:00 IST on `sessionDate + 1 day`
+        const shiftEndDate = new Date(shiftStartIST);
+        shiftEndDate.setDate(shiftEndDate.getDate() + 1);
+        shiftEndDate.setHours(4, 0, 0, 0); // 04:00 AM local time of the Date object
+
+        // For string fallback construction if needed
+        const nextDayStr = shiftEndDate.toISOString().split('T')[0];
+        const shiftEndIST = new Date(`${nextDayStr}T04:00:00.000+05:30`);
+
 
         const startTriggers = ['login', 'unlock', 'resume', 'active', 'wake'];
         const endTriggers = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate'];
@@ -135,26 +150,43 @@ const AssetManagementPage = () => {
 
         sorted.forEach(log => {
             const act = log.actionType.toLowerCase();
+            const logTime = new Date(log.eventTimestamp);
+
             if (startTriggers.includes(act) && !sessionStart) {
-                sessionStart = new Date(log.eventTimestamp);
+                // Clamp the start time so it doesn't count time before 7:00 PM
+                sessionStart = logTime < shiftStartIST ? shiftStartIST : logTime;
             } else if (endTriggers.includes(act) && sessionStart) {
-                totalMs += (new Date(log.eventTimestamp) - sessionStart);
+                // Clamp the end time so it doesn't count time after 4:00 AM
+                let sessionEnd = logTime > shiftEndIST ? shiftEndIST : logTime;
+                
+                // Only add time if the end is actually after the start
+                if (sessionEnd > sessionStart) {
+                    totalMs += (sessionEnd - sessionStart);
+                }
                 sessionStart = null;
             }
         });
 
         let activeString = "";
         if (sessionStart) {
-            const todayShiftDate = getISTShiftDateString();
-            if (sessionDate === todayShiftDate) {
-                // Currently ongoing shift: add time up to the exact present moment
-                totalMs += Math.max(0, new Date() - sessionStart);
+            const now = new Date();
+            
+            // Only add active time if "now" is still within the shift boundary
+            if (now < shiftEndIST) {
+                totalMs += Math.max(0, now - sessionStart);
                 activeString = " (Active Now)";
             } else {
-                // Looking at a past day where they never logged out
+                // If they never logged out and the shift is over, cap it at the 4 AM boundary
+                if (shiftEndIST > sessionStart) {
+                    totalMs += (shiftEndIST - sessionStart);
+                }
                 activeString = " (Missing Logout)";
             }
         }
+
+        // Cap total hours at 9h (just as a final safety measure)
+        const maxShiftMs = 9 * 60 * 60 * 1000;
+        if (totalMs > maxShiftMs) totalMs = maxShiftMs;
 
         const hours = Math.floor(totalMs / (1000 * 60 * 60));
         const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
@@ -310,7 +342,7 @@ const AssetManagementPage = () => {
                                 <div className="px-6 py-5 border-b border-slate-200 bg-white flex justify-between items-center shadow-sm z-10">
                                     <div>
                                         <h3 className="text-xl font-extrabold text-slate-800 flex items-center"><ActivityIcon /> Tracking Logs: {selectedAsset.rowKey}</h3>
-                                        <p className="text-sm font-medium text-slate-500 mt-1">IST Shift Boundary: 19:00 - 04:00 (Extends to 12:00 PM)</p>
+                                        <p className="text-sm font-medium text-slate-500 mt-1">IST Shift Boundary: 19:00 - 04:00 (Cap applied)</p>
                                     </div>
                                     <button onClick={closeModal} className="text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 rounded-full p-1.5 border border-slate-200 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                 </div>
@@ -321,7 +353,7 @@ const AssetManagementPage = () => {
                                     </div>
                                     <div className="flex items-center px-4 py-2 bg-white border border-slate-200 shadow-sm rounded-xl">
                                         <ClockIcon />
-                                        <span className="text-sm text-slate-600 font-bold ml-1 tracking-wide">Calculated Work Time: <strong className="text-lg font-black text-indigo-600 ml-1.5">{formattedWorkingTime}</strong></span>
+                                        <span className="text-sm text-slate-600 font-bold ml-1 tracking-wide">Calculated Shift Time: <strong className="text-lg font-black text-indigo-600 ml-1.5">{formattedWorkingTime}</strong></span>
                                     </div>
                                 </div>
                                 <div className="px-6 pt-3 border-b border-slate-200 bg-white">
