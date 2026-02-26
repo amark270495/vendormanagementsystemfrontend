@@ -11,7 +11,7 @@ import ConfirmationModal from '../components/dashboard/ConfirmationModal';
 import ViewDetailsModal from '../components/dashboard/ViewDetailsModal';
 import ColumnSettingsModal from '../components/dashboard/ColumnSettingsModal';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
-import AddCommentModal from '../components/dashboard/AddCommentModal'; // ✅ IMPORTED NEW MODAL
+import AddCommentModal from '../components/dashboard/AddCommentModal'; 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -172,7 +172,7 @@ const DashboardPage = ({ sheetKey }) => {
         'Working By': 'w-28',
         'No. of Resumes Submitted': 'w-24',
         '# Submitted': 'w-22',
-        'Remarks': 'w-56', // ✅ Made wider to fit the comment bubble beautifully
+        'Remarks': 'w-56', // Keeps enough width for the comment bubble
         '1st Candidate Name': 'w-25',
         '2nd Candidate Name': 'w-25',
         '3rd Candidate Name': 'w-25',
@@ -240,7 +240,11 @@ const DashboardPage = ({ sheetKey }) => {
         
         const headerRenames = { 'Last Submission Date': 'Deadline', 'No. of Resumes Submitted': '# Submitted' };
         const originalHeaderMap = new Map(header.map((h, i) => [h, i]));
-        let transformedHeader = header.map(h => headerRenames[h] || h).filter(h => h !== 'Company Name');
+        
+        // ✅ CRITICAL FIX: Filters out 'Comments' here so it NEVER becomes a table column
+        let transformedHeader = header
+            .map(h => headerRenames[h] || h)
+            .filter(h => h !== 'Company Name' && h !== 'Comments');
 
         const clientIdx = originalHeaderMap.get('Client Name');
         const postingFromIdx = originalHeaderMap.get('Posting From');
@@ -409,8 +413,6 @@ const DashboardPage = ({ sheetKey }) => {
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
-    // ✅ NEW: Handle Custom Action Menu Comment
-    // This saves to a separate 'Comments' field so it doesn't break the dropdown!
     const handleAddComment = (job, customComment) => {
         if (!canEditDashboard) return;
         const postingId = job['Posting ID'];
@@ -419,7 +421,7 @@ const DashboardPage = ({ sheetKey }) => {
             ...prev, 
             [postingId]: { 
                 ...prev[postingId], 
-                ['Comments']: customComment // Saves to a separate virtual column
+                ['Comments']: customComment 
             } 
         }));
         
@@ -429,7 +431,6 @@ const DashboardPage = ({ sheetKey }) => {
     const handleSaveChanges = async () => {
         if (!canEditDashboard) return;
 
-        // ✅ ADDED 'Comments' to the mapping so the backend saves it automatically
         const headerMap = {
             'Working By': 'workingBy',
             '# Submitted': 'noOfResumesSubmitted',
@@ -588,20 +589,18 @@ const DashboardPage = ({ sheetKey }) => {
         doc.save(`${sheetKey}_report.pdf`);
     };
     
-    // ✅ Updated jobToObject so the Modal can pre-load the existing comment if editing
     const jobToObject = (row) => {
         const obj = displayHeader.reduce((acc, h, i) => ({...acc, [h]: row[i]}), {});
         const postingId = obj['Posting ID'];
         
-        // Find existing database comment
+        // Pull comment specifically from the raw data so the modal has it for editing
         const rawRow = rawData.rows.find(r => String(r[rawData.header.indexOf('Posting ID')]) === String(postingId));
-        if (rawRow && rawData.header.indexOf('Comments') > -1) {
-            obj['Comments'] = rawRow[rawData.header.indexOf('Comments')];
-        }
+        const dbComment = (rawRow && rawData.header.indexOf('Comments') > -1) ? rawRow[rawData.header.indexOf('Comments')] : '';
         
-        // Find pending unsaved comment
         if (unsavedChanges[postingId]?.['Comments'] !== undefined) {
             obj['Comments'] = unsavedChanges[postingId]['Comments'];
+        } else {
+            obj['Comments'] = dbComment;
         }
         return obj;
     };
@@ -735,7 +734,7 @@ const DashboardPage = ({ sheetKey }) => {
                             {filteredAndSortedData.slice(0, visibleCount).map((row, rowIndex) => {
                                 const postingId = row[displayHeader.indexOf('Posting ID')];
                                 
-                                // ✅ Retrieve the custom comment (from unsaved changes, or from the raw backend row)
+                                // ✅ FETCH HIDDEN COMMENT DATA FOR RENDERING
                                 const rawRow = rawData.rows.find(r => String(r[rawData.header.indexOf('Posting ID')]) === String(postingId));
                                 const dbComment = (rawRow && rawData.header.indexOf('Comments') > -1) ? rawRow[rawData.header.indexOf('Comments')] : '';
                                 const currentCustomComment = unsavedChanges[postingId]?.['Comments'] !== undefined 
@@ -748,7 +747,6 @@ const DashboardPage = ({ sheetKey }) => {
                                             const headerName = displayHeader[cellIndex];
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                                             
-                                            // Make the cell amber if 'Remarks' dropdown OR the hidden 'Comments' field has unsaved changes
                                             const hasUnsaved = unsavedChanges[postingId]?.[headerName] !== undefined || (headerName === 'Remarks' && unsavedChanges[postingId]?.['Comments'] !== undefined);
 
                                             let selectedWorkingBy = [];
@@ -804,13 +802,13 @@ const DashboardPage = ({ sheetKey }) => {
                                                                     {cell || 'Add Candidate'}
                                                                 </span>
                                                             ) : headerName === 'Remarks' ? (
-                                                                // ✅ NEW: Custom Render for the Remarks Column to display the Dropdown Value + The Action Menu Comment
+                                                                // ✅ DISPLAYS THE REMARK + THE HIDDEN COMMENT
                                                                 <div className="flex flex-col gap-2">
                                                                     <span className="font-bold text-slate-800">
                                                                         {cell || <span className="text-slate-400 italic font-normal">No Remark</span>}
                                                                     </span>
                                                                     {currentCustomComment && (
-                                                                        <div className="text-[11px] bg-indigo-50/60 text-indigo-700 p-2 rounded border border-indigo-100 italic shadow-sm whitespace-pre-wrap leading-relaxed">
+                                                                        <div className="text-[11px] bg-indigo-50/60 text-indigo-700 p-2 rounded border border-indigo-100 shadow-sm whitespace-pre-wrap leading-relaxed">
                                                                             <svg className="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" /></svg>
                                                                             {currentCustomComment}
                                                                         </div>
