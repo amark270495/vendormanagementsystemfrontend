@@ -10,26 +10,35 @@ const formatMsToTime = (ms) => {
     return `${h}h ${m}m`;
 };
 
-// --- Updated Time Calculation Helper (FIXED TIMEZONE BUG) ---
+// --- ✨ FIXED: Bulletproof Time Calculation Helper ---
 const calculateTotalWorkTime = (logs, shiftDateStr) => {
     if (!logs || logs.length === 0 || !shiftDateStr) return { standard: "0h 0m", extra: null, activeStr: "" };
     
-    // 1. Establish strict IST Shift Boundaries (Bypassing Browser Timezones)
-    const shiftStartIST = new Date(`${shiftDateStr}T19:00:00.000+05:30`);
+    // 1. Safely parse date (Handles both YYYY-MM-DD and DD-MM-YYYY)
+    let year, month, day;
+    const parts = shiftDateStr.split('-');
+    if (parts[0].length === 4) {
+        [year, month, day] = parts;
+    } else {
+        [day, month, year] = parts;
+    }
 
-    // Safely calculate the "next day" string using pure UTC math
-    const [year, month, day] = shiftDateStr.split('-');
+    // 2. Establish strict IST Shift Boundaries (19:00 to 04:00)
+    const shiftStartIST = new Date(`${year}-${month}-${day}T19:00:00.000+05:30`);
+    
+    // Safely calculate the "next day" for the 04:00 AM cutoff
     const nextDayUTC = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10) + 1));
     const nextDayStr = nextDayUTC.toISOString().split('T')[0];
-    
     const shiftEndIST = new Date(`${nextDayStr}T04:00:00.000+05:30`);
 
-    // 2. Sort logs
+    // 3. Sort logs
     const sortedLogs = [...logs].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
     
     let standardMs = 0;
     let extraMs = 0;
+    
     let sessionStart = null;
+    let lastHeartbeat = null;
     let activeString = "";
 
     const processBlock = (start, end) => {
@@ -50,20 +59,30 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
         extraMs += blockExtra;
     };
 
-    const startActions = ['login', 'unlock', 'resume', 'active', 'wake'];
-    const stopActions = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate'];
+    // ✅ Added 'heartbeat' and 'usage update' as valid start triggers (Self-healing)
+    const startActions = ['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat', 'usage update'];
+    const stopActions = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate', 'shutdown'];
 
     sortedLogs.forEach(log => {
         const act = log.actionType.toLowerCase();
         const logTime = new Date(log.eventTimestamp);
         const notes = (log.workDoneNotes || "").toLowerCase();
         
+        // Always track latest pulse
+        if (act === 'heartbeat' || act === 'usage update') {
+            lastHeartbeat = logTime;
+        }
+        
         if (startActions.includes(act) && !sessionStart) {
             sessionStart = logTime;
+            lastHeartbeat = logTime; 
         } else if (stopActions.includes(act) && sessionStart) {
             
             // Handle PowerShell delayed shutdown bug
             if (notes.includes("previous shutdown detected")) {
+                if (lastHeartbeat && lastHeartbeat > sessionStart) {
+                    processBlock(sessionStart, lastHeartbeat);
+                }
                 sessionStart = null;
             } else {
                 processBlock(sessionStart, logTime);
@@ -72,14 +91,30 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
         }
     });
 
+    // 4. ✅ FIXED: Handle Missing Logout / Active Sessions properly!
     if (sessionStart) {
         const now = new Date();
         
-        if (now < shiftEndIST) {
-             processBlock(sessionStart, now);
-             activeString = " (Active Now)";
+        if (lastHeartbeat && lastHeartbeat > sessionStart) {
+            // V2 Script: Has heartbeats. Are they still pulsing?
+            if (now - lastHeartbeat < 15 * 60000 && now < shiftEndIST) {
+                processBlock(sessionStart, now); // Live session
+                activeString = " (Active Now)";
+            } else {
+                const capTime = lastHeartbeat < shiftEndIST ? lastHeartbeat : shiftEndIST;
+                processBlock(sessionStart, capTime); // Offline / Crashed cap
+                activeString = " (Missing Logout)";
+            }
         } else {
-             activeString = " (Missing Logout)";
+            // V1 Script: No heartbeats. Cap at current time or shift end.
+            if (now < shiftEndIST) {
+                 processBlock(sessionStart, now);
+                 activeString = " (Active Now)";
+            } else {
+                 // 🚨 THIS WAS THE BUG: It previously skipped calling processBlock here!
+                 processBlock(sessionStart, shiftEndIST); 
+                 activeString = " (Missing Logout)";
+            }
         }
     }
 
@@ -390,7 +425,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         if (noteLower.includes('previous shutdown detected'))
             return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-rose-100 text-rose-800 border border-rose-200">Offline Shutdwn</span>;
 
-        if (['login', 'unlock', 'resume', 'active', 'wake'].includes(action)) 
+        if (['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat'].includes(action)) 
             return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">{actionType}</span>;
         if (['logout', 'logoff', 'lock', 'sleep', 'hibernate'].includes(action)) 
             return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-slate-200 text-slate-700 border border-slate-300">{actionType}</span>;
