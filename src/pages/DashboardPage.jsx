@@ -172,7 +172,7 @@ const DashboardPage = ({ sheetKey }) => {
         'Working By': 'w-28',
         'No. of Resumes Submitted': 'w-24',
         '# Submitted': 'w-22',
-        'Remarks': 'w-56', // Keeps enough width for the comment bubble
+        'Remarks': 'w-40', // Keeps enough width for the comment bubble
         '1st Candidate Name': 'w-25',
         '2nd Candidate Name': 'w-25',
         '3rd Candidate Name': 'w-25',
