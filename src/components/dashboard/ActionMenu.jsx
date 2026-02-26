@@ -3,6 +3,7 @@ import Dropdown from '../Dropdown';
 import { 
     MoreVertical, 
     Eye, 
+    MessageSquare, // <-- Imported new icon for comments
     Archive, 
     XCircle, 
     Trash2,
@@ -16,6 +17,12 @@ const ActionMenu = ({ job, onAction }) => {
             id: 'details', 
             label: 'View Details', 
             icon: <Eye size={16} />, 
+            color: 'text-slate-700' 
+        },
+        { 
+            id: 'comment',  // <-- ADDED THIS NEW ITEM
+            label: 'Add Comment', 
+            icon: <MessageSquare size={16} />, 
             color: 'text-slate-700' 
         },
         { 

@@ -11,6 +11,7 @@ import ConfirmationModal from '../components/dashboard/ConfirmationModal';
 import ViewDetailsModal from '../components/dashboard/ViewDetailsModal';
 import ColumnSettingsModal from '../components/dashboard/ColumnSettingsModal';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
+import AddCommentModal from '../components/dashboard/AddCommentModal'; // ✅ IMPORTED NEW MODAL
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -171,7 +172,7 @@ const DashboardPage = ({ sheetKey }) => {
         'Working By': 'w-28',
         'No. of Resumes Submitted': 'w-24',
         '# Submitted': 'w-22',
-        'Remarks': 'w-30',
+        'Remarks': 'w-56', // ✅ Made wider to fit the comment bubble beautifully
         '1st Candidate Name': 'w-25',
         '2nd Candidate Name': 'w-25',
         '3rd Candidate Name': 'w-25',
@@ -408,16 +409,32 @@ const DashboardPage = ({ sheetKey }) => {
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
     };
 
-    // --- UPDATED: Handle Save Changes with Bulk Emails ---
+    // ✅ NEW: Handle Custom Action Menu Comment
+    // This saves to a separate 'Comments' field so it doesn't break the dropdown!
+    const handleAddComment = (job, customComment) => {
+        if (!canEditDashboard) return;
+        const postingId = job['Posting ID'];
+
+        setUnsavedChanges(prev => ({ 
+            ...prev, 
+            [postingId]: { 
+                ...prev[postingId], 
+                ['Comments']: customComment // Saves to a separate virtual column
+            } 
+        }));
+        
+        setModalState({ type: null, data: null });
+    };
+
     const handleSaveChanges = async () => {
         if (!canEditDashboard) return;
 
-        console.log("Handle Save Changes triggered.");
-
+        // ✅ ADDED 'Comments' to the mapping so the backend saves it automatically
         const headerMap = {
             'Working By': 'workingBy',
             '# Submitted': 'noOfResumesSubmitted',
-            'Remarks': 'remarks'
+            'Remarks': 'remarks',
+            'Comments': 'comments' 
         };
 
         const updates = Object.entries(unsavedChanges)
@@ -432,20 +449,13 @@ const DashboardPage = ({ sheetKey }) => {
             }))
             .filter(u => Object.keys(u.changes).length > 0);
 
-        if (updates.length === 0) {
-            console.log("No updates to save.");
-            return;
-        }
+        if (updates.length === 0) return;
 
         setLoading(true);
 
         try {
-            // 1. Update Backend Database
-            console.log("Calling updateJobPosting API...");
             await apiService.updateJobPosting(updates, user.userIdentifier);
-            console.log("Job posting updated successfully.");
 
-            // 2. Process Emails (Bulk per Posting)
             for (const [postingId, changes] of Object.entries(unsavedChanges)) {
                 if (changes['Working By'] && changes['Working By'] !== 'Need To Update') {
                     
@@ -460,29 +470,23 @@ const DashboardPage = ({ sheetKey }) => {
                     if (jobRow) {
                         const jobTitle = jobRow[headers.indexOf('Posting Title')] || '';
                         
-                        // Create the array of names
                         const assignedUsers = String(changes['Working By'])
                             .split(',')
                             .map(s => s.trim())
                             .filter(s => s && s !== 'Need To Update');
 
                         if (assignedUsers.length > 0) {
-                            console.log(`Sending bulk assignment email for Job: ${jobTitle} to:`, assignedUsers);
                             try {
-                                // ✅ UPDATED: Calling the API ONCE with the full array per posting
                                 await apiService.sendAssignmentEmail({
                                     jobTitle,
                                     postingId,
                                     assignedUsers,
                                     authenticatedUsername: user.userIdentifier
                                 });
-                                console.log("Bulk assignment emails triggered successfully.");
                             } catch (emailErr) {
                                 console.error("Error sending bulk emails:", emailErr);
                             }
                         }
-                    } else {
-                        console.warn(`Could not find row data for Posting ID: ${postingId}. Email skipped.`);
                     }
                 }
             }
@@ -490,7 +494,6 @@ const DashboardPage = ({ sheetKey }) => {
             setUnsavedChanges({});
             loadData();
         } catch (err) {
-            console.error("Save Changes Failed:", err);
             setError(`Failed to save: ${err.response?.data?.message || err.message}`);
         } finally {
             setLoading(false);
@@ -585,7 +588,23 @@ const DashboardPage = ({ sheetKey }) => {
         doc.save(`${sheetKey}_report.pdf`);
     };
     
-    const jobToObject = (row) => displayHeader.reduce((obj, h, i) => ({...obj, [h]: row[i]}), {});
+    // ✅ Updated jobToObject so the Modal can pre-load the existing comment if editing
+    const jobToObject = (row) => {
+        const obj = displayHeader.reduce((acc, h, i) => ({...acc, [h]: row[i]}), {});
+        const postingId = obj['Posting ID'];
+        
+        // Find existing database comment
+        const rawRow = rawData.rows.find(r => String(r[rawData.header.indexOf('Posting ID')]) === String(postingId));
+        if (rawRow && rawData.header.indexOf('Comments') > -1) {
+            obj['Comments'] = rawRow[rawData.header.indexOf('Comments')];
+        }
+        
+        // Find pending unsaved comment
+        if (unsavedChanges[postingId]?.['Comments'] !== undefined) {
+            obj['Comments'] = unsavedChanges[postingId]['Comments'];
+        }
+        return obj;
+    };
 
     const handleCellClick = (rowIndex, cellIndex) => {
         if (!canEditDashboard) return; 
@@ -700,12 +719,12 @@ const DashboardPage = ({ sheetKey }) => {
                                                 )}
                                             </div>
                                             }>
-                                                <HeaderMenu 
-                                                    header={h} 
-                                                    onSort={(dir) => handleSort(h, dir)} 
-                                                    filterConfig={columnFilters[h]} 
-                                                    onFilterChange={handleFilterChange}
-                                                />
+                                            <HeaderMenu 
+                                                header={h} 
+                                                onSort={(dir) => handleSort(h, dir)} 
+                                                filterConfig={columnFilters[h]} 
+                                                onFilterChange={handleFilterChange}
+                                            />
                                         </Dropdown>
                                     </th>
                                 ))}
@@ -715,12 +734,22 @@ const DashboardPage = ({ sheetKey }) => {
                         <tbody className="divide-y divide-slate-100">
                             {filteredAndSortedData.slice(0, visibleCount).map((row, rowIndex) => {
                                 const postingId = row[displayHeader.indexOf('Posting ID')];
+                                
+                                // ✅ Retrieve the custom comment (from unsaved changes, or from the raw backend row)
+                                const rawRow = rawData.rows.find(r => String(r[rawData.header.indexOf('Posting ID')]) === String(postingId));
+                                const dbComment = (rawRow && rawData.header.indexOf('Comments') > -1) ? rawRow[rawData.header.indexOf('Comments')] : '';
+                                const currentCustomComment = unsavedChanges[postingId]?.['Comments'] !== undefined 
+                                    ? unsavedChanges[postingId]['Comments'] 
+                                    : dbComment;
+
                                 return (
                                     <tr key={postingId || rowIndex} className="bg-white hover:bg-blue-50/30 transition-colors">
                                         {row.map((cell, cellIndex) => {
                                             const headerName = displayHeader[cellIndex];
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
-                                            const hasUnsaved = unsavedChanges[postingId]?.[headerName] !== undefined;
+                                            
+                                            // Make the cell amber if 'Remarks' dropdown OR the hidden 'Comments' field has unsaved changes
+                                            const hasUnsaved = unsavedChanges[postingId]?.[headerName] !== undefined || (headerName === 'Remarks' && unsavedChanges[postingId]?.['Comments'] !== undefined);
 
                                             let selectedWorkingBy = [];
                                             if (headerName === 'Working By') {
@@ -766,20 +795,33 @@ const DashboardPage = ({ sheetKey }) => {
                                                         <div contentEditable={isEditing && headerName !== 'Working By' && headerName !== 'Remarks' && canEditDashboard} suppressContentEditableWarning={true} onBlur={e => { if (isEditing) { handleCellEdit(rowIndex, cellIndex, e.target.innerText); setEditingCell(null); } }}>
                                                             {headerName === 'Status' ? (
                                                                 <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full border uppercase tracking-wider whitespace-nowrap ${getStatusBadge(cell)}`}>
-                                                                            {cell}
+                                                                    {cell}
                                                                 </span>
                                                             ) : DATE_COLUMNS.includes(headerName) ? (
                                                                 formatDate(cell)
                                                             ) : CANDIDATE_COLUMNS.includes(headerName) ? (
                                                                 <span className={canEditDashboard && (cell === 'Need To Update' || !cell) ? 'text-blue-600 hover:text-blue-800 underline decoration-blue-200 underline-offset-4 font-bold' : 'text-slate-700 font-semibold'}>
-                                                                            {cell || 'Add Candidate'}
+                                                                    {cell || 'Add Candidate'}
                                                                 </span>
+                                                            ) : headerName === 'Remarks' ? (
+                                                                // ✅ NEW: Custom Render for the Remarks Column to display the Dropdown Value + The Action Menu Comment
+                                                                <div className="flex flex-col gap-2">
+                                                                    <span className="font-bold text-slate-800">
+                                                                        {cell || <span className="text-slate-400 italic font-normal">No Remark</span>}
+                                                                    </span>
+                                                                    {currentCustomComment && (
+                                                                        <div className="text-[11px] bg-indigo-50/60 text-indigo-700 p-2 rounded border border-indigo-100 italic shadow-sm whitespace-pre-wrap leading-relaxed">
+                                                                            <svg className="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" /></svg>
+                                                                            {currentCustomComment}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             ) : (
                                                                 headerName === 'Working By' ? (
                                                                     <div className="flex flex-wrap gap-1.5 max-w-full">
                                                                         {selectedWorkingBy.map((name, idx) => (
                                                                             <span key={idx} className={`px-2 py-0.5 text-[11px] font-bold rounded-md bg-slate-200 text-slate-700 shadow-sm break-words leading-normal inline-block`}>
-                                                                                        {name}
+                                                                                {name}
                                                                             </span>
                                                                         ))}
                                                                     </div>
@@ -835,6 +877,7 @@ const DashboardPage = ({ sheetKey }) => {
             <ViewDetailsModal isOpen={modalState.type === 'details'} onClose={() => setModalState({type: null, data: null})} job={modalState.data}/>
             <ColumnSettingsModal isOpen={isColumnModalOpen} onClose={() => setColumnModalOpen(false)} allHeaders={transformedData.header} userPrefs={userPrefs} onSave={handleSaveColumnSettings}/>
             <CandidateDetailsModal isOpen={modalState.type === 'addCandidate'} onClose={() => setModalState({type: null, data: null})} onSave={handleSaveCandidate} jobInfo={modalState.data} />
+            <AddCommentModal isOpen={modalState.type === 'comment'} onClose={() => setModalState({type: null, data: null})} onSave={handleAddComment} job={modalState.data} />
         </div>
     );
 };
