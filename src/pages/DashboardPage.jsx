@@ -163,7 +163,7 @@ const DashboardPage = ({ sheetKey }) => {
         'Posting Date': 'w-22',
         'Last Submission Date': 'w-20',
         'Deadline': 'w-25',
-        'Max Submissions': 'w-25',
+        'Max Submissions': 'w-20',
         'Max C2C Rate': 'w-25',
         'Client Info': 'w-30',
         'Required Skill Set': 'w-64',
@@ -172,12 +172,12 @@ const DashboardPage = ({ sheetKey }) => {
         'Working By': 'w-28',
         'No. of Resumes Submitted': 'w-24',
         '# Submitted': 'w-22',
-        'Remarks': 'w-35', // Keeps enough width for the comment bubble
+        'Remarks': 'w-45', // Keeps enough width for the comment bubble
         '1st Candidate Name': 'w-25',
         '2nd Candidate Name': 'w-25',
         '3rd Candidate Name': 'w-25',
         'Status': 'w-25',
-        'Actions': 'w-15'
+        'Actions': 'w-10'
     }), []);
 
     const userPrefs = useMemo(() => {
