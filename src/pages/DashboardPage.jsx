@@ -161,7 +161,6 @@ const DashboardPage = ({ sheetKey }) => {
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
         'Posting Date': 'w-22',
-        'Last Submission Date': 'w-20',
         'Deadline': 'w-25',
         'Max Submissions': 'w-20',
         'Max C2C Rate': 'w-20',
