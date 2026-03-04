@@ -4,17 +4,34 @@ import { apiService } from '../../api/apiService';
 import Spinner from '../Spinner';
 import Modal from '../Modal';
 
+// --- FIXED FRONTEND SHIFT DATE DETECTOR ---
+// Ensures Calendar "Today" respects the 12 PM Noon Cutoff for IST Shifts
+const getISTShiftDateString = () => {
+    const browserNow = new Date();
+    const utcTime = browserNow.getTime() + (browserNow.getTimezoneOffset() * 60000);
+    const istTime = new Date(utcTime + (5.5 * 60 * 60 * 1000));
+    
+    if (istTime.getHours() < 12) {
+        istTime.setDate(istTime.getDate() - 1);
+    }
+    
+    const year = istTime.getFullYear();
+    const month = String(istTime.getMonth() + 1).padStart(2, '0');
+    const day = String(istTime.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+};
+
 const formatMsToTime = (ms) => {
     const h = Math.floor(ms / (1000 * 60 * 60));
     const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
     return `${h}h ${m}m`;
 };
 
-// --- ✨ FIXED: Bulletproof Time Calculation Helper ---
+// --- BULLETPROOF TIME CALCULATION ---
 const calculateTotalWorkTime = (logs, shiftDateStr) => {
     if (!logs || logs.length === 0 || !shiftDateStr) return { standard: "0h 0m", extra: null, activeStr: "" };
 
-    // 1. Safely parse date (Handles both YYYY-MM-DD and DD-MM-YYYY)
     let year, month, day;
     const parts = shiftDateStr.split('-');
     if (parts[0].length === 4) {
@@ -23,20 +40,16 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
         [day, month, year] = parts;
     }
 
-    // 2. Establish strict IST Shift Boundaries (19:00 to 04:00)
+    // 19:00 to 04:00 IST Boundaries forced securely using +05:30
     const shiftStartIST = new Date(`${year}-${month}-${day}T19:00:00.000+05:30`);
-    
-    // Safely calculate the "next day" for the 04:00 AM cutoff
     const nextDayUTC = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10) + 1));
     const nextDayStr = nextDayUTC.toISOString().split('T')[0];
     const shiftEndIST = new Date(`${nextDayStr}T04:00:00.000+05:30`);
 
-    // 3. Sort logs
     const sortedLogs = [...logs].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
     
     let standardMs = 0;
     let extraMs = 0;
-    
     let sessionStart = null;
     let lastHeartbeat = null;
     let activeString = "";
@@ -45,7 +58,6 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
         const blockTotal = end - start;
         if (blockTotal <= 0) return;
 
-        // Calculate overlap with core shift (19:00 - 04:00)
         const overlapStart = start > shiftStartIST ? start : shiftStartIST;
         const overlapEnd = end < shiftEndIST ? end : shiftEndIST;
 
@@ -58,7 +70,6 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
         extraMs += (blockTotal - blockStandard);
     };
 
-    // ✅ INCLUDED NEW POWERSHELL EVENTS
     const startActions = ['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat', 'usage update'];
     const stopActions = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate', 'shutdown', 'restartaccepted', 'shiftendenforced', 'agentcrash'];
 
@@ -67,17 +78,12 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
         const logTime = new Date(log.eventTimestamp);
         const notes = (log.workDoneNotes || "").toLowerCase();
         
-        // Always track latest pulse
-        if (act === 'heartbeat' || act.includes('usage')) {
-            lastHeartbeat = logTime;
-        }
+        if (act === 'heartbeat' || act.includes('usage')) lastHeartbeat = logTime;
         
         if (startActions.includes(act) && !sessionStart) {
             sessionStart = logTime;
             lastHeartbeat = logTime; 
         } else if (stopActions.includes(act) && sessionStart) {
-            
-            // Handle PowerShell delayed shutdown bug
             if (notes.includes("previous shutdown detected")) {
                 if (lastHeartbeat && lastHeartbeat > sessionStart) {
                     processBlock(sessionStart, lastHeartbeat);
@@ -90,21 +96,17 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
         }
     });
 
-    // 4. ✅ FIXED: Handle Missing Logout / Active Sessions properly!
     if (sessionStart) {
         const now = new Date();
         if (lastHeartbeat && lastHeartbeat > sessionStart) {
-            // V2 Script: Has heartbeats. Are they still pulsing?
             if (now - lastHeartbeat < 15 * 60000 && now < shiftEndIST) {
-                processBlock(sessionStart, now); // Live session
+                processBlock(sessionStart, now);
                 activeString = " (Active Now)";
             } else {
-                // FIX: Do NOT artificially cap at shiftEndIST here! Use the lastHeartbeat!
                 processBlock(sessionStart, lastHeartbeat); 
                 activeString = " (Missing Logout)";
             }
         } else {
-            // V1 Script: No heartbeats. Cap at current time or shift end.
             if (now < shiftEndIST) {
                  processBlock(sessionStart, now);
                  activeString = " (Active Now)";
@@ -146,22 +148,15 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         
         const dateKey = date.toISOString().split('T')[0];
         const dayOfWeek = date.getUTCDay();
-        const today = new Date(); 
-        today.setUTCHours(0,0,0,0);
+        
+        // FIXED: Use the logical shift date for comparison, not the literal browser clock
+        const currentShiftDateStr = getISTShiftDateString();
 
         const baseClasses = "relative transition-all duration-300 ease-out border flex flex-col justify-between p-1.5 overflow-hidden shadow-sm";
 
-        if (leaveDaysSet.has(dateKey)) {
-            return { status: 'On Leave', label: 'Leave', color: `${baseClasses} bg-violet-50 border-violet-200 text-violet-700`, badgeColor: "bg-violet-200 text-violet-800" };
-        }
-        
-        if (holidays[dateKey]) {
-            return { status: 'Holiday', label: 'Holiday', color: `${baseClasses} bg-orange-50 border-orange-200 text-orange-800`, badgeColor: "bg-orange-200 text-orange-800", description: holidays[dateKey] };
-        }
-
-        if (dayOfWeek === 0 || dayOfWeek === 6) {
-            return { status: 'Weekend', label: 'WKND', color: `${baseClasses} bg-slate-50 border-slate-200 text-slate-400`, badgeColor: "hidden" };
-        }
+        if (leaveDaysSet.has(dateKey)) return { status: 'On Leave', label: 'Leave', color: `${baseClasses} bg-violet-50 border-violet-200 text-violet-700`, badgeColor: "bg-violet-200 text-violet-800" };
+        if (holidays[dateKey]) return { status: 'Holiday', label: 'Holiday', color: `${baseClasses} bg-orange-50 border-orange-200 text-orange-800`, badgeColor: "bg-orange-200 text-orange-800", description: holidays[dateKey] };
+        if (dayOfWeek === 0 || dayOfWeek === 6) return { status: 'Weekend', label: 'WKND', color: `${baseClasses} bg-slate-50 border-slate-200 text-slate-400`, badgeColor: "hidden" };
 
         const attendanceRecord = attendanceData[dateKey];
 
@@ -177,16 +172,15 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         }
         
         if (attendanceRecord) {
-             if (attendanceRecord.status === 'Present') {
-                return { status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-50 border-emerald-200 text-emerald-800`, badgeColor: "bg-emerald-200 text-emerald-900" };
-             }
-             if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') {
-                return { status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-800`, badgeColor: "bg-rose-200 text-rose-900" };
-             }
+             if (attendanceRecord.status === 'Present') return { status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-50 border-emerald-200 text-emerald-800`, badgeColor: "bg-emerald-200 text-emerald-900" };
+             if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') return { status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-800`, badgeColor: "bg-rose-200 text-rose-900" };
         }
 
-        if (date < today) {
+        // Logic check using string comparison (YYYY-MM-DD)
+        if (dateKey < currentShiftDateStr) {
             return { status: 'Absent (Unmarked)', label: 'N/A', color: `${baseClasses} bg-slate-100/50 border-slate-200 text-slate-500 italic`, badgeColor: "bg-slate-200 text-slate-600" };
+        } else if (dateKey === currentShiftDateStr) {
+            return { status: 'Active Shift', label: 'Active', color: `${baseClasses} bg-indigo-50 border-indigo-200 text-indigo-700`, badgeColor: "bg-indigo-200 text-indigo-800" };
         }
 
         return { status: 'Future', label: '', color: `${baseClasses} bg-white border-slate-100 text-slate-300 shadow-none`, badgeColor: "hidden" };
@@ -415,19 +409,14 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         } finally { setActionLoading(false); }
     };
 
-    // --- EVENT BADGES ---
     const getEventBadge = (actionType, notes) => {
         const action = actionType.toLowerCase();
         const noteLower = (notes || '').toLowerCase();
 
-        // Specific badge for the offline detection
         if (noteLower.includes('previous shutdown detected')) return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-rose-100 text-rose-800 border border-rose-200">Offline Shutdwn</span>;
-        
-        // New Policy Badges
         if (action === 'agentcrash') return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-red-100 text-red-800 border border-red-300 shadow-sm">Crash Detected</span>;
         if (action === 'restartaccepted') return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-blue-100 text-blue-800 border border-blue-200">Restarted</span>;
         if (action === 'shiftendenforced') return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-violet-100 text-violet-800 border border-violet-200">Shift Ended</span>;
-
         if (['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat'].includes(action)) return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">{actionType}</span>;
         if (['logout', 'logoff', 'lock', 'sleep', 'hibernate', 'shutdown'].includes(action)) return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-slate-200 text-slate-700 border border-slate-300">{actionType}</span>;
         if (['idle'].includes(action)) return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-amber-100 text-amber-800 border border-amber-200">{actionType}</span>;
@@ -475,7 +464,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                         <div className="space-y-8 relative z-10">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 
-                                {/* Time Calculation Split Card */}
                                 <div className="bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 rounded-2xl p-6 flex flex-col justify-center shadow-sm relative">
                                     <div className="flex items-center text-indigo-500 mb-3">
                                         <ClockIcon />
@@ -500,7 +488,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                                     )}
                                 </div>
 
-                                {/* Details / Flags Card */}
                                 {hasExplanationDetails ? (
                                     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm flex flex-col justify-center">
                                         <div className="flex items-center gap-2 mb-3">
