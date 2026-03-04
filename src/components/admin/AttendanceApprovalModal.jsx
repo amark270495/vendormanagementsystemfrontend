@@ -13,7 +13,7 @@ const formatMsToTime = (ms) => {
 // --- ✨ FIXED: Bulletproof Time Calculation Helper ---
 const calculateTotalWorkTime = (logs, shiftDateStr) => {
     if (!logs || logs.length === 0 || !shiftDateStr) return { standard: "0h 0m", extra: null, activeStr: "" };
-    
+
     // 1. Safely parse date (Handles both YYYY-MM-DD and DD-MM-YYYY)
     let year, month, day;
     const parts = shiftDateStr.split('-');
@@ -54,14 +54,13 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
             blockStandard = overlapEnd - overlapStart;
         }
 
-        const blockExtra = blockTotal - blockStandard;
         standardMs += blockStandard;
-        extraMs += blockExtra;
+        extraMs += (blockTotal - blockStandard);
     };
 
-    // ✅ Added 'heartbeat' and 'usage update' as valid start triggers (Self-healing)
+    // ✅ INCLUDED NEW POWERSHELL EVENTS
     const startActions = ['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat', 'usage update'];
-    const stopActions = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate', 'shutdown'];
+    const stopActions = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate', 'shutdown', 'restartaccepted', 'shiftendenforced', 'agentcrash'];
 
     sortedLogs.forEach(log => {
         const act = log.actionType.toLowerCase();
@@ -69,7 +68,7 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
         const notes = (log.workDoneNotes || "").toLowerCase();
         
         // Always track latest pulse
-        if (act === 'heartbeat' || act === 'usage update') {
+        if (act === 'heartbeat' || act.includes('usage')) {
             lastHeartbeat = logTime;
         }
         
@@ -86,7 +85,7 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
                 sessionStart = null;
             } else {
                 processBlock(sessionStart, logTime);
-                sessionStart = null; 
+                sessionStart = null;
             }
         }
     });
@@ -94,15 +93,14 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
     // 4. ✅ FIXED: Handle Missing Logout / Active Sessions properly!
     if (sessionStart) {
         const now = new Date();
-        
         if (lastHeartbeat && lastHeartbeat > sessionStart) {
             // V2 Script: Has heartbeats. Are they still pulsing?
             if (now - lastHeartbeat < 15 * 60000 && now < shiftEndIST) {
                 processBlock(sessionStart, now); // Live session
                 activeString = " (Active Now)";
             } else {
-                const capTime = lastHeartbeat < shiftEndIST ? lastHeartbeat : shiftEndIST;
-                processBlock(sessionStart, capTime); // Offline / Crashed cap
+                // FIX: Do NOT artificially cap at shiftEndIST here! Use the lastHeartbeat!
+                processBlock(sessionStart, lastHeartbeat); 
                 activeString = " (Missing Logout)";
             }
         } else {
@@ -111,7 +109,6 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
                  processBlock(sessionStart, now);
                  activeString = " (Active Now)";
             } else {
-                 // 🚨 THIS WAS THE BUG: It previously skipped calling processBlock here!
                  processBlock(sessionStart, shiftEndIST); 
                  activeString = " (Missing Logout)";
             }
@@ -146,14 +143,14 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         const date = new Date(Date.UTC(year, month, day));
 
         if (date.getUTCMonth() !== month) return { status: 'Empty' };
-
+        
         const dateKey = date.toISOString().split('T')[0];
         const dayOfWeek = date.getUTCDay();
         const today = new Date(); 
         today.setUTCHours(0,0,0,0);
 
         const baseClasses = "relative transition-all duration-300 ease-out border flex flex-col justify-between p-1.5 overflow-hidden shadow-sm";
-        
+
         if (leaveDaysSet.has(dateKey)) {
             return { status: 'On Leave', label: 'Leave', color: `${baseClasses} bg-violet-50 border-violet-200 text-violet-700`, badgeColor: "bg-violet-200 text-violet-800" };
         }
@@ -167,7 +164,7 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         }
 
         const attendanceRecord = attendanceData[dateKey];
-        
+
         if (attendanceRecord && attendanceRecord.status === 'Pending') {
             const requestedText = attendanceRecord.requestedStatus === 'Present' ? 'Present?' : 'Absent?';
             const requestObj = pendingRequestsMap[dateKey] || {};
@@ -257,7 +254,7 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
 };
 
 const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApprovalComplete }) => {
-    const { user } = useAuth(); 
+    const { user } = useAuth();
     const [currentMonthDate, setCurrentMonthDate] = useState(() => new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1)));
     const [attendanceData, setAttendanceData] = useState({});
     const [holidays, setHolidays] = useState({});
@@ -270,7 +267,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const [reviewingRequest, setReviewingRequest] = useState(null);
     const [trackingLogs, setTrackingLogs] = useState([]);
     const [logsLoading, setLogsLoading] = useState(false);
-    
     const [timeCalculations, setTimeCalculations] = useState({ standard: "0h 0m", extra: null, activeStr: "" });
 
     const formatDate = (dateString) => {
@@ -390,6 +386,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         if (!reviewingRequest) return;
         setActionLoading(true);
         setError('');
+
         try {
             const payload = {
                 targetUsername: reviewingRequest.username, 
@@ -402,14 +399,15 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             const response = await apiService.approveAttendance(payload);
 
             if (response.data.success) {
-                await fetchDataForUserAndMonth(currentMonthDate); 
+                await fetchDataForUserAndMonth(currentMonthDate);
                 setReviewingRequest(null);
                 
                 const remainingPendingInMonth = Object.values(pendingRequestsMap).some(p => 
                     p.date !== reviewingRequest.date && p.status === 'Pending'
                 );
+
                 if (!remainingPendingInMonth && onApprovalComplete) {
-                    onApprovalComplete(); 
+                    onApprovalComplete();
                 }
             } else { throw new Error(response.data.message); }
         } catch (err) {
@@ -417,20 +415,24 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         } finally { setActionLoading(false); }
     };
 
+    // --- EVENT BADGES ---
     const getEventBadge = (actionType, notes) => {
         const action = actionType.toLowerCase();
         const noteLower = (notes || '').toLowerCase();
 
-        // Specific badge for the shutdown logic
-        if (noteLower.includes('previous shutdown detected'))
-            return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-rose-100 text-rose-800 border border-rose-200">Offline Shutdwn</span>;
+        // Specific badge for the offline detection
+        if (noteLower.includes('previous shutdown detected')) return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-rose-100 text-rose-800 border border-rose-200">Offline Shutdwn</span>;
+        
+        // New Policy Badges
+        if (action === 'agentcrash') return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-red-100 text-red-800 border border-red-300 shadow-sm">Crash Detected</span>;
+        if (action === 'restartaccepted') return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-blue-100 text-blue-800 border border-blue-200">Restarted</span>;
+        if (action === 'shiftendenforced') return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-violet-100 text-violet-800 border border-violet-200">Shift Ended</span>;
 
-        if (['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat'].includes(action)) 
-            return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">{actionType}</span>;
-        if (['logout', 'logoff', 'lock', 'sleep', 'hibernate'].includes(action)) 
-            return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-slate-200 text-slate-700 border border-slate-300">{actionType}</span>;
-        if (['idle'].includes(action)) 
-            return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-amber-100 text-amber-800 border border-amber-200">{actionType}</span>;
+        if (['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat'].includes(action)) return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">{actionType}</span>;
+        if (['logout', 'logoff', 'lock', 'sleep', 'hibernate', 'shutdown'].includes(action)) return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-slate-200 text-slate-700 border border-slate-300">{actionType}</span>;
+        if (['idle'].includes(action)) return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-amber-100 text-amber-800 border border-amber-200">{actionType}</span>;
+        if (action.includes('usage')) return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-indigo-100 text-indigo-800 border border-indigo-200">{actionType}</span>;
+        
         return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-gray-100 text-gray-700 border border-gray-200">{actionType}</span>;
     };
 
