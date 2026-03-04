@@ -9,12 +9,25 @@ const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-500 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 
+// --- FIXED FRONTEND SHIFT DATE DETECTOR ---
+// Ensures UI defaults to previous day if viewed between 12:00 AM and 11:59 AM IST
 const getISTShiftDateString = () => {
-    const d = new Date();
-    const istFormatter = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false });
-    const istHour = parseInt(istFormatter.format(d), 10);
-    if (istHour < 12) d.setHours(d.getHours() - 12); 
-    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+    const browserNow = new Date();
+    
+    // Convert current browser time to precise IST time
+    const utcTime = browserNow.getTime() + (browserNow.getTimezoneOffset() * 60000);
+    const istTime = new Date(utcTime + (5.5 * 60 * 60 * 1000));
+    
+    // If it is past midnight but before noon IST, default the UI to yesterday's shift
+    if (istTime.getHours() < 12) {
+        istTime.setDate(istTime.getDate() - 1);
+    }
+    
+    const year = istTime.getFullYear();
+    const month = String(istTime.getMonth() + 1).padStart(2, '0');
+    const day = String(istTime.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
 };
 
 const formatLogTime = (isoString) => {
@@ -114,7 +127,6 @@ const AssetManagementPage = () => {
         const nextDayStr = nextDayUTC.toISOString().split('T')[0];
         const shiftEndIST = new Date(`${nextDayStr}T04:00:00.000+05:30`);
 
-        // Added heartbeat to start triggers so V2 pulses open a session if one was missed
         const startTriggers = ['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat', 'usage update'];
         const endTriggers = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate', 'shutdown', 'restartaccepted', 'shiftendenforced', 'agentcrash'];
 
