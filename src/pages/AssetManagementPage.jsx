@@ -47,7 +47,6 @@ const AssetManagementPage = () => {
 
     const [assetSessions, setAssetSessions] = useState([]);
     const [loadingSessions, setLoadingSessions] = useState(false);
-    
     const [sessionDate, setSessionDate] = useState(getISTShiftDateString());
     const [activeTab, setActiveTab] = useState('all');
 
@@ -104,35 +103,33 @@ const AssetManagementPage = () => {
         }
     };
 
-    // ✅ FIXED: Timezone-safe Split Algorithm with PowerShell Shutdown detection
+    // --- ROBUST TIME CALCULATION ---
     const timeCalculations = useMemo(() => {
         if (!assetSessions.length || !sessionDate) return { standard: '0h 0m', extra: null, activeStr: '' };
 
-        // 1. Establish strict IST Shift Boundaries (Bypassing Browser Timezones)
+        // Establish strict IST Shift Boundaries
         const shiftStartIST = new Date(`${sessionDate}T19:00:00.000+05:30`);
-
-        // Safely calculate the "next day" string using pure UTC math
         const [year, month, day] = sessionDate.split('-');
         const nextDayUTC = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10) + 1));
         const nextDayStr = nextDayUTC.toISOString().split('T')[0];
-        
         const shiftEndIST = new Date(`${nextDayStr}T04:00:00.000+05:30`);
 
-        const startTriggers = ['login', 'unlock', 'resume', 'active', 'wake'];
-        const endTriggers = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate'];
+        // Added heartbeat to start triggers so V2 pulses open a session if one was missed
+        const startTriggers = ['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat', 'usage update'];
+        const endTriggers = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate', 'shutdown', 'restartaccepted', 'shiftendenforced', 'agentcrash'];
 
         const sorted = [...assetSessions].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
         
         let standardMs = 0;
         let extraMs = 0;
         let sessionStart = null;
+        let lastPulse = null; 
         let activeString = "";
 
         const processBlock = (start, end) => {
             const blockTotal = end - start;
             if (blockTotal <= 0) return;
 
-            // Calculate overlap with core shift (19:00 - 04:00)
             const overlapStart = start > shiftStartIST ? start : shiftStartIST;
             const overlapEnd = end < shiftEndIST ? end : shiftEndIST;
 
@@ -141,9 +138,8 @@ const AssetManagementPage = () => {
                 blockStandard = overlapEnd - overlapStart;
             }
 
-            const blockExtra = blockTotal - blockStandard;
             standardMs += blockStandard;
-            extraMs += blockExtra;
+            extraMs += (blockTotal - blockStandard);
         };
 
         sorted.forEach(log => {
@@ -151,14 +147,17 @@ const AssetManagementPage = () => {
             const logTime = new Date(log.eventTimestamp);
             const notes = (log.workDoneNotes || "").toLowerCase();
 
+            if (act === 'heartbeat' || act.includes('usage')) {
+                lastPulse = logTime;
+            }
+
             if (startTriggers.includes(act) && !sessionStart) {
                 sessionStart = logTime;
+                lastPulse = logTime;
             } 
             else if (endTriggers.includes(act) && sessionStart) {
-                // 🛑 CRITICAL SHUTDOWN FIX: 
-                // If this is a delayed "Previous shutdown detected" event sent by PowerShell at next boot,
-                // we DO NOT process the time block using `logTime`.
                 if (notes.includes("previous shutdown detected")) {
+                    if (lastPulse && lastPulse > sessionStart) processBlock(sessionStart, lastPulse);
                     sessionStart = null;
                 } else {
                     processBlock(sessionStart, logTime);
@@ -167,15 +166,14 @@ const AssetManagementPage = () => {
             }
         });
 
-        // Handle Active Session (No logout yet)
+        // Handle Active Session (No explicit logout yet)
         if (sessionStart) {
             const now = new Date();
-            
-            // Only add active time if "now" is still within the shift boundary
-            if (now < shiftEndIST) {
+            if (lastPulse && (now - lastPulse < 15 * 60000) && now < shiftEndIST) {
                 processBlock(sessionStart, now);
                 activeString = " (Active Now)";
             } else {
+                processBlock(sessionStart, lastPulse || shiftEndIST);
                 activeString = " (Missing Logout)";
             }
         }
@@ -230,23 +228,25 @@ const AssetManagementPage = () => {
         return <span className={`px-3 py-1 text-xs font-bold rounded-full border ${styles[status] || 'bg-gray-100 text-gray-800 border-gray-200'}`}>{status}</span>;
     };
 
+    // --- EVENT BADGES ---
     const getEventBadge = (action, category, notes) => {
         const actionLower = action.toLowerCase();
         const catLower = (category || '').toLowerCase();
         const noteLower = (notes || '').toLowerCase();
 
-        // Specific badge for the shutdown logic
-        if (noteLower.includes('previous shutdown detected'))
-            return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-rose-100 text-rose-800 border border-rose-200" title="Triggered by PowerShell on boot">Offline Shutdwn</span>;
+        // Specific badge for the offline detection
+        if (noteLower.includes('previous shutdown detected')) return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-rose-100 text-rose-800 border border-rose-200" title="Triggered by PowerShell on boot">Offline Shutdwn</span>;
+        
+        // New Policy Badges
+        if (actionLower === 'agentcrash') return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-red-100 text-red-800 border border-red-300 shadow-sm" title="Agent auto-recovered">Crash Detected</span>;
+        if (actionLower === 'restartaccepted') return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-blue-100 text-blue-800 border border-blue-200">Restarted</span>;
+        if (actionLower === 'shiftendenforced') return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-violet-100 text-violet-800 border border-violet-200">Shift Ended</span>;
 
-        if (['login', 'unlock', 'resume', 'active', 'wake'].includes(actionLower)) 
-            return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">{action}</span>;
-        if (['logout', 'logoff', 'lock', 'sleep', 'hibernate'].includes(actionLower)) 
-            return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-slate-200 text-slate-700 border border-slate-300">{action}</span>;
-        if (catLower === 'idle' || actionLower === 'idle')
-            return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-amber-100 text-amber-800 border border-amber-200">{action}</span>;
-        if (catLower === 'usage' || actionLower.includes('usage'))
-            return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-indigo-100 text-indigo-800 border border-indigo-200">{action}</span>;
+        if (['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat'].includes(actionLower)) return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">{action}</span>;
+        if (['logout', 'logoff', 'lock', 'sleep', 'hibernate', 'shutdown'].includes(actionLower)) return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-slate-200 text-slate-700 border border-slate-300">{action}</span>;
+        if (catLower === 'idle' || actionLower === 'idle') return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-amber-100 text-amber-800 border border-amber-200">{action}</span>;
+        if (catLower === 'usage' || actionLower.includes('usage')) return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-indigo-100 text-indigo-800 border border-indigo-200">{action}</span>;
+        
         return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-gray-100 text-gray-700 border border-gray-200">{action}</span>;
     };
 
@@ -254,7 +254,7 @@ const AssetManagementPage = () => {
         const cat = (s.eventCategory || '').toLowerCase();
         const act = s.actionType.toLowerCase();
         if (activeTab === 'all') return true;
-        if (activeTab === 'attendance') return cat === 'session' || ['login', 'logoff', 'logout', 'lock', 'unlock', 'resume', 'wake'].includes(act);
+        if (activeTab === 'attendance') return cat === 'session' || ['login', 'logoff', 'logout', 'lock', 'unlock', 'resume', 'wake', 'heartbeat', 'restartaccepted', 'shiftendenforced'].includes(act);
         if (activeTab === 'idle') return cat === 'idle' || act === 'idle';
         if (activeTab === 'usage') return cat === 'usage' || act.includes('usage');
         return true;
@@ -356,7 +356,6 @@ const AssetManagementPage = () => {
                                             <ClockIcon />
                                             <span className="text-sm text-slate-600 font-bold ml-1 tracking-wide">Core Shift: <strong className="text-lg font-black text-indigo-600 ml-1.5">{timeCalculations.standard}</strong><span className="text-indigo-500 ml-1">{timeCalculations.activeStr}</span></span>
                                         </div>
-                                        {/* Display Extra time clearly if it exists */}
                                         {timeCalculations.extra && (
                                             <div className="flex items-center px-4 py-2 bg-amber-50 border border-amber-200 shadow-sm rounded-xl text-amber-800 animate-fadeIn">
                                                 <span className="text-sm font-bold tracking-wide">Out-of-Shift: <strong className="text-lg font-black ml-1.5">{timeCalculations.extra}</strong></span>
@@ -410,7 +409,6 @@ const AssetManagementPage = () => {
                                 </div>
                             </div>
                         ) : (
-                            
                             /* ACTION MODALS */
                             <form onSubmit={handleActionSubmit} className="flex flex-col h-full">
                                 <div className="px-6 py-5 border-b border-slate-100 bg-white">
