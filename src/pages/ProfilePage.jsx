@@ -24,25 +24,17 @@ const ChevronDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className=
 const ChevronUpIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>;
 const LaptopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
 
-
-// ✅ NEW HELPER: Gets the IST Date String aligned with the 12:00 PM Noon Night Shift Cutoff
 const getISTShiftDateString = () => {
     const d = new Date();
-    
-    // 1. Get the current hour in IST
     const istFormatter = new Intl.DateTimeFormat('en-US', {
         timeZone: 'Asia/Kolkata',
         hour: 'numeric',
         hour12: false
     });
     const istHour = parseInt(istFormatter.format(d), 10);
-    
-    // 2. If it is before 12:00 PM Noon IST, it belongs to the previous calendar day's shift
     if (istHour < 12) {
-        d.setHours(d.getHours() - 12); // Safely push the underlying time back 12 hours
+        d.setHours(d.getHours() - 12); 
     }
-    
-    // 3. Return the Date in YYYY-MM-DD format using IST timezone
     return new Intl.DateTimeFormat('en-CA', { 
         timeZone: 'Asia/Kolkata',
         year: 'numeric',
@@ -51,8 +43,6 @@ const getISTShiftDateString = () => {
     }).format(d);
 };
 
-
-// --- UPDATED Attendance Marker Component ---
 const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUser }) => {
     const [statusInfo, setStatusInfo] = useState({ 
         status: null, 
@@ -60,6 +50,8 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
         isHoliday: false, 
         isOnLeave: false, 
         isWeekend: false, 
+        isApprovedWeekend: false, // NEW
+        weekendWorkStatus: null, // NEW
         isLoading: true,
         holidayDescription: '' 
     });
@@ -67,18 +59,16 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
     const [localError, setLocalError] = useState('');
     const [localSuccess, setLocalSuccess] = useState('');
     
-    // States for reason input and weekend requests
     const [reason, setReason] = useState('');
     const [showWeekendRequest, setShowWeekendRequest] = useState(false);
 
-    // ✅ FIXED: Using the new Shift helper instead of UTC
     const todayDateString = getISTShiftDateString();
 
     const fetchStatusForDate = useCallback(async (dateString) => {
         const userId = authUser?.userIdentifier;
         
         if (!userId || !dateString) {
-            setStatusInfo({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: false });
+            setStatusInfo({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isApprovedWeekend: false, weekendWorkStatus: null, isLoading: false });
             return;
         }
         setStatusInfo(prev => ({ ...prev, isLoading: true }));
@@ -91,13 +81,16 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             const year = dateString.substring(0, 4);
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-            const [attendanceRes, holidayRes, leaveRes] = await Promise.all([
+            // ✅ NEW: Fetch Weekend Work Requests alongside the other checks
+            const [attendanceRes, holidayRes, leaveRes, weekendRes] = await Promise.all([
                 apiService.getAttendance({ authenticatedUsername: userId, username: userId, startDate: dateString, endDate: dateString })
                     .catch(err => { console.error("Attendance fetch error:", err); return null; }),
                 apiService.getHolidays({ authenticatedUsername: userId, year: year })
                     .catch(err => { console.error("Holiday fetch error:", err); return null; }),
                 apiService.getLeaveRequests({ authenticatedUsername: userId, targetUsername: userId, statusFilter: 'Approved', startDateFilter: dateString, endDateFilter: dateString })
-                    .catch(err => { console.error("Leave fetch error:", err); return null; })
+                    .catch(err => { console.error("Leave fetch error:", err); return null; }),
+                apiService.getWeekendWorkRequests({ authenticatedUsername: userId }) // Add this line
+                    .catch(err => { console.error("Weekend Request fetch error:", err); return null; })
             ]);
 
             let status = null;
@@ -105,6 +98,20 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             let isHoliday = false;
             let isOnLeave = false;
             let holidayDescription = '';
+            
+            // ✅ NEW: Parse Weekend Request Status
+            let isApprovedWeekend = false;
+            let wwStatus = null;
+            if (weekendRes?.data?.success && Array.isArray(weekendRes.data.requests)) {
+                // Find if the user requested to work on this specific date
+                const req = weekendRes.data.requests.find(r => r.partitionKey === userId && r.date === dateString);
+                if (req) {
+                    wwStatus = req.status; // e.g., 'Pending', 'Approved', 'Rejected'
+                    if (wwStatus === 'Approved') {
+                        isApprovedWeekend = true;
+                    }
+                }
+            }
 
             if (holidayRes?.data?.success && Array.isArray(holidayRes.data.holidays)) {
                  const holiday = holidayRes.data.holidays.find(h => h.date === dateString);
@@ -128,11 +135,18 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                  } else if (record.status === 'Pending' && status === null && !isWeekend) {
                      status = 'Pending';
                      requestedStatus = record.requestedStatus || null;
+                 } else if (isApprovedWeekend) {
+                     // If it's an approved weekend and they have a record, show it
+                     status = record.status;
+                     requestedStatus = record.requestedStatus || null;
                  }
             }
 
+            // ✅ FIXED: Do NOT set status to "Weekend" if they have an approved request to work
             if (status === null && isWeekend) {
-                 status = 'Weekend';
+                 if (!isApprovedWeekend) {
+                     status = 'Weekend';
+                 }
             }
 
             setStatusInfo({
@@ -141,6 +155,8 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                 isHoliday: isHoliday,
                 isOnLeave: isOnLeave,
                 isWeekend: isWeekend,
+                isApprovedWeekend: isApprovedWeekend,
+                weekendWorkStatus: wwStatus,
                 isLoading: false,
                 holidayDescription: holidayDescription
             });
@@ -148,7 +164,7 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
         } catch (err) {
             console.error(`Error fetching status for ${dateString}:`, err);
             setLocalError(`Failed to load status for ${dateString}.`);
-            setStatusInfo({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isLoading: false });
+            setStatusInfo({ status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isApprovedWeekend: false, weekendWorkStatus: null, isLoading: false });
         }
     }, [authUser?.userIdentifier]); 
 
@@ -209,7 +225,11 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             setLocalSuccess(`Weekend work approval requested for ${formatDateDisplay(selectedDate)}.`);
             setReason('');
             setShowWeekendRequest(false);
+            
+            // ✅ NEW: Refresh the UI immediately so the user sees the "Pending" badge instead of the form again
+            fetchStatusForDate(selectedDate);
             setTimeout(() => setLocalSuccess(''), 4000);
+            
         } catch (err) {
             setLocalError(err.message || "Failed to submit weekend request.");
         } finally {
@@ -217,7 +237,16 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
         }
     };
 
-    const canMarkSelectedDate = !statusInfo.isLoading && !actionLoading && !statusInfo.isWeekend && !statusInfo.isHoliday && !statusInfo.isOnLeave && statusInfo.status !== 'Present' && statusInfo.status !== 'Absent' && statusInfo.status !== 'Rejected';
+    // ✅ FIXED: Allow marking if isApprovedWeekend is true
+    const canMarkSelectedDate = !statusInfo.isLoading && 
+                                !actionLoading && 
+                                (!statusInfo.isWeekend || statusInfo.isApprovedWeekend) && 
+                                !statusInfo.isHoliday && 
+                                !statusInfo.isOnLeave && 
+                                statusInfo.status !== 'Present' && 
+                                statusInfo.status !== 'Absent' && 
+                                statusInfo.status !== 'Rejected';
+                                
     const isFutureDate = selectedDate > todayDateString;
 
     const formatDateDisplay = (dateStr) => {
@@ -229,7 +258,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
 
     return (
         <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6 sm:p-8 rounded-2xl shadow-lg border border-indigo-100/60 text-center relative overflow-hidden">
-            {/* Subtle background decoration */}
             <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-indigo-100 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
             
             <div className="mb-5 relative z-10">
@@ -266,7 +294,10 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                         {statusInfo.isHoliday ? ` (${statusInfo.holidayDescription || 'Holiday'})` : ''}
                     </span>
                 ) : (
-                    <span className="text-base text-gray-500 italic font-semibold px-4 py-2 bg-gray-50/50 rounded-full border border-gray-100">Not Marked</span>
+                    <span className="text-base text-gray-500 italic font-semibold px-4 py-2 bg-gray-50/50 rounded-full border border-gray-100">
+                        {/* ✅ NEW: Clearly state that the system is ready for them to mark the approved weekend */}
+                        {statusInfo.isApprovedWeekend ? 'Not Marked (Approved for Work)' : 'Not Marked'}
+                    </span>
                 )}
             </div>
             
@@ -291,9 +322,18 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                  </div>
              )}
 
+             {/* ✅ NEW: Enhanced Weekend Request Render Logic to show status badges */}
              {statusInfo.isWeekend && !isFutureDate && !statusInfo.isLoading && statusInfo.status === 'Weekend' && (
                  <div className="mt-4 flex flex-col items-center relative z-10">
-                     {!showWeekendRequest ? (
+                     {statusInfo.weekendWorkStatus === 'Pending' ? (
+                         <div className="px-5 py-2.5 bg-yellow-50 text-yellow-800 border border-yellow-200 text-sm font-bold rounded-xl shadow-sm">
+                             Weekend Work Requested (Pending Manager Approval)
+                         </div>
+                     ) : statusInfo.weekendWorkStatus === 'Rejected' ? (
+                         <div className="px-5 py-2.5 bg-red-50 text-red-800 border border-red-200 text-sm font-bold rounded-xl shadow-sm">
+                             Weekend Work Request Rejected
+                         </div>
+                     ) : !showWeekendRequest ? (
                          <button
                              onClick={() => setShowWeekendRequest(true)}
                              className="px-6 py-2.5 bg-white text-indigo-700 border border-indigo-200 text-sm font-bold rounded-xl hover:bg-indigo-50 hover:shadow-md transition-all duration-200"
@@ -376,7 +416,6 @@ const ProfilePage = () => {
     const [myAsset, setMyAsset] = useState(null);
     const [loading, setLoading] = useState(true);
     
-    // ✅ FIXED: Using the new Shift helper instead of UTC
     const [selectedDate, setSelectedDate] = useState(getISTShiftDateString());
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
