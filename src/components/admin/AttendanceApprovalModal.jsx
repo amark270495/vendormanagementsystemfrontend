@@ -4,7 +4,6 @@ import { apiService } from '../../api/apiService';
 import Spinner from '../Spinner';
 import Modal from '../Modal';
 
-// --- FIXED FRONTEND SHIFT DATE DETECTOR ---
 // Ensures Calendar "Today" respects the 12 PM Noon Cutoff for IST Shifts
 const getISTShiftDateString = () => {
     const browserNow = new Date();
@@ -28,7 +27,7 @@ const formatMsToTime = (ms) => {
     return `${h}h ${m}m`;
 };
 
-// --- BULLETPROOF TIME CALCULATION ---
+// BULLETPROOF TIME CALCULATION
 const calculateTotalWorkTime = (logs, shiftDateStr) => {
     if (!logs || logs.length === 0 || !shiftDateStr) return { standard: "0h 0m", extra: null, activeStr: "" };
 
@@ -40,7 +39,6 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
         [day, month, year] = parts;
     }
 
-    // 19:00 to 04:00 IST Boundaries forced securely using +05:30
     const shiftStartIST = new Date(`${year}-${month}-${day}T19:00:00.000+05:30`);
     const nextDayUTC = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10) + 1));
     const nextDayStr = nextDayUTC.toISOString().split('T')[0];
@@ -138,7 +136,7 @@ const ChevronRightIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20
 const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
 
-const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, onDayClick, pendingRequestsMap }) => {
+const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, approvedWeekends, onDayClick, pendingRequestsMap }) => {
     const getDayStatus = (day) => {
         const year = monthDate.getUTCFullYear();
         const month = monthDate.getUTCMonth();
@@ -148,18 +146,12 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
         
         const dateKey = date.toISOString().split('T')[0];
         const dayOfWeek = date.getUTCDay();
-        
-        // FIXED: Use the logical shift date for comparison, not the literal browser clock
         const currentShiftDateStr = getISTShiftDateString();
 
         const baseClasses = "relative transition-all duration-300 ease-out border flex flex-col justify-between p-1.5 overflow-hidden shadow-sm";
-
-        if (leaveDaysSet.has(dateKey)) return { status: 'On Leave', label: 'Leave', color: `${baseClasses} bg-violet-50 border-violet-200 text-violet-700`, badgeColor: "bg-violet-200 text-violet-800" };
-        if (holidays[dateKey]) return { status: 'Holiday', label: 'Holiday', color: `${baseClasses} bg-orange-50 border-orange-200 text-orange-800`, badgeColor: "bg-orange-200 text-orange-800", description: holidays[dateKey] };
-        if (dayOfWeek === 0 || dayOfWeek === 6) return { status: 'Weekend', label: 'WKND', color: `${baseClasses} bg-slate-50 border-slate-200 text-slate-400`, badgeColor: "hidden" };
-
         const attendanceRecord = attendanceData[dateKey];
 
+        // 1. Check for Pending Actions FIRST (Overrides everything, including weekends)
         if (attendanceRecord && attendanceRecord.status === 'Pending') {
             const requestedText = attendanceRecord.requestedStatus === 'Present' ? 'Present?' : 'Absent?';
             const requestObj = pendingRequestsMap[dateKey] || {};
@@ -170,13 +162,33 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
                 description: `Pending Approval: ${attendanceRecord.requestedStatus}`, isPending: true, request: requestObj 
             };
         }
+
+        // 2. Check Leave
+        if (leaveDaysSet.has(dateKey)) return { status: 'On Leave', label: 'Leave', color: `${baseClasses} bg-violet-50 border-violet-200 text-violet-700`, badgeColor: "bg-violet-200 text-violet-800" };
         
+        // 3. Check Holiday
+        if (holidays[dateKey]) return { status: 'Holiday', label: 'Holiday', color: `${baseClasses} bg-orange-50 border-orange-200 text-orange-800`, badgeColor: "bg-orange-200 text-orange-800", description: holidays[dateKey] };
+
+        // 4. Check Finalized Attendance
         if (attendanceRecord) {
              if (attendanceRecord.status === 'Present') return { status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-50 border-emerald-200 text-emerald-800`, badgeColor: "bg-emerald-200 text-emerald-900" };
              if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') return { status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-800`, badgeColor: "bg-rose-200 text-rose-900" };
         }
 
-        // Logic check using string comparison (YYYY-MM-DD)
+        // 5. Weekend Check (Only if no attendance is marked yet)
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            // Did they get approval to work this weekend?
+            if (approvedWeekends.has(dateKey)) {
+                if (dateKey < currentShiftDateStr) {
+                    return { status: 'Absent (Unmarked)', label: 'N/A', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-500 italic`, badgeColor: "bg-rose-200 text-rose-700", description: "Approved for work but missed shift" };
+                }
+                return { status: 'Approved Weekend', label: 'Apprvd', color: `${baseClasses} bg-indigo-50 border-indigo-200 text-indigo-700`, badgeColor: "bg-indigo-200 text-indigo-800", description: "Approved for Weekend Work" };
+            }
+            // Standard Weekend
+            return { status: 'Weekend', label: 'WKND', color: `${baseClasses} bg-slate-50 border-slate-200 text-slate-400`, badgeColor: "hidden" };
+        }
+
+        // 6. Regular un-marked weekdays
         if (dateKey < currentShiftDateStr) {
             return { status: 'Absent (Unmarked)', label: 'N/A', color: `${baseClasses} bg-slate-100/50 border-slate-200 text-slate-500 italic`, badgeColor: "bg-slate-200 text-slate-600" };
         } else if (dateKey === currentShiftDateStr) {
@@ -205,7 +217,7 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, on
             if (dayCounter > daysInMonth) break;
         }
         return grid;
-    }, [monthDate, attendanceData, holidays, leaveDaysSet, pendingRequestsMap]);
+    }, [monthDate, attendanceData, holidays, leaveDaysSet, approvedWeekends, pendingRequestsMap]);
 
     return (
         <div className="select-none">
@@ -253,7 +265,9 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const [attendanceData, setAttendanceData] = useState({});
     const [holidays, setHolidays] = useState({});
     const [leaveDaysSet, setLeaveDaysSet] = useState(new Set());
+    const [approvedWeekends, setApprovedWeekends] = useState(new Set()); // NEW
     const [pendingRequestsMap, setPendingRequestsMap] = useState({});
+    
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
@@ -285,10 +299,12 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             const monthString = `${year}-${month}`;
             const monthEndDay = new Date(Date.UTC(year, monthDate.getUTCMonth() + 1, 0)).getUTCDate();
 
-            const [attendanceRes, holidaysRes, leaveRes] = await Promise.all([
+            // Fetch Weekend Requests alongside standard dependencies
+            const [attendanceRes, holidaysRes, leaveRes, weekendRes] = await Promise.all([
                 apiService.getAttendance({ authenticatedUsername: user.userIdentifier, username: selectedUsername, month: monthString }),
                 apiService.getHolidays({ authenticatedUsername: user.userIdentifier, year: year.toString() }),
-                apiService.getLeaveRequests({ authenticatedUsername: user.userIdentifier, targetUsername: selectedUsername, statusFilter: 'Approved', startDateFilter: `${monthString}-01`, endDateFilter: `${monthString}-${monthEndDay.toString().padStart(2,'0')}` })
+                apiService.getLeaveRequests({ authenticatedUsername: user.userIdentifier, targetUsername: selectedUsername, statusFilter: 'Approved', startDateFilter: `${monthString}-01`, endDateFilter: `${monthString}-${monthEndDay.toString().padStart(2,'0')}` }),
+                apiService.getWeekendWorkRequests().catch(() => null)
             ]);
 
             const attMap = {};
@@ -322,6 +338,18 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 });
             }
             setLeaveDaysSet(leaveSet);
+            
+            // Map Approved Weekends
+            const approvedWknds = new Set();
+            if (weekendRes?.data?.success && Array.isArray(weekendRes.data.requests)) {
+                 weekendRes.data.requests.forEach(req => {
+                     // Make sure it matches the selected user and is approved
+                     if (req.partitionKey === selectedUsername && req.status === 'Approved') {
+                         approvedWknds.add(req.date);
+                     }
+                 });
+            }
+            setApprovedWeekends(approvedWknds);
 
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Failed to load calendar data.');
@@ -591,7 +619,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                         </div>
                     ) : (
                         <div className="min-h-[28rem] bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm">
-                            <CalendarDisplay monthDate={currentMonthDate} attendanceData={attendanceData} holidays={holidays} leaveDaysSet={leaveDaysSet} onDayClick={handleDayClick} pendingRequestsMap={pendingRequestsMap} />
+                            <CalendarDisplay monthDate={currentMonthDate} attendanceData={attendanceData} holidays={holidays} leaveDaysSet={leaveDaysSet} approvedWeekends={approvedWeekends} onDayClick={handleDayClick} pendingRequestsMap={pendingRequestsMap} />
                         </div>
                     )}
 
