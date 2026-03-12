@@ -1,6 +1,6 @@
-import React, { createContext, useReducer, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useReducer, useContext, useEffect, useRef, useState } from 'react';
 
-// Default permissions structure (ensure it includes ALL possible keys)
+// --- Default permissions structure (Keeping all your keys) ---
 const defaultPermissions = {
     canViewCandidates: false, canEditUsers: false, canAddPosting: false,
     canViewReports: false, canEmailReports: false, canViewDashboards: false,
@@ -9,13 +9,12 @@ const defaultPermissions = {
     canManageHolidays: false, canApproveLeave: false, canManageLeaveConfig: false,
     canRequestLeave: false, canSendMonthlyReport: false,
     canApproveAttendance: false, 
-    canManageBenchSales: false, // <-- FOR BENCH SALES
-    canManageAssets: false,     // <-- NEWLY ADDED FOR ASSET MANAGEMENT
-    canAssignAssets: false      // <-- NEWLY ADDED FOR ASSET MANAGEMENT
+    canManageBenchSales: false,
+    canManageAssets: false,
+    canAssignAssets: false
 };
 
-
-// --- Define the default shape of the user object ---
+// --- RESTORED: All your custom basic info fields ---
 const defaultUser = {
     userIdentifier: null,
     userName: null,
@@ -25,7 +24,7 @@ const defaultUser = {
     dashboardPreferences: { columnOrder: null, columnVisibility: null },
     permissions: { ...defaultPermissions },
     
-    // --- Basic Info ---
+    // --- Restored Basic Info ---
     firstName: '',
     lastName: '',
     middleName: '',
@@ -33,7 +32,7 @@ const defaultUser = {
     dateOfJoining: '',
     employeeCode: '',
     
-    // --- New Fields ---
+    // --- Restored Extended Info ---
     personalMobileNumber: '',
     currentAddress: '',
     emergencyContactName: '',
@@ -46,12 +45,12 @@ const defaultUser = {
     linkedInProfile: ''
 };
 
-
-// Create the context with safe defaults
+// Create the context
 const AuthContext = createContext({
     isAuthenticated: false,
     user: defaultUser,
     isFirstLogin: false,
+    loading: true, // ✅ Added for refresh stability
     login: () => {},
     logout: () => {},
     passwordChanged: () => {},
@@ -62,16 +61,12 @@ const AuthContext = createContext({
 const authReducer = (state, action) => {
     switch (action.type) {
         case 'LOGIN':
-            // Ensure payload.permissions has all keys, defaulting to false
             const mergedPermissions = { ...defaultPermissions, ...(action.payload.permissions || {}) };
-            
-            // --- UPDATED: Merge payload with defaultUser to ensure all fields exist ---
             const mergedUser = { 
                 ...defaultUser, 
                 ...action.payload, 
                 permissions: mergedPermissions 
             };
-            
             return {
                 ...state,
                 isAuthenticated: true,
@@ -111,6 +106,7 @@ const authReducer = (state, action) => {
 };
 
 export const AuthProvider = ({ children }) => {
+    const [loading, setLoading] = useState(true); // ✅ New loading state
     const [state, dispatch] = useReducer(authReducer, {
         isAuthenticated: false,
         user: null,
@@ -119,26 +115,31 @@ export const AuthProvider = ({ children }) => {
 
     const tabId = useRef(crypto.randomUUID()); 
 
-    // Load initial state from sessionStorage
+    // ✅ FIX: Load from localStorage (Survivable Refresh)
     useEffect(() => {
-        try {
-            const savedUser = sessionStorage.getItem('vms_user');
-            if (savedUser) {
-                const userData = JSON.parse(savedUser);
-                dispatch({ type: 'LOGIN', payload: userData });
-                localStorage.setItem('vms_active_tab', tabId.current);
+        const initAuth = () => {
+            try {
+                // Using localStorage instead of sessionStorage to survive Ctrl+R
+                const savedUser = localStorage.getItem('vms_user');
+                if (savedUser) {
+                    const userData = JSON.parse(savedUser);
+                    dispatch({ type: 'LOGIN', payload: userData });
+                    localStorage.setItem('vms_active_tab', tabId.current);
+                }
+            } catch (error) {
+                console.error("Auth hydration failed", error);
+                localStorage.removeItem('vms_user');
+            } finally {
+                setLoading(false); // ✅ Stop loading once check is done
             }
-        } catch (error) {
-            console.error("Failed to parse user from session storage", error);
-            sessionStorage.clear();
-            localStorage.removeItem('vms_active_tab');
-        }
+        };
+
+        initAuth();
 
         // Multi-tab logout listener
         const handleStorageChange = (event) => {
-            if ((event.key === 'vms_active_tab' && event.newValue !== tabId.current) || event.key === 'vms_logout_all') {
+            if ((event.key === 'vms_active_tab' && event.newValue !== tabId.current) || event.key === 'vms_logout_broadcast') {
                 if (state.isAuthenticated) {
-                     console.log("Logging out due to activity in another tab or broadcast.");
                      logout(false);
                 }
             }
@@ -150,23 +151,24 @@ export const AuthProvider = ({ children }) => {
 
 
     const login = (userData) => {
-         const mergedPermissions = { ...defaultPermissions, ...(userData.permissions || {}) };
-         const userToStore = { 
+        const mergedPermissions = { ...defaultPermissions, ...(userData.permissions || {}) };
+        const userToStore = { 
             ...defaultUser, 
             ...userData, 
             permissions: mergedPermissions 
         };
-        sessionStorage.setItem('vms_user', JSON.stringify(userToStore));
+        // ✅ Sync to localStorage
+        localStorage.setItem('vms_user', JSON.stringify(userToStore));
         localStorage.setItem('vms_active_tab', tabId.current);
         dispatch({ type: 'LOGIN', payload: userToStore });
     };
 
     const logout = (broadcast = true) => {
-        sessionStorage.removeItem('vms_user');
+        // ✅ Clear localStorage
+        localStorage.removeItem('vms_user');
         if (broadcast) {
-            localStorage.setItem('vms_logout_all', Date.now().toString()); 
+            localStorage.setItem('vms_logout_broadcast', Date.now().toString()); 
             localStorage.removeItem('vms_active_tab');
-            localStorage.removeItem('vms_logout_all');
         }
         dispatch({ type: 'LOGOUT' });
     };
@@ -174,14 +176,14 @@ export const AuthProvider = ({ children }) => {
     const passwordChanged = () => {
         if (!state.user) return;
         const updatedUser = { ...state.user, isFirstLogin: false };
-        sessionStorage.setItem('vms_user', JSON.stringify(updatedUser));
+        localStorage.setItem('vms_user', JSON.stringify(updatedUser));
         dispatch({ type: 'PASSWORD_CHANGED' });
     };
 
     const updatePreferences = (preferences) => {
         if (!state.user) return;
         const updatedUser = { ...state.user, dashboardPreferences: preferences };
-        sessionStorage.setItem('vms_user', JSON.stringify(updatedUser));
+        localStorage.setItem('vms_user', JSON.stringify(updatedUser));
         dispatch({ type: 'PREFERENCES_UPDATED', payload: { dashboardPreferences: preferences } });
     };
 
@@ -189,17 +191,15 @@ export const AuthProvider = ({ children }) => {
          if (!state.user) return;
          const updatedPermissions = { ...defaultPermissions, ...(state.user.permissions || {}), ...newPermissions };
         const updatedUser = { ...state.user, permissions: updatedPermissions };
-        sessionStorage.setItem('vms_user', JSON.stringify(updatedUser));
+        localStorage.setItem('vms_user', JSON.stringify(updatedUser));
         dispatch({ type: 'PERMISSIONS_UPDATED', payload: updatedPermissions }); 
     };
 
-
     return (
-        <AuthContext.Provider value={{ ...state, login, logout, passwordChanged, updatePreferences, updatePermissions }}>
+        <AuthContext.Provider value={{ ...state, loading, login, logout, passwordChanged, updatePreferences, updatePermissions }}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-// Custom hook to use the auth context
 export const useAuth = () => useContext(AuthContext);
