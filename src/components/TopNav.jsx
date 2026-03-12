@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom'; // ✅ Added for Routing
+import { useNavigate, useLocation } from 'react-router-dom'; 
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
 import Dropdown, { useDropdown } from './Dropdown';
 
+// --- Static Config ---
 const DASHBOARD_CONFIGS = {
     'ecaltVMSDisplay': { title: 'Eclat VMS' },
     'taprootVMSDisplay': { title: 'Taproot VMS' },
@@ -15,6 +16,7 @@ const DASHBOARD_CONFIGS = {
     'DeloitteDisplay': { title: 'Deloitte Taproot' }
 };
 
+// --- Icons (Memoized) ---
 const ChevronDownIcon = memo(({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6"/></svg>
 ));
@@ -23,22 +25,38 @@ const BellIcon = memo(({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
 ));
 
+// --- NavButton ---
 const NavButton = memo(({ label, target, isActive, onClick }) => {
-    const baseClass = "px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer select-none";
+    const baseClass = "px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer select-none text-left";
     const activeClass = "bg-slate-200 text-slate-900";
     const inactiveClass = "text-slate-500 hover:bg-slate-100 hover:text-slate-800";
+
     return (
-        <button onClick={() => onClick(target)} className={`${baseClass} ${isActive ? activeClass : inactiveClass}`}>
+        <button 
+            type="button"
+            onClick={() => onClick(target)}
+            className={`${baseClass} ${isActive ? activeClass : inactiveClass}`}
+        >
             {label}
         </button>
     );
 });
 
 const DropdownItem = memo(({ label, target, onClick, isDestructive }) => {
-    const { close } = useDropdown() || {};
-    const handleClick = () => { onClick(target); if (close) close(); };
+    const dropdownContext = useDropdown();
+    const close = dropdownContext ? dropdownContext.close : null;
+
+    const handleClick = () => {
+        onClick(target); 
+        if (close) close(); 
+    };
+
     return (
-        <button onClick={handleClick} className={`w-full text-left block px-4 py-2.5 text-sm transition-colors ${isDestructive ? 'text-red-600 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-50 hover:text-indigo-600'}`}>
+        <button 
+            type="button"
+            onClick={handleClick} 
+            className={`w-full text-left block px-4 py-2.5 text-sm transition-colors ${isDestructive ? 'text-red-600 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-50 hover:text-indigo-600'}`}
+        >
             {label}
         </button>
     );
@@ -46,26 +64,34 @@ const DropdownItem = memo(({ label, target, onClick, isDestructive }) => {
 
 const TopNav = () => {
     const { user, logout } = useAuth();
-    const navigate = useNavigate(); // ✅ Hook
-    const location = useLocation(); // ✅ Hook
-    
+    const navigate = useNavigate(); 
+    const location = useLocation(); 
     const permissions = usePermissions();
+
     const [notifications, setNotifications] = useState([]);
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
-    // ✅ Logic: Checks browser URL to see if item is active
+    const prevNotifLengthRef = useRef(0);
+    const prevMsgCountRef = useRef(0);
+    const audioRef = useRef(null);
+
+    // ✅ FIX 1: Guard against null user/permissions during login redirect
+    if (!user || !permissions) return null;
+
+    // ✅ FIX 2: Improved isPageActive to handle root and query params correctly
     const isPageActive = (target) => {
-        const path = `/${target}`;
-        if (Array.isArray(target)) return target.some(t => location.pathname === `/${t}`);
-        return location.pathname === path;
+        if (Array.isArray(target)) {
+            return target.some(t => location.pathname === `/${t.replace(/^\//, '')}`);
+        }
+        // Special case for dashboard base path
+        if (target === 'dashboard' && location.pathname === '/dashboard') return true;
+        return location.pathname === `/${target.replace(/^\//, '')}`;
     };
 
-    // ✅ Logic: Triggers navigate hook
     const handleNav = useCallback((target) => {
         if (typeof target === 'function') {
-            target(); // For logout()
+            target(); 
         } else {
-            // Remove leading slash if it exists to avoid //home
             const cleanPath = target.startsWith('/') ? target : `/${target}`;
             navigate(cleanPath);
         }
@@ -78,81 +104,200 @@ const TopNav = () => {
         return `${base} ${isPageActive(target) ? active : inactive}`;
     };
 
-    // ... (Keep your Notification/Message fetch logic exactly as it was) ...
+    // --- Data Fetching Hooks ---
+    useEffect(() => {
+        audioRef.current = {
+            notification: new Audio('/sounds/notification.mp3'),
+            message: new Audio('/sounds/message.mp3')
+        };
+    }, []);
+
+    const fetchNotifications = useCallback(async () => {
+        if (!user?.userIdentifier) return;
+        try {
+            const response = await apiService.getNotifications(user.userIdentifier);
+            const newNotifs = response?.data?.success ? (response.data.notifications || []) : [];
+            if (newNotifs.length > prevNotifLengthRef.current && prevNotifLengthRef.current > 0) {
+                if(audioRef.current?.notification) audioRef.current.notification.play().catch(() => {});
+            }
+            prevNotifLengthRef.current = newNotifs.length;
+            setNotifications(newNotifs); 
+        } catch (err) { console.error('Fetch notifications error', err); }
+    }, [user?.userIdentifier]);
+
+    const fetchUnreadMessages = useCallback(async () => {
+        if (!user?.userIdentifier || !permissions.canMessage) return;
+        try {
+            const response = await apiService.getUnreadMessages(user.userIdentifier);
+            if (response.data.success) {
+                const count = Object.values(response.data.unreadCounts || {}).reduce((sum, c) => sum + c, 0);
+                if (count > prevMsgCountRef.current && prevMsgCountRef.current > 0) {
+                    if(audioRef.current?.message) audioRef.current.message.play().catch(() => {});
+                }
+                prevMsgCountRef.current = count;
+                setUnreadMessagesCount(count);
+            }
+        } catch (err) { console.error('Fetch messages error', err); }
+    }, [user?.userIdentifier, permissions.canMessage]);
+
+    useEffect(() => {
+        fetchNotifications();
+        fetchUnreadMessages();
+        const notifInterval = setInterval(fetchNotifications, 30000);
+        const msgInterval = setInterval(fetchUnreadMessages, 15000);
+        return () => { clearInterval(notifInterval); clearInterval(msgInterval); };
+    }, [fetchNotifications, fetchUnreadMessages]);
+
+    const handleMarkAsRead = async () => {
+        if (notifications.length === 0) return;
+        try {
+            const idsToMark = notifications.map(n => ({ id: n.id, partitionKey: n.partitionKey }));
+            setNotifications([]); 
+            prevNotifLengthRef.current = 0;
+            await apiService.markNotificationsAsRead(idsToMark, user.userIdentifier);
+        } catch (err) { fetchNotifications(); }
+    };
+
+    const showAdminDropdown = permissions.canEditUsers || permissions.canManageHolidays || permissions.canApproveLeave || permissions.canManageLeaveConfig || permissions.canApproveAttendance || permissions.canSendMonthlyReport;
+    const showAssetDropdown = permissions.canManageAssets || permissions.canAssignAssets;
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white shadow-sm">
-            <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
-                <div className="flex items-center gap-8">
-                    <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={() => handleNav('home')}>
-                        <h1 className="text-2xl font-bold text-indigo-600">VMS Portal</h1>
+            <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center h-16">
+                    <div className="flex items-center gap-8">
+                        <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={() => handleNav('home')}>
+                            <h1 className="text-2xl font-bold text-indigo-600">VMS Portal</h1>
+                        </div>
+                        <nav className="hidden lg:flex items-center gap-1">
+                            <NavButton label="Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
+                            <NavButton label="My Profile" target="profile" isActive={isPageActive('profile')} onClick={handleNav} />
+
+                            {permissions.canViewDashboards && (
+                                <Dropdown trigger={
+                                    <button className={`flex items-center gap-1 ${getLinkClass('dashboard')}`}>
+                                        Dashboards <ChevronDownIcon className="text-slate-400" />
+                                    </button>
+                                }>
+                                    {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
+                                        <DropdownItem key={key} label={config.title} target={`dashboard?key=${key}`} onClick={handleNav} />
+                                    ))}
+                                </Dropdown>
+                            )}
+
+                            {permissions.canAddPosting && <NavButton label="New Posting" target="new-posting" isActive={isPageActive('new-posting')} onClick={handleNav} />}
+                            {permissions.canViewCandidates && <NavButton label="Candidates" target="candidate-details" isActive={isPageActive('candidate-details')} onClick={handleNav} />}
+                            {permissions.canManageBenchSales && <NavButton label="Bench Sales" target="bench-sales" isActive={isPageActive('bench-sales')} onClick={handleNav} />}
+                            {permissions.canViewReports && <NavButton label="Reports" target="reports" isActive={isPageActive('reports')} onClick={handleNav} />}
+
+                            {permissions.canMessage && (
+                                <button type="button" onClick={() => handleNav('messages')} className={`${getLinkClass('messages')} relative`}>
+                                    Messages
+                                    {unreadMessagesCount > 0 && (
+                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white ring-2 ring-white">
+                                            {unreadMessagesCount}
+                                        </span>
+                                    )}
+                                </button>
+                            )}
+
+                            {permissions.canManageTimesheets && (
+                                <Dropdown trigger={
+                                    <button className={`flex items-center gap-1 ${getLinkClass(['create-timesheet-company', 'manage-companies', 'log-hours', 'timesheets-dashboard'])}`}>
+                                        Timesheets <ChevronDownIcon className="text-slate-400" />
+                                    </button>
+                                }>
+                                    <DropdownItem label="Create Company" target="create-timesheet-company" onClick={handleNav} />
+                                    <DropdownItem label="Manage Companies" target="manage-companies" onClick={handleNav} />
+                                    <DropdownItem label="Create Employee" target="create-timesheet-employee" onClick={handleNav} />
+                                    <DropdownItem label="Manage Employees" target="manage-timesheet-employees" onClick={handleNav} />
+                                    <div className="border-t border-slate-100 my-1" />
+                                    <DropdownItem label="Log Hours" target="log-hours" onClick={handleNav} />
+                                    <DropdownItem label="Dashboard" target="timesheets-dashboard" onClick={handleNav} />
+                                </Dropdown>
+                            )}
+
+                            {showAssetDropdown && (
+                                <Dropdown trigger={
+                                    <button className={`flex items-center gap-1 ${getLinkClass(['create-asset', 'asset-dashboard'])}`}>
+                                        Assets <ChevronDownIcon className="text-slate-400" />
+                                    </button>
+                                }>
+                                    {permissions.canManageAssets && <DropdownItem label="Create Asset" target="create-asset" onClick={handleNav} />}
+                                    <DropdownItem label="Asset Dashboard" target="asset-dashboard" onClick={handleNav} />
+                                </Dropdown>
+                            )}
+
+                            {showAdminDropdown && (
+                                <Dropdown trigger={
+                                    <button className={`flex items-center gap-1 ${getLinkClass(['admin', 'manage-holidays', 'leave-config', 'approve-leave', 'approve-attendance', 'monthly-attendance-report'])}`}>
+                                        Admin <ChevronDownIcon className="text-slate-400" />
+                                    </button>
+                                }>
+                                    {permissions.canEditUsers && <DropdownItem label="User Management" target="admin" onClick={handleNav} />}
+                                    <div className="border-t border-slate-100 my-1" />
+                                    {permissions.canManageHolidays && <DropdownItem label="Manage Holidays" target="manage-holidays" onClick={handleNav} />}
+                                    {permissions.canManageLeaveConfig && <DropdownItem label="Leave Config" target="leave-config" onClick={handleNav} />}
+                                    {permissions.canApproveLeave && <DropdownItem label="Approve Leave" target="approve-leave" onClick={handleNav} />}
+                                    {permissions.canApproveAttendance && <DropdownItem label="Approve Attendance" target="approve-attendance" onClick={handleNav} />}
+                                    {permissions.canSendMonthlyReport && <DropdownItem label="Monthly Reports" target="monthly-attendance-report" onClick={handleNav} />}
+                                </Dropdown>
+                            )}
+                        </nav>
                     </div>
-                    <nav className="hidden lg:flex items-center gap-1">
-                        <NavButton label="Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
-                        <NavButton label="My Profile" target="profile" isActive={isPageActive('profile')} onClick={handleNav} />
-                        
-                        {permissions.canViewDashboards && (
-                            <Dropdown trigger={<button className={`flex items-center gap-1 ${getLinkClass('dashboard')}`}>Dashboards <ChevronDownIcon className="text-slate-400" /></button>}>
-                                {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
-                                    <DropdownItem key={key} label={config.title} target={`/dashboard?key=${key}`} onClick={handleNav} />
-                                ))}
-                            </Dropdown>
-                        )}
-                        {permissions.canAddPosting && <NavButton label="New Posting" target="new-posting" isActive={isPageActive('new-posting')} onClick={handleNav} />}
-                        {permissions.canViewCandidates && <NavButton label="Candidates" target="candidate-details" isActive={isPageActive('candidate-details')} onClick={handleNav} />}
-                        {permissions.canManageBenchSales && <NavButton label="Bench Sales" target="bench-sales" isActive={isPageActive('bench-sales')} onClick={handleNav} />}
-                        {permissions.canViewReports && <NavButton label="Reports" target="reports" isActive={isPageActive('reports')} onClick={handleNav} />}
 
-                        {permissions.canManageTimesheets && (
-                            <Dropdown trigger={<button className={`flex items-center gap-1 ${getLinkClass(['log-hours', 'timesheets-dashboard'])}`}>Timesheets <ChevronDownIcon className="text-slate-400" /></button>}>
-                                <DropdownItem label="Log Hours" target="log-hours" onClick={handleNav} />
-                                <DropdownItem label="Dashboard" target="timesheets-dashboard" onClick={handleNav} />
-                            </Dropdown>
-                        )}
-                    </nav>
-                </div>
+                    <div className="flex items-center gap-4">
+                        <Dropdown width="96" trigger={
+                            <button type="button" className="relative p-2 text-slate-500 hover:text-indigo-600 transition-colors focus:outline-none">
+                                <BellIcon />
+                                {notifications.length > 0 && (
+                                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white">
+                                        {notifications.length}
+                                    </span>
+                                )}
+                            </button>
+                        }>
+                            <div className="w-96">
+                                <div className="flex justify-between items-center p-3 border-b border-slate-100 bg-slate-50">
+                                    <h4 className="font-semibold text-slate-800 text-sm">Notifications</h4>
+                                    {notifications.length > 0 && <button onClick={handleMarkAsRead} className="text-xs font-medium text-indigo-600 hover:text-indigo-800">Mark all read</button>}
+                                </div>
+                                <div className="max-h-[300px] overflow-y-auto scrollbar-thin">
+                                    {notifications.length > 0 ? notifications.map((n, idx) => (
+                                        <div key={n.id || idx} className="p-3 border-b border-slate-50 hover:bg-slate-50">
+                                            <p className="text-sm text-slate-700 leading-snug break-words">{n.message}</p>
+                                            <p className="text-xs text-slate-400 mt-1">{new Date(n.timestamp).toLocaleString()}</p>
+                                        </div>
+                                    )) : <div className="py-8 text-center text-slate-400"><p className="text-sm">No new notifications</p></div>}
+                                </div>
+                            </div>
+                        </Dropdown>
 
-                <div className="flex items-center gap-4">
-                    {/* Preserved Notifications Dropdown */}
-                    <Dropdown width="96" trigger={
-                        <button className="relative p-2 text-slate-500 hover:text-indigo-600 transition-colors">
-                            <BellIcon />
-                            {notifications.length > 0 && <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white">{notifications.length}</span>}
-                        </button>
-                    }>
-                        <div className="w-96">
-                            <div className="flex justify-between items-center p-3 border-b border-slate-100 bg-slate-50">
-                                <h4 className="font-semibold text-slate-800 text-sm">Notifications</h4>
-                                {notifications.length > 0 && <button onClick={handleMarkAsRead} className="text-xs font-medium text-indigo-600">Mark all read</button>}
+                        <Dropdown width="96" trigger={
+                             <button type="button" className="flex items-center gap-3 hover:bg-slate-50 rounded-full pr-3 py-1 transition-all">
+                                <div className="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-sm ring-2 ring-white">
+                                    <span className="text-sm font-bold">{user?.userName ? user.userName.charAt(0).toUpperCase() : 'U'}</span>
+                                </div>
+                                <div className="hidden md:flex flex-col items-start">
+                                    <span className="text-sm font-semibold text-slate-700">{user?.userName || 'User'}</span>
+                                </div>
+                                <ChevronDownIcon className="h-4 w-4 text-slate-400" />
+                            </button>
+                        }>
+                            <div className="w-96">
+                                <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                                    <p className="text-sm font-bold text-slate-900 break-words">{user?.userName || 'User'}</p>
+                                    <p className="text-xs text-slate-500 break-all">{user?.userIdentifier}</p>
+                                </div>
+                                <div className="py-1">
+                                    <DropdownItem label="My Profile" target="profile" onClick={handleNav} />
+                                </div>
+                                <div className="border-t border-slate-100 py-1">
+                                    <DropdownItem label="Logout" target={logout} onClick={handleNav} isDestructive />
+                                </div>
                             </div>
-                            <div className="max-h-[300px] overflow-y-auto">
-                                {notifications.length > 0 ? notifications.map((n, idx) => (
-                                    <div key={idx} className="p-3 border-b border-slate-50 hover:bg-slate-50">
-                                        <p className="text-sm text-slate-700">{n.message}</p>
-                                    </div>
-                                )) : <div className="py-8 text-center text-slate-400">No new notifications</div>}
-                            </div>
-                        </div>
-                    </Dropdown>
-
-                    {/* Preserved Profile Dropdown */}
-                    <Dropdown trigger={
-                         <button className="flex items-center gap-3 hover:bg-slate-50 rounded-full pr-3 py-1 transition-all">
-                            <div className="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold ring-2 ring-white">
-                                {user?.userName ? user.userName.charAt(0).toUpperCase() : 'U'}
-                            </div>
-                            <ChevronDownIcon className="h-4 w-4 text-slate-400" />
-                        </button>
-                    }>
-                        <div className="w-56 py-1">
-                            <div className="px-4 py-2 border-b border-slate-100 mb-1">
-                                <p className="text-sm font-bold text-slate-900">{user?.userName}</p>
-                                <p className="text-[10px] text-slate-400 uppercase tracking-widest">{user?.backendOfficeRole}</p>
-                            </div>
-                            <DropdownItem label="My Profile" target="profile" onClick={handleNav} />
-                            <DropdownItem label="Sign Out" target={logout} onClick={handleNav} isDestructive />
-                        </div>
-                    </Dropdown>
+                        </Dropdown>
+                    </div>
                 </div>
             </div>
         </header>
