@@ -24,6 +24,40 @@ const ChevronDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className=
 const ChevronUpIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>;
 const LaptopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
 
+
+// --- NEW: Sleek Leave Progress Bar Widget ---
+const LeaveBalanceBar = ({ title, data, color }) => {
+    const { used, total, remaining } = data;
+    // Calculate percentage (max 100%)
+    const percent = total > 0 ? Math.min((used / total) * 100, 100) : 0;
+    const isExhausted = remaining <= 0 && total > 0;
+    
+    return (
+        <div className="p-4 border border-slate-100 rounded-xl bg-white hover:border-slate-300 hover:shadow-sm transition-all duration-200 group">
+            <div className="flex justify-between items-end mb-3">
+                <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{title}</p>
+                    <p className={`text-2xl leading-none font-black ${isExhausted ? 'text-red-500' : 'text-slate-800'}`}>
+                        {remaining} <span className="text-xs font-bold text-slate-400 ml-0.5">left</span>
+                    </p>
+                </div>
+                <div className="text-right">
+                    <p className="text-xs font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                        <span className="text-slate-800">{used}</span> / {total} used
+                    </p>
+                </div>
+            </div>
+            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                <div 
+                    className={`h-full rounded-full transition-all duration-1000 ease-out ${isExhausted ? 'bg-red-500' : color}`} 
+                    style={{ width: `${percent}%` }}
+                ></div>
+            </div>
+        </div>
+    );
+};
+
+
 const getISTShiftDateString = () => {
     const d = new Date();
     const istFormatter = new Intl.DateTimeFormat('en-US', {
@@ -50,8 +84,8 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
         isHoliday: false, 
         isOnLeave: false, 
         isWeekend: false, 
-        isApprovedWeekend: false, // NEW
-        weekendWorkStatus: null, // NEW
+        isApprovedWeekend: false, 
+        weekendWorkStatus: null, 
         isLoading: true,
         holidayDescription: '' 
     });
@@ -81,7 +115,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             const year = dateString.substring(0, 4);
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-            // ✅ NEW: Fetch Weekend Work Requests alongside the other checks
             const [attendanceRes, holidayRes, leaveRes, weekendRes] = await Promise.all([
                 apiService.getAttendance({ authenticatedUsername: userId, username: userId, startDate: dateString, endDate: dateString })
                     .catch(err => { console.error("Attendance fetch error:", err); return null; }),
@@ -89,7 +122,7 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                     .catch(err => { console.error("Holiday fetch error:", err); return null; }),
                 apiService.getLeaveRequests({ authenticatedUsername: userId, targetUsername: userId, statusFilter: 'Approved', startDateFilter: dateString, endDateFilter: dateString })
                     .catch(err => { console.error("Leave fetch error:", err); return null; }),
-                apiService.getWeekendWorkRequests({ authenticatedUsername: userId }) // Add this line
+                apiService.getWeekendWorkRequests({ authenticatedUsername: userId }) 
                     .catch(err => { console.error("Weekend Request fetch error:", err); return null; })
             ]);
 
@@ -99,14 +132,12 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             let isOnLeave = false;
             let holidayDescription = '';
             
-            // ✅ NEW: Parse Weekend Request Status
             let isApprovedWeekend = false;
             let wwStatus = null;
             if (weekendRes?.data?.success && Array.isArray(weekendRes.data.requests)) {
-                // Find if the user requested to work on this specific date
                 const req = weekendRes.data.requests.find(r => r.partitionKey === userId && r.date === dateString);
                 if (req) {
-                    wwStatus = req.status; // e.g., 'Pending', 'Approved', 'Rejected'
+                    wwStatus = req.status; 
                     if (wwStatus === 'Approved') {
                         isApprovedWeekend = true;
                     }
@@ -136,13 +167,11 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                      status = 'Pending';
                      requestedStatus = record.requestedStatus || null;
                  } else if (isApprovedWeekend) {
-                     // If it's an approved weekend and they have a record, show it
                      status = record.status;
                      requestedStatus = record.requestedStatus || null;
                  }
             }
 
-            // ✅ FIXED: Do NOT set status to "Weekend" if they have an approved request to work
             if (status === null && isWeekend) {
                  if (!isApprovedWeekend) {
                      status = 'Weekend';
@@ -226,7 +255,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
             setReason('');
             setShowWeekendRequest(false);
             
-            // ✅ NEW: Refresh the UI immediately so the user sees the "Pending" badge instead of the form again
             fetchStatusForDate(selectedDate);
             setTimeout(() => setLocalSuccess(''), 4000);
             
@@ -237,7 +265,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
         }
     };
 
-    // ✅ FIXED: Allow marking if isApprovedWeekend is true
     const canMarkSelectedDate = !statusInfo.isLoading && 
                                 !actionLoading && 
                                 (!statusInfo.isWeekend || statusInfo.isApprovedWeekend) && 
@@ -295,7 +322,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                     </span>
                 ) : (
                     <span className="text-base text-gray-500 italic font-semibold px-4 py-2 bg-gray-50/50 rounded-full border border-gray-100">
-                        {/* ✅ NEW: Clearly state that the system is ready for them to mark the approved weekend */}
                         {statusInfo.isApprovedWeekend ? 'Not Marked (Approved for Work)' : 'Not Marked'}
                     </span>
                 )}
@@ -322,7 +348,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
                  </div>
              )}
 
-             {/* ✅ NEW: Enhanced Weekend Request Render Logic to show status badges */}
              {statusInfo.isWeekend && !isFutureDate && !statusInfo.isLoading && statusInfo.status === 'Weekend' && (
                  <div className="mt-4 flex flex-col items-center relative z-10">
                      {statusInfo.weekendWorkStatus === 'Pending' ? (
@@ -791,58 +816,34 @@ const ProfilePage = () => {
                 </div>
 
                 <div className="space-y-8">
+                    {/* ✅ NEW: Visually Upgraded Leave Balance Cards */}
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                         <h3 className="text-lg font-extrabold mb-5 flex items-center text-slate-800"><QuotaIcon /> Annual Leave Balance</h3>
                         {leaveQuota ? (
-                            <div className="text-sm">
-                                <div className="grid grid-cols-3 font-bold text-slate-400 text-xs uppercase tracking-wider border-b border-slate-100 pb-2 mb-3">
-                                    <span>Type</span><span className="text-center">Used/Total</span><span className="text-right">Left</span>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">
+                                    <LeaveBalanceBar title="Sick Leave (SL)" data={sickLeave} color="bg-rose-400" />
+                                    <LeaveBalanceBar title="Casual Leave (CL)" data={casualLeave} color="bg-blue-400" />
+                                    <LeaveBalanceBar title="Earned Leave (EL)" data={earnedLeave} color="bg-emerald-400" />
+                                    <LeaveBalanceBar title="Maternity" data={maternityLeave} color="bg-purple-400" />
+                                    <LeaveBalanceBar title="Paternity" data={paternityLeave} color="bg-indigo-400" />
                                 </div>
                                 
-                                <div className="space-y-3 font-medium text-slate-600">
-                                    <div className="grid grid-cols-3 items-center hover:bg-slate-50 p-1.5 -mx-1.5 rounded-lg transition-colors">
-                                        <span className="text-slate-800">Sick (SL)</span>
-                                        <span className="text-center">{sickLeave.used} / {sickLeave.total}</span>
-                                        <span className={`text-right font-bold text-base ${sickLeave.remaining < 0 ? 'text-red-500' : 'text-blue-600'}`}>{sickLeave.remaining}</span>
+                                <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-3 mt-4">
+                                    <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100 flex justify-between items-center hover:bg-slate-100 transition-colors cursor-default">
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">LWP</span>
+                                        <span className="text-lg font-black text-slate-700">{lwp.used} <span className="font-bold text-xs text-slate-400 ml-0.5">taken</span></span>
                                     </div>
-                                    <div className="grid grid-cols-3 items-center hover:bg-slate-50 p-1.5 -mx-1.5 rounded-lg transition-colors">
-                                        <span className="text-slate-800">Casual (CL)</span>
-                                        <span className="text-center">{casualLeave.used} / {casualLeave.total}</span>
-                                        <span className={`text-right font-bold text-base ${casualLeave.remaining < 0 ? 'text-red-500' : 'text-blue-600'}`}>{casualLeave.remaining}</span>
-                                    </div>
-                                    <div className="grid grid-cols-3 items-center hover:bg-slate-50 p-1.5 -mx-1.5 rounded-lg transition-colors">
-                                        <span className="text-slate-800">Earned (EL)</span>
-                                        <span className="text-center">{earnedLeave.used} / {earnedLeave.total}</span>
-                                        <span className={`text-right font-bold text-base ${earnedLeave.remaining < 0 ? 'text-red-500' : 'text-blue-600'}`}>{earnedLeave.remaining}</span>
-                                    </div>
-                                    <div className="grid grid-cols-3 items-center hover:bg-slate-50 p-1.5 -mx-1.5 rounded-lg transition-colors">
-                                        <span className="text-slate-800">Maternity</span>
-                                        <span className="text-center">{maternityLeave.used} / {maternityLeave.total}</span>
-                                        <span className={`text-right font-bold text-base ${maternityLeave.remaining < 0 ? 'text-red-500' : 'text-blue-600'}`}>{maternityLeave.remaining}</span>
-                                    </div>
-                                    <div className="grid grid-cols-3 items-center hover:bg-slate-50 p-1.5 -mx-1.5 rounded-lg transition-colors">
-                                        <span className="text-slate-800">Paternity</span>
-                                        <span className="text-center">{paternityLeave.used} / {paternityLeave.total}</span>
-                                        <span className={`text-right font-bold text-base ${paternityLeave.remaining < 0 ? 'text-red-500' : 'text-blue-600'}`}>{paternityLeave.remaining}</span>
-                                    </div>
-                                </div>
-                                
-                                <div className="border-t border-slate-100 pt-3 mt-3 space-y-3 font-medium text-slate-500">
-                                    <div className="grid grid-cols-3 items-center">
-                                        <span className="text-slate-800">LWP</span>
-                                        <span className="text-center">{lwp.used} used</span>
-                                        <span className="text-right text-slate-300">-</span>
-                                    </div>
-                                    <div className="grid grid-cols-3 items-center">
-                                        <span className="text-slate-800">LOP</span>
-                                        <span className="text-center">{lop.used} used</span>
-                                        <span className="text-right text-slate-300">-</span>
+                                    <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100 flex justify-between items-center hover:bg-slate-100 transition-colors cursor-default">
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">LOP</span>
+                                        <span className="text-lg font-black text-slate-700">{lop.used} <span className="font-bold text-xs text-slate-400 ml-0.5">taken</span></span>
                                     </div>
                                 </div>
                             </div>
                         ) : (
-                            <div className="bg-slate-50 rounded-lg p-4 text-center border border-slate-100">
-                                <p className="text-sm text-slate-500 font-medium">Leave quotas not configured yet.</p>
+                            <div className="bg-slate-50 rounded-xl p-8 text-center border border-slate-100 border-dashed">
+                                <p className="text-sm text-slate-500 font-bold">Leave quotas not configured yet.</p>
+                                <p className="text-xs text-slate-400 mt-1">Please contact your administrator.</p>
                             </div>
                         )}
                     </div>
