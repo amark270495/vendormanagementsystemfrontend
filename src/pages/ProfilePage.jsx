@@ -22,7 +22,6 @@ const HeartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 const ShieldCheckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
 const LaptopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
 
-
 // --- 1. Leave Balance Bar Widget ---
 const LeaveBalanceBar = ({ title, data, color }) => {
     const { used, total, remaining } = data;
@@ -192,7 +191,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
 
     return (
         <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100 h-full flex flex-col justify-center relative overflow-hidden">
-            {/* Soft background glow */}
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-50 rounded-full blur-3xl opacity-70 pointer-events-none"></div>
 
             <div className="relative z-10 flex flex-col items-center text-center">
@@ -271,8 +269,7 @@ const formatDateForInput = (dateString) => {
 const ProfilePage = () => {
     const { user, login: updateUserInContext } = useAuth();
     
-    // --- MAIN TAB STATE ---
-    const [activeTab, setActiveTab] = useState('profile'); // 'profile', 'attendance', 'leaves'
+    const [activeTab, setActiveTab] = useState('profile'); 
     
     const [leaveQuota, setLeaveQuota] = useState(null);
     const [leaveHistory, setLeaveHistory] = useState([]);
@@ -390,15 +387,20 @@ const ProfilePage = () => {
         <textarea name={name} id={name} value={formData[name] || ''} onChange={handleFormChange} rows="3" className="w-full px-4 py-3 border border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white transition-all resize-y text-sm font-semibold text-slate-700" />
     );
 
-    // --- Analytics Calculations ---
+    // --- Analytics Calculations (FIXED) ---
     const calculateBalance = (typeKey, typeLabel) => {
         if (!leaveQuota) return { total: 0, used: 0, remaining: 0 };
         const total = leaveQuota[typeKey] || 0;
-        const used = leaveHistory.filter(req => req.status === 'Approved' && req.leaveType === typeLabel).reduce((acc, req) => {
+        
+        // SAFE FALLBACK: (leaveHistory || []) ensures it never crashes if undefined
+        const used = (leaveHistory || [])
+            .filter(req => req.status === 'Approved' && req.leaveType === typeLabel)
+            .reduce((acc, req) => {
                 const start = new Date(req.startDate); const end = new Date(req.endDate);
                 const diffTime = Math.abs(end - start);
                 return acc + (isNaN(diffTime) ? 0 : Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
             }, 0);
+            
         return { total, used, remaining: total - used };
     };
 
@@ -623,7 +625,6 @@ const ProfilePage = () => {
                     {/* Left Column: Comprehensive Balances */}
                     <div className="xl:col-span-5 space-y-6 lg:space-y-8">
                         <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
-                            {/* Decorative background shape */}
                             <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-indigo-50/50 rounded-full blur-3xl pointer-events-none"></div>
 
                             <h3 className="text-xl font-extrabold mb-6 flex items-center text-slate-800 gap-2 border-b border-slate-100 pb-5 relative z-10"><QuotaIcon /> Paid Time Off Tracker</h3>
