@@ -210,6 +210,10 @@ export const apiService = {
     apiClient.get('/getAttendance', { params }),
   requestWeekendWork: (requestData) => 
     apiClient.post('/requestWeekendWork', requestData),
+  approveWeekendWork: (approvalData) => 
+    apiClient.post('/approveWeekendWork', approvalData),
+  getWeekendWorkRequests: (params) => 
+    apiClient.get('/getWeekendWorkRequests', { params }),
   getHolidays: (params) => 
     apiClient.get('/getHolidays', { params }),
   manageHoliday: (holidayData, method = 'POST', authenticatedUsername) => { 
