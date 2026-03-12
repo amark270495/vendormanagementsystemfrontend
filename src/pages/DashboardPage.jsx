@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom'; // ✅ Added for URL parameters
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
@@ -135,9 +136,13 @@ const REMARKS_OPTIONS = [
     'Submission Date Closed'
 ];
 
-const DashboardPage = ({ sheetKey }) => {
+const DashboardPage = () => { // ✅ Removed { sheetKey } prop
     const { user, updatePreferences } = useAuth();
     const { canEditDashboard, canViewDashboards } = usePermissions(); 
+    
+    // ✅ NEW: Read the sheetKey from URL Search Params (/dashboard?key=xxxx)
+    const [searchParams] = useSearchParams();
+    const sheetKey = searchParams.get('key');
 
     const [rawData, setRawData] = useState({ header: [], rows: [] });
     const [loading, setLoading] = useState(true);
@@ -171,7 +176,7 @@ const DashboardPage = ({ sheetKey }) => {
         'Working By': 'w-28',
         'No. of Resumes Submitted': 'w-24',
         '# Submitted': 'w-22',
-        'Remarks': 'w-50', // Keeps enough width for the comment bubble
+        'Remarks': 'w-50',
         '1st Candidate Name': 'w-25',
         '2nd Candidate Name': 'w-25',
         '3rd Candidate Name': 'w-25',
@@ -195,6 +200,7 @@ const DashboardPage = ({ sheetKey }) => {
     }, [user]);
 
     const loadData = useCallback(async () => {
+        if (!sheetKey || !user?.userIdentifier) return; // ✅ Guard: Don't fetch if key is missing
         setLoading(true);
         setError('');
         setUnsavedChanges({});
@@ -211,7 +217,7 @@ const DashboardPage = ({ sheetKey }) => {
         } finally {
             setLoading(false);
         }
-    }, [sheetKey, user.userIdentifier, batchSize]);
+    }, [sheetKey, user?.userIdentifier, batchSize]);
 
     useEffect(() => {
         const fetchRecruiters = async () => {
@@ -231,7 +237,7 @@ const DashboardPage = ({ sheetKey }) => {
 
         fetchRecruiters();
         loadData();
-    }, [loadData, user.userIdentifier]);
+    }, [loadData, user?.userIdentifier]);
 
     const transformedData = useMemo(() => {
         let { header, rows } = rawData;
@@ -240,7 +246,6 @@ const DashboardPage = ({ sheetKey }) => {
         const headerRenames = { 'Last Submission Date': 'Deadline', 'No. of Resumes Submitted': '# Submitted' };
         const originalHeaderMap = new Map(header.map((h, i) => [h, i]));
         
-        // ✅ CRITICAL FIX: Filters out 'Comments' here so it NEVER becomes a table column
         let transformedHeader = header
             .map(h => headerRenames[h] || h)
             .filter(h => h !== 'Company Name' && h !== 'Comments');
@@ -592,7 +597,6 @@ const DashboardPage = ({ sheetKey }) => {
         const obj = displayHeader.reduce((acc, h, i) => ({...acc, [h]: row[i]}), {});
         const postingId = obj['Posting ID'];
         
-        // Pull comment specifically from the raw data so the modal has it for editing
         const rawRow = rawData.rows.find(r => String(r[rawData.header.indexOf('Posting ID')]) === String(postingId));
         const dbComment = (rawRow && rawData.header.indexOf('Comments') > -1) ? rawRow[rawData.header.indexOf('Comments')] : '';
         
@@ -732,8 +736,6 @@ const DashboardPage = ({ sheetKey }) => {
                         <tbody className="divide-y divide-slate-100">
                             {filteredAndSortedData.slice(0, visibleCount).map((row, rowIndex) => {
                                 const postingId = row[displayHeader.indexOf('Posting ID')];
-                                
-                                // ✅ FETCH HIDDEN COMMENT DATA FOR RENDERING
                                 const rawRow = rawData.rows.find(r => String(r[rawData.header.indexOf('Posting ID')]) === String(postingId));
                                 const dbComment = (rawRow && rawData.header.indexOf('Comments') > -1) ? rawRow[rawData.header.indexOf('Comments')] : '';
                                 const currentCustomComment = unsavedChanges[postingId]?.['Comments'] !== undefined 
@@ -745,7 +747,6 @@ const DashboardPage = ({ sheetKey }) => {
                                         {row.map((cell, cellIndex) => {
                                             const headerName = displayHeader[cellIndex];
                                             const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
-                                            
                                             const hasUnsaved = unsavedChanges[postingId]?.[headerName] !== undefined || (headerName === 'Remarks' && unsavedChanges[postingId]?.['Comments'] !== undefined);
 
                                             let selectedWorkingBy = [];
@@ -801,7 +802,6 @@ const DashboardPage = ({ sheetKey }) => {
                                                                     {cell || 'Add Candidate'}
                                                                 </span>
                                                             ) : headerName === 'Remarks' ? (
-                                                                // ✅ DISPLAYS THE REMARK + THE HIDDEN COMMENT
                                                                 <div className="flex flex-col gap-2">
                                                                     <span className="font-bold text-slate-800">
                                                                         {cell || <span className="text-slate-400 italic font-normal">No Remark</span>}
