@@ -60,8 +60,8 @@ const LoginPage = () => {
     const [success, setSuccess] = useState(false);
     
     const { login } = useAuth();
-    const navigate = useNavigate(); // ✅ Hook
-    const location = useLocation(); // ✅ Hook
+    const navigate = useNavigate(); 
+    const location = useLocation();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -73,39 +73,31 @@ const LoginPage = () => {
             const response = await apiService.authenticateUser(username, password);
             
             if (response.data.success) {
-                setSuccess(true);
-                // Exit loading state before initiating navigation
-                setLoading(false); 
-
-                // 1. Set global user state
-                login(response.data.user);
+                // IMPORTANT: Ensure we extract the 'user' object if your API wraps it
+                const userData = response.data.user || response.data;
                 
-                // 2. Determine redirect URL
+                setSuccess(true);
+                setLoading(false);
+
+                // Update context
+                login(userData);
+                
                 const destination = location.state?.from?.pathname || '/home';
                 
-                // 3. Clear timeout ensure early exit
                 setTimeout(() => {
                     navigate(destination, { replace: true });
                 }, 800);
 
-                return; // ✅ Exit early to prevent hitting the catch block logic during transition
+                return; // ✅ Exit early to prevent catch block triggering
             } else {
                 setError(response.data.message);
                 setLoading(false);
             }
         } catch (err) {
-            // ✅ Only show error if we haven't already marked the attempt as successful
-            if (!success) {
+            // ✅ Only show error if we didn't succeed already
+            if (loading && !success) {
                 console.error("Login API Failure:", err);
-                let errorMessage = "An unexpected error occurred. Please try again.";
-                
-                if (err.response) {
-                    errorMessage = err.response.data?.message || errorMessage;
-                } else if (err.code === 'ECONNREFUSED') {
-                    errorMessage = "Connection refused. Server may be offline.";
-                }
-                
-                setError(errorMessage);
+                setError(err.response?.data?.message || "Connection failed. Please try again.");
                 setLoading(false);
             }
         }
@@ -114,7 +106,7 @@ const LoginPage = () => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 font-sans relative overflow-hidden p-4">
             
-            {/* --- Background Animation (Preserved) --- */}
+            {/* --- Background Animation --- */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
                 <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-pulse"></div>
                 <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
@@ -124,7 +116,7 @@ const LoginPage = () => {
             {/* --- Split Card Container --- */}
             <div className="z-10 w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px]">
                 
-                {/* LEFT SIDE: Branding & Features (Preserved) */}
+                {/* LEFT SIDE: Branding & Features */}
                 <div className="md:w-1/2 bg-indigo-600 relative overflow-hidden flex flex-col justify-center items-center text-center p-12 text-white">
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-purple-800 opacity-90"></div>
                     <div className="absolute -top-24 -left-24 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl"></div>
@@ -149,7 +141,7 @@ const LoginPage = () => {
                     </div>
                 </div>
 
-                {/* RIGHT SIDE: Login Form (Preserved) */}
+                {/* RIGHT SIDE: Login Form */}
                 <div className="md:w-1/2 bg-white p-8 md:p-12 flex flex-col justify-center relative">
                     <div className="w-full max-w-md mx-auto">
                         <div className="mb-10 text-center md:text-left">
@@ -157,7 +149,6 @@ const LoginPage = () => {
                             <p className="text-slate-500 mt-2 text-sm">Please sign in to access your dashboard.</p>
                         </div>
 
-                        {/* Error & Success Messages */}
                         {error && (
                             <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 flex items-start animate-in fade-in slide-in-from-top-2">
                                 <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
