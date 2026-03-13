@@ -14,15 +14,17 @@ const apiClient = axios.create({
 // =========================================================================
 apiClient.interceptors.request.use((config) => {
     try {
-        const savedUser = sessionStorage.getItem('vms_user');
+        // ✅ FIXED: Using localStorage instead of sessionStorage to match AuthContext persistence
+        const savedUser = localStorage.getItem('vms_user');
+        
         if (savedUser) {
             const userData = JSON.parse(savedUser);
             
-            // Map session data to the headers expected by tableUtils.js verifyAccess
+            // Map data to headers expected by backend verifyAccess (tableUtils.js)
             config.headers['x-user-email'] = userData.userIdentifier;
             config.headers['x-user-role'] = userData.userRole;
             
-            // Permissions must be passed as a stringified array of keys where value is true
+            // Filter permissions to send only active (true) keys as a stringified array
             const activePermissions = Object.keys(userData.permissions || {})
                 .filter(key => userData.permissions[key] === true);
                 
@@ -258,15 +260,12 @@ export const apiService = {
   reassignAsset: (reassignData, authenticatedUsername) =>
     apiClient.post('/reassignAsset', { ...reassignData, authenticatedUsername }),
   
-  // ✅ Fetch user tracking logs (now shift-aware based on the 'date' passed)
   getUserTrackingLogs: (targetUser, date, authenticatedUsername) => 
     apiClient.get('/getUserTrackingLogs', { params: { targetUser, date, authenticatedUsername } }),
   
-  // ✅ Fetch merged asset session logs 
   getAssetSessions: (assetId, date, authenticatedUsername) =>
     apiClient.get('/getAssetSessions', { params: { assetId, date, authenticatedUsername } }),
     
-  // ✅ Log asset sessions manually from the portal (now triggers IST shift logic in backend)
   logAssetSession: (sessionData, authenticatedUsername) =>
     apiClient.post('/logAssetSession', { ...sessionData, authenticatedUsername }),
 };
