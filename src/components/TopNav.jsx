@@ -75,23 +75,19 @@ const TopNav = () => {
     const prevMsgCountRef = useRef(0);
     const audioRef = useRef(null);
 
-    // ✅ FIX: Guard against null user/permissions during login transition
     if (!user || !permissions) return null;
 
-    // ✅ Logic: Checks browser URL to see if item is active
     const isPageActive = (target) => {
         if (Array.isArray(target)) {
             return target.some(t => location.pathname === `/${t.replace(/^\//, '')}`);
         }
-        // Handle dashboard base path highlight
         if (target === 'dashboard' && location.pathname === '/dashboard') return true;
         return location.pathname === `/${target.replace(/^\//, '')}`;
     };
 
-    // ✅ Logic: Triggers real React Router navigation
     const handleNav = useCallback((target) => {
         if (typeof target === 'function') {
-            target(); // Handles logout()
+            target(); 
         } else {
             const cleanPath = target.startsWith('/') ? target : `/${target}`;
             navigate(cleanPath);
@@ -105,7 +101,6 @@ const TopNav = () => {
         return `${base} ${isPageActive(target) ? active : inactive}`;
     };
 
-    // --- Notification & Audio Logic ---
     useEffect(() => {
         audioRef.current = {
             notification: new Audio('/sounds/notification.mp3'),
@@ -166,8 +161,6 @@ const TopNav = () => {
         <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white shadow-sm">
             <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
-                    
-                    {/* LEFT SIDE: Logo & Navigation */}
                     <div className="flex items-center gap-8">
                         <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={() => handleNav('home')}>
                             <h1 className="text-2xl font-bold text-indigo-600">VMS Portal</h1>
@@ -183,12 +176,7 @@ const TopNav = () => {
                                     </button>
                                 }>
                                     {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
-                                        <DropdownItem 
-                                            key={key} 
-                                            label={config.title} 
-                                            target={`dashboard?key=${key}`} 
-                                            onClick={handleNav} 
-                                        />
+                                        <DropdownItem key={key} label={config.title} target={`dashboard?key=${key}`} onClick={handleNav} />
                                     ))}
                                 </Dropdown>
                             )}
@@ -236,6 +224,33 @@ const TopNav = () => {
                                 </Dropdown>
                             )}
 
+                            {/* ✅ RESTORED: E-Sign's Dropdown */}
+                            {(permissions.canManageMSAWO || permissions.canManageOfferLetters) && (
+                                <Dropdown trigger={
+                                    <button className={`flex items-center gap-1 ${getLinkClass(['msa-wo-dashboard', 'offer-letter-dashboard'])}`}>
+                                        E-Sign's <ChevronDownIcon className="text-slate-400" />
+                                    </button>
+                                }>
+                                    {permissions.canManageMSAWO && (
+                                        <>
+                                            <div className="px-4 py-2 text-xs font-bold text-slate-400 uppercase bg-slate-50">MSA & WO</div>
+                                            <DropdownItem label="Create Vendor" target="create-msa-wo-vendor-company" onClick={handleNav} />
+                                            <DropdownItem label="Manage Vendors" target="manage-msa-wo-vendor-companies" onClick={handleNav} />
+                                            <DropdownItem label="Create MSA/WO" target="create-msa-wo" onClick={handleNav} />
+                                            <DropdownItem label="Dashboard" target="msa-wo-dashboard" onClick={handleNav} />
+                                        </>
+                                    )}
+                                    {permissions.canManageOfferLetters && (
+                                        <>
+                                            <div className="border-t border-slate-100 my-1"></div>
+                                            <div className="px-4 py-2 text-xs font-bold text-slate-400 uppercase bg-slate-50">Offer Letter</div>
+                                            <DropdownItem label="Create Letter" target="create-offer-letter" onClick={handleNav} />
+                                            <DropdownItem label="Dashboard" target="offer-letter-dashboard" onClick={handleNav} />
+                                        </>
+                                    )}
+                                </Dropdown>
+                            )}
+
                             {showAdminDropdown && (
                                 <Dropdown trigger={
                                     <button className={`flex items-center gap-1 ${getLinkClass(['admin', 'manage-holidays', 'leave-config', 'approve-leave', 'approve-attendance', 'monthly-attendance-report'])}`}>
@@ -254,7 +269,6 @@ const TopNav = () => {
                         </nav>
                     </div>
 
-                    {/* RIGHT SIDE: Notifications & User Profile */}
                     <div className="flex items-center gap-4">
                         <Dropdown width="96" trigger={
                             <button type="button" className="relative p-2 text-slate-500 hover:text-indigo-600 transition-colors focus:outline-none">
