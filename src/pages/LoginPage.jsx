@@ -14,8 +14,10 @@ import {
     ShieldCheck, 
     ArrowRight,
     Building2,
-    Database,
-    LockKeyhole
+    FileSignature,
+    Clock4,
+    Briefcase,
+    ServerCrash
 } from 'lucide-react';
 
 const LoginPage = () => {
@@ -74,71 +76,83 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen flex bg-white font-sans overflow-hidden selection:bg-blue-500/30">
+        <div className="min-h-screen flex bg-slate-50 font-sans overflow-hidden selection:bg-blue-500/30">
             
             {/* ========================================================= */}
-            {/* LEFT SIDE: Internal Corporate Identity (Hidden on Mobile) */}
+            {/* LEFT SIDE: Taproot Internal Corporate Identity */}
             {/* ========================================================= */}
-            <div className="hidden lg:flex lg:w-[45%] xl:w-[50%] bg-slate-900 relative overflow-hidden flex-col justify-between p-16 border-r border-slate-800">
+            <div className="hidden lg:flex lg:w-[45%] xl:w-[50%] bg-[#0B1120] relative overflow-hidden flex-col justify-between p-12 xl:p-16 border-r border-slate-800">
                 
-                {/* Clean, structured corporate background */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    {/* Subtle geometric overlay for a structured, secure feel */}
-                    <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize: '64px 64px' }} />
-                    <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-blue-600/10 to-transparent" />
+                {/* Structured, Secure Background Pattern */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+                    <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(to right, #1e293b 1px, transparent 1px), linear-gradient(to bottom, #1e293b 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
+                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-blue-900/20 via-transparent to-transparent" />
                 </div>
 
                 {/* Header Logo */}
-                <div className="relative z-10 flex items-center gap-4">
-                    <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg border border-blue-500">
-                        <Building2 className="h-7 w-7 text-white" strokeWidth={2} />
-                    </div>
-                    <div>
-                        <span className="block text-2xl font-bold tracking-tight text-white leading-none mb-1">
-                            VMS Portal
-                        </span>
-                        <span className="block text-[11px] font-bold tracking-[0.2em] text-blue-400 uppercase">
+                <div className="relative z-10 flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-blue-600 p-2 rounded-lg shadow-sm">
+                            <Building2 className="h-6 w-6 text-white" strokeWidth={2.5} />
+                        </div>
+                        <span className="text-2xl font-bold tracking-tight text-white leading-none">
                             Taproot Solutions Inc.
                         </span>
                     </div>
+                    <span className="text-sm font-semibold tracking-widest text-blue-400 uppercase ml-[52px]">
+                        Vendor Management System
+                    </span>
                 </div>
 
-                {/* Center Corporate Message */}
+                {/* Center Corporate Module Overview */}
                 <div className="relative z-10 max-w-lg my-12">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300 text-[11px] font-bold uppercase tracking-widest mb-8">
-                        <LockKeyhole className="w-3.5 h-3.5 text-blue-400" />
-                        Authorized Personnel Only
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-slate-800/80 border border-slate-700 text-slate-300 text-xs font-bold uppercase tracking-widest mb-8">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        Secured Gateway
                     </div>
                     
-                    <h1 className="text-4xl font-semibold leading-[1.2] mb-6 text-white tracking-tight">
-                        Internal Vendor Management System
+                    <h1 className="text-3xl font-semibold leading-snug mb-6 text-white tracking-tight">
+                        Enterprise Operations Portal
                     </h1>
                     
-                    <p className="text-base text-slate-400 leading-relaxed font-normal mb-12">
-                        Secure access to enterprise workforce data, compliance records, and global analytics. All activity on this portal is monitored and logged in accordance with Taproot Solutions IT policy.
+                    <p className="text-sm text-slate-400 leading-relaxed font-medium mb-10">
+                        Centralized human resources and recruitment operations. Access is strictly restricted to authorized personnel.
                     </p>
 
-                    {/* Internal Module Indicators */}
-                    <div className="flex flex-col gap-4 border-l-2 border-slate-800 pl-6">
-                        <div className="flex items-center gap-4">
-                            <Database className="h-5 w-5 text-slate-500" strokeWidth={1.5} />
-                            <span className="text-slate-300 font-medium text-sm">Centralized Data Architecture</span>
+                    {/* Internal Module Capabilities - Specific to Taproot */}
+                    <div className="grid grid-cols-1 gap-5">
+                        <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/40 border border-slate-700/50">
+                            <Briefcase className="h-5 w-5 text-blue-400 mt-0.5" strokeWidth={2} />
+                            <div>
+                                <h3 className="text-slate-200 font-semibold text-sm mb-1">Recruitment & Bench Sales</h3>
+                                <p className="text-slate-500 text-xs leading-relaxed">End-to-end job posting management and candidate tracking lifecycle.</p>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <ShieldCheck className="h-5 w-5 text-slate-500" strokeWidth={1.5} />
-                            <span className="text-slate-300 font-medium text-sm">Enterprise-Grade Security Protocol</span>
+                        
+                        <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/40 border border-slate-700/50">
+                            <FileSignature className="h-5 w-5 text-blue-400 mt-0.5" strokeWidth={2} />
+                            <div>
+                                <h3 className="text-slate-200 font-semibold text-sm mb-1">Automated Documentation</h3>
+                                <p className="text-slate-500 text-xs leading-relaxed">Digital signing workflows for Master Service Agreements (MSA) and Work Orders.</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/40 border border-slate-700/50">
+                            <Clock4 className="h-5 w-5 text-blue-400 mt-0.5" strokeWidth={2} />
+                            <div>
+                                <h3 className="text-slate-200 font-semibold text-sm mb-1">Timesheets & Assets</h3>
+                                <p className="text-slate-500 text-xs leading-relaxed">Integrated attendance tracking, leave management, and hardware lifecycle tracking.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Footer Legal/IT Info */}
-                <div className="relative z-10 flex flex-col gap-2 mt-8 border-t border-slate-800 pt-8 text-xs text-slate-500 font-medium">
-                    <p>© {new Date().getFullYear()} Taproot Solutions Inc. All rights reserved.</p>
-                    <div className="flex items-center gap-4">
-                        <a href="#" className="hover:text-slate-300 transition-colors">IT Usage Policy</a>
-                        <span className="h-1 w-1 bg-slate-700 rounded-full" />
-                        <a href="#" className="hover:text-slate-300 transition-colors">Security Guidelines</a>
-                    </div>
+                {/* Footer Security Notice */}
+                <div className="relative z-10 pt-6 border-t border-slate-800 flex items-center justify-between">
+                    <p className="text-xs text-slate-500 font-medium max-w-sm">
+                        Protected by SHA-256 encryption and Role-Based Access Control (RBAC). All internal communications are encrypted.
+                    </p>
+                    <ServerCrash className="h-6 w-6 text-slate-700" strokeWidth={1.5} />
                 </div>
             </div>
 
@@ -150,20 +164,23 @@ const LoginPage = () => {
                 <div className="w-full max-w-[400px] relative z-10 bg-white p-8 sm:p-10 rounded-2xl shadow-sm border border-slate-200">
                     
                     {/* Brand Identity for Mobile Only */}
-                    <div className="lg:hidden flex items-center gap-3 mb-8 pb-8 border-b border-slate-100">
-                        <div className="bg-blue-600 p-2 rounded-lg">
-                            <Building2 className="h-5 w-5 text-white" strokeWidth={2} />
-                        </div>
-                        <div>
-                            <span className="block text-xl font-bold tracking-tight text-slate-900 leading-none">
-                                VMS Portal
+                    <div className="lg:hidden flex flex-col gap-2 mb-8 pb-8 border-b border-slate-100">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-blue-600 p-2 rounded-lg">
+                                <Building2 className="h-5 w-5 text-white" strokeWidth={2.5} />
+                            </div>
+                            <span className="text-xl font-bold tracking-tight text-slate-900 leading-none">
+                                Taproot Solutions
                             </span>
                         </div>
+                        <span className="text-xs font-bold tracking-widest text-blue-600 uppercase ml-12">
+                            VMS Portal
+                        </span>
                     </div>
 
                     <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">Enterprise Login</h2>
-                        <p className="text-slate-500 text-sm font-medium">Sign in with your Taproot credentials.</p>
+                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">System Login</h2>
+                        <p className="text-slate-500 text-sm font-medium">Authenticate with your employee credentials.</p>
                     </div>
 
                     {/* Dynamic Feedback (Error/Success) */}
@@ -279,7 +296,7 @@ const LoginPage = () => {
 
                 <div className="absolute bottom-8 text-center w-full">
                     <p className="text-xs text-slate-400 font-medium">
-                        System Support: <a href="mailto:admin@vms-dashboard.in" className="text-blue-600 font-semibold hover:underline ml-1">it-desk@taproot.com</a>
+                        Taproot Solutions IT Support: <a href="mailto:admin@vms-dashboard.in" className="text-blue-600 font-semibold hover:underline ml-1">Mail To IT SUpport Team</a>
                     </p>
                 </div>
             </div>
