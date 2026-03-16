@@ -3,7 +3,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearSca
 import { Bar, Pie, Doughnut } from 'react-chartjs-2';
 import axios from 'axios';
 // Import the real hook from your AuthContext file
-import { useAuth } from './AuthContext'; 
+import { useAuth } from '../context/AuthContext'; 
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
