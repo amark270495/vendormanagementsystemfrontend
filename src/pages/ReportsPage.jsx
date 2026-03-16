@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Bar, Pie, Doughnut } from 'react-chartjs-2';
 import axios from 'axios';
+// Import the real hook from your AuthContext file
+import { useAuth } from './AuthContext'; 
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
-// --- Standalone Component Definitions ---
+// --- Standalone Components ---
 
 const Spinner = ({ size = '8' }) => (
     <div className="flex justify-center items-center">
@@ -14,7 +16,7 @@ const Spinner = ({ size = '8' }) => (
 );
 
 const ChartComponent = ({ type, options, data }) => {
-    if (!data) return <div className="flex justify-center items-center h-full text-gray-500">No data to display.</div>;
+    if (!data || data.labels.length === 0) return <div className="flex justify-center items-center h-full text-gray-500 italic">No data to display.</div>;
     const commonOptions = { responsive: true, maintainAspectRatio: false, ...options };
     if (type === 'bar') return <Bar options={commonOptions} data={data} />;
     if (type === 'pie') return <Pie options={commonOptions} data={data} />;
@@ -22,17 +24,16 @@ const ChartComponent = ({ type, options, data }) => {
     return <div className="text-red-500">Unknown chart type: {type}</div>;
 };
 
-/**
- * EmailReportModal Component: A modal dialog for emailing reports with full functionality.
- */
 const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) => {
+    const { user } = useAuth();
+    const canEmailReports = user?.permissions?.canEmailReports;
+    
     const [toEmails, setToEmails] = useState('');
     const [ccEmails, setCcEmails] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [isSending, setIsSending] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
-    const { canEmailReports } = usePermissions();
 
     useEffect(() => {
         if (isOpen) {
@@ -55,7 +56,7 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
         const ccEmailArray = ccEmails.split(',').map(e => e.trim()).filter(Boolean);
 
         if (toEmailArray.length === 0) {
-            setError("Please provide at least one recipient email in the 'To' field.");
+            setError("Please provide at least one recipient email.");
             return;
         }
 
@@ -66,15 +67,13 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
         try {
             const response = await apiService.generateAndSendJobReport(sheetKey, statusFilter, toEmailArray, ccEmailArray, authenticatedUsername);
             if (response.data.success) {
-                setSuccessMessage(response.data.message || 'Report has been sent successfully!');
-                setTimeout(() => {
-                    onClose();
-                }, 2000);
+                setSuccessMessage(response.data.message || 'Report sent successfully!');
+                setTimeout(onClose, 2000);
             } else {
-                 setError(response.data.message || 'An unknown error occurred while sending the report.');
+                 setError(response.data.message || 'Error sending report.');
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to send the report.');
+            setError(err.response?.data?.message || 'Failed to send report.');
         } finally {
             setIsSending(false);
         }
@@ -84,33 +83,33 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-            <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg transform transition-all" role="dialog" aria-modal="true">
+            <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-bold text-gray-800">Email Job Report</h2>
-                    <button onClick={onClose} disabled={isSending} className="text-gray-400 hover:text-gray-600 disabled:opacity-50 text-2xl">&times;</button>
+                    <button onClick={onClose} disabled={isSending} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
                 </div>
                 
-                {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
-                {successMessage && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">{successMessage}</div>}
+                {error && <div className="bg-red-100 text-red-700 px-4 py-3 rounded mb-4 text-sm">{error}</div>}
+                {successMessage && <div className="bg-green-100 text-green-700 px-4 py-3 rounded mb-4 text-sm">{successMessage}</div>}
 
                 {!canEmailReports ? (
                     <div className="text-center text-gray-500 p-4">
-                        <h3 className="text-lg font-medium">Access Denied</h3>
-                        <p className="text-sm">You do not have the necessary permissions to send email reports.</p>
+                        <h3 className="font-medium">Access Denied</h3>
+                        <p className="text-sm">Insufficient permissions.</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="toEmails" className="block text-sm font-medium text-gray-700">To (comma-separated)</label>
-                            <input id="toEmails" type="text" value={toEmails} onChange={e => setToEmails(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+                            <label className="block text-sm font-medium text-gray-700">To (comma-separated)</label>
+                            <input type="text" value={toEmails} onChange={e => setToEmails(e.target.value)} className="mt-1 block w-full border rounded-md p-2" placeholder="e.g. boss@company.com" />
                         </div>
                         <div>
-                            <label htmlFor="ccEmails" className="block text-sm font-medium text-gray-700">CC (comma-separated)</label>
-                            <input id="ccEmails" type="text" value={ccEmails} onChange={e => setCcEmails(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                            <label className="block text-sm font-medium text-gray-700">CC</label>
+                            <input type="text" value={ccEmails} onChange={e => setCcEmails(e.target.value)} className="mt-1 block w-full border rounded-md p-2" />
                         </div>
                         <div>
-                            <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700">Job Status to Include</label>
-                            <select id="statusFilter" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white focus:ring-indigo-500 focus:border-indigo-500">
+                            <label className="block text-sm font-medium text-gray-700">Status Filter</label>
+                            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="mt-1 block w-full border rounded-md p-2 bg-white">
                                 <option value="all">All</option>
                                 <option value="Open">Open</option>
                                 <option value="Closed">Closed</option>
@@ -120,11 +119,9 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
                 )}
 
                 <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                    <button onClick={onClose} disabled={isSending} className="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50">
-                        Cancel
-                    </button>
+                    <button onClick={onClose} disabled={isSending} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
                     {canEmailReports && (
-                        <button onClick={handleSendEmail} disabled={isSending} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 w-32 flex justify-center items-center">
+                        <button onClick={handleSendEmail} disabled={isSending} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 w-32 flex justify-center">
                             {isSending ? <Spinner size="5" /> : 'Send Email'}
                         </button>
                     )}
@@ -134,7 +131,7 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
     );
 };
 
-// --- API Service and Authentication Hooks ---
+// --- API Service ---
 
 const apiClient = axios.create({
     baseURL: '/api',
@@ -148,25 +145,7 @@ const apiService = {
         apiClient.post('/generateAndSendJobReport', { sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername }),
 };
 
-const useAuth = () => {
-    // This is a simplified mock. In a real app, this would come from React Context.
-    const savedUser = sessionStorage.getItem('vms_user');
-    return {
-        user: savedUser ? JSON.parse(savedUser) : { userIdentifier: 'previewUser', permissions: {} }
-    };
-};
-
-const usePermissions = () => {
-    // This is a simplified mock. In a real app, this logic would be more robust.
-    const { user } = useAuth();
-    // For preview, we'll default to true.
-    return {
-        canViewReports: user?.permissions?.canViewReports ?? true,
-        canEmailReports: user?.permissions?.canEmailReports ?? true,
-    };
-};
-
-// --- Main Reports Page Component ---
+// --- Constants ---
 
 const DASHBOARD_CONFIGS = {
     'ecaltVMSDisplay': { title: 'Eclat VMS' },
@@ -178,13 +157,19 @@ const DASHBOARD_CONFIGS = {
     'DeloitteDisplay': { title: 'Deloitte Taproot' }
 };
 
+// --- Main Page ---
+
 const ReportsPage = () => {
-    const { user } = useAuth();
-    const { canViewReports, canEmailReports } = usePermissions();
+    // 1. Get real data and loading state from AuthContext
+    const { user, loading: authLoading, isAuthenticated } = useAuth();
+    
+    // Derived permissions
+    const canViewReports = user?.permissions?.canViewReports ?? false;
+    const canEmailReports = user?.permissions?.canEmailReports ?? false;
     
     const [reportType, setReportType] = useState('jobPostings');
     const [reportData, setReportData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [dataLoading, setDataLoading] = useState(false);
     const [error, setError] = useState('');
     const [filters, setFilters] = useState({ 
         sheetKey: 'taprootVMSDisplay', 
@@ -195,19 +180,21 @@ const ReportsPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const generateReport = useCallback(async () => {
+        // Only run if we are authenticated and not currently checking auth state
+        if (authLoading || !isAuthenticated) return;
+        
         if (!canViewReports) {
-            setError("You do not have permission to generate reports.");
-            setLoading(false);
+            setError("You do not have permission to view reports.");
             return;
         }
-        setLoading(true);
+
+        setDataLoading(true);
         setError('');
-        setReportData(null);
         
         try {
             let response;
             const params = {
-                authenticatedUsername: user.userIdentifier,
+                authenticatedUsername: user.userIdentifier, // userIdentifier is the email
                 startDate: filters.startDate,
                 endDate: filters.endDate,
             };
@@ -222,37 +209,23 @@ const ReportsPage = () => {
             if (response.data.success) {
                 setReportData(response.data);
             } else {
-                setError(response.data.message || "An unknown error occurred.");
+                setError(response.data.message || "An error occurred.");
             }
         } catch (err) {
             console.error("API call failed:", err);
-            setError("Failed to fetch report data. Displaying sample data for preview.");
-            if (reportType === 'jobPostings') {
-                setReportData({
-                    totalJobs: 120, openJobs: 75, closedJobs: 45, totalResumesSubmitted: 350, totalMaxSubmissions: 600,
-                    clientJobCounts: { 'Client A': 30, 'Client B': 50, 'Client C': 40 },
-                    positionTypeCounts: { 'Full-Time': 80, 'Contract': 40 },
-                    workingByCounts: { 'Alice': 50, 'Bob': 40, 'Charlie': 30 }
-                });
-            } else {
-                setReportData({
-                    totalCandidates: 250,
-                    remarksCount: { 'Hired': 25, 'Interview Scheduled': 50, 'Offer Extended': 20, 'Rejected': 40, 'Screening': 85, 'No Update': 30 }
-                });
-            }
+            setError(err.response?.data?.message || "Failed to fetch report data.");
         } finally {
-            setLoading(false);
+            setDataLoading(false);
         }
-    }, [filters, user?.userIdentifier, canViewReports, reportType]);
+    }, [filters, user?.userIdentifier, canViewReports, reportType, authLoading, isAuthenticated]);
 
     useEffect(() => {
-        generateReport();
-    }, [generateReport]);
+        if (!authLoading && isAuthenticated) {
+            generateReport();
+        }
+    }, [generateReport, authLoading, isAuthenticated]);
 
-    const handleFilterChange = (e) => setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    const handleReportTypeChange = (e) => setReportType(e.target.value);
-    
-    const chartOptions = { plugins: { legend: { position: 'top' } } };
+    // UI Helpers
     const chartColors = ['#4f46e5', '#f97316', '#10b981', '#ef4444', '#3b82f6', '#eab308', '#8b5cf6', '#d946ef', '#64748b'];
     const getChartData = (labels, data, label) => ({
         labels,
@@ -260,171 +233,115 @@ const ReportsPage = () => {
     });
 
     const filteredChartData = (chartLabels, chartValues) => {
-        if (!searchTerm || !chartLabels) {
-            return { labels: chartLabels || [], values: chartValues || [] };
-        }
-        const lowercasedFilter = searchTerm.toLowerCase();
-        const filteredLabels = [];
-        const filteredValues = [];
-        chartLabels.forEach((label, index) => {
-            if (label.toLowerCase().includes(lowercasedFilter)) {
-                filteredLabels.push(label);
-                filteredValues.push(chartValues[index]);
+        if (!searchTerm || !chartLabels) return { labels: chartLabels || [], values: chartValues || [] };
+        const lower = searchTerm.toLowerCase();
+        const labels = [];
+        const values = [];
+        chartLabels.forEach((l, i) => {
+            if (l.toLowerCase().includes(lower)) {
+                labels.push(l);
+                values.push(chartValues[i]);
             }
         });
-        return { labels: filteredLabels, values: filteredValues };
+        return { labels, values };
     };
 
+    // Render Helpers
     const renderJobReport = () => {
         const clientData = filteredChartData(Object.keys(reportData.clientJobCounts), Object.values(reportData.clientJobCounts));
         const positionData = filteredChartData(Object.keys(reportData.positionTypeCounts), Object.values(reportData.positionTypeCounts));
         const assigneeData = filteredChartData(Object.keys(reportData.workingByCounts), Object.values(reportData.workingByCounts));
 
         return (
-            <div className="space-y-8">
+            <div className="space-y-8 animate-in fade-in duration-500">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 text-center">
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-gray-800">{reportData.totalJobs}</p><p className="text-sm text-gray-500 mt-1">Total Jobs</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-green-600">{reportData.openJobs}</p><p className="text-sm text-gray-500 mt-1">Open</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-red-600">{reportData.closedJobs}</p><p className="text-sm text-gray-500 mt-1">Closed</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-blue-600">{reportData.totalResumesSubmitted}</p><p className="text-sm text-gray-500 mt-1">Submitted</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-gray-800">{reportData.totalMaxSubmissions}</p><p className="text-sm text-gray-500 mt-1">Max Allowed</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-bold">{reportData.totalJobs}</p><p className="text-xs text-gray-500 uppercase">Total</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-bold text-green-600">{reportData.openJobs}</p><p className="text-xs text-gray-500 uppercase">Open</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-bold text-red-600">{reportData.closedJobs}</p><p className="text-xs text-gray-500 uppercase">Closed</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-bold text-blue-600">{reportData.totalResumesSubmitted}</p><p className="text-xs text-gray-500 uppercase">Resumes</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-bold text-gray-400">{reportData.totalMaxSubmissions}</p><p className="text-xs text-gray-500 uppercase">Max Sub</p></div>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Jobs by Client</h3><div className="relative flex-grow"><ChartComponent type='bar' options={chartOptions} data={getChartData(clientData.labels, clientData.values, '# of Jobs')} /></div></div>
-                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Jobs by Position Type</h3><div className="relative flex-grow"><ChartComponent type='pie' options={chartOptions} data={getChartData(positionData.labels, positionData.values, '# of Jobs')} /></div></div>
-                    <div className="bg-white p-6 rounded-xl shadow-sm border lg:col-span-2 h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Jobs by Assignee</h3><div className="relative flex-grow"><ChartComponent type='doughnut' options={chartOptions} data={getChartData(assigneeData.labels, assigneeData.values, '# of Jobs')} /></div></div>
+                    <div className="bg-white p-6 rounded-xl border h-[400px] flex flex-col"><h3 className="font-bold mb-4">Jobs by Client</h3><div className="flex-grow"><ChartComponent type='bar' data={getChartData(clientData.labels, clientData.values, 'Jobs')} /></div></div>
+                    <div className="bg-white p-6 rounded-xl border h-[400px] flex flex-col"><h3 className="font-bold mb-4">Jobs by Type</h3><div className="flex-grow"><ChartComponent type='pie' data={getChartData(positionData.labels, positionData.values, 'Jobs')} /></div></div>
+                    <div className="bg-white p-6 rounded-xl border lg:col-span-2 h-[400px] flex flex-col"><h3 className="font-bold mb-4">Assignee Load</h3><div className="flex-grow"><ChartComponent type='doughnut' data={getChartData(assigneeData.labels, assigneeData.values, 'Jobs')} /></div></div>
                 </div>
             </div>
         );
     };
-    
+
     const renderCandidateReport = () => {
         const remarksData = filteredChartData(Object.keys(reportData.remarksCount), Object.values(reportData.remarksCount));
-        
         const hiredCount = reportData.remarksCount['Hired'] || 0;
-        const inProcessCount = (reportData.remarksCount['Interview Scheduled'] || 0) + 
-                               (reportData.remarksCount['Offer Extended'] || 0) + 
-                               (reportData.remarksCount['Screening'] || 0);
 
         return (
-             <div className="space-y-8">
+             <div className="space-y-8 animate-in fade-in duration-500">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-center">
-                     <div className="bg-white p-5 rounded-xl shadow-sm border">
-                         <p className="text-4xl font-extrabold text-gray-800">{reportData.totalCandidates}</p>
-                         <p className="text-sm text-gray-500 mt-1">Total Candidates</p>
-                     </div>
-                     <div className="bg-white p-5 rounded-xl shadow-sm border">
-                         <p className="text-4xl font-extrabold text-green-600">{hiredCount}</p>
-                         <p className="text-sm text-gray-500 mt-1">Hired</p>
-                     </div>
-                     <div className="bg-white p-5 rounded-xl shadow-sm border">
-                         <p className="text-4xl font-extrabold text-blue-600">{inProcessCount}</p>
-                         <p className="text-sm text-gray-500 mt-1">In Process</p>
-                     </div>
+                     <div className="bg-white p-5 rounded-xl border"><p className="text-3xl font-bold">{reportData.totalCandidates}</p><p className="text-xs text-gray-500 uppercase">Candidates</p></div>
+                     <div className="bg-white p-5 rounded-xl border"><p className="text-3xl font-bold text-green-600">{hiredCount}</p><p className="text-xs text-gray-500 uppercase">Hired</p></div>
+                     <div className="bg-white p-5 rounded-xl border"><p className="text-3xl font-bold text-blue-600">{reportData.totalCandidates - hiredCount}</p><p className="text-xs text-gray-500 uppercase">Pipeline</p></div>
                 </div>
-
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col">
-                        <h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Candidate Status Distribution</h3>
-                        <div className="relative flex-grow">
-                            <ChartComponent 
-                                type='pie' 
-                                options={chartOptions}
-                                data={getChartData(remarksData.labels, remarksData.values, '# of Candidates')} 
-                            />
-                        </div>
-                    </div>
-                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col">
-                        <h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Pipeline Breakdown</h3>
-                        <div className="relative flex-grow">
-                            <ChartComponent 
-                                type='bar' 
-                                options={{...chartOptions, indexAxis: 'y' }}
-                                data={getChartData(remarksData.labels, remarksData.values, '# of Candidates')} 
-                            />
-                        </div>
-                    </div>
+                    <div className="bg-white p-6 rounded-xl border h-[400px] flex flex-col"><h3 className="font-bold mb-4">Status Distribution</h3><div className="flex-grow"><ChartComponent type='pie' data={getChartData(remarksData.labels, remarksData.values, 'Candidates')} /></div></div>
+                    <div className="bg-white p-6 rounded-xl border h-[400px] flex flex-col"><h3 className="font-bold mb-4">Pipeline Velocity</h3><div className="flex-grow"><ChartComponent type='bar' options={{indexAxis: 'y'}} data={getChartData(remarksData.labels, remarksData.values, 'Candidates')} /></div></div>
                 </div>
             </div>
         );
     };
 
-    const shouldRenderReport = () => {
-        if (!reportData || !canViewReports) return false;
-        if (reportType === 'jobPostings' && reportData.totalJobs !== undefined) return true;
-        if (reportType === 'candidates' && reportData.totalCandidates !== undefined) return true;
-        return false;
-    };
+    // Main render condition logic
+    if (authLoading) return <div className="h-screen flex justify-center items-center"><Spinner /></div>;
+    if (!isAuthenticated) return <div className="p-10 text-center">Please log in to view this page.</div>;
 
     return (
-        <>
-            <div className="p-6 bg-gray-50 min-h-screen">
-                <div className="space-y-6">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Reports Dashboard</h1>
-                        <p className="mt-1 text-gray-600">Generate and visualize data for job postings and candidate pipelines.</p>
-                    </div>
-
-                    <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap items-center justify-between gap-4">
-                        <div className="flex flex-wrap items-center gap-4">
-                            <input
-                                type="text"
-                                placeholder="Search chart data..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="shadow-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
-                                disabled={!canViewReports || loading}
-                            />
-
-                            <select name="reportType" value={reportType} onChange={handleReportTypeChange} className="shadow-sm border-gray-300 rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading}>
-                                <option value="jobPostings">Job Postings Report</option>
-                                <option value="candidates">Candidate Pipeline Report</option>
-                            </select>
-                            
-                            {reportType === 'jobPostings' && (
-                                 <select name="sheetKey" value={filters.sheetKey} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading}>
-                                    {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
-                                        <option key={key} value={key}>{config.title}</option>
-                                    ))}
-                                </select>
-                            )}
-
-                            <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading}/>
-                            <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading}/>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <button onClick={generateReport} className="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 flex items-center justify-center h-10 w-40 disabled:bg-indigo-400" disabled={loading || !canViewReports}>
-                                {loading ? <Spinner size="5" /> : 'Generate Report'}
-                            </button>
-                             <button onClick={() => setEmailModalOpen(true)} className="px-5 py-2 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 flex items-center h-10 disabled:opacity-50" disabled={!reportData || !canEmailReports || reportType !== 'jobPostings'}>
-                                Email Report
-                            </button>
-                        </div>
-                    </div>
-
-                    {loading && <div className="h-96 flex justify-center items-center"><Spinner /></div>}
-                    {error && <div className="text-red-600 bg-red-50 p-4 rounded-lg border border-red-200">{error}</div>}
-                    
-                    {!loading && !error && !canViewReports && (
-                        <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
-                            <h3 className="text-lg font-medium">Access Denied</h3>
-                            <p className="mt-1 text-sm text-gray-500">You do not have the necessary permissions to view reports.</p>
-                        </div>
-                    )}
-                    
-                    {shouldRenderReport() && (
-                        reportType === 'jobPostings' ? renderJobReport() : renderCandidateReport()
-                    )}
-
-                    {!loading && !error && !reportData && canViewReports && (
-                        <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                            <h3 className="mt-2 text-sm font-medium text-gray-900">No Report Data</h3>
-                            <p className="mt-1 text-sm text-gray-500">No data found for the selected filters. Please try a different selection.</p>
-                        </div>
-                    )}
+        <div className="p-6 bg-gray-50 min-h-screen">
+            <div className="max-w-7xl mx-auto space-y-6">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Reports Dashboard</h1>
+                    <p className="text-sm text-gray-500">Visualization for {user?.userName || 'User'}</p>
                 </div>
+
+                <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <input type="text" placeholder="Filter chart items..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="border rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500" />
+                        <select value={reportType} onChange={(e) => setReportType(e.target.value)} className="border rounded-lg py-2 text-sm">
+                            <option value="jobPostings">Job Postings</option>
+                            <option value="candidates">Candidate Pipeline</option>
+                        </select>
+                        {reportType === 'jobPostings' && (
+                             <select value={filters.sheetKey} onChange={(e) => setFilters(f => ({...f, sheetKey: e.target.value}))} className="border rounded-lg py-2 text-sm">
+                                {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => <option key={key} value={key}>{config.title}</option>)}
+                            </select>
+                        )}
+                        <input type="date" value={filters.startDate} onChange={(e) => setFilters(f => ({...f, startDate: e.target.value}))} className="border rounded-lg py-1 px-2 text-sm" />
+                        <span className="text-gray-400">to</span>
+                        <input type="date" value={filters.endDate} onChange={(e) => setFilters(f => ({...f, endDate: e.target.value}))} className="border rounded-lg py-1 px-2 text-sm" />
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                        <button onClick={generateReport} disabled={dataLoading || !canViewReports} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium transition-colors">
+                            {dataLoading ? <Spinner size="4" /> : 'Update Data'}
+                        </button>
+                        <button onClick={() => setEmailModalOpen(true)} disabled={!reportData || !canEmailReports || reportType !== 'jobPostings'} className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50 text-sm font-medium transition-colors">
+                            Email Report
+                        </button>
+                    </div>
+                </div>
+
+                {error && <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">{error}</div>}
+                
+                {!canViewReports ? (
+                    <div className="text-center p-20 bg-white rounded-xl border">No Permission to View Reports</div>
+                ) : (
+                    <>
+                        {dataLoading ? <div className="h-96 flex justify-center items-center"><Spinner /></div> : (
+                            reportData ? (reportType === 'jobPostings' ? renderJobReport() : renderCandidateReport()) : 
+                            <div className="text-center py-20 text-gray-400">No data loaded. Use "Update Data" to fetch.</div>
+                        )}
+                    </>
+                )}
             </div>
+
             {canEmailReports && (
                 <EmailReportModal 
                     isOpen={isEmailModalOpen} 
@@ -433,7 +350,7 @@ const ReportsPage = () => {
                     authenticatedUsername={user.userIdentifier}
                 />
             )}
-        </>
+        </div>
     );
 };
 
