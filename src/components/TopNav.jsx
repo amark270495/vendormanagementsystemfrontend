@@ -177,7 +177,8 @@ const TopNav = () => {
                         {/* Navigation - With hidden scrollbar for overflow protection */}
                         <nav className="hidden lg:flex items-center gap-1 overflow-x-auto overflow-y-hidden no-scrollbar py-1">
                             <NavButton label="Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
-                            <NavButton label="My Profile" target="profile" isActive={isPageActive('profile')} onClick={handleNav} />
+                            
+                            {/* MY PROFILE WAS REMOVED FROM HERE */}
 
                             {permissions.canViewDashboards && (
                                 <Dropdown trigger={
@@ -342,7 +343,8 @@ const TopNav = () => {
                                     <p className="text-xs text-slate-500 truncate">{user?.userIdentifier}</p>
                                 </div>
                                 <div className="py-1">
-                                    <DropdownItem label="Personal Profile" target="profile" onClick={handleNav} />
+                                    {/* MY PROFILE IS PLACED HERE */}
+                                    <DropdownItem label="My Profile" target="profile" onClick={handleNav} />
                                 </div>
                                 <div className="border-t border-slate-100 py-1 mt-1">
                                     <DropdownItem label="Sign Out" target={logout} onClick={handleNav} isDestructive />
