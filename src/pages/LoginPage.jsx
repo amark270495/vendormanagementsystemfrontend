@@ -99,7 +99,7 @@ const LoginPage = () => {
                         <Zap className="h-6 w-6 text-indigo-400" fill="currentColor" />
                     </div>
                     <span className="text-2xl font-bold tracking-tight text-white">
-                        VMS Pro
+                        VMS Portal
                     </span>
                 </div>
 
@@ -167,7 +167,7 @@ const LoginPage = () => {
                         <div className="bg-indigo-600 p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
                             <Zap className="h-6 w-6 text-white" fill="currentColor" />
                         </div>
-                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">VMS Pro</h1>
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">VMS Protal</h1>
                     </div>
 
                     <div className="mb-8">
