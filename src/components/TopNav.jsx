@@ -31,7 +31,7 @@ const BellIcon = memo(({ className }) => (
 const NavButton = memo(({ label, target, isActive, onClick }) => {
     const baseClass = "px-3 py-2 rounded-md text-sm font-bold uppercase tracking-wider transition-colors cursor-pointer select-none text-left";
     const activeClass = "bg-blue-50 text-blue-700 ring-1 ring-blue-100";
-    const inactiveClass = "text-slate-500 hover:bg-slate-50 hover:text-slate-900";
+    const inactiveClass = "text-slate-500 hover:bg-slate-100 hover:text-slate-800";
 
     return (
         <button 
@@ -98,7 +98,7 @@ const TopNav = () => {
     const getLinkClass = (target) => {
         const base = "px-3 py-2 rounded-md text-sm font-bold uppercase tracking-wider transition-colors cursor-pointer";
         const active = "bg-blue-50 text-blue-700 ring-1 ring-blue-100";
-        const inactive = "text-slate-500 hover:bg-slate-50 hover:text-slate-900";
+        const inactive = "text-slate-500 hover:bg-slate-100 hover:text-slate-800";
         return `${base} ${isPageActive(target) ? active : inactive}`;
     };
 
@@ -155,8 +155,10 @@ const TopNav = () => {
         } catch (err) { fetchNotifications(); }
     };
 
-    const showAdminDropdown = permissions.canEditUsers || permissions.canManageHolidays || permissions.canApproveLeave || permissions.canManageLeaveConfig || permissions.canApproveAttendance || permissions.canSendMonthlyReport;
-    const showAssetDropdown = permissions.canManageAssets || permissions.canAssignAssets;
+    // --- Logical Category Checks for Clean Rendering ---
+    const canSeeAdmin = permissions.canEditUsers || permissions.canManageHolidays || permissions.canApproveLeave || permissions.canManageLeaveConfig || permissions.canApproveAttendance || permissions.canSendMonthlyReport;
+    const canSeeAssets = permissions.canManageAssets || permissions.canAssignAssets;
+    const canSeeDocs = permissions.canManageMSAWO || permissions.canManageOfferLetters;
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white shadow-sm">
@@ -171,15 +173,18 @@ const TopNav = () => {
                         </div>
 
                         <nav className="hidden lg:flex items-center gap-1">
+                            {/* HOME & PROFILE ARE ACCESSIBLE TO ALL LOGGED IN USERS */}
                             <NavButton label="Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
-                            
+                            <NavButton label="My Profile" target="profile" isActive={isPageActive('profile')} onClick={handleNav} />
+
+                            {/* 1. DASHBOARDS GATE */}
                             {permissions.canViewDashboards && (
                                 <Dropdown trigger={
                                     <button className={`flex items-center gap-1 ${getLinkClass('dashboard')}`}>
                                         Dashboards <ChevronDownIcon className="text-slate-400" />
                                     </button>
                                 }>
-                                    <div className="w-56 py-1 shadow-xl border border-slate-100 rounded-xl">
+                                    <div className="w-56 py-1">
                                         {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
                                             <DropdownItem key={key} label={config.title} target={`dashboard?key=${key}`} onClick={handleNav} />
                                         ))}
@@ -187,11 +192,13 @@ const TopNav = () => {
                                 </Dropdown>
                             )}
 
+                            {/* 2. RECRUITMENT GATES */}
                             {permissions.canAddPosting && <NavButton label="New Posting" target="new-posting" isActive={isPageActive('new-posting')} onClick={handleNav} />}
                             {permissions.canViewCandidates && <NavButton label="Candidates" target="candidate-details" isActive={isPageActive('candidate-details')} onClick={handleNav} />}
                             {permissions.canManageBenchSales && <NavButton label="Bench Sales" target="bench-sales" isActive={isPageActive('bench-sales')} onClick={handleNav} />}
                             {permissions.canViewReports && <NavButton label="Reports" target="reports" isActive={isPageActive('reports')} onClick={handleNav} />}
 
+                            {/* 3. MESSAGING GATE */}
                             {permissions.canMessage && (
                                 <button type="button" onClick={() => handleNav('messages')} className={`${getLinkClass('messages')} relative`}>
                                     Messages
@@ -203,13 +210,14 @@ const TopNav = () => {
                                 </button>
                             )}
 
+                            {/* 4. TIMESHEETS GATE */}
                             {permissions.canManageTimesheets && (
                                 <Dropdown trigger={
                                     <button className={`flex items-center gap-1 ${getLinkClass(['create-timesheet-company', 'manage-companies', 'log-hours', 'timesheets-dashboard'])}`}>
                                         Timesheets <ChevronDownIcon className="text-slate-400" />
                                     </button>
                                 }>
-                                    <div className="w-60 py-1 shadow-xl border border-slate-100 rounded-xl">
+                                    <div className="w-60 py-1">
                                         <DropdownItem label="Create Company" target="create-timesheet-company" onClick={handleNav} />
                                         <DropdownItem label="Manage Companies" target="manage-companies" onClick={handleNav} />
                                         <DropdownItem label="Create Employee" target="create-timesheet-employee" onClick={handleNav} />
@@ -221,26 +229,28 @@ const TopNav = () => {
                                 </Dropdown>
                             )}
 
-                            {showAssetDropdown && (
+                            {/* 5. ASSETS GATE (Fixed for Vanitha) */}
+                            {canSeeAssets && (
                                 <Dropdown trigger={
                                     <button className={`flex items-center gap-1 ${getLinkClass(['create-asset', 'asset-dashboard'])}`}>
                                         Assets <ChevronDownIcon className="text-slate-400" />
                                     </button>
                                 }>
-                                    <div className="w-56 py-1 shadow-xl border border-slate-100 rounded-xl">
+                                    <div className="w-56 py-1">
                                         {permissions.canManageAssets && <DropdownItem label="Create Asset" target="create-asset" onClick={handleNav} />}
                                         <DropdownItem label="Asset Dashboard" target="asset-dashboard" onClick={handleNav} />
                                     </div>
                                 </Dropdown>
                             )}
 
-                            {(permissions.canManageMSAWO || permissions.canManageOfferLetters) && (
+                            {/* 6. DOCUMENTS GATE */}
+                            {canSeeDocs && (
                                 <Dropdown trigger={
                                     <button className={`flex items-center gap-1 ${getLinkClass(['msa-wo-dashboard', 'offer-letter-dashboard'])}`}>
                                         Documents <ChevronDownIcon className="text-slate-400" />
                                     </button>
                                 }>
-                                    <div className="w-64 py-1 shadow-xl border border-slate-100 rounded-xl">
+                                    <div className="w-64 py-1">
                                         {permissions.canManageMSAWO && (
                                             <>
                                                 <div className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50/50">MSA & WO</div>
@@ -262,13 +272,14 @@ const TopNav = () => {
                                 </Dropdown>
                             )}
 
-                            {showAdminDropdown && (
+                            {/* 7. ADMIN GATE */}
+                            {canSeeAdmin && (
                                 <Dropdown trigger={
                                     <button className={`flex items-center gap-1 ${getLinkClass(['admin', 'manage-holidays', 'leave-config', 'approve-leave', 'approve-attendance', 'monthly-attendance-report'])}`}>
                                         Admin <ChevronDownIcon className="text-slate-400" />
                                     </button>
                                 }>
-                                    <div className="w-60 py-1 shadow-xl border border-slate-100 rounded-xl">
+                                    <div className="w-60 py-1">
                                         {permissions.canEditUsers && <DropdownItem label="User Management" target="admin" onClick={handleNav} />}
                                         <div className="border-t border-slate-100 my-1" />
                                         {permissions.canManageHolidays && <DropdownItem label="Manage Holidays" target="manage-holidays" onClick={handleNav} />}
@@ -283,6 +294,7 @@ const TopNav = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
+                        {/* NOTIFICATIONS DROPDOWN */}
                         <Dropdown width="96" trigger={
                             <button type="button" className="relative p-2 text-slate-500 hover:text-blue-600 transition-colors focus:outline-none">
                                 <BellIcon />
@@ -293,22 +305,23 @@ const TopNav = () => {
                                 )}
                             </button>
                         }>
-                            <div className="w-96 shadow-2xl border border-slate-100 rounded-2xl overflow-hidden">
-                                <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50/50">
-                                    <h4 className="font-bold text-slate-800 text-sm tracking-tight">Notifications</h4>
-                                    {notifications.length > 0 && <button onClick={handleMarkAsRead} className="text-[11px] font-black uppercase text-blue-600 hover:text-blue-800">Clear All</button>}
+                            <div className="w-96">
+                                <div className="flex justify-between items-center p-3 border-b border-slate-100 bg-slate-50">
+                                    <h4 className="font-semibold text-slate-800 text-sm">Notifications</h4>
+                                    {notifications.length > 0 && <button onClick={handleMarkAsRead} className="text-xs font-medium text-blue-600 hover:text-blue-800">Mark all read</button>}
                                 </div>
-                                <div className="max-h-[350px] overflow-y-auto scrollbar-thin">
+                                <div className="max-h-[300px] overflow-y-auto scrollbar-thin">
                                     {notifications.length > 0 ? notifications.map((n, idx) => (
-                                        <div key={n.id || idx} className="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                        <div key={n.id || idx} className="p-3 border-b border-slate-50 hover:bg-slate-50">
                                             <p className="text-sm text-slate-700 leading-snug break-words">{n.message}</p>
-                                            <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wide">{new Date(n.timestamp).toLocaleString()}</p>
+                                            <p className="text-xs text-slate-400 mt-1">{new Date(n.timestamp).toLocaleString()}</p>
                                         </div>
-                                    )) : <div className="py-12 text-center text-slate-400 italic text-sm">No new notifications</div>}
+                                    )) : <div className="py-8 text-center text-slate-400"><p className="text-sm">No new notifications</p></div>}
                                 </div>
                             </div>
                         </Dropdown>
 
+                        {/* USER PROFILE DROPDOWN */}
                         <Dropdown width="96" trigger={
                              <button type="button" className="flex items-center gap-3 hover:bg-slate-50 rounded-2xl pr-3 py-1.5 transition-all">
                                 <div className="h-9 w-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md font-black">
