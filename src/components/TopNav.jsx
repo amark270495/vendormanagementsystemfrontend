@@ -167,14 +167,14 @@ const TopNav = () => {
                     {/* Left & Middle Section: Logo + Nav */}
                     <div className="flex items-center gap-6 min-w-0 flex-1">
                         
-                        {/* Logo */}
+                        {/* Logo - INCREASED IMAGE SPACE HERE */}
                         <div className="flex flex-col items-center cursor-pointer group shrink-0" onClick={() => handleNav('home')}>
-                            <img src={LOGO_URL} alt="Taproot Logo" className="h-6 w-auto mb-0.5" />
-                            <h1 className="text-[8px] font-black tracking-[0.15em] text-slate-900 uppercase leading-none">VMS Portal</h1>
-                            <div className="w-4 h-[2px] bg-blue-600 mt-0.5 rounded-full group-hover:w-full transition-all duration-300" />
+                            <img src={LOGO_URL} alt="Taproot Logo" className="h-10 w-auto object-contain mb-1" />
+                            <h1 className="text-[10px] font-black tracking-[0.15em] text-slate-900 uppercase leading-none">Vendor Management System</h1>
+                            <div className="w-6 h-[2px] bg-blue-600 mt-1 rounded-full group-hover:w-full transition-all duration-300" />
                         </div>
 
-                        {/* Navigation - BUG FIX: Removed overflow-hidden so dropdowns are not clipped */}
+                        {/* Navigation - No overflow classes so dropdowns are not clipped */}
                         <nav className="hidden lg:flex items-center gap-1 py-1">
                             <NavButton label="Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
                             
