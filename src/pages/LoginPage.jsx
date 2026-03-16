@@ -9,13 +9,14 @@ import {
     Lock, 
     Eye, 
     EyeOff, 
-    ShieldCheck, 
-    CheckCircle, 
+    CheckCircle2, 
     AlertCircle, 
     Zap, 
     ArrowRight,
     Users,
-    BarChart3
+    BarChart3,
+    Globe2,
+    ShieldCheck
 } from 'lucide-react';
 
 const LoginPage = () => {
@@ -32,7 +33,7 @@ const LoginPage = () => {
     const navigate = useNavigate(); 
     const location = useLocation();
 
-    // 🌟 Capture the exact URL the user was trying to access before being redirected to login
+    // Capture the exact URL the user was trying to access
     const intendedDestination = location.state?.from?.pathname + (location.state?.from?.search || '') || '/home';
 
     // --- Authentication Logic ---
@@ -52,7 +53,6 @@ const LoginPage = () => {
                 setLoading(false);
                 login(userData);
                 
-                // UX: Brief delay for the success animation
                 setTimeout(() => {
                     if (userData.isFirstLogin) {
                         navigate('/change-password', { replace: true });
@@ -75,120 +75,128 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen flex bg-slate-50 font-sans overflow-hidden">
+        <div className="min-h-screen flex bg-white font-sans overflow-hidden selection:bg-indigo-500/30">
             
             {/* ========================================================= */}
             {/* LEFT SIDE: Premium Enterprise Branding (Hidden on Mobile) */}
             {/* ========================================================= */}
-            <div className="hidden lg:flex lg:w-1/2 bg-slate-950 relative overflow-hidden flex-col justify-between p-14 text-white">
+            <div className="hidden lg:flex lg:w-[55%] bg-[#0a0a0f] relative overflow-hidden flex-col justify-between p-16 2xl:p-24 border-r border-white/5">
                 
-                {/* 🌟 Modern Abstract Mesh/Orb Background */}
+                {/* 🌟 Modern Abstract Glowing Mesh Background */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/30 rounded-full blur-[120px] mix-blend-screen animate-pulse duration-10000" />
-                    <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-violet-600/20 rounded-full blur-[100px] mix-blend-screen" />
-                    <div className="absolute top-[40%] left-[20%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[80px] mix-blend-screen" />
+                    {/* Dynamic glowing orbs */}
+                    <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-indigo-600/20 rounded-full blur-[120px] mix-blend-screen animate-pulse" style={{ animationDuration: '8s' }} />
+                    <div className="absolute bottom-[-10%] right-[-20%] w-[60%] h-[60%] bg-violet-600/20 rounded-full blur-[100px] mix-blend-screen animate-pulse" style={{ animationDuration: '12s', animationDelay: '2s' }} />
+                    <div className="absolute top-[30%] left-[20%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[100px] mix-blend-screen" />
                     
-                    {/* Subtle grid overlay for tech feel */}
-                    <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAyKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-50" />
+                    {/* Subtle dot grid overlay for technical SaaS feel */}
+                    <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
                 </div>
 
                 {/* Header Logo */}
                 <div className="relative z-10 flex items-center gap-3">
-                    <div className="bg-gradient-to-br from-indigo-500 to-violet-600 p-2.5 rounded-2xl shadow-lg shadow-indigo-500/30 border border-white/10">
-                        <Zap className="h-7 w-7 text-white" fill="currentColor" />
+                    <div className="bg-gradient-to-b from-white/10 to-white/5 p-2.5 rounded-2xl border border-white/10 shadow-[0_0_30px_rgba(99,102,241,0.2)] backdrop-blur-md">
+                        <Zap className="h-6 w-6 text-indigo-400" fill="currentColor" />
                     </div>
-                    <span className="text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                    <span className="text-2xl font-bold tracking-tight text-white">
                         VMS Pro
                     </span>
                 </div>
 
                 {/* Center Value Proposition */}
-                <div className="relative z-10 max-w-lg mt-12">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-400/20 text-indigo-300 text-xs font-bold uppercase tracking-widest mb-6 backdrop-blur-md">
+                <div className="relative z-10 max-w-xl mt-8">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-indigo-300 text-[11px] font-bold uppercase tracking-widest mb-8 backdrop-blur-md">
                         <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
                         </span>
                         Enterprise Portal v2.4
                     </div>
-                    <h1 className="text-5xl font-black leading-[1.15] mb-6 text-white">
-                        Master your <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">
-                            Workforce Ecosystem
+                    
+                    <h1 className="text-[3.5rem] font-medium leading-[1.1] mb-6 text-white tracking-tight">
+                        Orchestrate your <br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-violet-400 to-indigo-300 font-bold">
+                            Global Workforce.
                         </span>
                     </h1>
-                    <p className="text-lg text-slate-400 leading-relaxed font-medium mb-10">
-                        Centralize vendor management, automate compliance, and gain real-time analytics across your entire global operation.
+                    
+                    <p className="text-lg text-slate-400 leading-relaxed font-normal mb-12 max-w-lg">
+                        The unified platform to manage vendors, automate compliance, and gain real-time analytics across your entire enterprise operation.
                     </p>
 
-                    {/* 🌟 Glassmorphism Feature Cards */}
+                    {/* 🌟 Glassmorphism Feature Grid */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.05] p-5 rounded-3xl hover:bg-white/[0.05] transition-colors">
-                            <Users className="h-6 w-6 text-indigo-400 mb-3" />
-                            <h3 className="text-white font-bold text-sm mb-1">Unified Tracking</h3>
-                            <p className="text-slate-500 text-xs leading-relaxed">Manage thousands of external workers with zero friction.</p>
+                        <div className="bg-white/[0.02] backdrop-blur-md border border-white/[0.05] p-5 rounded-3xl hover:bg-white/[0.04] transition-all duration-300 hover:-translate-y-1 group">
+                            <Users className="h-6 w-6 text-indigo-400 mb-4 group-hover:scale-110 transition-transform duration-300" strokeWidth={1.5} />
+                            <h3 className="text-white font-semibold text-sm mb-1.5">Unified Tracking</h3>
+                            <p className="text-slate-500 text-sm leading-relaxed">Manage thousands of external workers with zero friction.</p>
                         </div>
-                        <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.05] p-5 rounded-3xl hover:bg-white/[0.05] transition-colors">
-                            <BarChart3 className="h-6 w-6 text-violet-400 mb-3" />
-                            <h3 className="text-white font-bold text-sm mb-1">Live Analytics</h3>
-                            <p className="text-slate-500 text-xs leading-relaxed">Instant insights into spend, attendance, and vendor health.</p>
+                        <div className="bg-white/[0.02] backdrop-blur-md border border-white/[0.05] p-5 rounded-3xl hover:bg-white/[0.04] transition-all duration-300 hover:-translate-y-1 group">
+                            <Globe2 className="h-6 w-6 text-violet-400 mb-4 group-hover:scale-110 transition-transform duration-300" strokeWidth={1.5} />
+                            <h3 className="text-white font-semibold text-sm mb-1.5">Global Compliance</h3>
+                            <p className="text-slate-500 text-sm leading-relaxed">Automated MSA and WO tracking across jurisdictions.</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Footer Copyright */}
-                <div className="relative z-10 flex items-center gap-4 text-sm text-slate-500 font-medium">
-                    <span>© {new Date().getFullYear()} VMS Pro Portal</span>
-                    <span className="h-1 w-1 bg-slate-700 rounded-full" />
-                    <a href="#" className="hover:text-white transition-colors">Privacy</a>
-                    <span className="h-1 w-1 bg-slate-700 rounded-full" />
-                    <a href="#" className="hover:text-white transition-colors">Terms</a>
+                {/* Footer / Social Proof */}
+                <div className="relative z-10 flex items-center gap-6 mt-8 border-t border-white/10 pt-8">
+                    <div className="flex -space-x-3">
+                        <img className="w-10 h-10 rounded-full border-2 border-[#0a0a0f] opacity-80" src="https://i.pravatar.cc/100?img=33" alt="User" />
+                        <img className="w-10 h-10 rounded-full border-2 border-[#0a0a0f] opacity-80" src="https://i.pravatar.cc/100?img=47" alt="User" />
+                        <img className="w-10 h-10 rounded-full border-2 border-[#0a0a0f] opacity-80" src="https://i.pravatar.cc/100?img=12" alt="User" />
+                        <div className="w-10 h-10 rounded-full border-2 border-[#0a0a0f] bg-indigo-900/50 flex items-center justify-center text-xs font-bold text-indigo-300 backdrop-blur-sm">
+                            +2k
+                        </div>
+                    </div>
+                    <p className="text-sm text-slate-400 font-medium">
+                        Trusted by <span className="text-white font-semibold">2,000+</span> recruiters worldwide.
+                    </p>
                 </div>
             </div>
 
             {/* ========================================================= */}
-            {/* RIGHT SIDE: Ultra-Clean Login Form Section */}
+            {/* RIGHT SIDE: Ultra-Clean Minimalist Login Form */}
             {/* ========================================================= */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 xl:p-24 relative">
+            <div className="w-full lg:w-[45%] flex items-center justify-center p-6 sm:p-12 xl:p-20 relative bg-white">
                 
-                {/* Mobile Background Blur */}
-                <div className="absolute inset-0 bg-white lg:hidden z-0" />
-                
-                <div className="w-full max-w-md relative z-10">
+                <div className="w-full max-w-[420px] relative z-10">
                     
                     {/* Brand Identity for Mobile Only */}
-                    <div className="lg:hidden flex flex-col items-center mb-10">
-                        <div className="bg-gradient-to-br from-indigo-500 to-violet-600 p-3.5 rounded-2xl shadow-xl shadow-indigo-500/20 mb-5">
-                            <Zap className="h-8 w-8 text-white" fill="currentColor" />
+                    <div className="lg:hidden flex items-center gap-3 mb-10">
+                        <div className="bg-indigo-600 p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
+                            <Zap className="h-6 w-6 text-white" fill="currentColor" />
                         </div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">VMS Pro</h1>
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">VMS Pro</h1>
                     </div>
 
-                    <div className="mb-10 text-center lg:text-left">
-                        <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-2">Welcome Back</h2>
-                        <p className="text-slate-500 text-base font-medium">Enter your credentials to access your secure portal.</p>
+                    <div className="mb-8">
+                        <h2 className="text-[2rem] font-bold text-slate-900 tracking-tight mb-2">Welcome back</h2>
+                        <p className="text-slate-500 text-base">Please enter your details to sign in.</p>
                     </div>
 
                     {/* Dynamic Feedback (Error/Success) */}
-                    {error && (
-                        <div className="mb-8 p-4 rounded-2xl bg-rose-50/80 border border-rose-100 flex items-start gap-3 text-rose-700 text-sm animate-in fade-in zoom-in-95 duration-200">
-                            <AlertCircle className="w-5 h-5 text-rose-500 flex-shrink-0 mt-0.5" />
-                            <div className="font-semibold leading-relaxed">{error}</div>
-                        </div>
-                    )}
-                    
-                    {success && (
-                        <div className="mb-8 p-4 rounded-2xl bg-emerald-50/80 border border-emerald-100 flex items-center gap-3 text-emerald-700 text-sm animate-in fade-in zoom-in-95 duration-200">
-                            <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                            <div className="font-semibold">Authentication successful. Securing session...</div>
-                        </div>
-                    )}
+                    <div className={`transition-all duration-300 overflow-hidden ${error || success ? 'max-h-24 mb-6 opacity-100' : 'max-h-0 opacity-0'}`}>
+                        {error && (
+                            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100/50 flex items-start gap-3 text-rose-700 text-sm">
+                                <AlertCircle className="w-5 h-5 text-rose-500 flex-shrink-0 mt-0.5" />
+                                <div className="font-medium leading-relaxed">{error}</div>
+                            </div>
+                        )}
+                        
+                        {success && (
+                            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100/50 flex items-center gap-3 text-emerald-700 text-sm">
+                                <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                                <div className="font-medium">Authentication successful. Securing session...</div>
+                            </div>
+                        )}
+                    </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         {/* Username Input */}
-                        <div className="space-y-1.5">
+                        <div>
                             <FormInput
-                                label="Enterprise Email / Username"
+                                label="Email address"
                                 id="username"
                                 type="text"
                                 placeholder="name@company.com"
@@ -197,13 +205,14 @@ const LoginPage = () => {
                                 onChange={(e) => setUsername(e.target.value)}
                                 required
                                 autoComplete="username"
+                                disabled={loading || success}
                             />
                         </div>
 
                         {/* Password Input */}
-                        <div className="space-y-1.5 relative">
+                        <div className="relative">
                             <FormInput
-                                label="Security Password"
+                                label="Password"
                                 id="password"
                                 type={showPassword ? 'text' : 'password'}
                                 placeholder="••••••••"
@@ -212,36 +221,44 @@ const LoginPage = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 autoComplete="current-password"
+                                disabled={loading || success}
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-[34px] p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                className="absolute right-3 top-[36px] p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg transition-colors focus:outline-none"
                                 aria-label={showPassword ? "Hide password" : "Show password"}
+                                disabled={loading || success}
                             >
                                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                         </div>
 
                         {/* Utilities: Remember Me & Forgot Password */}
-                        <div className="flex items-center justify-between pt-2">
+                        <div className="flex items-center justify-between pt-1 pb-2">
                             <div className="flex items-center group">
-                                <input
-                                    id="remember-me"
-                                    type="checkbox"
-                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded cursor-pointer transition-colors"
-                                />
-                                <label htmlFor="remember-me" className="ml-2.5 block text-sm text-slate-600 font-semibold cursor-pointer group-hover:text-slate-900 transition-colors">
-                                    Keep me logged in
-                                </label>
+                                <div className="relative flex items-start">
+                                    <div className="flex items-center h-5">
+                                        <input
+                                            id="remember-me"
+                                            type="checkbox"
+                                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded cursor-pointer transition-colors"
+                                        />
+                                    </div>
+                                    <div className="ml-2.5 text-sm">
+                                        <label htmlFor="remember-me" className="font-medium text-slate-600 cursor-pointer group-hover:text-slate-900 transition-colors">
+                                            Remember me
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
 
                             <button
                                 type="button"
                                 onClick={() => setForgotPasswordOpen(true)}
-                                className="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+                                className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors focus:outline-none"
                             >
-                                Forgot Password?
+                                Forgot password?
                             </button>
                         </div>
 
@@ -250,11 +267,11 @@ const LoginPage = () => {
                             type="submit"
                             disabled={loading || success}
                             className={`
-                                w-full flex items-center justify-center gap-2 py-4 px-4 rounded-2xl text-white font-bold text-[15px]
-                                transition-all duration-300 shadow-xl mt-4
+                                w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl text-white font-semibold text-[15px]
+                                transition-all duration-300
                                 ${loading || success
-                                    ? 'bg-slate-800 shadow-none cursor-wait' 
-                                    : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 hover:shadow-indigo-300 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]'
+                                    ? 'bg-slate-900 shadow-none cursor-wait' 
+                                    : 'bg-indigo-600 hover:bg-indigo-700 shadow-[0_8px_20px_-8px_rgba(79,70,229,0.5)] hover:shadow-[0_8px_25px_-5px_rgba(79,70,229,0.6)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]'
                                 }
                             `}
                         >
@@ -268,19 +285,19 @@ const LoginPage = () => {
                                 </>
                             ) : success ? (
                                 <>
-                                    <CheckCircle className="h-5 w-5 text-emerald-400" /> Redirecting...
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-400" /> Secure Session Started
                                 </>
                             ) : (
                                 <>
-                                    Access Dashboard <ArrowRight className="h-4 w-4 ml-1 opacity-80" />
+                                    Sign in <ArrowRight className="h-4 w-4 ml-1 opacity-80" />
                                 </>
                             )}
                         </button>
                     </form>
 
                     <div className="mt-12 text-center">
-                        <p className="text-sm text-slate-500 font-medium bg-slate-100/50 inline-block px-4 py-2 rounded-full border border-slate-200">
-                            Having trouble? <a href="mailto:admin@vms-dashboard.in" className="text-indigo-600 font-bold hover:text-indigo-800 transition-colors ml-1">Contact IT Support</a>
+                        <p className="text-sm text-slate-500 font-medium">
+                            Need help accessing your portal? <a href="mailto:admin@vms-dashboard.in" className="text-indigo-600 font-semibold hover:text-indigo-800 transition-colors ml-1">Contact IT Support</a>
                         </p>
                     </div>
                 </div>
