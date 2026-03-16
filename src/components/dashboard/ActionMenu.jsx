@@ -11,8 +11,7 @@ const ActionMenu = ({
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
-
-    // Smart Click-Outside Detection
+    
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
