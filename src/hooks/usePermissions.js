@@ -1,55 +1,54 @@
 import { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-// --- CRITICAL: Define the canonical list of ALL granular permissions ---
-const defaultPermissions = {
-    canViewCandidates: false,
-    canEditUsers: false,
-    canAddPosting: false,
-    canViewReports: false,
-    canEmailReports: false,
-    canViewDashboards: false,
-    canEditDashboard: false,
-    canMessage: false,
-    canManageTimesheets: false,
-    canRequestTimesheetApproval: false,
-    canManageMSAWO: false,
-    canManageOfferLetters: false,
-    canManageHolidays: false,      // NEW PERMISSION
-    canApproveLeave: false,        // NEW PERMISSION
-    canManageLeaveConfig: false,   // NEW PERMISSION
-    canRequestLeave: false,        // NEW PERMISSION
-    canSendMonthlyReport: false,   // NEW PERMISSION
-    canApproveAttendance: false,   // NEW PERMISSION
-    canManageBenchSales: false,    // NEW PERMISSION FOR BENCH SALES
-    canManageAssets: false,        // NEW: For Asset Management CRUD (Create, Edit, Service, Delete)
-    canAssignAssets: false         // NEW: For Assigning and Reassigning assets to users
-};
-
-
-// This helper function ensures all keys exist and values are strict booleans.
-const calculatePermissions = (userPermissions) => {
-    // Start with defaults, then override with actual permissions from the user object
-    const merged = { ...defaultPermissions, ...(userPermissions || {}) };
-
-    // Ensure all values returned are strictly boolean true/false
-    const finalPermissions = {};
-    for (const key in defaultPermissions) {
-        if (Object.hasOwnProperty.call(defaultPermissions, key)) {
-             // CRITICAL: Ensure the value is strictly true/false
-             finalPermissions[key] = merged[key] === true;
-        }
-    }
-    return finalPermissions;
+// --- Canonical list of ALL granular permissions (Mirrors AuthContext) ---
+const DEFAULT_PERMISSIONS = {
+    canViewCandidates: false, canEditUsers: false, canAddPosting: false,
+    canViewReports: false, canEmailReports: false, canViewDashboards: false,
+    canEditDashboard: false, canMessage: false, canManageTimesheets: false,
+    canRequestTimesheetApproval: false, canManageMSAWO: false, canManageOfferLetters: false,
+    canManageHolidays: false, canApproveLeave: false, canManageLeaveConfig: false,
+    canRequestLeave: false, canSendMonthlyReport: false, canApproveAttendance: false, 
+    canManageBenchSales: false, canManageAssets: false, canAssignAssets: false
 };
 
 /**
- * Custom hook to safely access permissions throughout the app.
+ * Custom hook to safely access permissions and roles throughout the app.
  */
 export const usePermissions = () => {
-    const auth = useAuth() || {};
+    // Graceful fallback if useAuth fails or isn't wrapped properly
+    const { user } = useAuth() || {}; 
 
-    const userPermissions = auth.user?.permissions;
+    return useMemo(() => {
+        const userPerms = user?.permissions || {};
+        
+        // Extract role, checking both standard and backend specific role fields
+        const role = user?.userRole || user?.backendOfficeRole || 'User';
 
-    return useMemo(() => calculatePermissions(userPermissions), [userPermissions]);
+        // 1️⃣ THE BYPASS: SuperAdmins/Admins automatically get TRUE for all permissions
+        const isSuperAdmin = role === 'Admin' || role === 'SuperAdmin';
+
+        // 2️⃣ MODERN MERGE: Evaluate permissions cleanly
+        const evaluatedPermissions = Object.keys(DEFAULT_PERMISSIONS).reduce((acc, key) => {
+            // If they are an admin, auto-grant. Otherwise, strictly enforce the boolean.
+            acc[key] = isSuperAdmin ? true : (userPerms[key] === true);
+            return acc;
+        }, {});
+
+        // 3️⃣ RETURN OBJECT: Raw booleans + advanced helper functions
+        return {
+            ...evaluatedPermissions,
+            role,
+            isSuperAdmin,
+            
+            // Utility: Check if user has AT LEAST ONE of the listed permissions
+            hasAny: (permArray) => isSuperAdmin || permArray.some(p => evaluatedPermissions[p]),
+            
+            // Utility: Check if user has ALL of the listed permissions
+            hasAll: (permArray) => isSuperAdmin || permArray.every(p => evaluatedPermissions[p]),
+            
+            // Utility: Quick role check
+            hasRole: (checkRole) => role === checkRole
+        };
+    }, [user]); // Only recalculate if the central user object updates
 };

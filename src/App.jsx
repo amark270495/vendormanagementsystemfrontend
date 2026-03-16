@@ -1,38 +1,12 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import Spinner from './components/Spinner';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import MainApp from './MainApp';
 import LoginPage from './pages/LoginPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import MSAandWOSigningPage from './pages/MSAandWOSigningPage';
 import OfferLetterSigningPage from './pages/OfferLetterSigningPage';
-
-// --- Protected Route Wrapper ---
-// Ensures a user is logged in before letting them see the dashboard routes
-const ProtectedRoute = ({ children }) => {
-    // ✅ Pull in 'loading' from useAuth
-    const { isAuthenticated, isFirstLogin, loading } = useAuth();
-    const location = useLocation();
-
-    // ✅ Wait for the AuthContext to finish checking localStorage/sessionStorage
-    if (loading) {
-        // Displays the spinner so the app doesn't immediately boot you to /login on refresh
-        return <Spinner />; 
-    }
-
-    if (!isAuthenticated) {
-        // Redirect them to the /login page, but save the current location they were
-        // trying to go to, so we can redirect them back there after they log in
-        return <Navigate to="/login" state={{ from: location }} replace />;
-    }
-
-    if (isFirstLogin) {
-        return <Navigate to="/change-password" replace />;
-    }
-
-    return children;
-};
+import ProtectedRoute from './components/ProtectedRoute'; // 🌟 Import the new standalone component
 
 const AppRoutes = () => {
     return (
@@ -45,12 +19,10 @@ const AppRoutes = () => {
             <Route path="/offer-letter/:token" element={<OfferLetterSigningPage />} />
 
             {/* Change Password Route */}
+            {/* Note: In MainApp, you might want to wrap this in a ProtectedRoute later if only logged-in users should see it */}
             <Route path="/change-password" element={<ChangePasswordPage />} />
 
             {/* === PROTECTED ROUTES (Dashboard) === */}
-            {/* The /* means that MainApp will handle all sub-routes 
-               (e.g., /home, /profile, /admin) internally. 
-            */}
             <Route path="/*" element={
                 <ProtectedRoute>
                     <MainApp />
