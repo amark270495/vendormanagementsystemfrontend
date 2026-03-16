@@ -1,11 +1,21 @@
 import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom'; 
-import { Menu, X, Bell, Clock4, ShieldCheck, LayoutDashboard, Briefcase, FileSignature } from 'lucide-react'; 
+import { 
+    Menu, 
+    X, 
+    Bell, 
+    Clock4, 
+    LayoutDashboard, 
+    Briefcase, 
+    FileSignature, 
+    ShieldCheck 
+} from 'lucide-react'; 
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
 import Dropdown, { useDropdown } from './Dropdown';
 
+// --- Static Config ---
 const DASHBOARD_CONFIGS = {
     'ecaltVMSDisplay': { title: 'Eclat VMS' },
     'taprootVMSDisplay': { title: 'Taproot VMS' },
@@ -65,8 +75,12 @@ const TopNav = () => {
 
     const handleNav = useCallback((target) => {
         setIsMobileMenuOpen(false);
-        if (typeof target === 'function') target(); 
-        else navigate(target.startsWith('/') ? target : `/${target}`);
+        if (typeof target === 'function') {
+            target(); 
+        } else {
+            const cleanPath = target.startsWith('/') ? target : `/${target}`;
+            navigate(cleanPath);
+        }
     }, [navigate]);
 
     const getLinkClass = (target) => {
@@ -76,35 +90,6 @@ const TopNav = () => {
         return `${base} ${isPageActive(target) ? active : inactive}`;
     };
 
-    useEffect(() => {
-        audioRef.current = { notification: new Audio('/sounds/notification.mp3'), message: new Audio('/sounds/message.mp3') };
-    }, []);
-
-    const fetchNotifications = useCallback(async () => {
-        if (!user?.userIdentifier) return;
-        try {
-            const response = await apiService.getNotifications(user.userIdentifier);
-            const newNotifs = response?.data?.success ? (response.data.notifications || []) : [];
-            if (newNotifs.length > prevNotifLengthRef.current && prevNotifLengthRef.current > 0) {
-                audioRef.current?.notification?.play().catch(() => {});
-            }
-            prevNotifLengthRef.current = newNotifs.length;
-            setNotifications(newNotifs); 
-        } catch (err) { console.error(err); }
-    }, [user?.userIdentifier]);
-
-    const fetchUnreadMessages = useCallback(async () => {
-        if (!user?.userIdentifier || !permissions.canMessage) return;
-        try {
-            const response = await apiService.getUnreadMessages(user.userIdentifier);
-            if (response.data.success) {
-                const count = Object.values(response.data.unreadCounts || {}).reduce((sum, c) => sum + c, 0);
-                setUnreadMessagesCount(count);
-            }
-        } catch (err) { console.error(err); }
-    }, [user?.userIdentifier, permissions.canMessage]);
-
-    // ✅ Re-defined handleMarkAsRead
     const handleClearNotifications = async () => {
         if (notifications.length === 0) return;
         try {
@@ -112,16 +97,41 @@ const TopNav = () => {
             setNotifications([]); 
             prevNotifLengthRef.current = 0;
             await apiService.markNotificationsAsRead(idsToMark, user.userIdentifier);
-        } catch (err) { fetchNotifications(); }
+        } catch (err) { console.error('Failed to clear notifications:', err); }
     };
 
     useEffect(() => {
-        fetchNotifications();
-        fetchUnreadMessages();
-        const nInt = setInterval(fetchNotifications, 30000);
-        const mInt = setInterval(fetchUnreadMessages, 15000);
-        return () => { clearInterval(nInt); clearInterval(mInt); };
-    }, [fetchNotifications, fetchUnreadMessages]);
+        audioRef.current = { notification: new Audio('/sounds/notification.mp3'), message: new Audio('/sounds/message.mp3') };
+    }, []);
+
+    useEffect(() => {
+        const fetchNavData = async () => {
+            if (!user?.userIdentifier) return;
+            try {
+                const nRes = await apiService.getNotifications(user.userIdentifier);
+                if (nRes?.data?.success) {
+                    const newNotifs = nRes.data.notifications || [];
+                    if (newNotifs.length > prevNotifLengthRef.current && prevNotifLengthRef.current > 0) {
+                        audioRef.current?.notification?.play().catch(() => {});
+                    }
+                    prevNotifLengthRef.current = newNotifs.length;
+                    setNotifications(newNotifs);
+                }
+
+                if (permissions.canMessage) {
+                    const mRes = await apiService.getUnreadMessages(user.userIdentifier);
+                    if (mRes.data.success) {
+                        const count = Object.values(mRes.data.unreadCounts || {}).reduce((sum, c) => sum + c, 0);
+                        setUnreadMessagesCount(count);
+                    }
+                }
+            } catch (err) { console.error('Navigation fetch error:', err); }
+        };
+
+        fetchNavData();
+        const interval = setInterval(fetchNavData, 30000);
+        return () => clearInterval(interval);
+    }, [user?.userIdentifier, permissions.canMessage]);
 
     if (!user || !permissions) return null;
 
@@ -164,6 +174,7 @@ const TopNav = () => {
                                 </button>
                             )}
 
+                            {/* TIMESHEET SECTION */}
                             {permissions.canManageTimesheets && (
                                 <Dropdown trigger={<button className={`flex items-center gap-1.5 ${getLinkClass(['timesheet', 'log-hours'])}`}>Timesheets <ChevronDownIcon className="opacity-50" /></button>}>
                                     <div className="w-60 py-1">
@@ -178,7 +189,8 @@ const TopNav = () => {
                                 </Dropdown>
                             )}
 
-                            {(permissions.canManageAssets || permissions.canAssignAssets) && (
+                            {/* ASSETS SECTION - STRICT PERMISSION GATE */}
+                            {permissions.canAccessAssets && (
                                 <Dropdown trigger={<button className={`flex items-center gap-1.5 ${getLinkClass('asset')}`}>Assets <ChevronDownIcon className="opacity-50" /></button>}>
                                     <div className="w-56 py-1">
                                         {permissions.canManageAssets && <DropdownItem label="Create Asset" target="create-asset" onClick={handleNav} />}
@@ -187,7 +199,8 @@ const TopNav = () => {
                                 </Dropdown>
                             )}
 
-                            {(permissions.canManageMSAWO || permissions.canManageOfferLetters) && (
+                            {/* DOCUMENTS SECTION */}
+                            {permissions.canAccessDocs && (
                                 <Dropdown trigger={<button className={`flex items-center gap-1.5 ${getLinkClass(['msa-wo', 'offer-letter'])}`}>Documents <ChevronDownIcon className="opacity-50" /></button>}>
                                     <div className="w-64 py-1">
                                         {permissions.canManageMSAWO && <>
@@ -207,7 +220,8 @@ const TopNav = () => {
                                 </Dropdown>
                             )}
 
-                            {(permissions.canEditUsers || permissions.canManageHolidays || permissions.canApproveLeave || permissions.canApproveAttendance) && (
+                            {/* ADMIN SECTION - STRICT PERMISSION GATE */}
+                            {permissions.canAccessAdmin && (
                                 <Dropdown trigger={<button className={`flex items-center gap-1.5 ${getLinkClass('admin')}`}>Admin <ChevronDownIcon className="opacity-50" /></button>}>
                                     <div className="w-60 py-1">
                                         {permissions.canEditUsers && <DropdownItem label="User Management" target="admin" onClick={handleNav} />}
@@ -227,7 +241,7 @@ const TopNav = () => {
                     <div className="flex items-center gap-3 sm:gap-5">
                         {/* Notifications */}
                         <Dropdown width="96" trigger={
-                            <button type="button" className="relative p-2 text-slate-400 hover:bg-slate-50 hover:text-blue-600 rounded-xl transition-all">
+                            <button type="button" className="relative p-2 text-slate-400 hover:text-blue-600 rounded-xl transition-all">
                                 <Bell size={20} />
                                 {notifications.length > 0 && <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white ring-2 ring-white">{notifications.length}</span>}
                             </button>
@@ -235,7 +249,6 @@ const TopNav = () => {
                             <div className="w-96 max-w-[100vw]">
                                 <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
                                     <h4 className="font-bold text-slate-800 text-sm tracking-tight">Notifications</h4>
-                                    {/* ✅ Function name corrected here */}
                                     {notifications.length > 0 && <button onClick={handleClearNotifications} className="text-[11px] font-black uppercase tracking-wider text-blue-600 hover:text-blue-800">Clear All</button>}
                                 </div>
                                 <div className="max-h-[350px] overflow-y-auto scrollbar-thin">
@@ -252,7 +265,7 @@ const TopNav = () => {
                         {/* Profile Section */}
                         <div className="hidden sm:block">
                             <Dropdown width="64" trigger={
-                                <button type="button" className="flex items-center gap-3 hover:bg-slate-50 rounded-2xl pl-1.5 pr-3 py-1.5 transition-all focus:outline-none">
+                                <button type="button" className="flex items-center gap-3 hover:bg-slate-50 rounded-2xl pl-1.5 pr-3 py-1.5 transition-all focus:outline-none ring-1 ring-transparent hover:ring-slate-200">
                                     <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white shadow-md font-black">{user?.userName?.charAt(0).toUpperCase()}</div>
                                     <div className="hidden md:flex flex-col items-start text-left">
                                         <span className="text-sm font-bold text-slate-800 leading-none">{user?.userName}</span>
@@ -261,7 +274,7 @@ const TopNav = () => {
                                     <ChevronDownIcon className="h-3.5 w-3.5 text-slate-300 ml-1" />
                                 </button>
                             }>
-                                <div className="w-64">
+                                <div className="w-64 py-2">
                                     <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
                                         <p className="text-sm font-bold text-slate-900 break-words leading-none mb-1">{user?.userName}</p>
                                         <p className="text-[11px] font-medium text-slate-400 break-all">{user?.userIdentifier}</p>
@@ -270,7 +283,7 @@ const TopNav = () => {
                                         <DropdownItem label="Personal Profile" target="profile" onClick={handleNav} />
                                     </div>
                                     <div className="border-t border-slate-100 py-2">
-                                        <DropdownItem label="Sign Out System" target={logout} onClick={handleNav} isDestructive />
+                                        <DropdownItem label="Sign Out System" target={() => { logout(); navigate('/login'); }} isDestructive />
                                     </div>
                                 </div>
                             </Dropdown>
