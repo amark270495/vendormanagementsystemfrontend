@@ -178,13 +178,7 @@ const TopNav = () => {
                             </div>
                             <h1 className="text-xl font-bold text-slate-900 tracking-tight hidden sm:block">Taproot Solutions Inc</h1>
                         </div>
-                        <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={() => handleNav('home')}>
-                            <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                                <LayoutDashboard className="h-5 w-5 text-white" />
-                            </div>
-                            <h1 className="text-xl font-bold text-slate-900 tracking-tight hidden sm:block">VMS Dashboard</h1>
-                        </div>
-                        
+                                                
                         {/* Desktop Navigation */}
                         <nav className="hidden xl:flex items-center gap-1">
                             <NavButton label="Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
