@@ -254,7 +254,7 @@ const LoginPage = () => {
                     <div className="mt-10 pt-8 border-t border-slate-100 text-center">
                         <p className="text-sm text-slate-500 font-medium">
                             Need help accessing your account? <br />
-                            <a href="mailto:support@vmsportal.com" className="text-indigo-600 font-bold hover:underline">Contact System Admin</a>
+                            <a href="mailto:admin@vms-dashboard.in" className="text-indigo-600 font-bold hover:underline">Contact System Admin</a>
                         </p>
                     </div>
                 </div>
