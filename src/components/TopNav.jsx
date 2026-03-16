@@ -223,7 +223,7 @@ const TopNav = () => {
                                     <DropdownItem label="Manage Employees" target="manage-timesheet-employees" onClick={handleNav} />
                                     <div className="border-t border-slate-100 my-1" />
                                     <DropdownItem label="Log Hours" target="log-hours" onClick={handleNav} />
-                                    <DropdownItem label="Dashboard" target="timesheets-dashboard" onClick={handleNav} />
+                                    <DropdownItem label="Timesheets Dashboard" target="timesheets-dashboard" onClick={handleNav} />
                                 </Dropdown>
                             )}
 
