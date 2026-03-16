@@ -1,12 +1,19 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom'; // 🌟 Added Navigate and useParams
 import MainApp from './MainApp';
 import LoginPage from './pages/LoginPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import { AuthProvider } from './context/AuthContext';
 import MSAandWOSigningPage from './pages/MSAandWOSigningPage';
 import OfferLetterSigningPage from './pages/OfferLetterSigningPage';
-import ProtectedRoute from './components/ProtectedRoute'; // 🌟 Import the new standalone component
+import ProtectedRoute from './components/ProtectedRoute';
+
+// 🌟 HELPER: Catches the email link format and redirects to the query format
+const OfferLetterRedirect = () => {
+    const { token } = useParams();
+    // Redirects /offer-letter/123 to /offer-letter?token=123
+    return <Navigate to={`/offer-letter?token=${token}`} replace />;
+};
 
 const AppRoutes = () => {
     return (
@@ -14,12 +21,17 @@ const AppRoutes = () => {
             {/* === PUBLIC ROUTES === */}
             <Route path="/login" element={<LoginPage />} />
             
-            {/* Document Signing Routes (Must be accessible without logging in) */}
-            <Route path="/msa-sign" element={<MSAandWOSigningPage />} />
-            <Route path="/offer-letter/:token" element={<OfferLetterSigningPage />} />
+            {/* Document Signing Routes */}
+            <Route path="/msa-sign/:token" element={<MSAandWOSigningPage />} />
+            
+            {/* 🌟 FIX: Handle BOTH URL structures for the offer letter */}
+            {/* 1. Handles the Query Param format that the component likely expects */}
+            <Route path="/offer-letter" element={<OfferLetterSigningPage />} />
+            
+            {/* 2. Catches the Path Param format from your emails and passes it to the redirector */}
+            <Route path="/offer-letter/:token" element={<OfferLetterRedirect />} />
 
             {/* Change Password Route */}
-            {/* Note: In MainApp, you might want to wrap this in a ProtectedRoute later if only logged-in users should see it */}
             <Route path="/change-password" element={<ChangePasswordPage />} />
 
             {/* === PROTECTED ROUTES (Dashboard) === */}
