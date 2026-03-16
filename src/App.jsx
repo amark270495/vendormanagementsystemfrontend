@@ -11,8 +11,15 @@ import OfferLetterSigningPage from './pages/OfferLetterSigningPage';
 // --- Protected Route Wrapper ---
 // Ensures a user is logged in before letting them see the dashboard routes
 const ProtectedRoute = ({ children }) => {
-    const { isAuthenticated, isFirstLogin } = useAuth();
+    // ✅ Pull in 'loading' from useAuth
+    const { isAuthenticated, isFirstLogin, loading } = useAuth();
     const location = useLocation();
+
+    // ✅ Wait for the AuthContext to finish checking localStorage/sessionStorage
+    if (loading) {
+        // Displays the spinner so the app doesn't immediately boot you to /login on refresh
+        return <Spinner />; 
+    }
 
     if (!isAuthenticated) {
         // Redirect them to the /login page, but save the current location they were
