@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../Modal.jsx';
 import Spinner from '../Spinner.jsx';
-import InputField from './InputField.jsx'; // 🌟 NEW: Importing our global universal component
+import InputField from '../InputField.jsx'; // 🌟 NEW: Importing our global universal component
 import { usePermissions } from '../../hooks/usePermissions.js';
 import { 
     User, Briefcase, MapPin, X, AlertCircle, 
