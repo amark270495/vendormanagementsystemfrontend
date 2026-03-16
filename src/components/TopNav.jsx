@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom'; 
-import { Menu, X, LayoutDashboard, Building2 } from 'lucide-react';
+import { Menu, X, LayoutDashboard, Building2, Bell, Clock4 } from 'lucide-react'; // ✅ Added Clock4 here
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
@@ -24,13 +24,9 @@ const ChevronDownIcon = memo(({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6"/></svg>
 ));
 
-const BellIcon = memo(({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-));
-
 // --- NavButton (Upgraded for UI/UX) ---
 const NavButton = memo(({ label, target, isActive, onClick }) => {
-    const baseClass = "px-3 py-1.5 rounded-lg text-[13px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer select-none text-left";
+    const baseClass = "px-3 py-1.5 rounded-lg text-[12px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer select-none text-left";
     const activeClass = "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100";
     const inactiveClass = "text-slate-500 hover:bg-slate-50 hover:text-slate-900";
 
@@ -81,7 +77,6 @@ const TopNav = () => {
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
     const prevNotifLengthRef = useRef(0);
-    const prevMsgCountRef = useRef(0);
     const audioRef = useRef(null);
 
     if (!user || !permissions) return null;
@@ -105,7 +100,7 @@ const TopNav = () => {
     }, [navigate]);
 
     const getLinkClass = (target) => {
-        const base = "px-3 py-1.5 rounded-lg text-[13px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer";
+        const base = "px-3 py-1.5 rounded-lg text-[12px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer";
         const active = "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100";
         const inactive = "text-slate-500 hover:bg-slate-50 hover:text-slate-900";
         return `${base} ${isPageActive(target) ? active : inactive}`;
@@ -137,10 +132,6 @@ const TopNav = () => {
             const response = await apiService.getUnreadMessages(user.userIdentifier);
             if (response.data.success) {
                 const count = Object.values(response.data.unreadCounts || {}).reduce((sum, c) => sum + c, 0);
-                if (count > prevMsgCountRef.current && prevMsgCountRef.current > 0) {
-                    if(audioRef.current?.message) audioRef.current.message.play().catch(() => {});
-                }
-                prevMsgCountRef.current = count;
                 setUnreadMessagesCount(count);
             }
         } catch (err) { console.error('Fetch messages error', err); }
@@ -159,7 +150,6 @@ const TopNav = () => {
         try {
             const idsToMark = notifications.map(n => ({ id: n.id, partitionKey: n.partitionKey }));
             setNotifications([]); 
-            prevNotifLengthRef.current = 0;
             await apiService.markNotificationsAsRead(idsToMark, user.userIdentifier);
         } catch (err) { fetchNotifications(); }
     };
@@ -172,7 +162,7 @@ const TopNav = () => {
             <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-20">
                     
-                    {/* Left: Logo (Above) & Text (Below) */}
+                    {/* Left: Logo (Centered Vertically) */}
                     <div className="flex items-center gap-8">
                         <div 
                             className="flex flex-col items-center justify-center cursor-pointer group transition-transform active:scale-95 shrink-0" 
@@ -181,13 +171,13 @@ const TopNav = () => {
                             <img 
                                 src={LOGO_URL} 
                                 alt="Taproot Solutions Inc" 
-                                className="h-9 w-auto object-contain mb-1 drop-shadow-sm"
+                                className="h-8 w-auto object-contain mb-1"
                             />
                             <div className="flex flex-col items-center">
-                                <h1 className="text-[10px] font-black tracking-[0.25em] text-slate-900 uppercase leading-none">
+                                <h1 className="text-[9px] font-black tracking-[0.2em] text-slate-900 uppercase leading-none">
                                     Vendor Management System
                                 </h1>
-                                <div className="w-8 h-0.5 bg-blue-600 mt-1 rounded-full group-hover:w-full transition-all duration-300" />
+                                <div className="w-6 h-0.5 bg-blue-600 mt-1 rounded-full group-hover:w-full transition-all duration-300" />
                             </div>
                         </div>
                                                 
@@ -238,7 +228,7 @@ const TopNav = () => {
                                         <DropdownItem label="Manage Employees" target="manage-timesheet-employees" onClick={handleNav} />
                                         <div className="border-t border-slate-100 my-1" />
                                         <DropdownItem label="Log Hours" target="log-hours" onClick={handleNav} />
-                                        <DropdownItem label="Dashboard" target="timesheets-dashboard" onClick={handleNav} />
+                                        <DropdownItem label="Timesheets Dashboard" target="timesheets-dashboard" onClick={handleNav} />
                                     </div>
                                 </Dropdown>
                             )}
@@ -309,10 +299,10 @@ const TopNav = () => {
                         
                         {/* Notifications */}
                         <Dropdown width="96" trigger={
-                            <button type="button" className="relative p-2.5 text-slate-400 hover:bg-slate-50 hover:text-blue-600 rounded-xl transition-all focus:outline-none ring-1 ring-transparent hover:ring-slate-200">
-                                <BellIcon />
+                            <button type="button" className="relative p-2 text-slate-400 hover:bg-slate-50 hover:text-blue-600 rounded-xl transition-all focus:outline-none">
+                                <Bell size={20} />
                                 {notifications.length > 0 && (
-                                    <span className="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white ring-2 ring-white animate-bounce">
+                                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white ring-2 ring-white">
                                         {notifications.length}
                                     </span>
                                 )}
@@ -333,7 +323,7 @@ const TopNav = () => {
                                         </div>
                                     )) : (
                                         <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
-                                            <BellIcon className="opacity-20 w-8 h-8" />
+                                            <Bell size={24} className="opacity-20" />
                                             <p className="text-sm font-medium italic">No pending notifications</p>
                                         </div>
                                     )}
@@ -345,7 +335,7 @@ const TopNav = () => {
                         <div className="hidden sm:block">
                             <Dropdown width="64" trigger={
                                 <button type="button" className="flex items-center gap-3 hover:bg-slate-50 rounded-2xl pl-1.5 pr-3 py-1.5 transition-all focus:outline-none ring-1 ring-transparent hover:ring-slate-200">
-                                    <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white shadow-md shadow-blue-100 border border-blue-500/20">
+                                    <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white shadow-md border border-blue-500/20">
                                         <span className="text-sm font-black">{user?.userName ? user.userName.charAt(0).toUpperCase() : 'U'}</span>
                                     </div>
                                     <div className="hidden md:flex flex-col items-start">
@@ -362,7 +352,6 @@ const TopNav = () => {
                                     </div>
                                     <div className="py-2">
                                         <DropdownItem label="Personal Profile" target="profile" onClick={handleNav} />
-                                        <DropdownItem label="Security Settings" target="profile" onClick={handleNav} />
                                     </div>
                                     <div className="border-t border-slate-100 py-2">
                                         <DropdownItem label="Sign Out System" target={logout} onClick={handleNav} isDestructive />
@@ -388,45 +377,14 @@ const TopNav = () => {
             {isMobileMenuOpen && (
                 <div className="xl:hidden border-t border-slate-200 bg-white/95 backdrop-blur-xl h-[calc(100vh-80px)] overflow-y-auto shadow-2xl animate-in slide-in-from-top duration-300">
                     <div className="p-6 space-y-6">
-                        
-                        <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                             <div className="h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl font-black">
-                                {user?.userName ? user.userName.charAt(0).toUpperCase() : 'U'}
-                            </div>
-                            <div>
-                                <p className="font-bold text-slate-900">{user?.userName}</p>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{user?.userRole}</p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-1">
-                            <NavButton label="Dashboard Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
-                            <NavButton label="My Account Profile" target="profile" isActive={isPageActive('profile')} onClick={handleNav} />
-                        </div>
-                        
-                        {permissions.canViewDashboards && (
-                            <div className="space-y-2">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-3">Central Dashboards</p>
-                                {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
-                                    <NavButton key={key} label={config.title} target={`dashboard?key=${key}`} isActive={isPageActive(`dashboard?key=${key}`)} onClick={handleNav} />
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="space-y-2">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-3">Recruitment Workspace</p>
-                            {permissions.canAddPosting && <NavButton label="Job Posting Control" target="new-posting" isActive={isPageActive('new-posting')} onClick={handleNav} />}
-                            {permissions.canViewCandidates && <NavButton label="Candidate Repository" target="candidate-details" isActive={isPageActive('candidate-details')} onClick={handleNav} />}
-                            {permissions.canManageBenchSales && <NavButton label="Bench Sales Hub" target="bench-sales" isActive={isPageActive('bench-sales')} onClick={handleNav} />}
-                            {permissions.canMessage && <NavButton label="Internal Communications" target="messages" isActive={isPageActive('messages')} onClick={handleNav} />}
-                        </div>
-
+                        <NavButton label="Dashboard Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
+                        <NavButton label="My Profile" target="profile" isActive={isPageActive('profile')} onClick={handleNav} />
                         <div className="pt-4 border-t border-slate-100">
                             <button 
                                 onClick={() => { setIsMobileMenuOpen(false); logout(); navigate('/login'); }} 
-                                className="w-full flex items-center justify-center py-4 rounded-2xl bg-rose-50 text-rose-600 font-bold text-sm border border-rose-100 transition-all active:scale-95"
+                                className="w-full flex items-center justify-center py-4 rounded-2xl bg-rose-50 text-rose-600 font-bold text-sm border border-rose-100 transition-all"
                             >
-                                Terminate Session & Logout
+                                Sign Out
                             </button>
                         </div>
                     </div>
