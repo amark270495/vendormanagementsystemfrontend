@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom'; 
+import { Menu, X, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
@@ -25,11 +26,11 @@ const BellIcon = memo(({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
 ));
 
-// --- NavButton ---
+// --- NavButton (Upgraded for UI/UX) ---
 const NavButton = memo(({ label, target, isActive, onClick }) => {
-    const baseClass = "px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer select-none text-left";
-    const activeClass = "bg-slate-200 text-slate-900";
-    const inactiveClass = "text-slate-500 hover:bg-slate-100 hover:text-slate-800";
+    const baseClass = "px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer select-none text-left";
+    const activeClass = "bg-indigo-50 text-indigo-700";
+    const inactiveClass = "text-slate-600 hover:bg-slate-50 hover:text-slate-900";
 
     return (
         <button 
@@ -42,6 +43,7 @@ const NavButton = memo(({ label, target, isActive, onClick }) => {
     );
 });
 
+// --- DropdownItem (Upgraded for UI/UX) ---
 const DropdownItem = memo(({ label, target, onClick, isDestructive }) => {
     const dropdownContext = useDropdown();
     const close = dropdownContext ? dropdownContext.close : null;
@@ -55,7 +57,11 @@ const DropdownItem = memo(({ label, target, onClick, isDestructive }) => {
         <button 
             type="button"
             onClick={handleClick} 
-            className={`w-full text-left block px-4 py-2.5 text-sm transition-colors ${isDestructive ? 'text-red-600 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-50 hover:text-indigo-600'}`}
+            className={`w-full text-left block px-4 py-2.5 text-sm transition-colors ${
+                isDestructive 
+                    ? 'text-rose-600 hover:bg-rose-50' 
+                    : 'text-slate-700 hover:bg-slate-50 hover:text-indigo-600'
+            }`}
         >
             {label}
         </button>
@@ -68,6 +74,7 @@ const TopNav = () => {
     const location = useLocation(); 
     const permissions = usePermissions();
 
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
@@ -86,6 +93,7 @@ const TopNav = () => {
     };
 
     const handleNav = useCallback((target) => {
+        setIsMobileMenuOpen(false); // ✅ Close mobile menu on click
         if (typeof target === 'function') {
             target(); 
         } else {
@@ -95,9 +103,9 @@ const TopNav = () => {
     }, [navigate]);
 
     const getLinkClass = (target) => {
-        const base = "px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer";
-        const active = "bg-slate-200 text-slate-900";
-        const inactive = "text-slate-500 hover:bg-slate-100 hover:text-slate-800";
+        const base = "px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer";
+        const active = "bg-indigo-50 text-indigo-700";
+        const inactive = "text-slate-600 hover:bg-slate-50 hover:text-slate-900";
         return `${base} ${isPageActive(target) ? active : inactive}`;
     };
 
@@ -158,17 +166,23 @@ const TopNav = () => {
     const showAssetDropdown = permissions.canManageAssets || permissions.canAssignAssets;
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white shadow-sm">
+        <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md shadow-sm">
             <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
-                    <div className="flex items-center gap-8">
+                    
+                    {/* Left: Logo & Nav Links */}
+                    <div className="flex items-center gap-6">
                         <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={() => handleNav('home')}>
-                            <h1 className="text-2xl font-bold text-indigo-600">VMS Portal</h1>
+                            <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                                <LayoutDashboard className="h-5 w-5 text-white" />
+                            </div>
+                            <h1 className="text-xl font-bold text-slate-900 tracking-tight hidden sm:block">VMS Pro</h1>
                         </div>
-                        <nav className="hidden lg:flex items-center gap-1">
+                        
+                        {/* Desktop Navigation */}
+                        <nav className="hidden xl:flex items-center gap-1">
                             <NavButton label="Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
-                            <NavButton label="My Profile" target="profile" isActive={isPageActive('profile')} onClick={handleNav} />
-
+                            
                             {permissions.canViewDashboards && (
                                 <Dropdown trigger={
                                     <button className={`flex items-center gap-1 ${getLinkClass('dashboard')}`}>
@@ -190,7 +204,7 @@ const TopNav = () => {
                                 <button type="button" onClick={() => handleNav('messages')} className={`${getLinkClass('messages')} relative`}>
                                     Messages
                                     {unreadMessagesCount > 0 && (
-                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white ring-2 ring-white">
+                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white">
                                             {unreadMessagesCount}
                                         </span>
                                     )}
@@ -224,7 +238,6 @@ const TopNav = () => {
                                 </Dropdown>
                             )}
 
-                            {/* ✅ RESTORED: E-Sign's Dropdown */}
                             {(permissions.canManageMSAWO || permissions.canManageOfferLetters) && (
                                 <Dropdown trigger={
                                     <button className={`flex items-center gap-1 ${getLinkClass(['msa-wo-dashboard', 'offer-letter-dashboard'])}`}>
@@ -269,25 +282,28 @@ const TopNav = () => {
                         </nav>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    {/* Right: Actions, Notifications & Profile */}
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        
+                        {/* Notifications */}
                         <Dropdown width="96" trigger={
-                            <button type="button" className="relative p-2 text-slate-500 hover:text-indigo-600 transition-colors focus:outline-none">
+                            <button type="button" className="relative p-2 text-slate-400 hover:bg-slate-50 hover:text-indigo-600 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <BellIcon />
                                 {notifications.length > 0 && (
-                                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white">
+                                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white animate-pulse">
                                         {notifications.length}
                                     </span>
                                 )}
                             </button>
                         }>
-                            <div className="w-96">
-                                <div className="flex justify-between items-center p-3 border-b border-slate-100 bg-slate-50">
+                            <div className="w-96 max-w-[100vw]">
+                                <div className="flex justify-between items-center p-3 border-b border-slate-100 bg-slate-50 rounded-t-xl">
                                     <h4 className="font-semibold text-slate-800 text-sm">Notifications</h4>
                                     {notifications.length > 0 && <button onClick={handleMarkAsRead} className="text-xs font-medium text-indigo-600 hover:text-indigo-800">Mark all read</button>}
                                 </div>
                                 <div className="max-h-[300px] overflow-y-auto scrollbar-thin">
                                     {notifications.length > 0 ? notifications.map((n, idx) => (
-                                        <div key={n.id || idx} className="p-3 border-b border-slate-50 hover:bg-slate-50">
+                                        <div key={n.id || idx} className="p-3 border-b border-slate-50 hover:bg-slate-50 transition-colors">
                                             <p className="text-sm text-slate-700 leading-snug break-words">{n.message}</p>
                                             <p className="text-xs text-slate-400 mt-1">{new Date(n.timestamp).toLocaleString()}</p>
                                         </div>
@@ -296,33 +312,86 @@ const TopNav = () => {
                             </div>
                         </Dropdown>
 
-                        <Dropdown width="96" trigger={
-                             <button type="button" className="flex items-center gap-3 hover:bg-slate-50 rounded-full pr-3 py-1 transition-all">
-                                <div className="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-sm ring-2 ring-white">
-                                    <span className="text-sm font-bold">{user?.userName ? user.userName.charAt(0).toUpperCase() : 'U'}</span>
+                        {/* Desktop Profile Dropdown */}
+                        <div className="hidden sm:block">
+                            <Dropdown width="64" trigger={
+                                <button type="button" className="flex items-center gap-2 hover:bg-slate-50 rounded-full pr-3 py-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 border border-indigo-200 shadow-sm">
+                                        <span className="text-sm font-bold">{user?.userName ? user.userName.charAt(0).toUpperCase() : 'U'}</span>
+                                    </div>
+                                    <div className="hidden md:flex flex-col items-start">
+                                        <span className="text-sm font-semibold text-slate-700 leading-none">{user?.userName || 'User'}</span>
+                                        <span className="text-xs text-slate-500 mt-0.5">{user?.userRole || 'Role'}</span>
+                                    </div>
+                                    <ChevronDownIcon className="h-4 w-4 text-slate-400 ml-1" />
+                                </button>
+                            }>
+                                <div className="w-64">
+                                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 rounded-t-xl">
+                                        <p className="text-sm font-bold text-slate-900 break-words">{user?.userName || 'User'}</p>
+                                        <p className="text-xs text-slate-500 break-all">{user?.userIdentifier}</p>
+                                    </div>
+                                    <div className="py-1">
+                                        <DropdownItem label="My Profile" target="profile" onClick={handleNav} />
+                                    </div>
+                                    <div className="border-t border-slate-100 py-1">
+                                        <DropdownItem label="Sign out" target={logout} onClick={handleNav} isDestructive />
+                                    </div>
                                 </div>
-                                <div className="hidden md:flex flex-col items-start">
-                                    <span className="text-sm font-semibold text-slate-700">{user?.userName || 'User'}</span>
-                                </div>
-                                <ChevronDownIcon className="h-4 w-4 text-slate-400" />
+                            </Dropdown>
+                        </div>
+
+                        {/* Mobile Hamburger Button */}
+                        <div className="xl:hidden flex items-center ml-2">
+                            <button
+                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                                className="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
                             </button>
-                        }>
-                            <div className="w-96">
-                                <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
-                                    <p className="text-sm font-bold text-slate-900 break-words">{user?.userName || 'User'}</p>
-                                    <p className="text-xs text-slate-500 break-all">{user?.userIdentifier}</p>
-                                </div>
-                                <div className="py-1">
-                                    <DropdownItem label="My Profile" target="profile" onClick={handleNav} />
-                                </div>
-                                <div className="border-t border-slate-100 py-1">
-                                    <DropdownItem label="Logout" target={logout} onClick={handleNav} isDestructive />
-                                </div>
-                            </div>
-                        </Dropdown>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* Mobile Menu Slide-down Panel */}
+            {isMobileMenuOpen && (
+                <div className="xl:hidden border-t border-slate-200 bg-white/95 backdrop-blur-md max-h-[80vh] overflow-y-auto shadow-lg">
+                    <div className="pt-2 pb-4 space-y-1 px-4">
+                        <NavButton label="Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
+                        <NavButton label="My Profile" target="profile" isActive={isPageActive('profile')} onClick={handleNav} />
+                        
+                        {permissions.canViewDashboards && <div className="pt-4 pb-1"><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dashboards</p></div>}
+                        {permissions.canViewDashboards && Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
+                            <NavButton key={key} label={config.title} target={`dashboard?key=${key}`} isActive={isPageActive(`dashboard?key=${key}`)} onClick={handleNav} />
+                        ))}
+
+                        <div className="pt-4 pb-1"><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Workspace</p></div>
+                        {permissions.canAddPosting && <NavButton label="New Posting" target="new-posting" isActive={isPageActive('new-posting')} onClick={handleNav} />}
+                        {permissions.canViewCandidates && <NavButton label="Candidates" target="candidate-details" isActive={isPageActive('candidate-details')} onClick={handleNav} />}
+                        {permissions.canManageBenchSales && <NavButton label="Bench Sales" target="bench-sales" isActive={isPageActive('bench-sales')} onClick={handleNav} />}
+                        {permissions.canViewReports && <NavButton label="Reports" target="reports" isActive={isPageActive('reports')} onClick={handleNav} />}
+                        {permissions.canMessage && <NavButton label="Messages" target="messages" isActive={isPageActive('messages')} onClick={handleNav} />}
+
+                        {permissions.canManageTimesheets && <div className="pt-4 pb-1"><p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Timesheets</p></div>}
+                        {permissions.canManageTimesheets && (
+                            <>
+                                <NavButton label="Timesheet Dashboard" target="timesheets-dashboard" isActive={isPageActive('timesheets-dashboard')} onClick={handleNav} />
+                                <NavButton label="Manage Companies" target="manage-companies" isActive={isPageActive('manage-companies')} onClick={handleNav} />
+                                <NavButton label="Log Hours" target="log-hours" isActive={isPageActive('log-hours')} onClick={handleNav} />
+                            </>
+                        )}
+
+                        <div className="border-t border-slate-100 my-4"></div>
+                        <button 
+                            onClick={() => { setIsMobileMenuOpen(false); logout(); navigate('/login'); }} 
+                            className="w-full text-left px-3 py-3 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        >
+                            Sign out
+                        </button>
+                    </div>
+                </div>
+            )}
         </header>
     );
 };
