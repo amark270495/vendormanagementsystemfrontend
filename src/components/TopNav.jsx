@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom'; 
-import { Menu, X, Bell, Clock4, ShieldCheck } from 'lucide-react'; 
+import { Menu, X, Bell, Clock4, ShieldCheck, LayoutDashboard, Briefcase, FileSignature } from 'lucide-react'; 
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
@@ -102,7 +102,18 @@ const TopNav = () => {
                 setUnreadMessagesCount(count);
             }
         } catch (err) { console.error(err); }
-    }, [user?.userIdentifier, permissions]);
+    }, [user?.userIdentifier, permissions.canMessage]);
+
+    // ✅ Re-defined handleMarkAsRead
+    const handleClearNotifications = async () => {
+        if (notifications.length === 0) return;
+        try {
+            const idsToMark = notifications.map(n => ({ id: n.id, partitionKey: n.partitionKey }));
+            setNotifications([]); 
+            prevNotifLengthRef.current = 0;
+            await apiService.markNotificationsAsRead(idsToMark, user.userIdentifier);
+        } catch (err) { fetchNotifications(); }
+    };
 
     useEffect(() => {
         fetchNotifications();
@@ -127,7 +138,7 @@ const TopNav = () => {
                             <div className="w-6 h-0.5 bg-blue-600 mt-1 rounded-full group-hover:w-full transition-all duration-300" />
                         </div>
                                                 
-                        {/* Desktop Navigation - PERMISSION FILTERED */}
+                        {/* Desktop Navigation */}
                         <nav className="hidden xl:flex items-center gap-1">
                             <NavButton label="Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
                             
@@ -196,7 +207,6 @@ const TopNav = () => {
                                 </Dropdown>
                             )}
 
-                            {/* ADMIN DROPDOWN - ONLY SHOWS IF USER HAS AT LEAST ONE ADMIN PERM */}
                             {(permissions.canEditUsers || permissions.canManageHolidays || permissions.canApproveLeave || permissions.canApproveAttendance) && (
                                 <Dropdown trigger={<button className={`flex items-center gap-1.5 ${getLinkClass('admin')}`}>Admin <ChevronDownIcon className="opacity-50" /></button>}>
                                     <div className="w-60 py-1">
@@ -225,7 +235,8 @@ const TopNav = () => {
                             <div className="w-96 max-w-[100vw]">
                                 <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
                                     <h4 className="font-bold text-slate-800 text-sm tracking-tight">Notifications</h4>
-                                    {notifications.length > 0 && <button onClick={handleMarkAsRead} className="text-[11px] font-black uppercase tracking-wider text-blue-600 hover:text-blue-800">Clear All</button>}
+                                    {/* ✅ Function name corrected here */}
+                                    {notifications.length > 0 && <button onClick={handleClearNotifications} className="text-[11px] font-black uppercase tracking-wider text-blue-600 hover:text-blue-800">Clear All</button>}
                                 </div>
                                 <div className="max-h-[350px] overflow-y-auto scrollbar-thin">
                                     {notifications.length > 0 ? notifications.map((n, idx) => (
@@ -275,7 +286,7 @@ const TopNav = () => {
                 </div>
             </div>
 
-            {/* Mobile Sidebar - PERMISSION FILTERED */}
+            {/* Mobile Sidebar */}
             {isMobileMenuOpen && (
                 <div className="xl:hidden border-t border-slate-200 bg-white/95 backdrop-blur-xl h-[calc(100vh-80px)] overflow-y-auto shadow-2xl">
                     <div className="p-6 space-y-6">
