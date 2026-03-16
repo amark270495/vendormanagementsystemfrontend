@@ -1,58 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../Modal.jsx';
 import Spinner from '../Spinner.jsx';
+import InputField from './InputField.jsx'; // 🌟 NEW: Importing our global universal component
 import { usePermissions } from '../../hooks/usePermissions.js';
 import { 
-    User, Briefcase, MapPin, Mail, Phone, Plus, X, 
-    AlertCircle, CheckCircle2, UserPlus, Fingerprint, 
-    AtSign, Smartphone, Globe, Layers, ChevronDown, 
-    Sparkles, ShieldCheck
+    User, Briefcase, MapPin, X, AlertCircle, 
+    UserPlus, Fingerprint, AtSign, Smartphone, 
+    Globe, Layers, Sparkles, ShieldCheck
 } from 'lucide-react';
-
-// --- Visual-First Modern Input Field ---
-const ModernField = ({ label, name, type = 'text', required, readOnly, value, onChange, options, disabled, icon: Icon }) => (
-    <div className="relative group flex flex-col gap-1.5 flex-1">
-        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] ml-1 flex items-center gap-1.5 transition-colors group-focus-within:text-indigo-500">
-            {Icon && <Icon size={12} />}
-            {label} {required && <span className="text-rose-400 font-bold">*</span>}
-        </label>
-        
-        {options ? (
-            <div className="relative">
-                <select 
-                    name={name} 
-                    value={value || ''} 
-                    onChange={onChange} 
-                    disabled={readOnly || disabled}
-                    className={`w-full border-none rounded-2xl px-4 py-3 text-sm font-semibold transition-all appearance-none cursor-pointer outline-none ring-1
-                        ${readOnly 
-                            ? 'bg-slate-100 text-slate-400 ring-slate-200' 
-                            : 'bg-slate-50 text-slate-700 ring-transparent hover:bg-slate-100 focus:bg-white focus:ring-indigo-500/20 shadow-sm'}
-                    `}
-                >
-                    <option value="">Select Option</option>
-                    {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
-                <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none group-focus-within:text-indigo-400" />
-            </div>
-        ) : (
-            <input 
-                type={type} 
-                name={name} 
-                value={value || ''} 
-                onChange={onChange} 
-                readOnly={readOnly}
-                disabled={readOnly || disabled} 
-                className={`w-full border-none rounded-2xl px-4 py-3 text-sm font-semibold transition-all outline-none ring-1
-                    ${readOnly 
-                        ? 'bg-slate-100 text-slate-400 ring-slate-200 cursor-not-allowed italic' 
-                        : 'bg-white text-slate-700 ring-slate-200 hover:ring-slate-300 focus:ring-indigo-500/30 focus:shadow-md'}
-                `}
-                placeholder={`Enter ${label.toLowerCase()}...`}
-            />
-        )}
-    </div>
-);
 
 const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEdit }) => {
     const { canEditDashboard } = usePermissions();
@@ -111,6 +66,10 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!canEditDashboard) { setError("Permission denied."); return; }
+        
+        // Example of how we can use our new error state if we wanted to do manual validation
+        if (!formData.firstName) { setError('First name is required'); return; }
+        
         setError('');
         setLoading(true);
         try {
@@ -182,6 +141,7 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-12">
+                        
                         {/* Section 1: Basic Identity */}
                         <div className="space-y-6">
                             <div className="flex items-center gap-3">
@@ -192,15 +152,16 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                                 <div className="flex-1 h-px bg-slate-100" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <ModernField label="First Name" name="firstName" required value={formData.firstName} onChange={handleChange} disabled={!canEditDashboard} />
-                                <ModernField label="Middle Name" name="middleName" value={formData.middleName} onChange={handleChange} disabled={!canEditDashboard} />
-                                <ModernField label="Last Name" name="lastName" required value={formData.lastName} onChange={handleChange} disabled={!canEditDashboard} />
+                                {/* 🌟 NEW: Using InputField globally */}
+                                <InputField label="First Name" name="firstName" required value={formData.firstName} onChange={handleChange} disabled={!canEditDashboard} />
+                                <InputField label="Middle Name" name="middleName" value={formData.middleName} onChange={handleChange} disabled={!canEditDashboard} />
+                                <InputField label="Last Name" name="lastName" required value={formData.lastName} onChange={handleChange} disabled={!canEditDashboard} />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <ModernField label="Email Address" name="email" type="email" required icon={AtSign} value={formData.email} onChange={handleChange} readOnly={isEditMode} />
-                                <ModernField label="Mobile Contact" name="mobileNumber" type="tel" required icon={Smartphone} value={formData.mobileNumber} onChange={handleChange} />
+                                <InputField label="Email Address" name="email" type="email" required icon={AtSign} value={formData.email} onChange={handleChange} readOnly={isEditMode} />
+                                <InputField label="Mobile Contact" name="mobileNumber" type="tel" required icon={Smartphone} value={formData.mobileNumber} onChange={handleChange} />
                             </div>
-                            <ModernField label="Reference From" name="referenceFrom" icon={Layers} value={formData.referenceFrom} onChange={handleChange} />
+                            <InputField label="Reference From" name="referenceFrom" icon={Layers} value={formData.referenceFrom} onChange={handleChange} />
                         </div>
 
                         {/* Section 2: Career Path */}
@@ -213,9 +174,9 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                                 <div className="flex-1 h-px bg-slate-100" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <ModernField label="Current Role" name="currentRole" required value={formData.currentRole} onChange={handleChange} />
-                                <ModernField label="Location" name="currentLocation" required icon={MapPin} value={formData.currentLocation} onChange={handleChange} />
-                                <ModernField label="Candidate Status" name="remarks" options={remarksOptions} value={formData.remarks} onChange={handleChange} />
+                                <InputField label="Current Role" name="currentRole" required value={formData.currentRole} onChange={handleChange} />
+                                <InputField label="Location" name="currentLocation" required icon={MapPin} value={formData.currentLocation} onChange={handleChange} />
+                                <InputField label="Candidate Status" name="remarks" options={remarksOptions} value={formData.remarks} onChange={handleChange} />
                             </div>
                         </div>
 
@@ -234,6 +195,7 @@ const CandidateDetailsModal = ({ isOpen, onClose, onSave, jobInfo, candidateToEd
                             </div>
                             
                             <div className="flex gap-2">
+                                {/* Keeping this input manual since it has a unique 'Enter' key handler, but applying base styles */}
                                 <input
                                     type="text"
                                     value={currentSkill}
