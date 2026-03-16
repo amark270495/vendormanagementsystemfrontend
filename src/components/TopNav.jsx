@@ -174,12 +174,10 @@ const TopNav = () => {
                             <div className="w-4 h-[2px] bg-blue-600 mt-0.5 rounded-full group-hover:w-full transition-all duration-300" />
                         </div>
 
-                        {/* Navigation - With hidden scrollbar for overflow protection */}
-                        <nav className="hidden lg:flex items-center gap-1 overflow-x-auto overflow-y-hidden no-scrollbar py-1">
+                        {/* Navigation - BUG FIX: Removed overflow-hidden so dropdowns are not clipped */}
+                        <nav className="hidden lg:flex items-center gap-1 py-1">
                             <NavButton label="Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
                             
-                            {/* MY PROFILE WAS REMOVED FROM HERE */}
-
                             {permissions.canViewDashboards && (
                                 <Dropdown trigger={
                                     <button className={`flex items-center gap-1.5 ${getLinkClass('dashboard')}`}>
@@ -343,7 +341,6 @@ const TopNav = () => {
                                     <p className="text-xs text-slate-500 truncate">{user?.userIdentifier}</p>
                                 </div>
                                 <div className="py-1">
-                                    {/* MY PROFILE IS PLACED HERE */}
                                     <DropdownItem label="My Profile" target="profile" onClick={handleNav} />
                                 </div>
                                 <div className="border-t border-slate-100 py-1 mt-1">
