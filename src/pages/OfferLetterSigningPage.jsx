@@ -1,15 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom'; // 🌟 ADDED: Import to read the URL
 import AccessModal from '../components/msa-wo/AccessModal.jsx';
 import SignatureModal from '../components/msa-wo/SignatureModal.jsx';
 import Spinner from '../components/Spinner';
 import { useAuth } from '../context/AuthContext.jsx';
 import { apiService } from '../api/apiService.js';
 
-// --- REMOVED THE BROKEN, LOCAL apiService ---
-
-// *** FIX: Accept `token` as a prop ***
-const OfferLetterSigningPage = ({ token }) => { 
+// *** FIX: Removed the { token } prop, we will grab it from the URL instead ***
+const OfferLetterSigningPage = () => { 
   const { user } = useAuth() || {};
+  
+  // 🌟 FIX: Extract the token from the ?token= URL parameter
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+
   const [documentData, setDocumentData] = useState(null);
   const [loading, setLoading] = useState(true); 
   const [error, setError] = useState('');
@@ -20,10 +24,8 @@ const OfferLetterSigningPage = ({ token }) => {
   const [signerConfig, setSignerConfig] = useState({});
   const hasBeenSigned = documentData?.status === 'Signed';
 
-  // --- REMOVED: useEffect that searched for token, now we use the prop ---
-
   useEffect(() => {
-    // This effect now runs when the `token` prop is ready
+    // This effect now runs when the `token` is pulled from the URL
     if (token && !user) {
         setIsAccessModalOpen(true);
         setLoading(false);
@@ -84,7 +86,6 @@ const OfferLetterSigningPage = ({ token }) => {
       setLoading(true);
       setError('');
       try {
-        // *** FIX: Use the main, imported apiService ***
         const response = await apiService.updateOfferLetterStatus(
           token,
           signerData
@@ -203,8 +204,6 @@ const OfferLetterSigningPage = ({ token }) => {
         onClose={() => { if (!documentData) setError("Access is required to view this document.") }}
         onAccessGranted={handleAccessGranted}
         token={token}
-        // *** THIS IS THE CRITICAL FIX ***
-        // It now correctly passes the imported apiService.employeeSignIn
         apiServiceMethod={apiService.employeeSignIn} 
         vendorEmail={"the email address on file"}
       />
