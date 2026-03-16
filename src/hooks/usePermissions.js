@@ -26,7 +26,7 @@ const DEFAULT_PERMISSIONS = {
     canAssignAssets: false
 };
 
-// --- Normalize permission values coming from backend/storage ---
+// --- Normalize permission values safely (Handles booleans, strings, and numbers) ---
 const normalizePermission = (value) => {
     return value === true || value === "true" || value === 1 || value === "1";
 };
@@ -35,12 +35,11 @@ export const usePermissions = () => {
     const { user } = useAuth();
 
     return useMemo(() => {
-
+        // If no user is logged in, return strict defaults
         if (!user) {
             return {
                 ...DEFAULT_PERMISSIONS,
-                role: 'User',
-                isSuperAdmin: false,
+                role: 'Guest',
                 canAccessAssets: false,
                 canAccessAdmin: false,
                 canAccessDocs: false,
@@ -48,59 +47,40 @@ export const usePermissions = () => {
             };
         }
 
-        const rawPermissions = user?.permissions || {};
+        const rawPermissions = user.permissions || {};
+        const role = user.userRole || user.backendOfficeRole || 'User';
 
-        const role =
-            user?.userRole ||
-            user?.backendOfficeRole ||
-            'User';
-
-        const isSuperAdmin =
-            role === 'Admin' ||
-            role === 'SuperAdmin';
-
-        // --- Evaluate all permissions safely ---
+        // --- CRITICAL FIX: Evaluate strictly on granular values ---
+        // Removed the blanket override that forced all keys to true
         const evaluatedPermissions = Object.keys(DEFAULT_PERMISSIONS).reduce((acc, key) => {
-
-            const normalizedValue = normalizePermission(rawPermissions[key]);
-
-            acc[key] = isSuperAdmin ? true : normalizedValue;
-
+            acc[key] = normalizePermission(rawPermissions[key]);
             return acc;
-
         }, {});
 
         return {
             ...evaluatedPermissions,
-
             role,
-            isSuperAdmin,
 
-            // --- Category Helpers (Cleaner UI logic) ---
-            canAccessAssets:
-                isSuperAdmin ||
-                normalizePermission(rawPermissions.canManageAssets) ||
-                normalizePermission(rawPermissions.canAssignAssets),
+            // --- Category Helpers (For cleaner UI logic) ---
+            canAccessAssets: 
+                evaluatedPermissions.canManageAssets || 
+                evaluatedPermissions.canAssignAssets,
 
-            canAccessAdmin:
-                isSuperAdmin ||
-                normalizePermission(rawPermissions.canEditUsers) ||
-                normalizePermission(rawPermissions.canManageHolidays) ||
-                normalizePermission(rawPermissions.canApproveLeave) ||
-                normalizePermission(rawPermissions.canApproveAttendance) ||
-                normalizePermission(rawPermissions.canManageLeaveConfig) ||
-                normalizePermission(rawPermissions.canSendMonthlyReport),
+            canAccessAdmin: 
+                evaluatedPermissions.canEditUsers || 
+                evaluatedPermissions.canManageHolidays || 
+                evaluatedPermissions.canApproveLeave || 
+                evaluatedPermissions.canApproveAttendance || 
+                evaluatedPermissions.canManageLeaveConfig || 
+                evaluatedPermissions.canSendMonthlyReport,
 
-            canAccessDocs:
-                isSuperAdmin ||
-                normalizePermission(rawPermissions.canManageMSAWO) ||
-                normalizePermission(rawPermissions.canManageOfferLetters),
+            canAccessDocs: 
+                evaluatedPermissions.canManageMSAWO || 
+                evaluatedPermissions.canManageOfferLetters,
 
             // --- Utility Helper ---
-            hasAny: (permArray = []) =>
-                isSuperAdmin ||
-                permArray.some((perm) => normalizePermission(rawPermissions[perm]))
+            hasAny: (permArray = []) => 
+                permArray.some((perm) => evaluatedPermissions[perm])
         };
-
     }, [user]);
 };
