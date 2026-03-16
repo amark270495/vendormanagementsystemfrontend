@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom'; // 🌟 ADDED: Import to read the URL
 import axios from 'axios';
 import AccessModal from '../components/msa-wo/AccessModal';
 import SignatureModal from '../components/msa-wo/SignatureModal';
@@ -11,6 +12,7 @@ const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
 });
+
 const apiService = {
   accessMSAandWO: (token, tempPassword) =>
     apiClient.post('/accessMSAandWO', { token, tempPassword }),
@@ -34,7 +36,12 @@ const apiService = {
     }),
 };
 
-const MSAandWOSigningPage = ({ token }) => {
+// *** FIX: Removed the { token } prop, we grab it from the URL instead ***
+const MSAandWOSigningPage = () => {
+  // 🌟 FIX: Extract the token from the ?token= URL parameter
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+
   const { user } = useAuth() || {};
   const { canManageMSAWO } = usePermissions();
 
