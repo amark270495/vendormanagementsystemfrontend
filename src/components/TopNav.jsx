@@ -176,7 +176,7 @@ const TopNav = () => {
                             <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
                                 <LayoutDashboard className="h-5 w-5 text-white" />
                             </div>
-                            <h1 className="text-xl font-bold text-slate-900 tracking-tight hidden sm:block">VMS Pro</h1>
+                            <h1 className="text-xl font-bold text-slate-900 tracking-tight hidden sm:block">VMS Dashboard Portal</h1>
                         </div>
                         
                         {/* Desktop Navigation */}
