@@ -279,7 +279,7 @@ const LoginPage = () => {
 
                 <div className="absolute bottom-8 text-center w-full">
                     <p className="text-xs text-slate-400 font-medium">
-                        System Support: <a href="mailto:it-desk@taproot.com" className="text-blue-600 font-semibold hover:underline ml-1">it-desk@taproot.com</a>
+                        System Support: <a href="mailto:admin@vms-dashboard.in" className="text-blue-600 font-semibold hover:underline ml-1">it-desk@taproot.com</a>
                     </p>
                 </div>
             </div>
