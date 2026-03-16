@@ -13,7 +13,6 @@ import {
     AlertCircle, 
     ShieldCheck, 
     ArrowRight,
-    Building2,
     FileSignature,
     Clock4,
     Briefcase,
@@ -89,17 +88,21 @@ const LoginPage = () => {
                     <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-blue-900/20 via-transparent to-transparent" />
                 </div>
 
-                {/* Header Logo */}
+                {/* Header Logo (Azure Blob Storage) */}
                 <div className="relative z-10 flex flex-col gap-2">
                     <div className="flex items-center gap-3">
-                        <div className="bg-blue-600 p-2 rounded-lg shadow-sm">
-                            <Building2 className="h-6 w-6 text-white" strokeWidth={2.5} />
+                        <div className="bg-white p-1.5 rounded-lg shadow-sm">
+                            <img 
+                                src="https://vmsdashboardea.blob.core.windows.net/images/logo.png" 
+                                alt="Taproot Solutions Logo" 
+                                className="h-8 w-auto object-contain"
+                            />
                         </div>
                         <span className="text-2xl font-bold tracking-tight text-white leading-none">
                             Taproot Solutions Inc.
                         </span>
                     </div>
-                    <span className="text-sm font-semibold tracking-widest text-blue-400 uppercase ml-[52px]">
+                    <span className="text-sm font-semibold tracking-widest text-blue-400 uppercase ml-[60px]">
                         Vendor Management System
                     </span>
                 </div>
@@ -163,17 +166,19 @@ const LoginPage = () => {
                 
                 <div className="w-full max-w-[400px] relative z-10 bg-white p-8 sm:p-10 rounded-2xl shadow-sm border border-slate-200">
                     
-                    {/* Brand Identity for Mobile Only */}
+                    {/* Brand Identity for Mobile Only (Azure Blob Storage Logo) */}
                     <div className="lg:hidden flex flex-col gap-2 mb-8 pb-8 border-b border-slate-100">
                         <div className="flex items-center gap-3">
-                            <div className="bg-blue-600 p-2 rounded-lg">
-                                <Building2 className="h-5 w-5 text-white" strokeWidth={2.5} />
-                            </div>
+                            <img 
+                                src="https://vmsdashboardea.blob.core.windows.net/images/logo.png" 
+                                alt="Taproot Solutions Logo" 
+                                className="h-7 w-auto object-contain"
+                            />
                             <span className="text-xl font-bold tracking-tight text-slate-900 leading-none">
                                 Taproot Solutions
                             </span>
                         </div>
-                        <span className="text-xs font-bold tracking-widest text-blue-600 uppercase ml-12">
+                        <span className="text-xs font-bold tracking-widest text-blue-600 uppercase ml-[40px]">
                             VMS Portal
                         </span>
                     </div>
@@ -296,7 +301,7 @@ const LoginPage = () => {
 
                 <div className="absolute bottom-8 text-center w-full">
                     <p className="text-xs text-slate-400 font-medium">
-                        Taproot Solutions IT Support: <a href="mailto:admin@vms-dashboard.in" className="text-blue-600 font-semibold hover:underline ml-1">Mail To IT SUpport Team</a>
+                        Taproot Solutions IT Support: <a href="mailto:admin@vms-dashboard.in" className="text-blue-600 font-semibold hover:underline ml-1">Mail To IT Support Team</a>
                     </p>
                 </div>
             </div>
