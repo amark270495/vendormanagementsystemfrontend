@@ -115,20 +115,33 @@ export const AuthProvider = ({ children }) => {
 
     const tabId = useRef(crypto.randomUUID()); 
 
-    // ✅ FIX: Load from localStorage (Survivable Refresh)
     useEffect(() => {
         const initAuth = () => {
             try {
-                // Using localStorage instead of sessionStorage to survive Ctrl+R
-                const savedUser = localStorage.getItem('vms_user');
-                if (savedUser) {
-                    const userData = JSON.parse(savedUser);
-                    dispatch({ type: 'LOGIN', payload: userData });
-                    localStorage.setItem('vms_active_tab', tabId.current);
+                // ✅ 1. Check if this specific tab has the session flag (Refresh Detector)
+                const isRefresh = sessionStorage.getItem('is_active_session');
+
+                if (!isRefresh) {
+                    // ✅ 2. NO FLAG: This is a new tab or reopened browser.
+                    // We must clear the old localStorage so they don't auto-login.
+                    localStorage.removeItem('vms_user');
+                    
+                    // Set the flag NOW so if they hit Ctrl+R later, it survives.
+                    sessionStorage.setItem('is_active_session', 'true');
+                } else {
+                    // ✅ 3. FLAG EXISTS: This is a Ctrl+R Refresh.
+                    // Safe to read the user from localStorage and keep them logged in!
+                    const savedUser = localStorage.getItem('vms_user');
+                    if (savedUser) {
+                        const userData = JSON.parse(savedUser);
+                        dispatch({ type: 'LOGIN', payload: userData });
+                        localStorage.setItem('vms_active_tab', tabId.current);
+                    }
                 }
             } catch (error) {
                 console.error("Auth hydration failed", error);
                 localStorage.removeItem('vms_user');
+                sessionStorage.removeItem('is_active_session');
             } finally {
                 setLoading(false); // ✅ Stop loading once check is done
             }
@@ -149,7 +162,6 @@ export const AuthProvider = ({ children }) => {
         return () => window.removeEventListener('storage', handleStorageChange);
     }, [state.isAuthenticated]);
 
-
     const login = (userData) => {
         const mergedPermissions = { ...defaultPermissions, ...(userData.permissions || {}) };
         const userToStore = { 
@@ -157,15 +169,22 @@ export const AuthProvider = ({ children }) => {
             ...userData, 
             permissions: mergedPermissions 
         };
-        // ✅ Sync to localStorage
+        
+        // ✅ Sync to localStorage (for data stability)
         localStorage.setItem('vms_user', JSON.stringify(userToStore));
         localStorage.setItem('vms_active_tab', tabId.current);
+        
+        // ✅ Ensure session flag is set so refreshes work immediately
+        sessionStorage.setItem('is_active_session', 'true');
+
         dispatch({ type: 'LOGIN', payload: userToStore });
     };
 
     const logout = (broadcast = true) => {
-        // ✅ Clear localStorage
+        // ✅ Clear both local and session storage
         localStorage.removeItem('vms_user');
+        sessionStorage.removeItem('is_active_session');
+        
         if (broadcast) {
             localStorage.setItem('vms_logout_broadcast', Date.now().toString()); 
             localStorage.removeItem('vms_active_tab');
