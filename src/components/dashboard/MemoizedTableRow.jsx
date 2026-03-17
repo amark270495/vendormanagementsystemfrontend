@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, memo, useMemo } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { formatDate, getDeadlineClass } from '../../utils/helpers';
 import ActionMenu from './ActionMenu';
 
-// --- MultiSelectDropdown (Encapsulated inside the row component) ---
+// --- MultiSelectDropdown ---
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -46,7 +46,7 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-white text-left focus:ring-2 focus:ring-blue-500 transition-all"
+                className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-white text-left focus:ring-2 focus:ring-indigo-500 transition-all"
             >
                 <span className="truncate block pr-4">{displayValue}</span>
                 <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
@@ -59,12 +59,12 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
                 <div className="absolute z-50 left-0 mt-1 bg-white border border-gray-300 rounded-md shadow-xl max-h-60 overflow-y-auto min-w-full w-auto">
                     <ul>
                         <li onClick={() => handleToggleSelect("Need To Update")} className="flex items-center px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50">
-                            <input type="checkbox" readOnly checked={displayArray.includes("Need To Update")} className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                            <input type="checkbox" readOnly checked={displayArray.includes("Need To Update")} className="mr-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
                             Unassigned
                         </li>
                         {options.map(name => (
                             <li key={name} onClick={() => handleToggleSelect(name)} className="flex items-center px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50">
-                                <input type="checkbox" readOnly checked={displayArray.includes(name)} className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                <input type="checkbox" readOnly checked={displayArray.includes(name)} className="mr-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
                                 {name}
                             </li>
                         ))}
@@ -77,25 +77,22 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
 
 // --- Memoized Table Row ---
 const MemoizedTableRow = memo(({
-    row, postingId, dbComment, displayHeader, editingHeaderName, rowChanges = {},
-    canEditDashboard, recruiters, REMARKS_OPTIONS,
+    row, rowIndex, postingId, displayHeader, editingCell, unsavedChanges,
+    canEditDashboard, recruiters, REMARKS_OPTIONS, jobToObject,
     handleCellClick, handleCellEdit, setEditingCell, setModalState, getStatusBadge, CANDIDATE_COLUMNS, EDITABLE_COLUMNS, DATE_COLUMNS
 }) => {
-    
-    // We isolate job data creation inside the row to prevent stale closures. 
+    const rowChanges = unsavedChanges[postingId] || {};
+    // Calculate display comment based exactly on how the original code parsed it
+    const dbComment = jobToObject(row)['Comments'];
     const currentCustomComment = rowChanges['Comments'] !== undefined ? rowChanges['Comments'] : dbComment;
-    
-    const job = useMemo(() => {
-        const obj = displayHeader.reduce((acc, h, i) => ({...acc, [h]: row[i]}), {});
-        obj['Comments'] = currentCustomComment;
-        return obj;
-    }, [displayHeader, row, currentCustomComment]);
 
     return (
-        <tr className="bg-white hover:bg-blue-50/30 transition-colors">
+        <tr className="bg-white hover:bg-indigo-50/40 transition-colors">
             {row.map((cell, cellIndex) => {
                 const headerName = displayHeader[cellIndex];
-                const isEditing = editingHeaderName === headerName;
+                
+                // Track edit state via unique Post IDs rather than index to avoid sorting bugs
+                const isEditing = editingCell?.postingId === postingId && editingCell?.headerName === headerName;
                 const hasUnsaved = rowChanges[headerName] !== undefined || (headerName === 'Remarks' && rowChanges['Comments'] !== undefined);
 
                 let selectedWorkingBy = [];
@@ -109,16 +106,16 @@ const MemoizedTableRow = memo(({
                 const baseCellClass = `px-4 py-4 border-r border-slate-50 font-medium whitespace-normal break-words align-top text-[13px] leading-relaxed 
                     ${hasUnsaved ? 'bg-amber-50 shadow-inner' : ''} 
                     ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-slate-600'} 
-                    ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-blue-50' : ''}`;
+                    ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-indigo-50/50' : ''}`;
 
                 return (
-                    <td key={cellIndex} onClick={(e) => {
-                        // Prevent re-triggering state updates if already editing
-                        if (editingHeaderName !== headerName) {
-                            const rowDataMap = displayHeader.reduce((acc, h, i) => ({...acc, [h]: row[i]}), {});
-                            handleCellClick(postingId, headerName, rowDataMap);
-                        }
-                    }} className={baseCellClass}>
+                    <td 
+                        key={cellIndex} 
+                        onClick={() => {
+                            if (!isEditing) handleCellClick(postingId, headerName, rowIndex);
+                        }} 
+                        className={baseCellClass}
+                    >
                         {isEditing && headerName === 'Working By' && canEditDashboard ? (
                             <MultiSelectDropdown
                                 options={recruiters}
@@ -134,7 +131,7 @@ const MemoizedTableRow = memo(({
                                     handleCellEdit(postingId, headerName, e.target.value);
                                     setEditingCell(null);
                                 }}
-                                className="block w-full border-slate-300 rounded-md p-2 text-sm focus:ring-blue-500"
+                                className="block w-full border-slate-300 rounded-md p-2 text-sm focus:ring-indigo-500"
                                 autoFocus
                             >
                                 <option value="">Select Remark</option>
@@ -150,9 +147,8 @@ const MemoizedTableRow = memo(({
                                         setEditingCell(null); 
                                     } 
                                 }}
-                                // 🎯 Autofocus mechanism added here so contentEditable captures input immediately
                                 ref={(el) => { if (isEditing && el) el.focus(); }}
-                                className={isEditing ? "outline-none ring-2 ring-blue-500 bg-white rounded px-1 -mx-1" : ""}
+                                className={isEditing ? "outline-none ring-2 ring-indigo-500 bg-white rounded px-1 -mx-1" : ""}
                             >
                                 {headerName === 'Status' ? (
                                     <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full border uppercase tracking-wider whitespace-nowrap ${getStatusBadge(cell)}`}>
@@ -161,7 +157,7 @@ const MemoizedTableRow = memo(({
                                 ) : DATE_COLUMNS.includes(headerName) ? (
                                     formatDate(cell)
                                 ) : CANDIDATE_COLUMNS.includes(headerName) ? (
-                                    <span className={canEditDashboard && (cell === 'Need To Update' || !cell) ? 'text-blue-600 hover:text-blue-800 underline decoration-blue-200 underline-offset-4 font-bold' : 'text-slate-700 font-semibold'}>
+                                    <span className={canEditDashboard && (cell === 'Need To Update' || !cell) ? 'text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4 font-bold' : 'text-slate-700 font-semibold'}>
                                         {cell || 'Add Candidate'}
                                     </span>
                                 ) : headerName === 'Remarks' ? (
@@ -192,11 +188,21 @@ const MemoizedTableRow = memo(({
                     </td>
                 );
             })}
+            
+            {/* 🎯 Using jobToObject(row) explicitly restores the required data payload for ActionMenu */}
             <td className="px-4 py-4 align-top text-center border-slate-50">
-                {canEditDashboard && <ActionMenu job={job} onAction={(type, jobData) => setModalState({type, data: jobData})} />}
+                {canEditDashboard && <ActionMenu job={jobToObject(row)} onAction={(type, jobData) => setModalState({type, data: jobData})} />}
             </td>
         </tr>
     );
+}, (prevProps, nextProps) => {
+    // Highly optimized rerender logic tracking unique postingIds 
+    const isCurrentlyEditing = nextProps.editingCell?.postingId === nextProps.postingId;
+    const wasEditing = prevProps.editingCell?.postingId === prevProps.postingId;
+    if (isCurrentlyEditing || wasEditing) return false; 
+    if (prevProps.unsavedChanges[nextProps.postingId] !== nextProps.unsavedChanges[nextProps.postingId]) return false; 
+    if (prevProps.row !== nextProps.row) return false; 
+    return true; 
 });
 
 export default MemoizedTableRow;
