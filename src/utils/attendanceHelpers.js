@@ -35,7 +35,7 @@ export const formatLogTime = (isoString) => {
 
 /**
  * BULLETPROOF TIME CALCULATION
- * RESTORED TO YOUR ORIGINAL LOGIC
+ * RESTORED: Standard vs Extra calculation from Old Code
  */
 export const calculateTotalWorkTime = (logs, shiftDateStr) => {
     if (!logs || logs.length === 0 || !shiftDateStr) 
@@ -44,14 +44,15 @@ export const calculateTotalWorkTime = (logs, shiftDateStr) => {
     let year, month, day;
     const parts = shiftDateStr.split('-');
     
-    // Exact parsing logic from old code
+    // Exact parsing logic from old code to handle both YYYY-MM-DD and DD-MM-YYYY
     if (parts[0].length === 4) {
         [year, month, day] = parts;
     } else {
         [day, month, year] = parts;
     }
 
-    // Exact Shift Bounds Construction from old code
+    // EXACT Shift Bounds Construction from old code
+    // Standard window: 19:00 (7 PM) to 04:00 (4 AM next day)
     const shiftStartIST = new Date(`${year}-${month}-${day}T19:00:00.000+05:30`);
     const nextDayUTC = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10) + 1));
     const nextDayStr = nextDayUTC.toISOString().split('T')[0];
@@ -60,11 +61,14 @@ export const calculateTotalWorkTime = (logs, shiftDateStr) => {
     const sortedLogs = [...logs].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
     
     let standardMs = 0;
-    let extraMs = 0;
+    let extraMs = 0; // Tracks "Outside Shift"
     let sessionStart = null;
     let lastHeartbeat = null;
     let activeString = "";
 
+    /**
+     * processBlock: The core logic that separates shift time from extra time
+     */
     const processBlock = (start, end) => {
         const blockTotal = end - start;
         if (blockTotal <= 0) return;
@@ -77,6 +81,7 @@ export const calculateTotalWorkTime = (logs, shiftDateStr) => {
             blockStandard = overlapEnd - overlapStart;
         }
 
+        // Logic restored: blockStandard is within 7PM-4AM, the rest is Extra
         standardMs += blockStandard;
         extraMs += (blockTotal - blockStandard);
     };
@@ -95,6 +100,7 @@ export const calculateTotalWorkTime = (logs, shiftDateStr) => {
             sessionStart = logTime;
             lastHeartbeat = logTime; 
         } else if (stopActions.includes(act) && sessionStart) {
+            // Logic restored: handle unexpected shutdowns via last known heartbeat
             if (notes.includes("previous shutdown detected")) {
                 if (lastHeartbeat && lastHeartbeat > sessionStart) {
                     processBlock(sessionStart, lastHeartbeat);
@@ -107,9 +113,11 @@ export const calculateTotalWorkTime = (logs, shiftDateStr) => {
         }
     });
 
+    // Handle Active Sessions or Missing Logouts
     if (sessionStart) {
         const now = new Date();
         if (lastHeartbeat && lastHeartbeat > sessionStart) {
+            // Within 15 mins of last heartbeat is considered "Active Now"
             if (now - lastHeartbeat < 15 * 60000 && now < shiftEndIST) {
                 processBlock(sessionStart, now);
                 activeString = " (Active Now)";
@@ -130,6 +138,7 @@ export const calculateTotalWorkTime = (logs, shiftDateStr) => {
 
     return { 
         standard: formatMsToTime(standardMs), 
+        // Logic restored: Extra time only returned if > 1 minute
         extra: extraMs > 60000 ? formatMsToTime(extraMs) : null,
         activeStr: activeString 
     };
