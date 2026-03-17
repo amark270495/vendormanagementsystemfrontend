@@ -15,7 +15,6 @@ import {
     CalendarDays
 } from 'lucide-react';
 
-// 🌟 Now using the externalized helper logic
 import { 
     getISTShiftDateString, 
     calculateTotalWorkTime, 
@@ -44,7 +43,7 @@ const CalendarDay = React.memo(({ day, statusInfo, onDayClick }) => {
                     </span>
                 )}
             </div>
-            {statusInfo.label && (
+            {statusInfo.label && statusInfo.badgeColor !== "hidden" && (
                 <div className="flex justify-center w-full mb-1">
                     <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded-full tracking-wider shadow-sm border ${statusInfo.badgeColor}`}>
                         {statusInfo.label}
@@ -141,7 +140,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             const res = await apiService.getUserTrackingLogs(request.username || selectedUsername, request.date, user.userIdentifier);
             const logs = res.data?.logs || [];
             setTrackingLogs(logs);
-            // 🌟 Using helper function for work time math
             setTimeCalculations(calculateTotalWorkTime(logs, request.date));
         } finally { setLogsLoading(false); }
     };
@@ -152,7 +150,9 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             const res = await apiService.approveAttendance({
                 targetUsername: reviewingRequest.username || selectedUsername, 
                 attendanceDate: reviewingRequest.date,     
-                action, approverComments: '', authenticatedUsername: user.userIdentifier
+                action: action, 
+                approverComments: '', 
+                authenticatedUsername: user.userIdentifier
             });
             if (res.data.success) {
                 await fetchData(currentMonthDate);
@@ -163,29 +163,63 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         finally { setActionLoading(false); }
     };
 
-    // --- Calendar UI Mapping ---
+    // --- Restored & Modernized Log Badge Helper ---
+    const getEventBadgeStyle = (actionType, notes) => {
+        const action = (actionType || '').toLowerCase();
+        const noteLower = (notes || '').toLowerCase();
+
+        if (noteLower.includes('previous shutdown detected')) return "bg-rose-100 text-rose-700 border-rose-200";
+        if (action === 'agentcrash') return "bg-red-100 text-red-700 border-red-300 shadow-sm";
+        if (action === 'restartaccepted') return "bg-blue-100 text-blue-700 border-blue-200";
+        if (action === 'shiftendenforced') return "bg-violet-100 text-violet-700 border-violet-200";
+        if (['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat'].includes(action)) return "bg-emerald-100 text-emerald-700 border-emerald-200";
+        if (['logout', 'logoff', 'lock', 'sleep', 'hibernate', 'shutdown'].includes(action)) return "bg-slate-200 text-slate-600 border-slate-300";
+        if (['idle'].includes(action)) return "bg-amber-100 text-amber-700 border-amber-200";
+        if (action.includes('usage')) return "bg-indigo-100 text-indigo-700 border-indigo-200";
+        
+        return "bg-slate-100 text-slate-600 border-slate-200";
+    };
+
+    // --- Fully Restored Calendar UI Mapping ---
     const getDayStatus = useCallback((day) => {
         const year = currentMonthDate.getUTCFullYear();
         const month = currentMonthDate.getUTCMonth();
         const date = new Date(Date.UTC(year, month, day));
         const dateKey = date.toISOString().split('T')[0];
         const dayOfWeek = date.getUTCDay();
+        const currentShiftDateStr = getISTShiftDateString();
         const att = attendanceData[dateKey];
 
+        // 1. Pending Actions
         if (att?.status === 'Pending') return {
             isPending: true, label: att.requestedStatus === 'Present' ? 'Present?' : 'Absent?', request: att,
             color: "bg-amber-50 border-amber-300 border-dashed border-2 cursor-pointer hover:scale-[1.02] shadow-md",
             badgeColor: "bg-amber-500 text-white border-amber-600"
         };
 
+        // 2. Leave & Holidays
         if (leaveDaysSet.has(dateKey)) return { label: 'Leave', color: "bg-violet-50 border-violet-100 text-violet-700", badgeColor: "bg-violet-500 text-white border-violet-600" };
         if (holidays[dateKey]) return { label: 'Holiday', color: "bg-orange-50 border-orange-100 text-orange-700", badgeColor: "bg-orange-500 text-white border-orange-600" };
+        
+        // 3. Finalized Attendance
         if (att?.status === 'Present') return { label: 'Present', color: "bg-emerald-50 border-emerald-100 text-emerald-700", badgeColor: "bg-emerald-500 text-white border-emerald-600" };
         if (att?.status === 'Absent' || att?.status === 'Rejected') return { label: 'Absent', color: "bg-rose-50 border-rose-100 text-rose-700", badgeColor: "bg-rose-500 text-white border-rose-600" };
-        if (dayOfWeek === 0 || dayOfWeek === 6) return { label: 'WKND', color: "bg-slate-50 border-slate-200 text-slate-400", badgeColor: "bg-slate-200 text-slate-500 border-slate-300" };
+        
+        // 4. Weekends
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            if (approvedWeekends.has(dateKey)) {
+                if (dateKey < currentShiftDateStr) return { label: 'N/A', color: "bg-rose-50/50 border-rose-200 text-rose-500 italic", badgeColor: "bg-rose-200 text-rose-700 border-rose-300" };
+                return { label: 'Apprvd', color: "bg-indigo-50 border-indigo-200 text-indigo-700", badgeColor: "bg-indigo-400 text-white border-indigo-500" };
+            }
+            return { label: 'WKND', color: "bg-slate-50 border-slate-200 text-slate-400", badgeColor: "hidden" };
+        }
 
-        return { label: '', color: "bg-white border-slate-100" };
-    }, [currentMonthDate, attendanceData, holidays, leaveDaysSet]);
+        // 5. Regular un-marked weekdays & Active Shift
+        if (dateKey < currentShiftDateStr) return { label: 'N/A', color: "bg-slate-100/50 border-slate-200 text-slate-500 italic", badgeColor: "bg-slate-200 text-slate-600 border-slate-300" };
+        if (dateKey === currentShiftDateStr) return { label: 'Active', color: "bg-blue-50 border-blue-200 text-blue-700", badgeColor: "bg-blue-500 text-white border-blue-600" };
+
+        return { label: '', color: "bg-white border-slate-100", badgeColor: "hidden" };
+    }, [currentMonthDate, attendanceData, holidays, leaveDaysSet, approvedWeekends]);
 
     const calendarGrid = useMemo(() => {
         const year = currentMonthDate.getUTCFullYear();
@@ -207,6 +241,14 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             title={`Attendance Audit: ${selectedUsername}`}
             subtitle={reviewingRequest ? `Session Security Review` : "Enterprise Attendance Log"}
         >
+            {/* Global Error Alert */}
+            {error && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-2xl mb-4 text-xs font-bold flex items-center shadow-sm">
+                    <AlertCircle size={16} className="mr-2" />
+                    {error}
+                </div>
+            )}
+
             {reviewingRequest ? (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                     {/* Header: Identity & Back */}
@@ -248,12 +290,17 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                             </div>
                             {logsLoading ? <div className="h-24 flex items-center justify-center"><Spinner size="6" /></div> : (
                                 <div className="space-y-3 h-24 overflow-y-auto custom-scrollbar pr-2">
-                                    {trackingLogs.length > 0 ? trackingLogs.map((log, i) => (
-                                        <div key={i} className="flex justify-between items-center text-[11px] font-bold py-1 border-b border-slate-200/50 last:border-0">
-                                            <span className="text-slate-500 uppercase">{log.actionType}</span>
-                                            <span className="text-slate-900">{formatLogTime(log.eventTimestamp)}</span>
-                                        </div>
-                                    )) : <p className="text-xs text-slate-400 font-medium italic">No log data found.</p>}
+                                    {trackingLogs.length > 0 ? trackingLogs.map((log, i) => {
+                                        const badgeColor = getEventBadgeStyle(log.actionType, log.workDoneNotes);
+                                        return (
+                                            <div key={i} className="flex justify-between items-center py-1 border-b border-slate-200/50 last:border-0">
+                                                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${badgeColor}`}>
+                                                    {log.actionType}
+                                                </span>
+                                                <span className="text-[11px] font-bold text-slate-900">{formatLogTime(log.eventTimestamp)}</span>
+                                            </div>
+                                        );
+                                    }) : <p className="text-xs text-slate-400 font-medium italic">No log data found.</p>}
                                 </div>
                             )}
                         </div>
