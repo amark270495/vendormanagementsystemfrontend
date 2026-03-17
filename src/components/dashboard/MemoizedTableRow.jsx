@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
 import { formatDate, getDeadlineClass } from '../../utils/helpers';
-import ActionMenu from './ActionMenu';
+import ActionMenu from './ActionMenu'; // 🎯 Ensure this matches your folder structure
 
 // --- MultiSelectDropdown ---
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
@@ -82,17 +82,18 @@ const MemoizedTableRow = memo(({
     handleCellClick, handleCellEdit, setEditingCell, setModalState, getStatusBadge, CANDIDATE_COLUMNS, EDITABLE_COLUMNS, DATE_COLUMNS
 }) => {
     const rowChanges = unsavedChanges[postingId] || {};
-    // Calculate display comment based exactly on how the original code parsed it
-    const dbComment = jobToObject(row)['Comments'];
-    const currentCustomComment = rowChanges['Comments'] !== undefined ? rowChanges['Comments'] : dbComment;
+    
+    // 🎯 Use the passed-in jobToObject to generate the object for ActionMenu and DB comments
+    const job = jobToObject(row);
+    const currentCustomComment = rowChanges['Comments'] !== undefined ? rowChanges['Comments'] : job['Comments'];
 
     return (
         <tr className="bg-white hover:bg-indigo-50/40 transition-colors">
             {row.map((cell, cellIndex) => {
                 const headerName = displayHeader[cellIndex];
                 
-                // Track edit state via unique Post IDs rather than index to avoid sorting bugs
-                const isEditing = editingCell?.postingId === postingId && editingCell?.headerName === headerName;
+                // 🎯 REVERTED: Editing state tracks rowIndex/cellIndex just as you previously had it.
+                const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                 const hasUnsaved = rowChanges[headerName] !== undefined || (headerName === 'Remarks' && rowChanges['Comments'] !== undefined);
 
                 let selectedWorkingBy = [];
@@ -112,7 +113,7 @@ const MemoizedTableRow = memo(({
                     <td 
                         key={cellIndex} 
                         onClick={() => {
-                            if (!isEditing) handleCellClick(postingId, headerName, rowIndex);
+                            if (!isEditing) handleCellClick(rowIndex, cellIndex);
                         }} 
                         className={baseCellClass}
                     >
@@ -121,14 +122,14 @@ const MemoizedTableRow = memo(({
                                 options={recruiters}
                                 selectedNames={selectedWorkingBy} 
                                 onBlur={() => setEditingCell(null)}
-                                onChange={(selectedNames) => handleCellEdit(postingId, headerName, selectedNames)}
+                                onChange={(selectedNames) => handleCellEdit(rowIndex, cellIndex, selectedNames)}
                             />
                         ) : isEditing && headerName === 'Remarks' && canEditDashboard ? (
                             <select
                                 value={rowChanges[headerName] || cell}
                                 onBlur={() => setEditingCell(null)}
                                 onChange={(e) => {
-                                    handleCellEdit(postingId, headerName, e.target.value);
+                                    handleCellEdit(rowIndex, cellIndex, e.target.value);
                                     setEditingCell(null);
                                 }}
                                 className="block w-full border-slate-300 rounded-md p-2 text-sm focus:ring-indigo-500"
@@ -143,7 +144,7 @@ const MemoizedTableRow = memo(({
                                 suppressContentEditableWarning={true} 
                                 onBlur={e => { 
                                     if (isEditing) { 
-                                        handleCellEdit(postingId, headerName, e.target.innerText); 
+                                        handleCellEdit(rowIndex, cellIndex, e.target.innerText); 
                                         setEditingCell(null); 
                                     } 
                                 }}
@@ -189,19 +190,22 @@ const MemoizedTableRow = memo(({
                 );
             })}
             
-            {/* 🎯 Using jobToObject(row) explicitly restores the required data payload for ActionMenu */}
+            {/* 🎯 FIXED: ActionMenu restored utilizing jobToObject to pass the necessary payload */}
             <td className="px-4 py-4 align-top text-center border-slate-50">
-                {canEditDashboard && <ActionMenu job={jobToObject(row)} onAction={(type, jobData) => setModalState({type, data: jobData})} />}
+                {canEditDashboard && <ActionMenu job={job} onAction={(type, jobData) => setModalState({type, data: jobData})} />}
             </td>
         </tr>
     );
 }, (prevProps, nextProps) => {
-    // Highly optimized rerender logic tracking unique postingIds 
-    const isCurrentlyEditing = nextProps.editingCell?.postingId === nextProps.postingId;
-    const wasEditing = prevProps.editingCell?.postingId === prevProps.postingId;
+    // 🎯 FIXED: This strictly prevents unneeded re-renders that drop focus while typing,
+    // explicitly ignoring changes to passed-down functions like jobToObject.
+    const isCurrentlyEditing = nextProps.editingCell?.rowIndex === nextProps.rowIndex;
+    const wasEditing = prevProps.editingCell?.rowIndex === prevProps.rowIndex;
     if (isCurrentlyEditing || wasEditing) return false; 
+    
     if (prevProps.unsavedChanges[nextProps.postingId] !== nextProps.unsavedChanges[nextProps.postingId]) return false; 
     if (prevProps.row !== nextProps.row) return false; 
+    
     return true; 
 });
 

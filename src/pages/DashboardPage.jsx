@@ -60,7 +60,7 @@ const DashboardPage = () => {
     const [columnFilters, setColumnFilters] = useState({});
     const [unsavedChanges, setUnsavedChanges] = useState({});
     
-    // 🎯 Editing cell state uses unique IDs to prevent sorting bugs
+    // 🎯 Reverted back to your original reliable rowIndex/cellIndex logic
     const [editingCell, setEditingCell] = useState(null); 
     const [recruiters, setRecruiters] = useState([]);
     
@@ -310,20 +310,25 @@ const DashboardPage = () => {
     const handleSort = (key, direction) => setSortConfig({ key, direction });
     const handleFilterChange = (header, config) => setColumnFilters(prev => ({ ...prev, [header]: config }));
 
-    const handleCellEdit = useCallback((postingId, headerName, value) => {
+    // 🎯 REVERTED: Explicitly using rowIndex and cellIndex exactly as you originally wrote it
+    const handleCellEdit = useCallback((rowIndex, cellIndex, value) => {
         if (!canEditDashboard) return;
+        const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
+        const headerName = displayHeader[cellIndex];
         const finalValue = Array.isArray(value) ? value.join(', ') : value;
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
-    }, [canEditDashboard]);
+    }, [canEditDashboard, filteredAndSortedData, displayHeader]);
 
-    const handleCellClick = useCallback((postingId, headerName, rowIndex) => {
+    const handleCellClick = useCallback((rowIndex, cellIndex) => {
         if (!canEditDashboard) return; 
+        const headerName = displayHeader[cellIndex];
+        
         if (EDITABLE_COLUMNS.includes(headerName)) {
-            setEditingCell({ postingId, headerName });
+            setEditingCell({ rowIndex, cellIndex });
         } else if (CANDIDATE_COLUMNS.includes(headerName)) {
             const rowData = filteredAndSortedData[rowIndex];
             const jobInfo = {
-                postingId: postingId,
+                postingId: rowData[displayHeader.indexOf('Posting ID')],
                 clientInfo: rowData[displayHeader.indexOf('Client Info')],
                 resumeWorkedBy: rowData[displayHeader.indexOf('Working By')],
                 candidateSlot: headerName
@@ -488,7 +493,7 @@ const DashboardPage = () => {
         doc.save(`${sheetKey}_report.pdf`);
     };
 
-    // 🎯 Reverted jobToObject to exactly match your original logic ensuring ActionMenu renders perfectly
+    // 🎯 REVERTED: Your original, perfectly structured jobToObject function so the ActionMenu renders flawlessly.
     const jobToObject = useCallback((row) => {
         const obj = displayHeader.reduce((acc, h, i) => ({...acc, [h]: row[i]}), {});
         const postingId = obj['Posting ID'];
@@ -514,20 +519,20 @@ const DashboardPage = () => {
     return (
         <div className="space-y-6 antialiased text-slate-900 pb-10">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row justify-between md:items-end gap-2 border-b border-slate-200 pb-4">
+            <div className="flex flex-col md:flex-row justify-between md:items-end gap-2 border-b border-slate-200/80 pb-5">
                 <div>
-                    <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">
+                    <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">
                         {DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}
                     </h2>
-                    <p className="text-sm text-slate-500 font-medium">Manage and track recruitment progress.</p>
+                    <p className="text-sm text-slate-500 font-medium mt-1">Manage and track recruitment progress.</p>
                 </div>
                 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                     {canEditDashboard && Object.keys(unsavedChanges).length > 0 && (
                         <button 
                             onClick={handleSaveChanges} 
                             disabled={loading}
-                            className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2" 
+                            className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-2 focus:ring-4 focus:ring-indigo-100" 
                         >
                             {loading ? <Spinner size="4" /> : (
                                 <>
@@ -540,22 +545,22 @@ const DashboardPage = () => {
 
                     <Dropdown 
                         trigger={
-                            <button className="px-4 py-2.5 bg-white text-slate-700 rounded-lg hover:bg-slate-50 font-semibold flex items-center shadow-sm border border-slate-300 transition-all">
+                            <button className="px-5 py-2.5 bg-white text-slate-700 rounded-xl hover:bg-slate-50 hover:text-indigo-600 font-semibold flex items-center shadow-sm border border-slate-300 transition-all focus:ring-4 focus:ring-slate-100">
                                 Options
-                                <svg className="ml-2 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+                                <svg className="ml-2 h-4 w-4 text-slate-400 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
                             </button>
                         }
                     >
-                        <a href="#" onClick={(e) => { e.preventDefault(); setColumnModalOpen(true); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium border-b border-slate-100">Column's Settings</a>
-                        <a href="#" onClick={(e) => { e.preventDefault(); downloadPdf(); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium border-b border-slate-100">Download PDF</a>
-                        <a href="#" onClick={(e) => { e.preventDefault(); downloadCsv(); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium">Download CSV</a>
+                        <a href="#" onClick={(e) => { e.preventDefault(); setColumnModalOpen(true); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-medium border-b border-slate-100 transition-colors">Column Settings</a>
+                        <a href="#" onClick={(e) => { e.preventDefault(); downloadPdf(); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-medium border-b border-slate-100 transition-colors">Export PDF</a>
+                        <a href="#" onClick={(e) => { e.preventDefault(); downloadCsv(); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-medium transition-colors">Export CSV</a>
                     </Dropdown>
                 </div>
             </div>
             
             {/* Search and Filters */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row items-center gap-4">
-                <div className="relative w-full md:w-80">
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/70 shadow-sm flex flex-col md:flex-row items-center gap-4">
+                <div className="relative w-full md:w-96">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                         <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     </span>
@@ -564,26 +569,26 @@ const DashboardPage = () => {
                         placeholder="Search entries..." 
                         value={generalFilter} 
                         onChange={(e) => setGeneralFilter(e.target.value)} 
-                        className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 transition-all shadow-sm"
+                        className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm placeholder:text-slate-400 font-medium"
                     />
                 </div>
                 <select 
                     value={statusFilter} 
                     onChange={(e) => setStatusFilter(e.target.value)} 
-                    className="bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                    className="w-full md:w-auto bg-white border border-slate-300 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm transition-all"
                 >
                     <option value="">All Statuses</option>
-                    <option value="Open">Open</option>
-                    <option value="Closed">Closed</option>
+                    <option value="Open">Status: Open</option>
+                    <option value="Closed">Status: Closed</option>
                 </select>
             </div>
 
-            {loading && !rawData.rows.length && <div className="flex flex-col items-center justify-center h-64 bg-white rounded-xl border border-slate-200 shadow-sm"><Spinner size="6" color="text-indigo-500" /><p className="mt-4 text-slate-500 font-medium">Refreshing dashboard...</p></div>}
-            {error && <div className="text-rose-600 bg-rose-50 p-4 rounded-xl border border-rose-200 font-medium flex items-center gap-3"><svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg> Error: {error}</div>}
+            {loading && !rawData.rows.length && <div className="flex flex-col items-center justify-center h-64 bg-white rounded-2xl border border-slate-200 shadow-sm"><Spinner size="6" color="text-indigo-500" /><p className="mt-4 text-slate-500 font-medium">Refreshing dashboard...</p></div>}
+            {error && <div className="text-rose-700 bg-rose-50 p-4 rounded-2xl border border-rose-200 font-medium flex items-center gap-3 shadow-sm"><svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg> Error: {error}</div>}
             
-            {/* 🎯 OLD STYLE: Table in its own 70vh scrolling wrapper */}
+            {/* 🎯 OLD STYLE STRUCTURE: Table in its own 70vh scrolling wrapper */}
             {!loading && !error && (
-                <div className="bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                <div className="bg-white rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-200/80 overflow-hidden" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                     <table className="w-full text-sm text-left border-collapse table-fixed min-w-[1250px]">
                         <colgroup>
                             {displayHeader.map(h => (
@@ -592,20 +597,22 @@ const DashboardPage = () => {
                             <col className={colWidths['Actions'] || 'w-15'} />
                         </colgroup>
                         
-                        <thead className="bg-slate-50/95 backdrop-blur-sm sticky top-0 z-20 border-b border-slate-200">
+                        <thead className="sticky top-0 z-20 bg-white/90 backdrop-blur-md shadow-[0_1px_3px_rgba(0,0,0,0.05)] border-b border-slate-200/80">
                             <tr>
                                 {displayHeader.map((h, i) => (
-                                    <th key={h} scope="col" className="p-0 border-r border-slate-200 last:border-r-0 relative">
+                                    <th key={h} scope="col" className="p-0 border-r border-slate-100 last:border-r-0 relative group">
                                         <Dropdown 
                                             width="72" 
                                             align={i < 2 ? 'left' : 'right'} 
                                             trigger={
-                                            <div className="flex items-center justify-between w-full h-full cursor-pointer px-4 py-4 hover:bg-slate-200 transition-colors">
+                                            <div className="flex items-center justify-between w-full h-full cursor-pointer px-5 py-4 hover:bg-slate-50/60 transition-colors">
                                                 <span className="font-bold text-slate-700 tracking-tight uppercase text-[11px] flex flex-wrap leading-tight break-words max-w-full">
                                                     {h}
                                                 </span>
-                                                {sortConfig.key === h && (
-                                                    <span className="text-indigo-600 ml-1 font-bold">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
+                                                {sortConfig.key === h ? (
+                                                    <span className="text-indigo-600 ml-2 font-bold">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
+                                                ) : (
+                                                    <span className="text-slate-300 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">↕</span>
                                                 )}
                                             </div>
                                             }>
@@ -618,7 +625,7 @@ const DashboardPage = () => {
                                         </Dropdown>
                                     </th>
                                 ))}
-                                <th scope="col" className="px-4 py-4 font-bold text-slate-700 uppercase text-[11px] text-center">Action</th>
+                                <th scope="col" className="px-5 py-4 font-bold text-slate-700 uppercase text-[11px] text-center tracking-tight">Action</th>
                             </tr>
                         </thead>
 
@@ -655,29 +662,29 @@ const DashboardPage = () => {
                 </div>
             )}
 
-            {/* 🎯 OLD STYLE: Sticky floating footer block beneath the table EXACTLY as originally structured */}
+            {/* 🎯 OLD STYLE STRUCTURE: Sticky floating footer block beneath the table */}
             {!loading && !error && filteredAndSortedData.length > 0 && (
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-sm sticky bottom-0 z-10">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/95 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-[0_-4px_15px_-4px_rgba(0,0,0,0.05),0_4px_15px_-4px_rgba(0,0,0,0.05)] sticky bottom-4 z-10">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Rows</span>
                             <select
                                 value={batchSize}
                                 onChange={handleBatchSizeChange}
-                                className="block w-20 border-slate-300 rounded-lg py-1.5 text-sm font-bold text-slate-700 focus:ring-indigo-500 shadow-sm bg-white"
+                                className="block w-20 border-slate-300 rounded-xl py-1.5 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm bg-white transition-all cursor-pointer"
                             >
                                 {[15, 30, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
                                 <option value={filteredAndSortedData.length}>All</option>
                             </select>
                         </div>
-                        <span className="h-4 w-px bg-slate-200"></span>
+                        <span className="h-5 w-px bg-slate-200"></span>
                         <span className="text-sm text-slate-500 font-medium">
                             Showing <span className="text-slate-900 font-bold">{Math.min(visibleCount, filteredAndSortedData.length)}</span> of <span className="text-slate-900 font-bold">{filteredAndSortedData.length}</span>
                         </span>
                     </div>
                     
                     {visibleCount < filteredAndSortedData.length && (
-                        <button onClick={handleLoadMore} className="w-full sm:w-auto px-6 py-2.5 bg-slate-800 text-white text-sm font-bold rounded-lg hover:bg-slate-900 transition-all shadow-lg shadow-slate-300">
+                        <button onClick={handleLoadMore} className="w-full sm:w-auto px-6 py-2.5 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-900 focus:ring-4 focus:ring-slate-300 transition-all shadow-md">
                             Load More
                         </button>
                     )}
