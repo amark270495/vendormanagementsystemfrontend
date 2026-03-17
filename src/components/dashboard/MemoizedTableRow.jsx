@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { formatDate, getDeadlineClass } from '../../utils/helpers';
-import ActionMenu from './ActionMenu'; // 🎯 Ensure this matches your folder structure
+import ActionMenu from './ActionMenu'; 
 
 // --- MultiSelectDropdown ---
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
@@ -83,16 +83,20 @@ const MemoizedTableRow = memo(({
 }) => {
     const rowChanges = unsavedChanges[postingId] || {};
     
-    // 🎯 Use the passed-in jobToObject to generate the object for ActionMenu and DB comments
+    // Evaluate the robust job logic from the parent context natively
     const job = jobToObject(row);
     const currentCustomComment = rowChanges['Comments'] !== undefined ? rowChanges['Comments'] : job['Comments'];
+
+    // 🎯 Stable ActionMenu trigger ensuring zero state loss
+    const handleActionTrigger = useCallback((type, jobData) => {
+        setModalState({ type, data: jobData });
+    }, [setModalState]);
 
     return (
         <tr className="bg-white hover:bg-indigo-50/40 transition-colors">
             {row.map((cell, cellIndex) => {
                 const headerName = displayHeader[cellIndex];
                 
-                // 🎯 REVERTED: Editing state tracks rowIndex/cellIndex just as you previously had it.
                 const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
                 const hasUnsaved = rowChanges[headerName] !== undefined || (headerName === 'Remarks' && rowChanges['Comments'] !== undefined);
 
@@ -190,15 +194,12 @@ const MemoizedTableRow = memo(({
                 );
             })}
             
-            {/* 🎯 FIXED: ActionMenu restored utilizing jobToObject to pass the necessary payload */}
-            <td className="px-4 py-4 align-top text-center border-slate-50">
-                {canEditDashboard && <ActionMenu job={job} onAction={(type, jobData) => setModalState({type, data: jobData})} />}
+            <td className="px-4 py-4 align-top text-center border-slate-50 relative">
+                {canEditDashboard && <ActionMenu job={job} onAction={handleActionTrigger} />}
             </td>
         </tr>
     );
 }, (prevProps, nextProps) => {
-    // 🎯 FIXED: This strictly prevents unneeded re-renders that drop focus while typing,
-    // explicitly ignoring changes to passed-down functions like jobToObject.
     const isCurrentlyEditing = nextProps.editingCell?.rowIndex === nextProps.rowIndex;
     const wasEditing = prevProps.editingCell?.rowIndex === prevProps.rowIndex;
     if (isCurrentlyEditing || wasEditing) return false; 
