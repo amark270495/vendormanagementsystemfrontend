@@ -578,8 +578,8 @@ const DashboardPage = () => {
                     className="w-full md:w-auto bg-white border border-slate-300 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm transition-all"
                 >
                     <option value="">All Statuses</option>
-                    <option value="Open">Status: Open</option>
-                    <option value="Closed">Status: Closed</option>
+                    <option value="Open">Open</option>
+                    <option value="Closed">Closed</option>
                 </select>
             </div>
 
