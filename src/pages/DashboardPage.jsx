@@ -11,7 +11,7 @@ import ViewDetailsModal from '../components/dashboard/ViewDetailsModal';
 import ColumnSettingsModal from '../components/dashboard/ColumnSettingsModal';
 import CandidateDetailsModal from '../components/dashboard/CandidateDetailsModal';
 import AddCommentModal from '../components/dashboard/AddCommentModal'; 
-import MemoizedTableRow from '../components/dashboard/MemoizedTableRow'; // 🌟 IMPORTING CLEANLY HERE
+import MemoizedTableRow from '../components/dashboard/MemoizedTableRow';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -24,6 +24,7 @@ const DASHBOARD_CONFIGS = {
     'VirtusaDisplay': { title: 'Virtusa Taproot' },
     'DeloitteDisplay': { title: 'Deloitte Taproot' }
 };
+
 const EDITABLE_COLUMNS = ['Working By', '# Submitted', 'Remarks'];
 const CANDIDATE_COLUMNS = ['1st Candidate Name', '2nd Candidate Name', '3rd Candidate Name'];
 const DATE_COLUMNS = ['Posting Date', 'Deadline'];
@@ -65,7 +66,6 @@ const DashboardPage = () => {
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isColumnModalOpen, setColumnModalOpen] = useState(false);
 
-    // 🎯 Fixed Column Widths exactly as requested
     const colWidths = useMemo(() => ({
         'Posting ID': 'w-23',
         'Posting Title': 'w-30',
