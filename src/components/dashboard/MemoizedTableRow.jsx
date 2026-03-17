@@ -1,27 +1,22 @@
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useEffect, useRef, memo, useMemo } from 'react';
 import { formatDate, getDeadlineClass } from '../../utils/helpers';
 import ActionMenu from './ActionMenu';
 
-// --- MultiSelectDropdown ---
+// --- MultiSelectDropdown (Encapsulated inside the row component) ---
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
-    const onBlurRef = useRef(onBlur);
-
-    useEffect(() => {
-        onBlurRef.current = onBlur;
-    }, [onBlur]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsOpen(false);
-                if (onBlurRef.current) onBlurRef.current(); 
+                if (onBlur) onBlur(); 
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    }, [onBlur]);
 
     const handleToggleSelect = (name) => {
         if (name === "Need To Update") {
@@ -82,27 +77,30 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
 
 // --- Memoized Table Row ---
 const MemoizedTableRow = memo(({
-    row, rowIndex, postingId, displayHeader, editingCell, unsavedChanges,
-    canEditDashboard, recruiters, REMARKS_OPTIONS, jobToObject,
+    row, postingId, dbComment, displayHeader, editingHeaderName, rowChanges = {},
+    canEditDashboard, recruiters, REMARKS_OPTIONS,
     handleCellClick, handleCellEdit, setEditingCell, setModalState, getStatusBadge, CANDIDATE_COLUMNS, EDITABLE_COLUMNS, DATE_COLUMNS
 }) => {
-    const rowChanges = unsavedChanges[postingId] || {};
-    const dbComment = jobToObject(row)['Comments'];
+    
+    // We isolate job data creation inside the row to prevent stale closures. 
     const currentCustomComment = rowChanges['Comments'] !== undefined ? rowChanges['Comments'] : dbComment;
+    
+    const job = useMemo(() => {
+        const obj = displayHeader.reduce((acc, h, i) => ({...acc, [h]: row[i]}), {});
+        obj['Comments'] = currentCustomComment;
+        return obj;
+    }, [displayHeader, row, currentCustomComment]);
 
     return (
         <tr className="bg-white hover:bg-blue-50/30 transition-colors">
             {row.map((cell, cellIndex) => {
                 const headerName = displayHeader[cellIndex];
-                const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
+                const isEditing = editingHeaderName === headerName;
                 const hasUnsaved = rowChanges[headerName] !== undefined || (headerName === 'Remarks' && rowChanges['Comments'] !== undefined);
-
-                // Derive display logic for the individual cell so UI accurately tracks unsaved changes
-                const cellValueToDisplay = rowChanges[headerName] !== undefined ? rowChanges[headerName] : cell;
 
                 let selectedWorkingBy = [];
                 if (headerName === 'Working By') {
-                    const workingByValue = cellValueToDisplay || "Need To Update";
+                    const workingByValue = (rowChanges[headerName] !== undefined ? rowChanges[headerName] : cell) || "Need To Update";
                     const stringValue = Array.isArray(workingByValue) ? workingByValue.join(', ') : String(workingByValue);
                     selectedWorkingBy = stringValue.split(',').map(s => s.trim()).filter(s => s && s !== "Need To Update");
                     if (selectedWorkingBy.length === 0) selectedWorkingBy = ["Need To Update"];
@@ -110,24 +108,30 @@ const MemoizedTableRow = memo(({
 
                 const baseCellClass = `px-4 py-4 border-r border-slate-50 font-medium whitespace-normal break-words align-top text-[13px] leading-relaxed 
                     ${hasUnsaved ? 'bg-amber-50 shadow-inner' : ''} 
-                    ${headerName === 'Deadline' ? getDeadlineClass(cellValueToDisplay) : 'text-slate-600'} 
+                    ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-slate-600'} 
                     ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-blue-50' : ''}`;
 
                 return (
-                    <td key={cellIndex} onClick={() => handleCellClick(rowIndex, cellIndex)} className={baseCellClass}>
+                    <td key={cellIndex} onClick={(e) => {
+                        // Prevent re-triggering state updates if already editing
+                        if (editingHeaderName !== headerName) {
+                            const rowDataMap = displayHeader.reduce((acc, h, i) => ({...acc, [h]: row[i]}), {});
+                            handleCellClick(postingId, headerName, rowDataMap);
+                        }
+                    }} className={baseCellClass}>
                         {isEditing && headerName === 'Working By' && canEditDashboard ? (
                             <MultiSelectDropdown
                                 options={recruiters}
                                 selectedNames={selectedWorkingBy} 
                                 onBlur={() => setEditingCell(null)}
-                                onChange={(selectedNames) => handleCellEdit(rowIndex, cellIndex, selectedNames)}
+                                onChange={(selectedNames) => handleCellEdit(postingId, headerName, selectedNames)}
                             />
                         ) : isEditing && headerName === 'Remarks' && canEditDashboard ? (
                             <select
-                                value={cellValueToDisplay}
+                                value={rowChanges[headerName] || cell}
                                 onBlur={() => setEditingCell(null)}
                                 onChange={(e) => {
-                                    handleCellEdit(rowIndex, cellIndex, e.target.value);
+                                    handleCellEdit(postingId, headerName, e.target.value);
                                     setEditingCell(null);
                                 }}
                                 className="block w-full border-slate-300 rounded-md p-2 text-sm focus:ring-blue-500"
@@ -142,25 +146,28 @@ const MemoizedTableRow = memo(({
                                 suppressContentEditableWarning={true} 
                                 onBlur={e => { 
                                     if (isEditing) { 
-                                        handleCellEdit(rowIndex, cellIndex, e.target.innerText); 
+                                        handleCellEdit(postingId, headerName, e.target.innerText); 
                                         setEditingCell(null); 
                                     } 
                                 }}
+                                // 🎯 Autofocus mechanism added here so contentEditable captures input immediately
+                                ref={(el) => { if (isEditing && el) el.focus(); }}
+                                className={isEditing ? "outline-none ring-2 ring-blue-500 bg-white rounded px-1 -mx-1" : ""}
                             >
                                 {headerName === 'Status' ? (
-                                    <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full border uppercase tracking-wider whitespace-nowrap ${getStatusBadge(cellValueToDisplay)}`}>
-                                        {cellValueToDisplay}
+                                    <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full border uppercase tracking-wider whitespace-nowrap ${getStatusBadge(cell)}`}>
+                                        {cell}
                                     </span>
                                 ) : DATE_COLUMNS.includes(headerName) ? (
-                                    formatDate(cellValueToDisplay)
+                                    formatDate(cell)
                                 ) : CANDIDATE_COLUMNS.includes(headerName) ? (
-                                    <span className={canEditDashboard && (cellValueToDisplay === 'Need To Update' || !cellValueToDisplay) ? 'text-blue-600 hover:text-blue-800 underline decoration-blue-200 underline-offset-4 font-bold' : 'text-slate-700 font-semibold'}>
-                                        {cellValueToDisplay || 'Add Candidate'}
+                                    <span className={canEditDashboard && (cell === 'Need To Update' || !cell) ? 'text-blue-600 hover:text-blue-800 underline decoration-blue-200 underline-offset-4 font-bold' : 'text-slate-700 font-semibold'}>
+                                        {cell || 'Add Candidate'}
                                     </span>
                                 ) : headerName === 'Remarks' ? (
                                     <div className="flex flex-col gap-2">
                                         <span className="font-bold text-slate-800">
-                                            {cellValueToDisplay || <span className="text-slate-400 italic font-normal">No Remark</span>}
+                                            {cell || <span className="text-slate-400 italic font-normal">No Remark</span>}
                                         </span>
                                         {currentCustomComment && (
                                             <div className="text-[11px] bg-indigo-50/60 text-indigo-700 p-2 rounded border border-indigo-100 shadow-sm whitespace-pre-wrap leading-relaxed">
@@ -178,7 +185,7 @@ const MemoizedTableRow = memo(({
                                         ))}
                                     </div>
                                 ) : (
-                                    cellValueToDisplay
+                                    cell
                                 )}
                             </div>
                         )}
@@ -186,27 +193,10 @@ const MemoizedTableRow = memo(({
                 );
             })}
             <td className="px-4 py-4 align-top text-center border-slate-50">
-                {canEditDashboard && <ActionMenu job={jobToObject(row)} onAction={(type, job) => setModalState({type, data: job})} />}
+                {canEditDashboard && <ActionMenu job={job} onAction={(type, jobData) => setModalState({type, data: jobData})} />}
             </td>
         </tr>
     );
-}, (prevProps, nextProps) => {
-    const isCurrentlyEditing = nextProps.editingCell?.rowIndex === nextProps.rowIndex;
-    const wasEditing = prevProps.editingCell?.rowIndex === prevProps.rowIndex;
-    
-    // Evaluate if this specific row is tracking edit changes.
-    if (isCurrentlyEditing || wasEditing) return false; 
-    
-    // Evaluate if unsavedChanges were modified for this particular row context. 
-    if (prevProps.unsavedChanges[nextProps.postingId] !== nextProps.unsavedChanges[nextProps.postingId]) return false; 
-    if (prevProps.row !== nextProps.row) return false; 
-    
-    // Evaluate props that can shift post load and visually break the row if ignored
-    if (prevProps.canEditDashboard !== nextProps.canEditDashboard) return false;
-    if (prevProps.recruiters !== nextProps.recruiters) return false;
-    if (prevProps.displayHeader !== nextProps.displayHeader) return false;
-    
-    return true; 
 });
 
 export default MemoizedTableRow;

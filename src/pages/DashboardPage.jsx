@@ -24,7 +24,6 @@ const DASHBOARD_CONFIGS = {
     'VirtusaDisplay': { title: 'Virtusa Taproot' },
     'DeloitteDisplay': { title: 'Deloitte Taproot' }
 };
-
 const EDITABLE_COLUMNS = ['Working By', '# Submitted', 'Remarks'];
 const CANDIDATE_COLUMNS = ['1st Candidate Name', '2nd Candidate Name', '3rd Candidate Name'];
 const DATE_COLUMNS = ['Posting Date', 'Deadline'];
@@ -60,7 +59,9 @@ const DashboardPage = () => {
     const [statusFilter, setStatusFilter] = useState('');
     const [columnFilters, setColumnFilters] = useState({});
     const [unsavedChanges, setUnsavedChanges] = useState({});
-    const [editingCell, setEditingCell] = useState(null);
+    
+    // 🎯 Changed from { rowIndex, cellIndex } to { postingId, headerName } for stability across sorts/filters
+    const [editingCell, setEditingCell] = useState(null); 
     const [recruiters, setRecruiters] = useState([]);
     
     const [modalState, setModalState] = useState({ type: null, data: null });
@@ -309,13 +310,28 @@ const DashboardPage = () => {
     const handleSort = (key, direction) => setSortConfig({ key, direction });
     const handleFilterChange = (header, config) => setColumnFilters(prev => ({ ...prev, [header]: config }));
 
-    const handleCellEdit = useCallback((rowIndex, cellIndex, value) => {
+    // 🎯 Use postingId instead of row index to prevent data mix-ups on sorted lists
+    const handleCellEdit = useCallback((postingId, headerName, value) => {
         if (!canEditDashboard) return;
-        const postingId = filteredAndSortedData[rowIndex][displayHeader.indexOf('Posting ID')];
-        const headerName = displayHeader[cellIndex];
         const finalValue = Array.isArray(value) ? value.join(', ') : value;
         setUnsavedChanges(prev => ({ ...prev, [postingId]: { ...prev[postingId], [headerName]: finalValue } }));
-    }, [canEditDashboard, filteredAndSortedData, displayHeader]);
+    }, [canEditDashboard]);
+
+    // 🎯 Provide specific cell data immediately to avoid stale state lookups
+    const handleCellClick = useCallback((postingId, headerName, rowDataMap) => {
+        if (!canEditDashboard) return; 
+        if (EDITABLE_COLUMNS.includes(headerName)) {
+            setEditingCell({ postingId, headerName });
+        } else if (CANDIDATE_COLUMNS.includes(headerName)) {
+            const jobInfo = {
+                postingId: postingId,
+                clientInfo: rowDataMap['Client Info'],
+                resumeWorkedBy: rowDataMap['Working By'],
+                candidateSlot: headerName
+            };
+            setModalState({ type: 'addCandidate', data: jobInfo });
+        }
+    }, [canEditDashboard]);
 
     const handleAddComment = (job, customComment) => {
         if (!canEditDashboard) return;
@@ -472,40 +488,7 @@ const DashboardPage = () => {
         doc.autoTable({ head: [displayHeader], body: filteredAndSortedData });
         doc.save(`${sheetKey}_report.pdf`);
     };
-    
-    const jobToObject = useCallback((row) => {
-        const obj = displayHeader.reduce((acc, h, i) => ({...acc, [h]: row[i]}), {});
-        const postingId = obj['Posting ID'];
-        
-        const rawRow = rawData.rows.find(r => String(r[rawData.header.indexOf('Posting ID')]) === String(postingId));
-        const dbComment = (rawRow && rawData.header.indexOf('Comments') > -1) ? rawRow[rawData.header.indexOf('Comments')] : '';
-        
-        if (unsavedChanges[postingId]?.['Comments'] !== undefined) {
-            obj['Comments'] = unsavedChanges[postingId]['Comments'];
-        } else {
-            obj['Comments'] = dbComment;
-        }
-        return obj;
-    }, [displayHeader, rawData, unsavedChanges]);
 
-    const handleCellClick = useCallback((rowIndex, cellIndex) => {
-        if (!canEditDashboard) return; 
-        const headerName = displayHeader[cellIndex];
-        
-        if (EDITABLE_COLUMNS.includes(headerName)) {
-            setEditingCell({ rowIndex, cellIndex });
-        } else if (CANDIDATE_COLUMNS.includes(headerName)) {
-            const rowData = filteredAndSortedData[rowIndex];
-            const jobInfo = {
-                postingId: rowData[displayHeader.indexOf('Posting ID')],
-                clientInfo: rowData[displayHeader.indexOf('Client Info')],
-                resumeWorkedBy: rowData[displayHeader.indexOf('Working By')],
-                candidateSlot: headerName
-            };
-            setModalState({ type: 'addCandidate', data: jobInfo });
-        }
-    }, [canEditDashboard, displayHeader, filteredAndSortedData]);
-    
     const getStatusBadge = useCallback((status) => {
         const lowerStatus = String(status || '').toLowerCase();
         if (lowerStatus === 'open') return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
@@ -613,19 +596,23 @@ const DashboardPage = () => {
                         <tbody className="divide-y divide-slate-100">
                             {filteredAndSortedData.slice(0, visibleCount).map((row, rowIndex) => {
                                 const postingId = row[displayHeader.indexOf('Posting ID')];
+                                
+                                // Lookup static raw comments for initial rendering.
+                                const rawRow = rawData.rows.find(r => String(r[rawData.header.indexOf('Posting ID')]) === String(postingId));
+                                const dbComment = (rawRow && rawData.header.indexOf('Comments') > -1) ? rawRow[rawData.header.indexOf('Comments')] : '';
+
                                 return (
                                     <MemoizedTableRow
                                         key={postingId || rowIndex}
                                         row={row}
-                                        rowIndex={rowIndex}
                                         postingId={postingId}
+                                        dbComment={dbComment}
                                         displayHeader={displayHeader}
-                                        editingCell={editingCell}
-                                        unsavedChanges={unsavedChanges}
+                                        editingHeaderName={editingCell?.postingId === postingId ? editingCell.headerName : null} // Isolated editing state
+                                        rowChanges={unsavedChanges[postingId]} // Inject ONLY this row's changes
                                         canEditDashboard={canEditDashboard}
                                         recruiters={recruiters}
                                         REMARKS_OPTIONS={REMARKS_OPTIONS}
-                                        jobToObject={jobToObject}
                                         handleCellClick={handleCellClick}
                                         handleCellEdit={handleCellEdit}
                                         setEditingCell={setEditingCell}
