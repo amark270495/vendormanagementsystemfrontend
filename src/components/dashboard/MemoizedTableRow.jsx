@@ -93,7 +93,8 @@ const MemoizedTableRow = memo(({
     }, [setModalState]);
 
     return (
-        <tr className="bg-white hover:bg-indigo-50/40 transition-colors">
+        // 🎯 FIX: 'relative hover:z-50 focus-within:z-50' prevents dropdowns from hiding behind next rows!
+        <tr className="bg-white hover:bg-indigo-50/40 transition-colors relative hover:z-50 focus-within:z-50 z-0">
             {row.map((cell, cellIndex) => {
                 const headerName = displayHeader[cellIndex];
                 
