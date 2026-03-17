@@ -1,11 +1,16 @@
 export const getISTShiftDateString = () => {
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const ist = new Date(utc + (5.5 * 60 * 60 * 1000));
+    const browserNow = new Date();
+    const utcTime = browserNow.getTime() + (browserNow.getTimezoneOffset() * 60000);
+    const istTime = new Date(utcTime + (5.5 * 60 * 60 * 1000));
 
-    if (ist.getHours() < 12) ist.setDate(ist.getDate() - 1);
+    if (istTime.getHours() < 12) {
+        istTime.setDate(istTime.getDate() - 1);
+    }
 
-    return ist.toISOString().split('T')[0];
+    const year = istTime.getFullYear();
+    const month = String(istTime.getMonth() + 1).padStart(2, '0');
+    const day = String(istTime.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 export const formatMsToTime = (ms) => {
@@ -17,7 +22,8 @@ export const formatMsToTime = (ms) => {
 export const formatLogTime = (isoString) => {
     if (!isoString) return '-';
     try {
-        return new Date(isoString).toLocaleTimeString('en-US', {
+        const dateObj = new Date(isoString);
+        return dateObj.toLocaleTimeString('en-US', {
             timeZone: 'Asia/Kolkata',
             hour12: true,
             hour: '2-digit',
@@ -28,16 +34,20 @@ export const formatLogTime = (isoString) => {
     }
 };
 
-// 🔥 FINAL PRODUCTION-GRADE LOGIC
 export const calculateTotalWorkTime = (logs, shiftDateStr) => {
-    if (!logs || logs.length === 0 || !shiftDateStr) {
+    if (!logs || logs.length === 0 || !shiftDateStr)
         return { standard: "0h 0m", extra: null, activeStr: "" };
+
+    let year, month, day;
+    const parts = shiftDateStr.split('-');
+    if (parts[0].length === 4) {
+        [year, month, day] = parts;
+    } else {
+        [day, month, year] = parts;
     }
 
-    const [year, month, day] = shiftDateStr.split('-');
-
     const shiftStartIST = new Date(`${year}-${month}-${day}T19:00:00.000+05:30`);
-    const nextDayUTC = new Date(Date.UTC(year, month - 1, parseInt(day) + 1));
+    const nextDayUTC = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day) + 1));
     const nextDayStr = nextDayUTC.toISOString().split('T')[0];
     const shiftEndIST = new Date(`${nextDayStr}T04:00:00.000+05:30`);
 
@@ -50,21 +60,19 @@ export const calculateTotalWorkTime = (logs, shiftDateStr) => {
     let activeString = "";
 
     const processBlock = (start, end) => {
-        if (!start || !end || end <= start) return;
-
         const blockTotal = end - start;
+        if (blockTotal <= 0) return;
 
         const overlapStart = start > shiftStartIST ? start : shiftStartIST;
         const overlapEnd = end < shiftEndIST ? end : shiftEndIST;
 
-        let standard = 0;
-
+        let blockStandard = 0;
         if (overlapStart < overlapEnd) {
-            standard = overlapEnd - overlapStart;
+            blockStandard = overlapEnd - overlapStart;
         }
 
-        standardMs += standard;
-        extraMs += (blockTotal - standard);
+        standardMs += blockStandard;
+        extraMs += (blockTotal - blockStandard);
     };
 
     const startActions = ['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat', 'usage update'];
@@ -75,15 +83,12 @@ export const calculateTotalWorkTime = (logs, shiftDateStr) => {
         const logTime = new Date(log.eventTimestamp);
         const notes = (log.workDoneNotes || "").toLowerCase();
 
-        if (act === 'heartbeat' || act.includes('usage')) {
-            lastHeartbeat = logTime;
-        }
+        if (act === 'heartbeat' || act.includes('usage')) lastHeartbeat = logTime;
 
         if (startActions.includes(act) && !sessionStart) {
             sessionStart = logTime;
             lastHeartbeat = logTime;
         } else if (stopActions.includes(act) && sessionStart) {
-
             if (notes.includes("previous shutdown detected")) {
                 if (lastHeartbeat && lastHeartbeat > sessionStart) {
                     processBlock(sessionStart, lastHeartbeat);
@@ -91,15 +96,12 @@ export const calculateTotalWorkTime = (logs, shiftDateStr) => {
             } else {
                 processBlock(sessionStart, logTime);
             }
-
             sessionStart = null;
         }
     });
 
-    // 🔥 Handle open session
     if (sessionStart) {
         const now = new Date();
-
         if (lastHeartbeat && lastHeartbeat > sessionStart) {
             if (now - lastHeartbeat < 15 * 60000 && now < shiftEndIST) {
                 processBlock(sessionStart, now);
