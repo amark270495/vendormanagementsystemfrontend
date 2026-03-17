@@ -570,7 +570,7 @@ const DashboardPage = () => {
                         className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm placeholder:text-slate-400 font-medium"
                     />
                 </div>
-                <div className="relative w-full md:w-96">
+                <div className="relative w-10 md:w-10">
                     <p>Status</p>
                 </div>
                 <select 
