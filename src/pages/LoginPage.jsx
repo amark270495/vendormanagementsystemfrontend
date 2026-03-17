@@ -108,7 +108,7 @@ const LoginPage = () => {
                         <div className="flex items-center justify-center gap-3 mt-1">
                             <div className="h-px w-8 bg-blue-500/50" />
                             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-400">
-                                VMS Portal
+                                Vendor Management System
                             </span>
                             <div className="h-px w-8 bg-blue-500/50" />
                         </div>
