@@ -494,24 +494,22 @@ const DashboardPage = () => {
     }, []);
 
     return (
-        <div className="flex flex-col h-full space-y-6 antialiased text-slate-900 bg-slate-50/50 p-2 sm:p-4 rounded-3xl">
-            
-            {/* --- TOP HEADER CARD --- */}
-            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 sm:px-8 sm:py-6 rounded-2xl shadow-sm border border-slate-200/70">
+        <div className="space-y-6 antialiased text-slate-900 pb-10">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row justify-between md:items-end gap-4 border-b border-slate-200/80 pb-5">
                 <div>
-                    <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-                        <svg className="w-7 h-7 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">
                         {DASHBOARD_CONFIGS[sheetKey]?.title || 'Dashboard'}
                     </h2>
-                    <p className="text-sm text-slate-500 font-medium mt-1">Manage, track, and optimize your recruitment pipeline.</p>
+                    <p className="text-sm text-slate-500 font-medium mt-1">Manage and track recruitment progress.</p>
                 </div>
                 
-                <div className="flex items-center w-full sm:w-auto space-x-3">
+                <div className="flex items-center space-x-3">
                     {canEditDashboard && Object.keys(unsavedChanges).length > 0 && (
                         <button 
                             onClick={handleSaveChanges} 
                             disabled={loading}
-                            className="flex-1 sm:flex-none px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-2 focus:ring-4 focus:ring-indigo-100" 
+                            className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-2 focus:ring-4 focus:ring-indigo-100" 
                         >
                             {loading ? <Spinner size="4" /> : (
                                 <>
@@ -535,161 +533,143 @@ const DashboardPage = () => {
                         <a href="#" onClick={(e) => { e.preventDefault(); downloadCsv(); }} className="block px-4 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-medium transition-colors">Export CSV</a>
                     </Dropdown>
                 </div>
-            </header>
+            </div>
             
-            {/* --- CONTROLS / TOOLBAR --- */}
-            <section className="flex flex-col md:flex-row items-center gap-4">
-                <div className="relative w-full md:max-w-md">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+            {/* Search and Filters */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/70 shadow-sm flex flex-col md:flex-row items-center gap-4">
+                <div className="relative w-full md:w-96">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                         <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     </span>
                     <input 
                         type="text" 
-                        placeholder="Search across all fields..." 
+                        placeholder="Search entries..." 
                         value={generalFilter} 
                         onChange={(e) => setGeneralFilter(e.target.value)} 
-                        className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200/80 rounded-xl text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm placeholder:text-slate-400 font-medium"
+                        className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm placeholder:text-slate-400 font-medium"
                     />
                 </div>
-                <div className="w-full md:w-auto shrink-0">
-                    <select 
-                        value={statusFilter} 
-                        onChange={(e) => setStatusFilter(e.target.value)} 
-                        className="w-full md:w-auto bg-white border border-slate-200/80 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm transition-all"
-                    >
-                        <option value="">All Statuses</option>
-                        <option value="Open">Status: Open</option>
-                        <option value="Closed">Status: Closed</option>
-                    </select>
-                </div>
-            </section>
+                <select 
+                    value={statusFilter} 
+                    onChange={(e) => setStatusFilter(e.target.value)} 
+                    className="w-full md:w-auto bg-white border border-slate-300 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm transition-all"
+                >
+                    <option value="">All Statuses</option>
+                    <option value="Open">Status: Open</option>
+                    <option value="Closed">Status: Closed</option>
+                </select>
+            </div>
 
-            {/* --- ALERTS & LOADERS --- */}
-            {loading && !rawData.rows.length && (
-                <div className="flex flex-col items-center justify-center h-72 bg-white rounded-2xl border border-slate-200/70 shadow-sm animate-pulse">
-                    <Spinner size="8" color="text-indigo-500" />
-                    <p className="mt-4 text-slate-500 font-semibold tracking-wide">Syncing your dashboard...</p>
-                </div>
-            )}
+            {loading && !rawData.rows.length && <div className="flex flex-col items-center justify-center h-64 bg-white rounded-2xl border border-slate-200 shadow-sm"><Spinner size="6" color="text-indigo-500" /><p className="mt-4 text-slate-500 font-medium">Refreshing dashboard...</p></div>}
+            {error && <div className="text-rose-700 bg-rose-50 p-4 rounded-2xl border border-rose-200 font-medium flex items-center gap-3 shadow-sm"><svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg> Error: {error}</div>}
             
-            {error && (
-                <div className="text-rose-700 bg-rose-50 p-5 rounded-2xl border border-rose-200 font-medium flex items-center gap-3 shadow-sm">
-                    <svg className="h-6 w-6 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg> 
-                    <span className="leading-tight">Error: {error}</span>
-                </div>
-            )}
-            
-            {/* --- MAIN DATA TABLE CARD --- */}
+            {/* OLD STYLE: Table in its own scrolling wrapper container */}
             {!loading && !error && (
-                <main className="bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-slate-200/60 flex flex-col relative overflow-hidden">
-                    
-                    <div className="overflow-x-auto overflow-y-auto max-h-[65vh] custom-scrollbar">
-                        <table className="w-full text-sm text-left border-collapse table-fixed min-w-[1250px]">
-                            <colgroup>
-                                {displayHeader.map(h => (
-                                    <col key={h} className={colWidths[h] || 'w-auto'} />
+                <div className="bg-white rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-200/80 overflow-hidden" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                    <table className="w-full text-sm text-left border-collapse table-fixed min-w-[1250px]">
+                        <colgroup>
+                            {displayHeader.map(h => (
+                                <col key={h} className={colWidths[h] || 'w-auto'} />
+                            ))}
+                            <col className={colWidths['Actions'] || 'w-15'} />
+                        </colgroup>
+                        
+                        <thead className="sticky top-0 z-20 bg-white/90 backdrop-blur-md shadow-[0_1px_3px_rgba(0,0,0,0.05)] border-b border-slate-200/80">
+                            <tr>
+                                {displayHeader.map((h, i) => (
+                                    <th key={h} scope="col" className="p-0 border-r border-slate-100 last:border-r-0 relative group">
+                                        <Dropdown 
+                                            width="72" 
+                                            align={i < 2 ? 'left' : 'right'} 
+                                            trigger={
+                                            <div className="flex items-center justify-between w-full h-full cursor-pointer px-5 py-4 hover:bg-slate-50/60 transition-colors">
+                                                <span className="font-bold text-slate-700 tracking-tight uppercase text-[11px] flex flex-wrap leading-tight break-words max-w-full">
+                                                    {h}
+                                                </span>
+                                                {sortConfig.key === h ? (
+                                                    <span className="text-indigo-600 ml-2 font-bold">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
+                                                ) : (
+                                                    <span className="text-slate-300 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">↕</span>
+                                                )}
+                                            </div>
+                                            }>
+                                            <HeaderMenu 
+                                                header={h} 
+                                                onSort={(dir) => handleSort(h, dir)} 
+                                                filterConfig={columnFilters[h]} 
+                                                onFilterChange={handleFilterChange}
+                                            />
+                                        </Dropdown>
+                                    </th>
                                 ))}
-                                <col className={colWidths['Actions'] || 'w-15'} />
-                            </colgroup>
-                            
-                            <thead className="sticky top-0 z-30 bg-white/85 backdrop-blur-md shadow-[0_1px_2px_rgba(0,0,0,0.05)] border-b border-slate-200">
-                                <tr>
-                                    {displayHeader.map((h, i) => (
-                                        <th key={h} scope="col" className="p-0 border-r border-slate-100 last:border-r-0 relative group">
-                                            <Dropdown 
-                                                width="72" 
-                                                align={i < 2 ? 'left' : 'right'} 
-                                                trigger={
-                                                <div className="flex items-center justify-between w-full h-full cursor-pointer px-5 py-4 hover:bg-slate-50/50 transition-colors">
-                                                    <span className="font-bold text-slate-700 tracking-tight uppercase text-[11px] flex flex-wrap leading-tight break-words max-w-full">
-                                                        {h}
-                                                    </span>
-                                                    {sortConfig.key === h ? (
-                                                        <span className="text-indigo-600 ml-2 font-black">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
-                                                    ) : (
-                                                        <span className="text-slate-300 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">↕</span>
-                                                    )}
-                                                </div>
-                                                }>
-                                                <HeaderMenu 
-                                                    header={h} 
-                                                    onSort={(dir) => handleSort(h, dir)} 
-                                                    filterConfig={columnFilters[h]} 
-                                                    onFilterChange={handleFilterChange}
-                                                />
-                                            </Dropdown>
-                                        </th>
-                                    ))}
-                                    <th scope="col" className="px-5 py-4 font-bold text-slate-700 uppercase text-[11px] text-center tracking-tight">Action</th>
-                                </tr>
-                            </thead>
+                                <th scope="col" className="px-5 py-4 font-bold text-slate-700 uppercase text-[11px] text-center tracking-tight">Action</th>
+                            </tr>
+                        </thead>
 
-                            <tbody className="divide-y divide-slate-100">
-                                {filteredAndSortedData.slice(0, visibleCount).map((row, rowIndex) => {
-                                    const postingId = row[displayHeader.indexOf('Posting ID')];
-                                    
-                                    const rawRow = rawData.rows.find(r => String(r[rawData.header.indexOf('Posting ID')]) === String(postingId));
-                                    const dbComment = (rawRow && rawData.header.indexOf('Comments') > -1) ? rawRow[rawData.header.indexOf('Comments')] : '';
+                        <tbody className="divide-y divide-slate-100">
+                            {filteredAndSortedData.slice(0, visibleCount).map((row, rowIndex) => {
+                                const postingId = row[displayHeader.indexOf('Posting ID')];
+                                
+                                const rawRow = rawData.rows.find(r => String(r[rawData.header.indexOf('Posting ID')]) === String(postingId));
+                                const dbComment = (rawRow && rawData.header.indexOf('Comments') > -1) ? rawRow[rawData.header.indexOf('Comments')] : '';
 
-                                    return (
-                                        <MemoizedTableRow
-                                            key={postingId || rowIndex}
-                                            row={row}
-                                            postingId={postingId}
-                                            dbComment={dbComment}
-                                            displayHeader={displayHeader}
-                                            editingHeaderName={editingCell?.postingId === postingId ? editingCell.headerName : null}
-                                            rowChanges={unsavedChanges[postingId]} 
-                                            canEditDashboard={canEditDashboard}
-                                            recruiters={recruiters}
-                                            REMARKS_OPTIONS={REMARKS_OPTIONS}
-                                            handleCellClick={handleCellClick}
-                                            handleCellEdit={handleCellEdit}
-                                            setEditingCell={setEditingCell}
-                                            setModalState={setModalState}
-                                            getStatusBadge={getStatusBadge}
-                                            CANDIDATE_COLUMNS={CANDIDATE_COLUMNS}
-                                            EDITABLE_COLUMNS={EDITABLE_COLUMNS}
-                                            DATE_COLUMNS={DATE_COLUMNS}
-                                        />
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                return (
+                                    <MemoizedTableRow
+                                        key={postingId || rowIndex}
+                                        row={row}
+                                        postingId={postingId}
+                                        dbComment={dbComment}
+                                        displayHeader={displayHeader}
+                                        editingHeaderName={editingCell?.postingId === postingId ? editingCell.headerName : null}
+                                        rowChanges={unsavedChanges[postingId]} 
+                                        canEditDashboard={canEditDashboard}
+                                        recruiters={recruiters}
+                                        REMARKS_OPTIONS={REMARKS_OPTIONS}
+                                        handleCellClick={handleCellClick}
+                                        handleCellEdit={handleCellEdit}
+                                        setEditingCell={setEditingCell}
+                                        setModalState={setModalState}
+                                        getStatusBadge={getStatusBadge}
+                                        CANDIDATE_COLUMNS={CANDIDATE_COLUMNS}
+                                        EDITABLE_COLUMNS={EDITABLE_COLUMNS}
+                                        DATE_COLUMNS={DATE_COLUMNS}
+                                    />
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* OLD STYLE: Sticky floating footer block beneath the table */}
+            {!loading && !error && filteredAndSortedData.length > 0 && (
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/95 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-[0_-4px_15px_-4px_rgba(0,0,0,0.05),0_4px_15px_-4px_rgba(0,0,0,0.05)] sticky bottom-4 z-10">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Rows</span>
+                            <select
+                                value={batchSize}
+                                onChange={handleBatchSizeChange}
+                                className="block w-20 border-slate-300 rounded-xl py-1.5 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm bg-white transition-all cursor-pointer"
+                            >
+                                {[15, 30, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
+                                <option value={filteredAndSortedData.length}>All</option>
+                            </select>
+                        </div>
+                        <span className="h-5 w-px bg-slate-200"></span>
+                        <span className="text-sm text-slate-500 font-medium">
+                            Showing <span className="text-slate-900 font-bold">{Math.min(visibleCount, filteredAndSortedData.length)}</span> of <span className="text-slate-900 font-bold">{filteredAndSortedData.length}</span>
+                        </span>
                     </div>
                     
-                    {/* --- INTEGRATED TABLE FOOTER / PAGINATION --- */}
-                    {filteredAndSortedData.length > 0 && (
-                        <footer className="bg-slate-50/80 border-t border-slate-200/70 p-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10 rounded-b-2xl">
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Rows per page</span>
-                                    <select
-                                        value={batchSize}
-                                        onChange={handleBatchSizeChange}
-                                        className="block w-20 border-slate-300 rounded-lg py-1.5 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm bg-white cursor-pointer transition-all"
-                                    >
-                                        {[15, 30, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
-                                        <option value={filteredAndSortedData.length}>All</option>
-                                    </select>
-                                </div>
-                                <div className="h-5 w-px bg-slate-300 hidden sm:block"></div>
-                                <span className="text-sm text-slate-500 font-medium">
-                                    Showing <span className="text-slate-900 font-bold">{Math.min(visibleCount, filteredAndSortedData.length)}</span> of <span className="text-slate-900 font-bold">{filteredAndSortedData.length}</span> entries
-                                </span>
-                            </div>
-                            
-                            {visibleCount < filteredAndSortedData.length && (
-                                <button onClick={handleLoadMore} className="w-full sm:w-auto px-6 py-2.5 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-900 focus:ring-4 focus:ring-slate-200 transition-all shadow-md">
-                                    Load More Results
-                                </button>
-                            )}
-                        </footer>
+                    {visibleCount < filteredAndSortedData.length && (
+                        <button onClick={handleLoadMore} className="w-full sm:w-auto px-6 py-2.5 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-900 focus:ring-4 focus:ring-slate-300 transition-all shadow-md">
+                            Load More
+                        </button>
                     )}
-                </main>
+                </div>
             )}
-
-            {/* Modals remain untouched functionality-wise */}
+            
             <ConfirmationModal isOpen={['close', 'archive', 'delete'].includes(modalState.type)} onClose={() => setModalState({type: null, data: null})} onConfirm={() => handleAction(modalState.type, modalState.data)} title={`Confirm ${modalState.type}`} message={`Are you sure you want to ${modalState.type} the job "${modalState.data?.['Posting Title']}"?`} confirmText={modalState.type}/>
             <ViewDetailsModal isOpen={modalState.type === 'details'} onClose={() => setModalState({type: null, data: null})} job={modalState.data}/>
             <ColumnSettingsModal isOpen={isColumnModalOpen} onClose={() => setColumnModalOpen(false)} allHeaders={transformedData.header} userPrefs={userPrefs} onSave={handleSaveColumnSettings}/>
