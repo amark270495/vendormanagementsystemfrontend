@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { formatDate, getDeadlineClass } from '../../utils/helpers';
-import ActionMenu from './ActionMenu'; 
+import ActionMenu from './ActionMenu';
 
 // --- MultiSelectDropdown ---
 const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
@@ -11,7 +11,7 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsOpen(false);
-                if (onBlur) onBlur(); 
+                if (onBlur) onBlur();
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
@@ -23,48 +23,41 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
             onChange(["Need To Update"]);
             return;
         }
-        
-        const currentSelected = Array.isArray(selectedNames) ? selectedNames : [];
-        const newSelectedNames = currentSelected.includes(name)
-            ? currentSelected.filter(n => n !== name)
-            : [...currentSelected.filter(n => n !== "Need To Update"), name]; 
 
-        if (newSelectedNames.length === 0) {
-            onChange(["Need To Update"]);
-        } else {
-            onChange(newSelectedNames);
-        }
+        const current = Array.isArray(selectedNames) ? selectedNames : [];
+
+        const updated = current.includes(name)
+            ? current.filter(n => n !== name)
+            : [...current.filter(n => n !== "Need To Update"), name];
+
+        onChange(updated.length === 0 ? ["Need To Update"] : updated);
     };
-    
+
     const displayArray = Array.isArray(selectedNames) ? selectedNames : [];
-    const displayValue = displayArray.length > 0 && displayArray[0] !== "Need To Update"
-        ? `${displayArray.length} selected`
-        : "Unassigned";
+
+    const displayValue =
+        displayArray.length > 0 && displayArray[0] !== "Need To Update"
+            ? `${displayArray.length} selected`
+            : "Unassigned";
 
     return (
         <div className="relative w-full" ref={dropdownRef}>
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-white text-left focus:ring-2 focus:ring-indigo-500 transition-all"
+                className="w-full border rounded-md p-2 text-sm bg-white"
             >
-                <span className="truncate block pr-4">{displayValue}</span>
-                <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                     <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                </span>
+                {displayValue}
             </button>
+
             {isOpen && (
-                <div className="absolute z-50 left-0 mt-1 bg-white border border-gray-300 rounded-md shadow-xl max-h-60 overflow-y-auto min-w-full w-auto">
+                <div className="absolute z-[9999] left-0 mt-1 bg-white border rounded-md shadow-xl max-h-60 overflow-y-auto w-full">
                     <ul>
-                        <li onClick={() => handleToggleSelect("Need To Update")} className="flex items-center px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50">
-                            <input type="checkbox" readOnly checked={displayArray.includes("Need To Update")} className="mr-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                        <li onClick={() => handleToggleSelect("Need To Update")} className="px-3 py-2 hover:bg-gray-50 cursor-pointer">
                             Unassigned
                         </li>
                         {options.map(name => (
-                            <li key={name} onClick={() => handleToggleSelect(name)} className="flex items-center px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50">
-                                <input type="checkbox" readOnly checked={displayArray.includes(name)} className="mr-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                            <li key={name} onClick={() => handleToggleSelect(name)} className="px-3 py-2 hover:bg-gray-50 cursor-pointer">
                                 {name}
                             </li>
                         ))}
@@ -76,59 +69,76 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
 };
 
 // --- Memoized Table Row ---
-const MemoizedTableRow = memo(({
-    row, rowIndex, postingId, displayHeader, editingCell, unsavedChanges,
-    canEditDashboard, recruiters, REMARKS_OPTIONS, jobToObject,
-    handleCellClick, handleCellEdit, setEditingCell, setModalState, getStatusBadge, CANDIDATE_COLUMNS, EDITABLE_COLUMNS, DATE_COLUMNS
-}) => {
-    const rowChanges = unsavedChanges[postingId] || {};
-    
-    // Evaluate the robust job logic from the parent context natively
-    const job = jobToObject(row);
-    const currentCustomComment = rowChanges['Comments'] !== undefined ? rowChanges['Comments'] : job['Comments'];
+const MemoizedTableRow = memo((props) => {
+    const {
+        row, rowIndex, postingId, displayHeader, editingCell, unsavedChanges,
+        canEditDashboard, recruiters, REMARKS_OPTIONS, jobToObject,
+        handleCellClick, handleCellEdit, setEditingCell, setModalState,
+        getStatusBadge, CANDIDATE_COLUMNS, EDITABLE_COLUMNS, DATE_COLUMNS
+    } = props;
 
-    // Stable ActionMenu trigger ensuring zero state loss
+    const rowChanges = unsavedChanges[postingId] || {};
+    const job = jobToObject(row);
+
+    const currentCustomComment =
+        rowChanges['Comments'] !== undefined
+            ? rowChanges['Comments']
+            : job['Comments'];
+
     const handleActionTrigger = useCallback((type, jobData) => {
         setModalState({ type, data: jobData });
     }, [setModalState]);
 
     return (
-        <tr className="bg-white hover:bg-indigo-50/40 transition-colors">
+        <tr className="bg-white hover:bg-indigo-50/40 transition relative z-10 hover:z-50">
+
             {row.map((cell, cellIndex) => {
                 const headerName = displayHeader[cellIndex];
-                
-                const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.cellIndex === cellIndex;
-                const hasUnsaved = rowChanges[headerName] !== undefined || (headerName === 'Remarks' && rowChanges['Comments'] !== undefined);
+
+                const isEditing =
+                    editingCell?.rowIndex === rowIndex &&
+                    editingCell?.cellIndex === cellIndex;
+
+                const hasUnsaved =
+                    rowChanges[headerName] !== undefined ||
+                    (headerName === 'Remarks' && rowChanges['Comments'] !== undefined);
 
                 let selectedWorkingBy = [];
+
                 if (headerName === 'Working By') {
-                    const workingByValue = (rowChanges[headerName] !== undefined ? rowChanges[headerName] : cell) || "Need To Update";
-                    const stringValue = Array.isArray(workingByValue) ? workingByValue.join(', ') : String(workingByValue);
-                    selectedWorkingBy = stringValue.split(',').map(s => s.trim()).filter(s => s && s !== "Need To Update");
-                    if (selectedWorkingBy.length === 0) selectedWorkingBy = ["Need To Update"];
+                    const value =
+                        rowChanges[headerName] !== undefined
+                            ? rowChanges[headerName]
+                            : cell || "Need To Update";
+
+                    selectedWorkingBy = String(value)
+                        .split(',')
+                        .map(s => s.trim())
+                        .filter(s => s && s !== "Need To Update");
+
+                    if (selectedWorkingBy.length === 0) {
+                        selectedWorkingBy = ["Need To Update"];
+                    }
                 }
 
-                const baseCellClass = `px-4 py-4 border-r border-slate-50 font-medium whitespace-normal break-words align-top text-[13px] leading-relaxed 
-                    ${hasUnsaved ? 'bg-amber-50 shadow-inner' : ''} 
-                    ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-slate-600'} 
-                    ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-indigo-50/50' : ''}`;
-
                 return (
-                    <td 
-                        key={cellIndex} 
-                        onClick={() => {
-                            if (!isEditing) handleCellClick(rowIndex, cellIndex);
-                        }} 
-                        className={baseCellClass}
+                    <td
+                        key={cellIndex}
+                        onClick={() => !isEditing && handleCellClick(rowIndex, cellIndex)}
+                        className={`px-4 py-4 border-r text-[13px] leading-relaxed align-top
+                        ${hasUnsaved ? 'bg-amber-50' : ''}
+                        ${headerName === 'Deadline' ? getDeadlineClass(cell) : 'text-slate-600'}
+                        ${canEditDashboard && (EDITABLE_COLUMNS.includes(headerName) || CANDIDATE_COLUMNS.includes(headerName)) ? 'cursor-pointer hover:bg-indigo-50' : ''}`}
                     >
-                        {isEditing && headerName === 'Working By' && canEditDashboard ? (
+                        {/* --- WORKING BY --- */}
+                        {isEditing && headerName === 'Working By' ? (
                             <MultiSelectDropdown
                                 options={recruiters}
-                                selectedNames={selectedWorkingBy} 
+                                selectedNames={selectedWorkingBy}
                                 onBlur={() => setEditingCell(null)}
-                                onChange={(selectedNames) => handleCellEdit(rowIndex, cellIndex, selectedNames)}
+                                onChange={(val) => handleCellEdit(rowIndex, cellIndex, val)}
                             />
-                        ) : isEditing && headerName === 'Remarks' && canEditDashboard ? (
+                        ) : isEditing && headerName === 'Remarks' ? (
                             <select
                                 value={rowChanges[headerName] || cell}
                                 onBlur={() => setEditingCell(null)}
@@ -136,55 +146,72 @@ const MemoizedTableRow = memo(({
                                     handleCellEdit(rowIndex, cellIndex, e.target.value);
                                     setEditingCell(null);
                                 }}
-                                className="block w-full border-slate-300 rounded-md p-2 text-sm focus:ring-indigo-500"
+                                className="w-full border rounded-md p-2 text-sm"
                                 autoFocus
                             >
                                 <option value="">Select Remark</option>
-                                {REMARKS_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                                {REMARKS_OPTIONS.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
                             </select>
                         ) : (
-                            <div 
-                                contentEditable={isEditing && headerName !== 'Working By' && headerName !== 'Remarks' && canEditDashboard} 
-                                suppressContentEditableWarning={true} 
-                                onBlur={e => { 
-                                    if (isEditing) { 
-                                        handleCellEdit(rowIndex, cellIndex, e.target.innerText); 
-                                        setEditingCell(null); 
-                                    } 
+                            <div
+                                contentEditable={
+                                    isEditing &&
+                                    headerName !== 'Working By' &&
+                                    headerName !== 'Remarks' &&
+                                    canEditDashboard
+                                }
+                                suppressContentEditableWarning
+                                onBlur={(e) => {
+                                    if (isEditing) {
+                                        handleCellEdit(rowIndex, cellIndex, e.target.innerText);
+                                        setEditingCell(null);
+                                    }
                                 }}
                                 ref={(el) => { if (isEditing && el) el.focus(); }}
-                                className={isEditing ? "outline-none ring-2 ring-indigo-500 bg-white rounded px-1 -mx-1" : ""}
+                                className={isEditing ? "outline-none ring-2 ring-indigo-500 px-1" : ""}
                             >
+                                {/* STATUS */}
                                 {headerName === 'Status' ? (
-                                    <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full border uppercase tracking-wider whitespace-nowrap ${getStatusBadge(cell)}`}>
+                                    <span className={`px-2 py-1 text-xs rounded ${getStatusBadge(cell)}`}>
                                         {cell}
                                     </span>
+
+                                /* DATE */
                                 ) : DATE_COLUMNS.includes(headerName) ? (
                                     formatDate(cell)
+
+                                /* CANDIDATES */
                                 ) : CANDIDATE_COLUMNS.includes(headerName) ? (
-                                    <span className={canEditDashboard && (cell === 'Need To Update' || !cell) ? 'text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4 font-bold' : 'text-slate-700 font-semibold'}>
+                                    <span className={canEditDashboard ? 'text-indigo-600 underline font-bold' : ''}>
                                         {cell || 'Add Candidate'}
                                     </span>
+
+                                /* REMARKS + COMMENT */
                                 ) : headerName === 'Remarks' ? (
-                                    <div className="flex flex-col gap-2">
-                                        <span className="font-bold text-slate-800">
-                                            {cell || <span className="text-slate-400 italic font-normal">No Remark</span>}
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-semibold">
+                                            {cell || 'No Remark'}
                                         </span>
                                         {currentCustomComment && (
-                                            <div className="text-[11px] bg-indigo-50/60 text-indigo-700 p-2 rounded border border-indigo-100 shadow-sm whitespace-pre-wrap leading-relaxed">
-                                                <svg className="w-3.5 h-3.5 inline mr-1 -mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" /></svg>
+                                            <div className="text-xs bg-indigo-50 p-2 rounded">
                                                 {currentCustomComment}
                                             </div>
                                         )}
                                     </div>
+
+                                /* WORKING BY DISPLAY */
                                 ) : headerName === 'Working By' ? (
-                                    <div className="flex flex-wrap gap-1.5 max-w-full">
+                                    <div className="flex flex-wrap gap-1">
                                         {selectedWorkingBy.map((name, idx) => (
-                                            <span key={idx} className="px-2 py-0.5 text-[11px] font-bold rounded-md bg-slate-200 text-slate-700 shadow-sm break-words leading-normal inline-block">
+                                            <span key={idx} className="px-2 py-0.5 text-xs bg-slate-200 rounded">
                                                 {name}
                                             </span>
                                         ))}
                                     </div>
+
+                                /* DEFAULT */
                                 ) : (
                                     cell
                                 )}
@@ -193,21 +220,23 @@ const MemoizedTableRow = memo(({
                     </td>
                 );
             })}
-            
-            <td className="px-4 py-4 align-top text-center border-slate-50">
-                {canEditDashboard && <ActionMenu job={job} onAction={handleActionTrigger} />}
+
+            {/* ACTION MENU */}
+            <td className="px-4 py-4 text-center relative z-[9999]">
+                {canEditDashboard && (
+                    <ActionMenu
+                        job={job}
+                        onAction={handleActionTrigger}
+                    />
+                )}
             </td>
         </tr>
     );
-}, (prevProps, nextProps) => {
-    const isCurrentlyEditing = nextProps.editingCell?.rowIndex === nextProps.rowIndex;
-    const wasEditing = prevProps.editingCell?.rowIndex === prevProps.rowIndex;
-    if (isCurrentlyEditing || wasEditing) return false; 
-    
-    if (prevProps.unsavedChanges[nextProps.postingId] !== nextProps.unsavedChanges[nextProps.postingId]) return false; 
-    if (prevProps.row !== nextProps.row) return false; 
-    
-    return true; 
+
+}, (prev, next) => {
+    if (prev.row !== next.row) return false;
+    if (prev.unsavedChanges !== next.unsavedChanges) return false;
+    return true;
 });
 
 export default MemoizedTableRow;
