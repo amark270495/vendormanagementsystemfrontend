@@ -4,7 +4,10 @@ import { apiService } from '../../api/apiService';
 import Spinner from '../Spinner';
 import Modal from '../Modal';
 
-// Ensures Calendar "Today" respects the 12 PM Noon Cutoff for IST Shifts
+/**
+ * Ensures Calendar "Today" respects the 12 PM Noon Cutoff for IST Shifts.
+ * If the current time in IST is before noon, the "Shift Date" is considered to be the previous day.
+ */
 const getISTShiftDateString = () => {
     const browserNow = new Date();
     const utcTime = browserNow.getTime() + (browserNow.getTimezoneOffset() * 60000);
@@ -22,12 +25,32 @@ const getISTShiftDateString = () => {
 };
 
 const formatMsToTime = (ms) => {
+    if (ms < 0) ms = 0;
     const h = Math.floor(ms / (1000 * 60 * 60));
     const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
     return `${h}h ${m}m`;
 };
 
-// BULLETPROOF TIME CALCULATION
+const formatLogTime = (isoString) => {
+    if (!isoString) return '-';
+    try {
+        const dateObj = new Date(isoString);
+        return dateObj.toLocaleTimeString('en-US', { 
+            timeZone: 'Asia/Kolkata', 
+            hour12: true, 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+    } catch (e) { return '-'; }
+};
+
+// --- Icons ---
+const ChevronLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>;
+const ChevronRightIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6 6-6"/></svg>;
+const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
+
+// --- FIXED TIME CALCULATION LOGIC ---
 const calculateTotalWorkTime = (logs, shiftDateStr) => {
     if (!logs || logs.length === 0 || !shiftDateStr) return { standard: "0h 0m", extra: null, activeStr: "" };
 
@@ -39,13 +62,17 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
         [day, month, year] = parts;
     }
 
+    // Define the exact Start of the IST Shift (7 PM)
     const shiftStartIST = new Date(`${year}-${month}-${day}T19:00:00.000+05:30`);
-    const nextDayUTC = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10) + 1));
-    const nextDayStr = nextDayUTC.toISOString().split('T')[0];
-    const shiftEndIST = new Date(`${nextDayStr}T04:00:00.000+05:30`);
+    
+    /**
+     * FIX: Anchor End exactly 9 hours later (4 AM next morning).
+     * This prevents the 13h jump by ensuring the date boundary is handled by the 
+     * Date object math rather than manual string manipulation.
+     */
+    const shiftEndIST = new Date(shiftStartIST.getTime() + (9 * 60 * 60 * 1000));
 
     const sortedLogs = [...logs].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
-    
     let standardMs = 0;
     let extraMs = 0;
     let sessionStart = null;
@@ -80,7 +107,7 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
         
         if (startActions.includes(act) && !sessionStart) {
             sessionStart = logTime;
-            lastHeartbeat = logTime; 
+            lastHeartbeat = logTime;
         } else if (stopActions.includes(act) && sessionStart) {
             if (notes.includes("previous shutdown detected")) {
                 if (lastHeartbeat && lastHeartbeat > sessionStart) {
@@ -96,22 +123,22 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
 
     if (sessionStart) {
         const now = new Date();
-        if (lastHeartbeat && lastHeartbeat > sessionStart) {
-            if (now - lastHeartbeat < 15 * 60000 && now < shiftEndIST) {
-                processBlock(sessionStart, now);
-                activeString = " (Active Now)";
-            } else {
-                processBlock(sessionStart, lastHeartbeat); 
-                activeString = " (Missing Logout)";
-            }
+        const effectiveEnd = (lastHeartbeat && lastHeartbeat > sessionStart) ? lastHeartbeat : now;
+        
+        // Check if currently active within the shift boundary
+        const isCurrentlyActive = (now - lastHeartbeat < 15 * 60000) && (now < shiftEndIST);
+
+        if (isCurrentlyActive) {
+            processBlock(sessionStart, now);
+            activeString = " (Active Now)";
         } else {
-            if (now < shiftEndIST) {
-                 processBlock(sessionStart, now);
-                 activeString = " (Active Now)";
-            } else {
-                 processBlock(sessionStart, shiftEndIST); 
-                 activeString = " (Missing Logout)";
-            }
+            /**
+             * Capping session at last heartbeat or Shift End to avoid overtime jumps 
+             * if a user leaves the computer on past 4 AM without logging out.
+             */
+            const capTime = effectiveEnd < shiftEndIST ? effectiveEnd : shiftEndIST;
+            processBlock(sessionStart, capTime);
+            activeString = effectiveEnd > shiftEndIST ? " (Shift Ended)" : " (Missing Logout)";
         }
     }
 
@@ -122,20 +149,6 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
     };
 };
 
-const formatLogTime = (isoString) => {
-    if (!isoString) return '-';
-    try {
-        const dateObj = new Date(isoString);
-        return dateObj.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour12: true, hour: '2-digit', minute: '2-digit' });
-    } catch (e) { return '-'; }
-};
-
-// --- Icons ---
-const ChevronLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>;
-const ChevronRightIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>;
-const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
-
 const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, approvedWeekends, onDayClick, pendingRequestsMap }) => {
     const getDayStatus = (day) => {
         const year = monthDate.getUTCFullYear();
@@ -143,15 +156,13 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, ap
         const date = new Date(Date.UTC(year, month, day));
 
         if (date.getUTCMonth() !== month) return { status: 'Empty' };
-        
         const dateKey = date.toISOString().split('T')[0];
         const dayOfWeek = date.getUTCDay();
         const currentShiftDateStr = getISTShiftDateString();
-
         const baseClasses = "relative transition-all duration-300 ease-out border flex flex-col justify-between p-1.5 overflow-hidden shadow-sm";
         const attendanceRecord = attendanceData[dateKey];
 
-        // 1. Check for Pending Actions FIRST (Overrides everything, including weekends)
+        // 1. Check for Pending Actions FIRST
         if (attendanceRecord && attendanceRecord.status === 'Pending') {
             const requestedText = attendanceRecord.requestedStatus === 'Present' ? 'Present?' : 'Absent?';
             const requestObj = pendingRequestsMap[dateKey] || {};
@@ -168,23 +179,21 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, ap
         
         // 3. Check Holiday
         if (holidays[dateKey]) return { status: 'Holiday', label: 'Holiday', color: `${baseClasses} bg-orange-50 border-orange-200 text-orange-800`, badgeColor: "bg-orange-200 text-orange-800", description: holidays[dateKey] };
-
+        
         // 4. Check Finalized Attendance
         if (attendanceRecord) {
              if (attendanceRecord.status === 'Present') return { status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-50 border-emerald-200 text-emerald-800`, badgeColor: "bg-emerald-200 text-emerald-900" };
              if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') return { status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-800`, badgeColor: "bg-rose-200 text-rose-900" };
         }
 
-        // 5. Weekend Check (Only if no attendance is marked yet)
+        // 5. Weekend Check
         if (dayOfWeek === 0 || dayOfWeek === 6) {
-            // Did they get approval to work this weekend?
             if (approvedWeekends.has(dateKey)) {
                 if (dateKey < currentShiftDateStr) {
                     return { status: 'Absent (Unmarked)', label: 'N/A', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-500 italic`, badgeColor: "bg-rose-200 text-rose-700", description: "Approved for work but missed shift" };
                 }
                 return { status: 'Approved Weekend', label: 'Apprvd', color: `${baseClasses} bg-indigo-50 border-indigo-200 text-indigo-700`, badgeColor: "bg-indigo-200 text-indigo-800", description: "Approved for Weekend Work" };
             }
-            // Standard Weekend
             return { status: 'Weekend', label: 'WKND', color: `${baseClasses} bg-slate-50 border-slate-200 text-slate-400`, badgeColor: "hidden" };
         }
 
@@ -228,7 +237,8 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, ap
             </div>
             <div className="grid grid-cols-7 gap-3">
                 {calendarGrid.flat().map((cell, index) => (
-                    <div key={index} className={`h-20 sm:h-24 rounded-2xl ${cell.day === null ? 'invisible' : cell.statusInfo.color}`}
+                    <div key={index} 
+                        className={`h-20 sm:h-24 rounded-2xl ${cell.day === null ? 'invisible' : cell.statusInfo.color}`}
                         title={cell.statusInfo.description || cell.statusInfo.status}
                         onClick={() => cell.statusInfo.isPending && onDayClick(cell.statusInfo.request)} 
                     >
@@ -265,13 +275,11 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const [attendanceData, setAttendanceData] = useState({});
     const [holidays, setHolidays] = useState({});
     const [leaveDaysSet, setLeaveDaysSet] = useState(new Set());
-    const [approvedWeekends, setApprovedWeekends] = useState(new Set()); // NEW
+    const [approvedWeekends, setApprovedWeekends] = useState(new Set());
     const [pendingRequestsMap, setPendingRequestsMap] = useState({});
-    
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
-
     const [reviewingRequest, setReviewingRequest] = useState(null);
     const [trackingLogs, setTrackingLogs] = useState([]);
     const [logsLoading, setLogsLoading] = useState(false);
@@ -299,7 +307,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             const monthString = `${year}-${month}`;
             const monthEndDay = new Date(Date.UTC(year, monthDate.getUTCMonth() + 1, 0)).getUTCDate();
 
-            // Fetch Weekend Requests alongside standard dependencies
             const [attendanceRes, holidaysRes, leaveRes, weekendRes] = await Promise.all([
                 apiService.getAttendance({ authenticatedUsername: user.userIdentifier, username: selectedUsername, month: monthString }),
                 apiService.getHolidays({ authenticatedUsername: user.userIdentifier, year: year.toString() }),
@@ -338,19 +345,16 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 });
             }
             setLeaveDaysSet(leaveSet);
-            
-            // Map Approved Weekends
+
             const approvedWknds = new Set();
             if (weekendRes?.data?.success && Array.isArray(weekendRes.data.requests)) {
                  weekendRes.data.requests.forEach(req => {
-                     // Make sure it matches the selected user and is approved
                      if (req.partitionKey === selectedUsername && req.status === 'Approved') {
-                         approvedWknds.add(req.date);
+                        approvedWknds.add(req.date);
                      }
                  });
             }
             setApprovedWeekends(approvedWknds);
-
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Failed to load calendar data.');
         } finally { setLoading(false); }
@@ -363,11 +367,11 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             fetchDataForUserAndMonth(initialMonth);
             setReviewingRequest(null);
         }
-    }, [isOpen, selectedUsername]);
+    }, [isOpen, selectedUsername, fetchDataForUserAndMonth]);
 
     useEffect(() => {
         if (isOpen && selectedUsername) { fetchDataForUserAndMonth(currentMonthDate); }
-    }, [currentMonthDate]);
+    }, [currentMonthDate, isOpen, selectedUsername, fetchDataForUserAndMonth]);
 
     const changeMonth = (offset) => {
         setCurrentMonthDate(prev => {
@@ -383,10 +387,8 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 setError("Internal error: Request data missing.");
                 return;
             }
-            
             setReviewingRequest(request);
             setLogsLoading(true);
-            
             try {
                 const res = await apiService.getUserTrackingLogs(request.username, request.date, user.userIdentifier);
                 if (res.data && res.data.success) {
@@ -408,7 +410,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         if (!reviewingRequest) return;
         setActionLoading(true);
         setError('');
-
         try {
             const payload = {
                 targetUsername: reviewingRequest.username, 
@@ -417,17 +418,14 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 approverComments: '',
                 authenticatedUsername: user.userIdentifier
             };
-
             const response = await apiService.approveAttendance(payload);
 
             if (response.data.success) {
                 await fetchDataForUserAndMonth(currentMonthDate);
                 setReviewingRequest(null);
-                
                 const remainingPendingInMonth = Object.values(pendingRequestsMap).some(p => 
                     p.date !== reviewingRequest.date && p.status === 'Pending'
                 );
-
                 if (!remainingPendingInMonth && onApprovalComplete) {
                     onApprovalComplete();
                 }
@@ -449,7 +447,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         if (['logout', 'logoff', 'lock', 'sleep', 'hibernate', 'shutdown'].includes(action)) return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-slate-200 text-slate-700 border border-slate-300">{actionType}</span>;
         if (['idle'].includes(action)) return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-amber-100 text-amber-800 border border-amber-200">{actionType}</span>;
         if (action.includes('usage')) return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-indigo-100 text-indigo-800 border border-indigo-200">{actionType}</span>;
-        
         return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-gray-100 text-gray-700 border border-gray-200">{actionType}</span>;
     };
 
@@ -480,7 +477,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                             </div>
                         </div>
                         <button onClick={() => setReviewingRequest(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition-colors border border-slate-200 shadow-sm flex items-center">
-                            <ChevronLeftIcon /> Back to Calendar
+                             <ChevronLeftIcon /> Back to Calendar
                         </button>
                     </div>
 
@@ -491,23 +488,20 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                     ) : (
                         <div className="space-y-8 relative z-10">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                
                                 <div className="bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 rounded-2xl p-6 flex flex-col justify-center shadow-sm relative">
                                     <div className="flex items-center text-indigo-500 mb-3">
                                         <ClockIcon />
                                         <p className="text-xs font-black uppercase tracking-wider">Calculated Work Time</p>
                                     </div>
-                                    
                                     <div className="flex items-end gap-3 mb-2">
                                         <div>
-                                            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Core Shift</p>
+                                            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Core Shift (19:00 - 04:00)</p>
                                             <p className="text-3xl font-black text-indigo-700 leading-none mt-1">
                                                 {timeCalculations.standard}
                                                 <span className="text-sm font-bold ml-1.5 text-indigo-500">{timeCalculations.activeStr}</span>
                                             </p>
                                         </div>
                                     </div>
-                                    
                                     {timeCalculations.extra && (
                                         <div className="mt-3 bg-amber-100/60 border border-amber-200 text-amber-800 px-3 py-2 rounded-lg self-start">
                                             <p className="text-xs font-bold uppercase tracking-wider">Out-of-Shift Time Detected</p>
@@ -551,7 +545,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                                         <ActivityIcon />
                                         <h4 className="text-sm font-bold text-slate-700 ml-2 uppercase tracking-wider">Device Activity Log</h4>
                                     </div>
-                                    <span className="text-xs font-bold text-slate-500 uppercase">Shift Bounds: 19:00 - 04:00</span>
+                                    <span className="text-xs font-bold text-slate-500 uppercase">Calculated with 4 AM Cutoff</span>
                                 </div>
                                 <div className="max-h-64 overflow-y-auto">
                                     <table className="min-w-full divide-y divide-slate-100">
@@ -573,7 +567,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                                                 trackingLogs.map(log => (
                                                     <tr key={log.id} className="hover:bg-indigo-50/30 transition-colors">
                                                         <td className="px-6 py-3">
-                                                            {getEventBadge(log.actionType, log.workDoneNotes)}
+                                                          {getEventBadge(log.actionType, log.workDoneNotes)}
                                                         </td>
                                                         <td className="px-6 py-3 text-right text-slate-600 font-bold tracking-wide">
                                                             {formatLogTime(log.eventTimestamp)}
@@ -619,7 +613,15 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                         </div>
                     ) : (
                         <div className="min-h-[28rem] bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm">
-                            <CalendarDisplay monthDate={currentMonthDate} attendanceData={attendanceData} holidays={holidays} leaveDaysSet={leaveDaysSet} approvedWeekends={approvedWeekends} onDayClick={handleDayClick} pendingRequestsMap={pendingRequestsMap} />
+                            <CalendarDisplay 
+                                monthDate={currentMonthDate} 
+                                attendanceData={attendanceData} 
+                                holidays={holidays} 
+                                leaveDaysSet={leaveDaysSet} 
+                                approvedWeekends={approvedWeekends} 
+                                onDayClick={handleDayClick} 
+                                pendingRequestsMap={pendingRequestsMap} 
+                            />
                         </div>
                     )}
 
