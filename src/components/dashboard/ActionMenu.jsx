@@ -1,108 +1,94 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MoreVertical, Edit, Trash2, Eye, XCircle } from 'lucide-react';
+import React from 'react';
+import Dropdown from '../Dropdown';
+import { 
+    MoreVertical, 
+    Eye, 
+    MessageSquare, // <-- Imported new icon for comments
+    Archive, 
+    XCircle, 
+    Trash2,
+    ChevronRight
+} from 'lucide-react';
 
-const ActionMenu = ({ 
-    onEdit, 
-    onDelete, 
-    onView, 
-    onCloseRequest, 
-    customActions = [], 
-    disabled = false 
-}) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const menuRef = useRef(null);
-    
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
-
-        if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-            // Handle escape key
-            const handleEsc = (e) => { if (e.key === 'Escape') setIsOpen(false); };
-            document.addEventListener('keydown', handleEsc);
-            
-            return () => {
-                document.removeEventListener('mousedown', handleClickOutside);
-                document.removeEventListener('keydown', handleEsc);
-            };
-        }
-    }, [isOpen]);
-
-    const toggleMenu = (e) => {
-        e.stopPropagation(); // Prevents row click events from firing
-        if (!disabled) setIsOpen(!isOpen);
-    };
-
-    const handleAction = (e, actionFn) => {
-        e.stopPropagation();
-        setIsOpen(false);
-        if (actionFn) actionFn();
-    };
+const ActionMenu = ({ job, onAction }) => {
+    // Helper to style the menu items consistently
+    const menuItems = [
+        { 
+            id: 'details', 
+            label: 'View Details', 
+            icon: <Eye size={16} />, 
+            color: 'text-slate-700' 
+        },
+        { 
+            id: 'comment',  // <-- ADDED THIS NEW ITEM
+            label: 'Add Comment', 
+            icon: <MessageSquare size={16} />, 
+            color: 'text-slate-700' 
+        },
+        { 
+            id: 'close', 
+            label: 'Close Job', 
+            icon: <XCircle size={16} />, 
+            color: 'text-slate-700' 
+        },
+        { 
+            id: 'archive', 
+            label: 'Archive Job', 
+            icon: <Archive size={16} />, 
+            color: 'text-slate-700' 
+        },
+        { 
+            id: 'delete', 
+            label: 'Delete Job', 
+            icon: <Trash2 size={16} />, 
+            color: 'text-rose-600',
+            hover: 'hover:bg-rose-50' 
+        },
+    ];
 
     return (
-        <div className="relative" ref={menuRef}>
-            {/* Trigger Button */}
-            <button
-                onClick={toggleMenu}
-                disabled={disabled}
-                className={`
-                    p-2 rounded-xl transition-all duration-200 focus:outline-none 
-                    ${disabled ? 'opacity-50 cursor-not-allowed text-slate-300' : 'text-slate-400 hover:bg-slate-100 hover:text-indigo-600 focus:ring-2 focus:ring-indigo-500/30'}
-                    ${isOpen ? 'bg-indigo-50 text-indigo-600' : ''}
-                `}
-            >
-                <MoreVertical size={18} />
-            </button>
-
-            {/* Dropdown Menu */}
-            {isOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 z-[100] py-2 animate-in fade-in zoom-in-95 slide-in-from-top-2 origin-top-right">
-                    
-                    {onView && (
-                        <button onClick={(e) => handleAction(e, onView)} className="w-full px-4 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-3 transition-colors">
-                            <Eye size={16} /> View Details
-                        </button>
-                    )}
-                    
-                    {onEdit && (
-                        <button onClick={(e) => handleAction(e, onEdit)} className="w-full px-4 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-3 transition-colors">
-                            <Edit size={16} /> Edit Record
-                        </button>
-                    )}
-
-                    {onCloseRequest && (
-                        <button onClick={(e) => handleAction(e, onCloseRequest)} className="w-full px-4 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-amber-600 flex items-center gap-3 transition-colors">
-                            <XCircle size={16} /> Close Request
-                        </button>
-                    )}
-
-                    {/* Render any custom specific actions passed in */}
-                    {customActions.map((action, index) => (
-                        <button 
-                            key={index}
-                            onClick={(e) => handleAction(e, action.onClick)} 
-                            className={`w-full px-4 py-2.5 text-left text-sm font-semibold flex items-center gap-3 transition-colors ${action.className || 'text-slate-600 hover:bg-slate-50 hover:text-indigo-600'}`}
-                        >
-                            {action.icon && <action.icon size={16} />} 
-                            {action.label}
-                        </button>
-                    ))}
-
-                    {onDelete && (
-                        <>
-                            <div className="h-px bg-slate-100 my-1 mx-3" />
-                            <button onClick={(e) => handleAction(e, onDelete)} className="w-full px-4 py-2.5 text-left text-sm font-bold text-rose-500 hover:bg-rose-50 flex items-center gap-3 transition-colors">
-                                <Trash2 size={16} /> Delete
-                            </button>
-                        </>
-                    )}
+        <Dropdown 
+            trigger={
+                <button 
+                    className="flex items-center justify-center text-slate-400 hover:text-indigo-600 p-2 rounded-xl hover:bg-indigo-50 transition-all duration-200 active:scale-90"
+                    aria-label="Job actions"
+                >
+                    <MoreVertical size={20} />
+                </button>
+            }
+        >
+            <div className="min-w-[180px] p-1.5 bg-white rounded-2xl shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3 py-2 mb-1 border-b border-slate-50">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        Job Options
+                    </p>
                 </div>
-            )}
-        </div>
+
+                {menuItems.map((item) => (
+                    <button
+                        key={item.id}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            onAction(item.id, job);
+                        }}
+                        className={`
+                            w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200
+                            ${item.hover || 'hover:bg-slate-50'}
+                            ${item.color}
+                            group
+                        `}
+                    >
+                        <div className="flex items-center gap-3">
+                            <span className={`${item.id === 'delete' ? 'text-rose-500' : 'text-slate-400 group-hover:text-indigo-600'}`}>
+                                {item.icon}
+                            </span>
+                            {item.label}
+                        </div>
+                        <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+                    </button>
+                ))}
+            </div>
+        </Dropdown>
     );
 };
 
