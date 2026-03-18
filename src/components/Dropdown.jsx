@@ -1,50 +1,116 @@
-import React, { useState, useEffect, useRef, createContext, useContext, useCallback } from 'react';
+import React, {
+    useState,
+    useEffect,
+    useRef,
+    createContext,
+    useContext,
+    useCallback
+} from 'react';
+import { createPortal } from 'react-dom';
 
-// 1. Create a Context to share the close function
+// Context
 const DropdownContext = createContext();
-
-// 2. Export a hook for children to use
 export const useDropdown = () => useContext(DropdownContext);
 
-/**
- * @param {string} [props.align='right'] - 'left' or 'right' alignment.
- */
-const Dropdown = ({ trigger, children, width = '48', align = 'right' }) => {
+const Dropdown = ({ trigger, children, width = '180px', align = 'right' }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const node = useRef();
+    const [position, setPosition] = useState({ top: 0, left: 0 });
+    const triggerRef = useRef(null);
+    const dropdownRef = useRef(null);
 
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (node.current && !node.current.contains(e.target)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    // 3. Create a stable close function
     const close = useCallback(() => setIsOpen(false), []);
 
-    const alignmentClass = align === 'left' ? 'left-0' : 'right-0';
+    // 🔥 Calculate position dynamically
+    const updatePosition = useCallback(() => {
+        if (!triggerRef.current) return;
+
+        const rect = triggerRef.current.getBoundingClientRect();
+
+        const top = rect.bottom + window.scrollY + 6;
+
+        let left;
+        if (align === 'left') {
+            left = rect.left + window.scrollX;
+        } else {
+            left = rect.right + window.scrollX - 180; // fallback width
+        }
+
+        setPosition({ top, left });
+    }, [align]);
+
+    // Handle open
+    const toggleDropdown = () => {
+        if (!isOpen) {
+            updatePosition();
+        }
+        setIsOpen(prev => !prev);
+    };
+
+    // Close on outside click
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(e.target) &&
+                triggerRef.current &&
+                !triggerRef.current.contains(e.target)
+            ) {
+                close();
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [close]);
+
+    // Reposition on scroll / resize
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleScroll = () => updatePosition();
+        const handleResize = () => updatePosition();
+
+        window.addEventListener('scroll', handleScroll, true);
+        window.addEventListener('resize', handleResize);
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll, true);
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [isOpen, updatePosition]);
 
     return (
-        <div className="relative inline-block text-left" ref={node}>
-            <div onClick={() => setIsOpen(!isOpen)} className="h-full w-full">
+        <>
+            {/* Trigger */}
+            <div
+                ref={triggerRef}
+                onClick={toggleDropdown}
+                className="inline-block w-full h-full"
+            >
                 {trigger}
             </div>
 
-            {isOpen && (
-                // 4. Wrap children in the Provider
-                <DropdownContext.Provider value={{ close }}>
-                    <div 
-                        className={`absolute ${alignmentClass} z-[100] mt-2 w-${width} bg-white rounded-md shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none py-1`}
-                    >
-                        {children}
-                    </div>
-                </DropdownContext.Provider>
-            )}
-        </div>
+            {/* Portal Dropdown */}
+            {isOpen &&
+                createPortal(
+                    <DropdownContext.Provider value={{ close }}>
+                        <div
+                            ref={dropdownRef}
+                            style={{
+                                position: 'fixed',
+                                top: position.top,
+                                left: position.left,
+                                width: width,
+                                zIndex: 99999
+                            }}
+                            className="bg-white rounded-xl shadow-2xl border border-slate-200 py-1 animate-in fade-in zoom-in-95 duration-100"
+                        >
+                            {children}
+                        </div>
+                    </DropdownContext.Provider>,
+                    document.body
+                )}
+        </>
     );
 };
 
