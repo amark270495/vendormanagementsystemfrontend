@@ -92,9 +92,9 @@ const MemoizedTableRow = memo(({
         setModalState({ type, data: jobData });
     }, [setModalState]);
 
+    {/* 🎯 FIX: Removed 'relative', 'z-0', and 'hover' classes so dropdowns can naturally overlay succeeding rows */}
     return (
-        // 🎯 FIX: 'relative hover:z-50 focus-within:z-50' prevents dropdowns from hiding behind next rows!
-        <tr className="bg-white hover:bg-indigo-50/40 transition-colors relative hover:z-50 focus-within:z-50 z-0">
+        <tr className="bg-white hover:bg-indigo-50/40 transition-colors">
             {row.map((cell, cellIndex) => {
                 const headerName = displayHeader[cellIndex];
                 
@@ -195,7 +195,8 @@ const MemoizedTableRow = memo(({
                 );
             })}
             
-            <td className="px-4 py-4 align-top text-center border-slate-50 relative">
+            {/* 🎯 FIX: Also removed 'relative' from this <td> so the dropdown mounts cleanly */}
+            <td className="px-4 py-4 align-top text-center border-slate-50">
                 {canEditDashboard && <ActionMenu job={job} onAction={handleActionTrigger} />}
             </td>
         </tr>
