@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // 🌟 Added useNavigate
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 
 const ChangePasswordPage = () => {
     const { user, passwordChanged, logout } = useAuth();
+    const navigate = useNavigate(); // 🌟 Initialized navigate
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
@@ -27,9 +29,11 @@ const ChangePasswordPage = () => {
         try {
             const response = await apiService.changePassword(user.userIdentifier, newPassword, user.userIdentifier);
             if (response.data.success) {
-                setSuccess("Password changed successfully! Redirecting to the dashboard...");
+                // 🌟 Updated success message
+                setSuccess("Password changed successfully! Redirecting to home page...");
                 setTimeout(() => {
-                    passwordChanged();
+                    passwordChanged(); // Updates your auth context
+                    navigate('/home'); // 🌟 Routes the user to the home page
                 }, 2000);
             } else {
                 setError(response.data.message);
