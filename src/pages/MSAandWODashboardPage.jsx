@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
-import HeaderMenu from '../components/dashboard/HeaderMenu';
 import ConfirmationModal from '../components/dashboard/ConfirmationModal';
 import EditMSAandWOModal from '../components/msa-wo/EditMSAandWOModal';
 import { usePermissions } from '../hooks/usePermissions';
@@ -20,7 +19,7 @@ const DocumentPreviewModal = ({ isOpen, onClose, document }) => {
             title={`Document Viewer: ${document.contractNumber}`}
             size="5xl"
         >
-            <div className="w-full h-[80vh] bg-[#323639] flex flex-col items-center overflow-y-auto p-4 sm:p-8 custom-scrollbar rounded-b-lg shadow-inner">
+            <div className="w-full h-[80vh] bg-[#323639] flex flex-col items-center overflow-y-auto p-4 sm:p-8 rounded-b-lg shadow-inner" style={{ scrollbarWidth: 'thin' }}>
                 {document.pdfUrl ? (
                     <div className="w-full max-w-4xl h-full bg-white shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex flex-col rounded-sm overflow-hidden border border-gray-400">
                         <div className="bg-[#f4f4f5] border-b border-gray-300 h-10 flex items-center px-4 justify-between text-gray-600 text-xs font-semibold flex-shrink-0">
@@ -99,7 +98,6 @@ const MSAandWODashboardPage = () => {
         loadData();
     }, [loadData]);
 
-    // KPI Calculations
     const kpiMetrics = useMemo(() => {
         const total = documents.length;
         const fullySigned = documents.filter(d => d.status === 'Fully Signed').length;
@@ -244,7 +242,6 @@ const MSAandWODashboardPage = () => {
         <div className="min-h-[calc(100vh-64px)] bg-[#f9fafb] p-4 sm:p-8 font-sans">
             <div className="max-w-[1600px] mx-auto space-y-6">
                 
-                {/* Header & Controls */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
                         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Agreements Hub</h1>
@@ -268,7 +265,6 @@ const MSAandWODashboardPage = () => {
                     </div>
                 </div>
 
-                {/* KPI Metrics Dashboard */}
                 {!loading && !error && canManageMSAWO && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex items-center justify-between">
@@ -310,7 +306,6 @@ const MSAandWODashboardPage = () => {
                     </div>
                 )}
 
-                {/* Alerts */}
                 {error && (
                     <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded shadow-sm flex items-center">
                         <svg className="h-5 w-5 text-red-500 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path></svg>
@@ -324,12 +319,11 @@ const MSAandWODashboardPage = () => {
                     </div>
                 )}
 
-                {/* Main Data Table Card */}
                 {!loading && !error && canManageMSAWO && (
                     <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
-                        <div className="overflow-x-auto flex-1 custom-scrollbar">
+                        <div className="overflow-x-auto flex-1" style={{ scrollbarWidth: 'thin' }}>
                             <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-[#f8fafc] sticky top-0 z-10">
+                                <thead className="bg-[#f8fafc] sticky top-0 z-10 shadow-sm">
                                     <tr>
                                         {tableHeader.map(h => {
                                             const sortKey = h.charAt(0).toLowerCase() + h.slice(1).replace(/\s/g, '');
@@ -366,7 +360,7 @@ const MSAandWODashboardPage = () => {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">{doc.candidateName}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{doc.jobTitle}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{doc.clientName}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono bg-gray-50/50">{doc.contractNumber}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono bg-gray-50/50 rounded">{doc.contractNumber}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(doc.submittedOn).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide border ${
@@ -398,7 +392,7 @@ const MSAandWODashboardPage = () => {
                                                             Open Viewer
                                                         </a>
                                                         <a href="#" onClick={(e) => { e.preventDefault(); handleResend(doc); }} className="group flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-medium">
-                                                            <svg className="mr-3 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                                            <svg className="mr-3 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v10a2 2 0 002 2z"></path></svg>
                                                             Resend Email
                                                         </a>
                                                         <a href="#" onClick={(e) => { e.preventDefault(); handleEdit(doc); }} className="group flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-medium">
