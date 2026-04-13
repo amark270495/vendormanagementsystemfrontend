@@ -3,13 +3,14 @@ import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import Dropdown from '../components/Dropdown';
-import HeaderMenu from '../components/dashboard/HeaderMenu';
+import HeaderMenu from '../components/dashboard/HeaderMenu'; // Left import intact if used elsewhere
 import ConfirmationModal from '../components/dashboard/ConfirmationModal';
 import EditMSAandWOModal from '../components/msa-wo/EditMSAandWOModal';
 import { usePermissions } from '../hooks/usePermissions';
 import Modal from '../components/Modal';
 import SignatureModal from '../components/msa-wo/SignatureModal';
 
+// Enhanced Preview Modal - Dark "Acrobat" style viewer
 const DocumentPreviewModal = ({ isOpen, onClose, document }) => {
     if (!isOpen || !document) return null;
 
@@ -17,19 +18,28 @@ const DocumentPreviewModal = ({ isOpen, onClose, document }) => {
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={`Preview: ${document.vendorName} - ${document.contractNumber}`}
-            size="4xl"
+            title={`Document Viewer: ${document.contractNumber}`}
+            size="5xl"
         >
-            <div className="w-full h-[75vh]">
+            <div className="w-full h-[80vh] bg-[#323639] flex flex-col items-center overflow-y-auto p-4 sm:p-8 custom-scrollbar rounded-b-lg shadow-inner">
                 {document.pdfUrl ? (
-                    <iframe
-                        src={document.pdfUrl}
-                        title="Document Preview"
-                        className="w-full h-full border-0"
-                    />
+                    <div className="w-full max-w-4xl h-full bg-white shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex flex-col">
+                         {/* Fake PDF Toolbar for authentic feel */}
+                        <div className="bg-[#f4f4f5] border-b border-gray-300 h-10 flex items-center px-4 justify-between text-gray-500 text-sm flex-shrink-0">
+                            <span>{document.vendorName} - {document.contractNumber}</span>
+                            <span>Secure Preview</span>
+                        </div>
+                        <iframe
+                            src={document.pdfUrl}
+                            title="Document Preview"
+                            className="w-full flex-1 border-0"
+                        />
+                    </div>
                 ) : (
-                    <div className="flex items-center justify-center h-full bg-gray-100 rounded-md">
-                        <p className="text-gray-500">Could not load document preview.</p>
+                    <div className="flex flex-col items-center justify-center h-full text-center">
+                        <svg className="w-16 h-16 text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <p className="text-gray-300 font-medium text-lg">Document Unavailable</p>
+                        <p className="text-gray-500 text-sm mt-1">Could not load the secure preview for this file.</p>
                     </div>
                 )}
             </div>
@@ -138,7 +148,7 @@ const MSAandWODashboardPage = () => {
             requiresPassword: true,
             signerInfo: { name: user?.userName, title: 'Director' },
             document: doc,
-            pdfUrl: doc.pdfUrl // Pass the URL to the modal
+            pdfUrl: doc.pdfUrl
         });
         setIsSigningModalOpen(true);
     };
@@ -220,58 +230,164 @@ const MSAandWODashboardPage = () => {
     }, [signerConfig.document, user?.userIdentifier, loadData]);
 
     return (
-        <>
-            <div className="space-y-4">
-                <h1 className="text-3xl font-bold text-gray-800">MSA and WO Dashboard</h1>
-
-                <div className="bg-white p-4 rounded-lg shadow-sm border">
-                    <input type="text" placeholder="Search..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="shadow-sm border-gray-300 rounded-md px-3 py-2 w-full md:w-1/3" disabled={loading || !canManageMSAWO}/>
+        <div className="min-h-screen bg-[#f8f9fa] py-8 font-sans">
+            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+                
+                {/* Enterprise Header Area */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Contract Management</h1>
+                        <p className="text-sm text-gray-500 mt-1">Review, track, and securely execute MSA and Work Orders.</p>
+                    </div>
+                    
+                    <div className="relative w-full md:w-80">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        <input 
+                            type="text" 
+                            placeholder="Search documents, vendors, or IDs..." 
+                            value={generalFilter} 
+                            onChange={(e) => setGeneralFilter(e.target.value)} 
+                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-600 focus:border-blue-600 sm:text-sm transition-colors shadow-sm" 
+                            disabled={loading || !canManageMSAWO}
+                        />
+                    </div>
                 </div>
 
-                {loading && <div className="flex justify-center items-center h-64"><Spinner /></div>}
-                {error && <div className="text-red-500 bg-red-100 p-4 rounded-lg">Error: {error}</div>}
-                {success && <div className="text-green-500 bg-green-100 p-4 rounded-lg">Success: {success}</div>}
+                {/* Alert Banners */}
+                {error && (
+                    <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md shadow-sm">
+                        <div className="flex items-center">
+                            <svg className="h-5 w-5 text-red-500 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path></svg>
+                            <p className="text-sm text-red-700 font-medium">{error}</p>
+                        </div>
+                    </div>
+                )}
+                {success && (
+                    <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-md shadow-sm">
+                        <div className="flex items-center">
+                            <svg className="h-5 w-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
+                            <p className="text-sm text-green-700 font-medium">{success}</p>
+                        </div>
+                    </div>
+                )}
 
+                {/* Main Data Table */}
                 {!loading && !error && canManageMSAWO && (
-                    <div className="bg-white rounded-lg shadow-lg border" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left text-gray-500">
-                                <thead className="text-xs text-gray-700 uppercase bg-slate-200 sticky top-0 z-10">
-                                    <tr>{tableHeader.map(h => (<th key={h} scope="col" className="p-0 border-r last:border-r-0"><div className="flex items-center justify-between w-full h-full cursor-pointer p-3 hover:bg-slate-300" onClick={() => handleSort(h.charAt(0).toLowerCase() + h.slice(1).replace(/\s/g, ''))}><span className="font-bold">{h}</span>{sortConfig.key === (h.charAt(0).toLowerCase() + h.slice(1).replace(/\s/g, '')) && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</div></th>))}</tr>
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                        <div className="overflow-x-auto flex-1 custom-scrollbar">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                                    <tr>
+                                        {tableHeader.map(h => {
+                                            const sortKey = h.charAt(0).toLowerCase() + h.slice(1).replace(/\s/g, '');
+                                            const isSorted = sortConfig.key === sortKey;
+                                            return (
+                                                <th 
+                                                    key={h} 
+                                                    scope="col" 
+                                                    className="px-6 py-3 text-left group cursor-pointer"
+                                                    onClick={() => handleSort(sortKey)}
+                                                >
+                                                    <div className="flex items-center space-x-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                        <span>{h}</span>
+                                                        <span className={`transition-opacity ${isSorted ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'}`}>
+                                                            {isSorted && sortConfig.direction === 'descending' ? (
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                            ) : (
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                </th>
+                                            );
+                                        })}
+                                    </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="bg-white divide-y divide-gray-100">
                                     {filteredAndSortedData.map((doc) => (
-                                        <tr key={doc.rowKey} className="bg-gray-50 border-b hover:bg-gray-100">
-                                            <td className="px-4 py-3 border-r font-medium text-gray-900">{doc.vendorName}</td>
-                                            <td className="px-4 py-3 border-r">{doc.candidateName}</td>
-                                            <td className="px-4 py-3 border-r">{doc.jobTitle}</td>
-                                            <td className="px-4 py-3 border-r">{doc.clientName}</td>
-                                            <td className="px-4 py-3 border-r">{doc.contractNumber}</td>
-                                            <td className="px-4 py-3 border-r">{new Date(doc.submittedOn).toLocaleDateString()}</td>
-                                            <td className="px-4 py-3 border-r"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${doc.status === 'Fully Signed' ? 'bg-green-100 text-green-800' : doc.status === 'Vendor Signed' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>{doc.status}</span></td>
-                                            <td className="px-4 py-3 border-r text-center">
-                                                {doc.status === 'Vendor Signed' && (<button onClick={() => handleDirectorSignClick(doc)} className="px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-md hover:bg-green-700 mr-2 shadow-sm">Sign as Taproot</button>)}
-                                                <Dropdown trigger={<button className="text-gray-500 hover:text-gray-700 p-1 rounded-full inline-flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>}>
-                                                    <a href="#" onClick={(e) => { e.preventDefault(); handlePreview(doc); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Preview/Review</a>
-                                                    <a href="#" onClick={(e) => { e.preventDefault(); handleEdit(doc); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit / Cancel</a>
-                                                    <a href="#" onClick={(e) => { e.preventDefault(); handleResend(doc); }} className="block px-4 py-2 text-sm text-blue-600 hover:bg-gray-100">Resend Email</a>
-                                                    <a href="#" onClick={(e) => { e.preventDefault(); handleDelete(doc); }} className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Delete</a>
+                                        <tr key={doc.rowKey} className="hover:bg-blue-50/50 transition-colors duration-150">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{doc.vendorName}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{doc.candidateName}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{doc.jobTitle}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{doc.clientName}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">{doc.contractNumber}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(doc.submittedOn).toLocaleDateString()}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset ${
+                                                    doc.status === 'Fully Signed' ? 'bg-green-50 text-green-700 ring-green-600/20' : 
+                                                    doc.status === 'Vendor Signed' ? 'bg-amber-50 text-amber-700 ring-amber-600/20' : 
+                                                    'bg-blue-50 text-blue-700 ring-blue-600/20'
+                                                }`}>
+                                                    {doc.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center space-x-3">
+                                                {doc.status === 'Vendor Signed' && (
+                                                    <button 
+                                                        onClick={() => handleDirectorSignClick(doc)} 
+                                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-[#1473E6] hover:bg-[#0d66d0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1473E6] transition-colors"
+                                                    >
+                                                        Review & Sign
+                                                    </button>
+                                                )}
+                                                <Dropdown trigger={
+                                                    <button className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-md transition-colors focus:outline-none">
+                                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>
+                                                    </button>
+                                                }>
+                                                    <div className="py-1 min-w-[160px]">
+                                                        <a href="#" onClick={(e) => { e.preventDefault(); handlePreview(doc); }} className="group flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                                                            <svg className="mr-3 h-4 w-4 text-gray-400 group-hover:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                            View Document
+                                                        </a>
+                                                        <a href="#" onClick={(e) => { e.preventDefault(); handleResend(doc); }} className="group flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                                                            <svg className="mr-3 h-4 w-4 text-gray-400 group-hover:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                                            Resend Email
+                                                        </a>
+                                                        <a href="#" onClick={(e) => { e.preventDefault(); handleEdit(doc); }} className="group flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                                                            <svg className="mr-3 h-4 w-4 text-gray-400 group-hover:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                            Edit Data
+                                                        </a>
+                                                        <div className="border-t border-gray-100 my-1"></div>
+                                                        <a href="#" onClick={(e) => { e.preventDefault(); handleDelete(doc); }} className="group flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                                            <svg className="mr-3 h-4 w-4 text-red-400 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                            Delete Record
+                                                        </a>
+                                                    </div>
                                                 </Dropdown>
                                             </td>
                                         </tr>
                                     ))}
+                                    {filteredAndSortedData.length === 0 && (
+                                        <tr>
+                                            <td colSpan={8} className="px-6 py-16 text-center text-gray-500">
+                                                <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                <p className="mt-4 text-sm font-medium">No documents found matching your criteria.</p>
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 )}
+                
+                {loading && (
+                    <div className="flex flex-col justify-center items-center h-64 bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <Spinner />
+                        <p className="mt-4 text-sm text-gray-500 font-medium">Loading documents...</p>
+                    </div>
+                )}
             </div>
-            <ConfirmationModal isOpen={modalState.type === 'delete'} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleConfirmDelete} title="Confirm Deletion" message={`Are you sure you want to delete the document for "${modalState.data?.vendorName}"?`} confirmText="Delete"/>
-            <ConfirmationModal isOpen={modalState.type === 'resend'} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleConfirmResend} title="Confirm Resend" message={`Are you sure you want to resend the e-sign email to "${modalState.data?.vendorEmail}"?`} confirmText="Resend"/>
+
+            <ConfirmationModal isOpen={modalState.type === 'delete'} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleConfirmDelete} title="Confirm Deletion" message={`Are you sure you want to securely delete the document for "${modalState.data?.vendorName}"? This action cannot be undone.`} confirmText="Delete Document"/>
+            <ConfirmationModal isOpen={modalState.type === 'resend'} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleConfirmResend} title="Resend Signature Request" message={`Are you sure you want to resend the e-sign email to "${modalState.data?.vendorEmail}"?`} confirmText="Resend Email"/>
             <EditMSAandWOModal isOpen={modalState.type === 'edit'} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveChanges} documentToEdit={modalState.data}/>
             <DocumentPreviewModal isOpen={isPreviewModalOpen} onClose={() => setIsPreviewModalOpen(false)} document={documentToPreview}/>
             <SignatureModal isOpen={isSigningModalOpen} onClose={() => setIsSigningModalOpen(false)} onSign={handleSign} signerType={signerConfig.signerType} signerInfo={signerConfig.signerInfo} requiresPassword={signerConfig.requiresPassword} documentUrl={signerConfig.pdfUrl} />
-        </>
+        </div>
     );
 };
 
