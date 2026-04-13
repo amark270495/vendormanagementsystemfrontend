@@ -244,7 +244,7 @@ const MSAandWODashboardPage = () => {
                 
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
-                        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Agreements Hub</h1>
+                        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">MSA & WO</h1>
                         <p className="text-sm text-gray-500 mt-2 max-w-xl">
                             Manage, track, and execute Master Services Agreements and Work Orders securely.
                         </p>
