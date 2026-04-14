@@ -54,13 +54,20 @@ const MSAandWODashboardPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    
+    // Filtering & Sorting State
     const [generalFilter, setGeneralFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('All');
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
     
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    
+    // Modal States
     const [modalState, setModalState] = useState({ type: null, data: null });
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [documentToPreview, setDocumentToPreview] = useState(null);
-    
     const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
     const [signerConfig, setSignerConfig] = useState({});
 
@@ -98,6 +105,11 @@ const MSAandWODashboardPage = () => {
         loadData();
     }, [loadData]);
 
+    // Reset pagination when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [generalFilter, statusFilter, sortConfig]);
+
     const kpiMetrics = useMemo(() => {
         const total = documents.length;
         const fullySigned = documents.filter(d => d.status === 'Fully Signed').length;
@@ -110,6 +122,15 @@ const MSAandWODashboardPage = () => {
     const filteredAndSortedData = useMemo(() => {
         let data = [...documents];
 
+        // 1. Status Filter
+        if (statusFilter !== 'All') {
+            data = data.filter(item => {
+                if (statusFilter === 'Pending') return item.status === 'Document Ready' || !item.status;
+                return item.status === statusFilter;
+            });
+        }
+
+        // 2. Global Text Search
         if (generalFilter) {
             const lower = generalFilter.toLowerCase();
             data = data.filter(item =>
@@ -117,6 +138,7 @@ const MSAandWODashboardPage = () => {
             );
         }
 
+        // 3. Sorting
         if (sortConfig.key) {
             data.sort((a, b) => {
                 let valA = a[sortConfig.key];
@@ -137,7 +159,14 @@ const MSAandWODashboardPage = () => {
         }
 
         return data;
-    }, [documents, generalFilter, sortConfig]);
+    }, [documents, generalFilter, statusFilter, sortConfig]);
+
+    // Pagination Logic
+    const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
+    const paginatedData = filteredAndSortedData.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
 
     const handleSort = (key) => {
         let direction = 'ascending';
@@ -250,18 +279,41 @@ const MSAandWODashboardPage = () => {
                         </p>
                     </div>
                     
-                    <div className="w-full md:w-96 relative group">
-                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                            <svg className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        </div>
-                        <input 
-                            type="text" 
-                            placeholder="Search by vendor, candidate, or contract ID..." 
-                            value={generalFilter} 
-                            onChange={(e) => setGeneralFilter(e.target.value)} 
-                            className="block w-full pl-11 pr-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-shadow shadow-sm" 
+                    {/* ENHANCED CONTROLS: Search, Filter, and Refresh */}
+                    <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3">
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="block w-full sm:w-48 px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent shadow-sm"
                             disabled={loading || !canManageMSAWO}
-                        />
+                        >
+                            <option value="All">All Statuses</option>
+                            <option value="Fully Signed">Fully Executed</option>
+                            <option value="Vendor Signed">Action Required (Taproot)</option>
+                            <option value="Pending">Pending Vendor</option>
+                        </select>
+
+                        <div className="relative group w-full sm:w-72">
+                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                <svg className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </div>
+                            <input 
+                                type="text" 
+                                placeholder="Search records..." 
+                                value={generalFilter} 
+                                onChange={(e) => setGeneralFilter(e.target.value)} 
+                                className="block w-full pl-11 pr-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-shadow shadow-sm" 
+                                disabled={loading || !canManageMSAWO}
+                            />
+                        </div>
+
+                        <button 
+                            onClick={loadData}
+                            disabled={loading}
+                            className="inline-flex items-center justify-center px-4 py-2.5 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                        >
+                            <svg className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </button>
                     </div>
                 </div>
 
@@ -287,7 +339,7 @@ const MSAandWODashboardPage = () => {
                         </div>
                         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-500">Action Required (Taproot)</p>
+                                <p className="text-sm font-medium text-gray-500">Action Required</p>
                                 <p className="text-2xl font-bold text-gray-900 mt-1">{kpiMetrics.vendorSigned}</p>
                             </div>
                             <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center border border-amber-100">
@@ -351,7 +403,7 @@ const MSAandWODashboardPage = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-100">
-                                    {filteredAndSortedData.map((doc) => (
+                                    {paginatedData.map((doc) => (
                                         <tr key={doc.rowKey} className="hover:bg-[#f8fafc] transition-colors duration-150 group">
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="text-sm font-semibold text-gray-900">{doc.vendorName}</div>
@@ -409,7 +461,7 @@ const MSAandWODashboardPage = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {filteredAndSortedData.length === 0 && (
+                                    {paginatedData.length === 0 && (
                                         <tr>
                                             <td colSpan={8} className="px-6 py-20 text-center bg-gray-50/50">
                                                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white border border-gray-200 mb-4 shadow-sm">
@@ -423,6 +475,54 @@ const MSAandWODashboardPage = () => {
                                 </tbody>
                             </table>
                         </div>
+                        
+                        {/* PAGINATION CONTROLS */}
+                        {filteredAndSortedData.length > 0 && (
+                            <div className="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
+                                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                    <div className="flex items-center space-x-4">
+                                        <p className="text-sm text-gray-700">
+                                            Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredAndSortedData.length)}</span> of <span className="font-medium">{filteredAndSortedData.length}</span> results
+                                        </p>
+                                        <select
+                                            value={itemsPerPage}
+                                            onChange={(e) => {
+                                                setItemsPerPage(Number(e.target.value));
+                                                setCurrentPage(1);
+                                            }}
+                                            className="ml-2 block w-20 pl-3 pr-8 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                                        >
+                                            <option value={10}>10</option>
+                                            <option value={25}>25</option>
+                                            <option value={50}>50</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                            <button
+                                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                disabled={currentPage === 1}
+                                                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <span className="sr-only">Previous</span>
+                                                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd"></path></svg>
+                                            </button>
+                                            <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                                Page {currentPage} of {totalPages}
+                                            </span>
+                                            <button
+                                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                                disabled={currentPage === totalPages}
+                                                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <span className="sr-only">Next</span>
+                                                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path></svg>
+                                            </button>
+                                        </nav>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
                 
