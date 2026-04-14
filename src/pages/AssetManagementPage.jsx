@@ -118,7 +118,6 @@ const AssetManagementPage = () => {
             }
 
             // Alert: In Repair > 14 days 
-            // Note: Assuming API returns a LastStatusChange timestamp. If not, this acts as a placeholder.
             if (asset.AssetStatus === 'Repair' && asset.LastStatusChange) {
                 const repairDays = (now - new Date(asset.LastStatusChange)) / (1000 * 60 * 60 * 24);
                 if (repairDays > 14) {
@@ -138,7 +137,7 @@ const AssetManagementPage = () => {
         return Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
     }, [assets]);
 
-    // Mock Utilization Chart Data (Ideally fetched from backend: Active vs Idle Hours over 7 days)
+    // Mock Utilization Chart Data
     const weeklyUtilizationData = useMemo(() => [
         { name: 'Mon', active: 400, idle: 240 },
         { name: 'Tue', active: 300, idle: 139 },
@@ -211,7 +210,6 @@ const AssetManagementPage = () => {
         try {
             const formData = new FormData();
             formData.append('file', importFile);
-            // Replace with your actual backend endpoint
             // await apiService.bulkImportAssets(formData, user.userIdentifier);
             alert("Bulk import mock successful! (Connect your backend API here)");
             await fetchData();
@@ -228,15 +226,13 @@ const AssetManagementPage = () => {
         setActiveModal('viewer');
         setLoadingSessions(true);
         try {
-            // Fetch tracking logs
             const response = await apiService.getAssetSessions(asset.rowKey, selectedDate, user.userIdentifier);
             if (response.data && response.data.success) {
                 setAssetSessions(response.data.sessions || []);
                 setWorkingTime(response.data.formattedWorkingTime || '0h 0m');
             }
             
-            // Mock Fetching Audit Trail (Lifecycle)
-            // const auditRes = await apiService.getAssetAuditTrail(asset.rowKey);
+            // Mock Fetching Audit Trail
             setAuditTrail([
                 { date: '2025-01-10', event: 'Purchased & Added to Inventory', user: 'Admin' },
                 { date: '2025-02-15', event: 'Assigned to User', user: asset.AssetAssignedTo || 'Unknown' },
@@ -244,6 +240,15 @@ const AssetManagementPage = () => {
             ]);
         } catch (err) { console.error("Error loading asset data", err); } 
         finally { setLoadingSessions(false); }
+    };
+
+    // --- FIX 1: ADD DATE CHANGE HANDLER ---
+    const handleDateChange = (e) => {
+        const newDate = e.target.value;
+        setSessionDate(newDate);
+        if (selectedAsset) {
+            viewAssetData(selectedAsset, newDate);
+        }
     };
 
     // Auto Refresh Tracking
@@ -356,7 +361,8 @@ const AssetManagementPage = () => {
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-72">
                                 <h4 className="text-xs font-black uppercase text-slate-400 mb-2">Fleet Utilization (Last 7 Days)</h4>
-                                <ResponsiveContainer width="100%" height="90%">
+                                {/* FIX 2: Added minHeight and minWidth to ResponsiveContainer */}
+                                <ResponsiveContainer width="100%" height="90%" minHeight={200} minWidth={0}>
                                     <BarChart data={weeklyUtilizationData}>
                                         <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
                                         <YAxis stroke="#94a3b8" fontSize={10} />
@@ -370,7 +376,8 @@ const AssetManagementPage = () => {
                             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-72 flex flex-col">
                                 <h4 className="text-xs font-black uppercase text-slate-400 mb-2">Brand Distribution</h4>
                                 <div className="flex-1">
-                                    <ResponsiveContainer width="100%" height="100%">
+                                    {/* FIX 2: Added minHeight and minWidth to ResponsiveContainer */}
+                                    <ResponsiveContainer width="100%" height="100%" minHeight={200} minWidth={0}>
                                         <PieChart>
                                             <Pie data={brandDistributionData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value">
                                                 {brandDistributionData.map((entry, index) => (
