@@ -55,13 +55,19 @@ const AssetManagementPage = () => {
     const [sessionDate, setSessionDate] = useState(getISTShiftDateString());
     const [activeTab, setActiveTab] = useState('all');
     
-    // 🚀 UPGRADE: Pagination & Backend Time
+    // Log Pagination
     const [logLimit, setLogLimit] = useState(100);
     const [workingTime, setWorkingTime] = useState('0h 0m');
 
-    // 🚀 UPGRADE: Dashboard States
+    // Dashboard States
     const [showLiveDashboard, setShowLiveDashboard] = useState(true);
     const [machineStats, setMachineStats] = useState({ active: 0, idle: 0, offline: 0 });
+
+    // 🚀 NEW: Table Filtering & Pagination States
+    const [generalFilter, setGeneralFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('All');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
 
     // --- FETCH DATA ---
     const fetchData = useCallback(async () => {
@@ -86,14 +92,12 @@ const AssetManagementPage = () => {
         fetchData();
     }, [fetchData]);
 
-    // 🚀 UPGRADE: Live Fleet Dashboard Calculation
-    // Note: To make this fully real-time, your getAssets API should return a 'LastHeartbeat' timestamp for each asset.
+    // Live Fleet Dashboard Calculation
     useEffect(() => {
         let active = 0, idle = 0, offline = 0;
         const now = new Date();
 
         assets.forEach(asset => {
-            // If API doesn't have LastHeartbeat yet, it defaults to offline
             if (!asset.LastHeartbeat) {
                 offline++;
                 return;
@@ -108,6 +112,37 @@ const AssetManagementPage = () => {
         setMachineStats({ active, idle, offline });
     }, [assets]);
 
+    // 🚀 NEW: Filter and Paginate Assets
+    const filteredAssets = useMemo(() => {
+        let data = [...assets];
+
+        if (statusFilter !== 'All') {
+            data = data.filter(a => a.AssetStatus === statusFilter);
+        }
+
+        if (generalFilter) {
+            const lower = generalFilter.toLowerCase();
+            data = data.filter(a => 
+                String(a.rowKey || '').toLowerCase().includes(lower) ||
+                String(a.AssetBrandName || '').toLowerCase().includes(lower) ||
+                String(a.AssetModelName || '').toLowerCase().includes(lower) ||
+                String(a.AssetAssignedTo || '').toLowerCase().includes(lower)
+            );
+        }
+        return data;
+    }, [assets, statusFilter, generalFilter]);
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [statusFilter, generalFilter]);
+
+    const totalPages = Math.ceil(filteredAssets.length / itemsPerPage) || 1;
+    const paginatedAssets = filteredAssets.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
     const openModal = (type, asset) => {
         setSelectedAsset(asset);
         setModalData({});
@@ -120,7 +155,7 @@ const AssetManagementPage = () => {
         setModalData({});
         setAssetSessions([]);
         setActiveTab('all');
-        setLogLimit(100); // Reset pagination
+        setLogLimit(100);
         setSessionDate(getISTShiftDateString());
     };
 
@@ -133,7 +168,6 @@ const AssetManagementPage = () => {
             const response = await apiService.getAssetSessions(asset.rowKey, selectedDate, user.userIdentifier);
             if (response.data && response.data.success) {
                 setAssetSessions(response.data.sessions || []);
-                // 🚀 UPGRADE: Direct backend time mapping
                 setWorkingTime(response.data.formattedWorkingTime || '0h 0m');
             }
         } catch (err) {
@@ -143,7 +177,7 @@ const AssetManagementPage = () => {
         }
     };
 
-    // 🚀 UPGRADE: 30-Second Auto Refresh for Open Modal
+    // 30-Second Auto Refresh for Open Modal
     useEffect(() => {
         if (activeModal !== 'sessions' || !selectedAsset) return;
         
@@ -154,10 +188,10 @@ const AssetManagementPage = () => {
         return () => clearInterval(interval);
     }, [activeModal, selectedAsset, sessionDate]);
 
-    // 🚀 UPGRADE: Modal Header Activity Status
+    // Modal Header Activity Status
     const activityStatus = useMemo(() => {
         if (!assetSessions.length) return null;
-        const latest = assetSessions[0]; // Backend sorts descending now
+        const latest = assetSessions; 
         const diffMinutes = (new Date() - new Date(latest.eventTimestamp)) / 60000;
 
         if (diffMinutes < 10) return { label: "User Active", color: "bg-emerald-100 text-emerald-800 border-emerald-200" };
@@ -237,7 +271,6 @@ const AssetManagementPage = () => {
         return true;
     });
 
-    // 🚀 UPGRADE: Pagination Slice
     const visibleSessions = filteredSessions.slice(0, logLimit);
 
     return (
@@ -249,12 +282,9 @@ const AssetManagementPage = () => {
                     <h2 className="text-2xl font-extrabold text-slate-800 flex items-center"><LaptopIcon /> Hardware Assets</h2>
                     <p className="text-sm text-slate-500 mt-1 font-medium">Manage inventory, assignments, and active shift tracking.</p>
                 </div>
-                <button onClick={fetchData} className="text-sm font-bold px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl shadow-sm hover:bg-slate-50 hover:text-indigo-600 transition-all flex items-center">
-                    Refresh List
-                </button>
             </div>
 
-            {/* 🚀 UPGRADE: LIVE FLEET DASHBOARD */}
+            {/* LIVE FLEET DASHBOARD */}
             <div className="p-6 border-b border-slate-200 bg-slate-50">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold text-slate-800 flex items-center">
@@ -293,6 +323,41 @@ const AssetManagementPage = () => {
                 )}
             </div>
 
+            {/* 🚀 NEW: FILTER & SEARCH BAR */}
+            <div className="px-6 py-4 border-b border-slate-200 bg-white flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="block w-full sm:w-48 px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-shadow"
+                    >
+                        <option value="All">All Statuses</option>
+                        <option value="Available">Available</option>
+                        <option value="Assigned">Assigned</option>
+                        <option value="Service">Service</option>
+                        <option value="Repair">Repair</option>
+                    </select>
+
+                    <div className="relative group w-full sm:w-72">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                            <svg className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        <input 
+                            type="text" 
+                            placeholder="Search by ID, brand, or user..." 
+                            value={generalFilter} 
+                            onChange={(e) => setGeneralFilter(e.target.value)} 
+                            className="block w-full pl-11 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-shadow" 
+                        />
+                    </div>
+                </div>
+
+                <button onClick={fetchData} disabled={loading} className="inline-flex items-center justify-center px-4 py-2.5 border border-slate-300 shadow-sm text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
+                    <svg className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Refresh List
+                </button>
+            </div>
+
             {error && <div className="m-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r-lg text-sm font-medium">{error}</div>}
 
             {/* --- ASSET TABLE --- */}
@@ -309,10 +374,10 @@ const AssetManagementPage = () => {
                     <tbody className="bg-white divide-y divide-slate-100">
                         {loading ? (
                             <tr><td colSpan="4" className="px-6 py-16 text-center text-slate-500 font-medium animate-pulse">Loading assets...</td></tr>
-                        ) : assets.length === 0 ? (
-                            <tr><td colSpan="4" className="px-6 py-16 text-center text-slate-500 font-medium">No assets found in the system.</td></tr>
+                        ) : paginatedAssets.length === 0 ? (
+                            <tr><td colSpan="4" className="px-6 py-16 text-center text-slate-500 font-medium">No assets match your search criteria.</td></tr>
                         ) : (
-                            assets.map((asset) => (
+                            paginatedAssets.map((asset) => (
                                 <tr key={asset.rowKey} className="hover:bg-indigo-50/30 transition-colors group">
                                     <td className="px-6 py-5 whitespace-nowrap">
                                         <div className="flex items-center">
@@ -353,6 +418,54 @@ const AssetManagementPage = () => {
                 </table>
             </div>
 
+            {/* 🚀 NEW: PAGINATION CONTROLS */}
+            {!loading && filteredAssets.length > 0 && (
+                <div className="bg-white px-4 py-3 border-t border-slate-200 flex items-center justify-between sm:px-6">
+                    <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div className="flex items-center space-x-4">
+                            <p className="text-sm text-slate-700">
+                                Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredAssets.length)}</span> of <span className="font-medium">{filteredAssets.length}</span> assets
+                            </p>
+                            <select
+                                value={itemsPerPage}
+                                onChange={(e) => {
+                                    setItemsPerPage(Number(e.target.value));
+                                    setCurrentPage(1);
+                                }}
+                                className="ml-2 block w-20 pl-3 pr-8 py-1.5 text-sm border-slate-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+                            >
+                                <option value={10}>10</option>
+                                <option value={25}>25</option>
+                                <option value={50}>50</option>
+                            </select>
+                        </div>
+                        <div>
+                            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={currentPage === 1}
+                                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <span className="sr-only">Previous</span>
+                                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd"></path></svg>
+                                </button>
+                                <span className="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                    disabled={currentPage === totalPages}
+                                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <span className="sr-only">Next</span>
+                                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path></svg>
+                                </button>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* --- MODALS --- */}
             {activeModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
@@ -367,7 +480,6 @@ const AssetManagementPage = () => {
                                             <h3 className="text-xl font-extrabold text-slate-800 flex items-center"><ActivityIcon /> Tracking Logs: {selectedAsset.rowKey}</h3>
                                             <p className="text-sm font-medium text-slate-500 mt-1">Live Feed & Shift Tracking</p>
                                         </div>
-                                        {/* 🚀 UPGRADE: Modal Live Indicator */}
                                         {activityStatus && (
                                             <span className={`px-3 py-1 text-xs font-bold rounded-full border shadow-sm ${activityStatus.color}`}>
                                                 {activityStatus.label}
@@ -435,7 +547,6 @@ const AssetManagementPage = () => {
                                         </div>
                                     )}
 
-                                    {/* 🚀 UPGRADE: Pagination Button */}
                                     {filteredSessions.length > logLimit && (
                                         <div className="mt-6 text-center">
                                             <button 
