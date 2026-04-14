@@ -251,62 +251,107 @@ const AssetManagementPage = () => {
         }
     };
 
-    // --- FIX 3: Isolated QR Code Printing ---
+    // --- UPDATED QR CODE PRINT FUNCTION ---
     const handlePrintQRCode = () => {
         if (!selectedAsset) return;
 
-        const printWindow = window.open('', '_blank', 'width=600,height=600');
+        // 1. Format the data that will appear when the QR code is scanned
+        const qrScanData = `Asset ID: ${selectedAsset.rowKey}\nModel: ${selectedAsset.AssetBrandName || ''} ${selectedAsset.AssetModelName || ''}\nAssigned To: ${selectedAsset.AssetAssignedTo || 'Unassigned'}\nService Tag: ${selectedAsset.AssetServiceTag || 'N/A'}`;
+        const encodedData = encodeURIComponent(qrScanData);
+
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
         
         printWindow.document.write(`
             <html>
                 <head>
-                    <title>Print Asset QR - ${selectedAsset.rowKey}</title>
+                    <title>Print Asset Label - ${selectedAsset.rowKey}</title>
                     <style>
                         body {
+                            font-family: Arial, sans-serif;
+                            margin: 0;
+                            padding: 20px;
+                            background: white;
                             display: flex;
-                            flex-direction: column;
+                            justify-content: flex-start;
+                        }
+                        
+                        /* Container to hold QR and Table side-by-side */
+                        .label-container {
+                            display: flex;
                             align-items: center;
-                            justify-content: center;
-                            text-align: center;
-                            margin-top: 50px;
-                            font-family: system-ui, -apple-system, sans-serif;
+                            width: max-content;
                         }
-                        img {
-                            width: 250px;
-                            height: 250px;
-                            margin-bottom: 16px;
+                        
+                        /* QR Code Wrapper */
+                        .qr-section {
+                            padding-right: 15px;
                         }
-                        .title {
-                            font-size: 24px;
-                            font-weight: 900;
-                            letter-spacing: 0.05em;
-                            color: #1e293b;
-                            margin-bottom: 4px;
+                        .qr-section img {
+                            width: 110px; /* Adjusted to match scale of your image */
+                            height: 110px;
+                            display: block;
                         }
-                        .subtitle {
+                        
+                        /* Table Styling to match your screenshot */
+                        .details-table {
+                            border-collapse: collapse;
+                        }
+                        .details-table th, .details-table td {
+                            border: 1px solid #000;
+                            padding: 6px 12px;
                             font-size: 14px;
-                            font-weight: 500;
-                            color: #64748b;
+                            text-align: left;
+                            white-space: nowrap;
+                            color: #000;
                         }
-                        /* Remove headers/footers added by browsers when printing */
+                        .details-table th {
+                            font-weight: normal; /* Matches the standard weight in your image */
+                        }
+
+                        /* Print specific adjustments */
                         @media print {
-                            @page { margin: 0; }
-                            body { margin: 2cm; }
+                            @page { margin: 1cm; }
+                            body { 
+                                margin: 0; 
+                                padding: 0;
+                                -webkit-print-color-adjust: exact; 
+                                print-color-adjust: exact; 
+                            }
                         }
                     </style>
                 </head>
                 <body>
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${selectedAsset.rowKey}" alt="QR Code" />
-                    <div class="title">${selectedAsset.rowKey}</div>
-                    <div class="subtitle">${selectedAsset.AssetBrandName || ''} ${selectedAsset.AssetModelName || ''}</div>
+                    <div class="label-container">
+                        <div class="qr-section">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodedData}" alt="QR Code" />
+                        </div>
+                        <table class="details-table">
+                            <tr>
+                                <th>Asset Id</th>
+                                <td>${selectedAsset.rowKey || ''}</td>
+                            </tr>
+                            <tr>
+                                <th>Asset Brand & Model</th>
+                                <td>${selectedAsset.AssetBrandName || ''} ${selectedAsset.AssetModelName || ''}</td>
+                            </tr>
+                            <tr>
+                                <th>Asset Assigned To</th>
+                                <td>${selectedAsset.AssetAssignedTo || ''}</td>
+                            </tr>
+                            <tr>
+                                <th>Asset Service Tag</th>
+                                <td>${selectedAsset.AssetServiceTag || ''}</td>
+                            </tr>
+                        </table>
+                    </div>
                     
                     <script>
-                        // Wait briefly to ensure the image fetches and renders before triggering the print dialog
+                        // Wait slightly longer (500ms) to ensure the denser QR code image fully loads before printing
                         window.onload = () => {
                             setTimeout(() => {
                                 window.print();
                                 window.close();
-                            }, 250);
+                            }, 500);
                         };
                     </script>
                 </body>
