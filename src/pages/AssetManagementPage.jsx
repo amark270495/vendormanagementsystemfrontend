@@ -242,13 +242,78 @@ const AssetManagementPage = () => {
         finally { setLoadingSessions(false); }
     };
 
-    // --- FIX 1: ADD DATE CHANGE HANDLER ---
+    // --- FIX 1: Date Change Handler ---
     const handleDateChange = (e) => {
         const newDate = e.target.value;
         setSessionDate(newDate);
         if (selectedAsset) {
             viewAssetData(selectedAsset, newDate);
         }
+    };
+
+    // --- FIX 3: Isolated QR Code Printing ---
+    const handlePrintQRCode = () => {
+        if (!selectedAsset) return;
+
+        const printWindow = window.open('', '_blank', 'width=600,height=600');
+        
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Print Asset QR - ${selectedAsset.rowKey}</title>
+                    <style>
+                        body {
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            text-align: center;
+                            margin-top: 50px;
+                            font-family: system-ui, -apple-system, sans-serif;
+                        }
+                        img {
+                            width: 250px;
+                            height: 250px;
+                            margin-bottom: 16px;
+                        }
+                        .title {
+                            font-size: 24px;
+                            font-weight: 900;
+                            letter-spacing: 0.05em;
+                            color: #1e293b;
+                            margin-bottom: 4px;
+                        }
+                        .subtitle {
+                            font-size: 14px;
+                            font-weight: 500;
+                            color: #64748b;
+                        }
+                        /* Remove headers/footers added by browsers when printing */
+                        @media print {
+                            @page { margin: 0; }
+                            body { margin: 2cm; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${selectedAsset.rowKey}" alt="QR Code" />
+                    <div class="title">${selectedAsset.rowKey}</div>
+                    <div class="subtitle">${selectedAsset.AssetBrandName || ''} ${selectedAsset.AssetModelName || ''}</div>
+                    
+                    <script>
+                        // Wait briefly to ensure the image fetches and renders before triggering the print dialog
+                        window.onload = () => {
+                            setTimeout(() => {
+                                window.print();
+                                window.close();
+                            }, 250);
+                        };
+                    </script>
+                </body>
+            </html>
+        `);
+        
+        printWindow.document.close();
     };
 
     // Auto Refresh Tracking
@@ -591,7 +656,8 @@ const AssetManagementPage = () => {
                                                 <div className="text-center font-extrabold text-xl tracking-wider text-slate-800">{selectedAsset.rowKey}</div>
                                                 <div className="text-center text-sm font-medium text-slate-500">{selectedAsset.AssetBrandName} {selectedAsset.AssetModelName}</div>
                                             </div>
-                                            <button onClick={() => window.print()} className="mt-6 px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-sm hover:bg-indigo-700">Print QR Code</button>
+                                            {/* FIX 4: Call the new print function here */}
+                                            <button onClick={handlePrintQRCode} className="mt-6 px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-sm hover:bg-indigo-700">Print QR Code</button>
                                         </div>
                                     )}
 
