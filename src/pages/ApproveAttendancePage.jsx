@@ -80,10 +80,12 @@ const ApproveAttendancePage = () => {
         try {
             setLoading(true);
             const currentToken = attendanceTokens[currentAttendancePage];
+            const currentYear = new Date().getFullYear().toString(); // FIX: Added current year
             
             const result = await apiService.getAttendance({
                 authenticatedUsername: user.userIdentifier,
-                statusFilter: 'Pending', // Let the DB do the filtering
+                year: currentYear, // FIX: Passed to backend to pass the 400 Error check
+                statusFilter: 'Pending', 
                 pageSize: PAGE_SIZE,
                 continuationToken: currentToken,
                 searchEmail: debouncedSearch
