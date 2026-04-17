@@ -5,7 +5,7 @@ import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
 import AttendanceApprovalModal from '../components/admin/AttendanceApprovalModal';
 
-const PAGE_SIZE = 25; // Enterprise standard page size
+const PAGE_SIZE = 25; 
 
 // Utility for CSV Export
 const exportToCSV = (data, filename) => {
@@ -30,7 +30,7 @@ const ApproveAttendancePage = () => {
     const { canApproveAttendance } = usePermissions();
 
     // UI & Tab State
-    const [activeTab, setActiveTab] = useState('attendance');
+    const [activeTab, setActiveTab] = useState('attendance'); // 'attendance', 'weekend', 'directory'
     const [loading, setLoading] = useState(true);
     const [processingBulk, setProcessingBulk] = useState(false);
     const [error, setError] = useState('');
@@ -39,6 +39,7 @@ const ApproveAttendancePage = () => {
     // Data State
     const [pendingRequests, setPendingRequests] = useState([]);
     const [weekendRequests, setWeekendRequests] = useState([]);
+    const [usersList, setUsersList] = useState([]); // NEW: For Employee Directory
 
     // Enterprise Search State (Debounced)
     const [searchTerm, setSearchTerm] = useState('');
@@ -52,6 +53,10 @@ const ApproveAttendancePage = () => {
     const [weekendTokens, setWeekendTokens] = useState([null]);
     const [currentWeekendPage, setCurrentWeekendPage] = useState(0);
     const [hasMoreWeekend, setHasMoreWeekend] = useState(false);
+
+    const [usersTokens, setUsersTokens] = useState([null]); // NEW: Pagination for Directory
+    const [currentUsersPage, setCurrentUsersPage] = useState(0);
+    const [hasMoreUsers, setHasMoreUsers] = useState(false);
     
     // Bulk Actions State
     const [selectedStandardRows, setSelectedStandardRows] = useState(new Set());
@@ -62,15 +67,15 @@ const ApproveAttendancePage = () => {
     const [selectedUsername, setSelectedUsername] = useState(null);
 
     // --- DEBOUNCE SEARCH LOGIC ---
-    // Prevents API spam by waiting 500ms after the user stops typing
     useEffect(() => {
         const timerId = setTimeout(() => {
             setDebouncedSearch(searchTerm);
-            // Reset pagination when search changes
             setAttendanceTokens([null]);
             setCurrentAttendancePage(0);
             setWeekendTokens([null]);
             setCurrentWeekendPage(0);
+            setUsersTokens([null]);
+            setCurrentUsersPage(0);
         }, 500); 
         return () => clearTimeout(timerId);
     }, [searchTerm]);
@@ -95,18 +100,14 @@ const ApproveAttendancePage = () => {
                 setPendingRequests(result.data.attendanceRecords || []);
                 setHasMoreAttendance(!!result.data.continuationToken);
                 
-                // Store the next token if we are moving forward
                 if (result.data.continuationToken && !attendanceTokens[currentAttendancePage + 1]) {
                     const newTokens = [...attendanceTokens];
                     newTokens[currentAttendancePage + 1] = result.data.continuationToken;
                     setAttendanceTokens(newTokens);
                 }
             }
-        } catch (err) { 
-            setError("Could not load standard requests."); 
-        } finally { 
-            setLoading(false); 
-        }
+        } catch (err) { setError("Could not load standard requests."); } 
+        finally { setLoading(false); }
     }, [user.userIdentifier, currentAttendancePage, attendanceTokens, debouncedSearch]);
 
     const fetchWeekendRequests = useCallback(async () => {
@@ -132,19 +133,43 @@ const ApproveAttendancePage = () => {
                     setWeekendTokens(newTokens);
                 }
             }
-        } catch (err) { 
-            console.error("Failed to fetch weekend requests:", err); 
-        } finally { 
-            setLoading(false); 
-        }
+        } catch (err) { console.error("Failed to fetch weekend requests:", err); } 
+        finally { setLoading(false); }
     }, [user.userIdentifier, currentWeekendPage, weekendTokens, debouncedSearch]);
+
+    // NEW: Fetch All Users for Directory
+    const fetchUsersList = useCallback(async () => {
+        try {
+            setLoading(true);
+            const currentToken = usersTokens[currentUsersPage];
+
+            const result = await apiService.getUsers({
+                pageSize: PAGE_SIZE,
+                continuationToken: currentToken,
+                searchEmail: debouncedSearch
+            });
+
+            if (result.data && result.data.success) {
+                setUsersList(result.data.users || []);
+                setHasMoreUsers(!!result.data.continuationToken);
+
+                if (result.data.continuationToken && !usersTokens[currentUsersPage + 1]) {
+                    const newTokens = [...usersTokens];
+                    newTokens[currentUsersPage + 1] = result.data.continuationToken;
+                    setUsersTokens(newTokens);
+                }
+            }
+        } catch (err) { console.error("Failed to fetch users:", err); } 
+        finally { setLoading(false); }
+    }, [currentUsersPage, usersTokens, debouncedSearch]);
 
     // Trigger fetches when tabs or pages change
     useEffect(() => {
         if (!user?.userIdentifier || !canApproveAttendance) return;
         if (activeTab === 'attendance') fetchPendingRequests();
-        else fetchWeekendRequests();
-    }, [activeTab, fetchPendingRequests, fetchWeekendRequests, user?.userIdentifier, canApproveAttendance]);
+        else if (activeTab === 'weekend') fetchWeekendRequests();
+        else if (activeTab === 'directory') fetchUsersList();
+    }, [activeTab, fetchPendingRequests, fetchWeekendRequests, fetchUsersList, user?.userIdentifier, canApproveAttendance]);
 
     // --- SINGLE ACTION HANDLERS ---
     const handleSingleStandardApproval = async (request, statusAction) => {
@@ -298,8 +323,10 @@ const ApproveAttendancePage = () => {
     const handleExport = () => {
         if (activeTab === 'attendance') {
             exportToCSV(pendingRequests, 'Pending_Shifts_Page_Export');
-        } else {
+        } else if (activeTab === 'weekend') {
             exportToCSV(weekendRequests, 'Weekend_Requests_Page_Export');
+        } else {
+            exportToCSV(usersList, 'Employee_Directory_Export');
         }
     };
 
@@ -339,13 +366,16 @@ const ApproveAttendancePage = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     
                     {/* Tabs */}
-                    <div className="border-b border-gray-200 bg-gray-50/50 px-6">
-                        <nav className="-mb-px flex space-x-8">
+                    <div className="border-b border-gray-200 bg-gray-50/50 px-6 overflow-x-auto">
+                        <nav className="-mb-px flex space-x-8 min-w-max">
                             <button onClick={() => { setActiveTab('attendance'); setSelectedStandardRows(new Set()); }} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'attendance' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                                Standard Shifts
+                                Standard Shifts (Pending)
                             </button>
                             <button onClick={() => { setActiveTab('weekend'); setSelectedWeekendRows(new Set()); }} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${activeTab === 'weekend' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                                Weekend Requests
+                                Weekend Requests (Pending)
+                            </button>
+                            <button onClick={() => { setActiveTab('directory'); }} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${activeTab === 'directory' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                                Employee Directory
                             </button>
                         </nav>
                     </div>
@@ -355,7 +385,7 @@ const ApproveAttendancePage = () => {
                         <div className="relative w-full sm:max-w-md">
                             <input
                                 type="text"
-                                placeholder={`Search database by exact email...`}
+                                placeholder={activeTab === 'directory' ? "Search all employees..." : "Search pending tasks by exact email..."}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="block w-full rounded-lg border-gray-300 pl-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
@@ -420,34 +450,17 @@ const ApproveAttendancePage = () => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <div className="flex justify-end items-center gap-2">
-                                                    <button 
-                                                        onClick={() => handleSingleStandardApproval(req, 'Approved')} 
-                                                        disabled={processingBulk} 
-                                                        className="px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded border border-green-200 transition-colors"
-                                                    >
-                                                        Approve
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleSingleStandardApproval(req, 'Rejected')} 
-                                                        disabled={processingBulk} 
-                                                        className="px-3 py-1.5 bg-white text-gray-700 hover:bg-red-50 hover:text-red-700 border border-gray-300 hover:border-red-200 rounded transition-colors"
-                                                    >
-                                                        Reject
-                                                    </button>
+                                                    <button onClick={() => handleSingleStandardApproval(req, 'Approved')} disabled={processingBulk} className="px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded border border-green-200 transition-colors">Approve</button>
+                                                    <button onClick={() => handleSingleStandardApproval(req, 'Rejected')} disabled={processingBulk} className="px-3 py-1.5 bg-white text-gray-700 hover:bg-red-50 hover:text-red-700 border border-gray-300 hover:border-red-200 rounded transition-colors">Reject</button>
                                                     <span className="text-gray-300">|</span>
-                                                    <button 
-                                                        onClick={() => { setSelectedUsername(req.username); setIsCalendarModalOpen(true); }} 
-                                                        className="text-indigo-600 hover:text-indigo-900 font-semibold px-2"
-                                                    >
-                                                        Review Calendar &rarr;
-                                                    </button>
+                                                    <button onClick={() => { setSelectedUsername(req.username); setIsCalendarModalOpen(true); }} className="text-indigo-600 hover:text-indigo-900 font-semibold px-2">Review Calendar &rarr;</button>
                                                 </div>
                                             </td>
                                         </tr>
-                                    )) : <tr><td colSpan="5" className="px-6 py-12 text-center text-gray-500">No pending requests found for this page.</td></tr>}
+                                    )) : <tr><td colSpan="5" className="px-6 py-12 text-center text-gray-500">No pending requests found. Inbox is clear!</td></tr>}
                                 </tbody>
                             </table>
-                        ) : (
+                        ) : activeTab === 'weekend' ? (
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
@@ -476,9 +489,7 @@ const ApproveAttendancePage = () => {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 {new Date(req.date + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={req.reason}>
-                                                {req.reason}
-                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={req.reason}>{req.reason}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <div className="flex justify-end gap-2">
                                                     <button onClick={() => handleSingleWeekendApproval(req, 'Approved')} disabled={processingBulk} className="px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded border border-green-200 transition-colors">Approve</button>
@@ -489,6 +500,40 @@ const ApproveAttendancePage = () => {
                                     )) : <tr><td colSpan="5" className="px-6 py-12 text-center text-gray-500">No pending weekend requests.</td></tr>}
                                 </tbody>
                             </table>
+                        ) : (
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee Name</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email ID</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">System Role</th>
+                                        <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {usersList.length > 0 ? usersList.map(u => (
+                                        <tr key={u.username} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center">
+                                                    <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">{u.displayName?.charAt(0) || 'U'}</div>
+                                                    <div className="ml-4 font-medium text-gray-900">{u.displayName}</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.username}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
+                                                    {u.role || u.userRole || 'Employee'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button onClick={() => { setSelectedUsername(u.username); setIsCalendarModalOpen(true); }} className="text-indigo-600 hover:text-indigo-900 font-semibold px-4 py-2 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors shadow-sm">
+                                                    View Full Calendar &rarr;
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    )) : <tr><td colSpan="4" className="px-6 py-12 text-center text-gray-500">No employees found.</td></tr>}
+                                </tbody>
+                            </table>
                         )}
                     </div>
 
@@ -496,20 +541,40 @@ const ApproveAttendancePage = () => {
                     <div className="bg-white px-6 py-4 border-t border-gray-200 flex items-center justify-between">
                         <div className="flex-1 flex items-center justify-between">
                             <p className="text-sm text-gray-700 font-medium">
-                                Database Page {activeTab === 'attendance' ? currentAttendancePage + 1 : currentWeekendPage + 1}
+                                Database Page {
+                                    activeTab === 'attendance' ? currentAttendancePage + 1 : 
+                                    activeTab === 'weekend' ? currentWeekendPage + 1 : 
+                                    currentUsersPage + 1
+                                }
                             </p>
                             <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                                 <button 
-                                    onClick={() => activeTab === 'attendance' ? setCurrentAttendancePage(p => Math.max(0, p - 1)) : setCurrentWeekendPage(p => Math.max(0, p - 1))} 
-                                    disabled={activeTab === 'attendance' ? currentAttendancePage === 0 : currentWeekendPage === 0} 
-                                    className="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:bg-gray-100"
+                                    onClick={() => {
+                                        if (activeTab === 'attendance') setCurrentAttendancePage(p => Math.max(0, p - 1));
+                                        else if (activeTab === 'weekend') setCurrentWeekendPage(p => Math.max(0, p - 1));
+                                        else setCurrentUsersPage(p => Math.max(0, p - 1));
+                                    }} 
+                                    disabled={
+                                        (activeTab === 'attendance' && currentAttendancePage === 0) || 
+                                        (activeTab === 'weekend' && currentWeekendPage === 0) ||
+                                        (activeTab === 'directory' && currentUsersPage === 0)
+                                    } 
+                                    className="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:bg-gray-100 transition-colors"
                                 >
                                     Previous Page
                                 </button>
                                 <button 
-                                    onClick={() => activeTab === 'attendance' ? setCurrentAttendancePage(p => p + 1) : setCurrentWeekendPage(p => p + 1)} 
-                                    disabled={activeTab === 'attendance' ? !hasMoreAttendance : !hasMoreWeekend} 
-                                    className="relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:bg-gray-100"
+                                    onClick={() => {
+                                        if (activeTab === 'attendance') setCurrentAttendancePage(p => p + 1);
+                                        else if (activeTab === 'weekend') setCurrentWeekendPage(p => p + 1);
+                                        else setCurrentUsersPage(p => p + 1);
+                                    }} 
+                                    disabled={
+                                        (activeTab === 'attendance' && !hasMoreAttendance) || 
+                                        (activeTab === 'weekend' && !hasMoreWeekend) ||
+                                        (activeTab === 'directory' && !hasMoreUsers)
+                                    } 
+                                    className="relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:bg-gray-100 transition-colors"
                                 >
                                     Load Next Page
                                 </button>
@@ -525,14 +590,17 @@ const ApproveAttendancePage = () => {
                     onClose={() => {
                         setIsCalendarModalOpen(false);
                         setSelectedUsername(null);
-                        fetchPendingRequests();
+                        // Refresh data depending on which tab we are on when modal closes
+                        if (activeTab === 'attendance') fetchPendingRequests();
+                        else if (activeTab === 'weekend') fetchWeekendRequests();
                     }}
                     selectedUsername={selectedUsername}
                     onApprovalComplete={() => {
                         setIsCalendarModalOpen(false);
                         setSelectedUsername(null);
                         setSuccess('Attendance action completed successfully.');
-                        fetchPendingRequests();
+                        if (activeTab === 'attendance') fetchPendingRequests();
+                        else if (activeTab === 'weekend') fetchWeekendRequests();
                         setTimeout(() => setSuccess(''), 3000);
                     }}
                 />
