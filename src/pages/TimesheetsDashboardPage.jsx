@@ -200,10 +200,9 @@ const TimesheetsDashboardPage = () => {
         <div className="min-h-screen bg-gray-50/30 p-6 md:p-8 font-sans text-gray-900">
             <div className="max-w-[1400px] mx-auto space-y-6">
                 
-                {/* Header Section */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Timesheets</h1>
+                        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Timesheets Dashboard</h1>
                         <p className="text-sm text-gray-500 mt-1">Manage, review, and approve employee logged hours.</p>
                     </div>
                     
@@ -224,7 +223,6 @@ const TimesheetsDashboardPage = () => {
                     </div>
                 </div>
 
-                {/* State Managers */}
                 {loading && (
                     <div className="flex justify-center items-center h-64 bg-white rounded-xl shadow-sm border border-gray-100">
                         <Spinner />
@@ -248,11 +246,11 @@ const TimesheetsDashboardPage = () => {
                     </div>
                 )}
 
-                {/* Main Table Card */}
                 {!loading && !error && (canManageTimesheets || canRequestTimesheetApproval) && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[calc(100vh-180px)] min-h-[500px]">
-                        <div className="overflow-auto flex-1 custom-scrollbar">
-                            <table className="min-w-full text-sm text-left whitespace-nowrap">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 custom-scrollbar" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                        <div className="overflow-x-auto">
+                            {/* Reverted to w-full and removed whitespace-nowrap to match your old wrapping mechanics */}
+                            <table className="w-full text-sm text-left">
                                 <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                     <tr>
                                         {tableHeader.map(h => (
@@ -260,13 +258,13 @@ const TimesheetsDashboardPage = () => {
                                                 key={h} 
                                                 scope="col" 
                                                 className="p-0 border-r border-gray-100 last:border-r-0 group bg-gray-50"
-                                                style={{ minWidth: h === 'Employee Mail' ? '220px' : h === 'Actions' ? '120px' : 'auto' }}
+                                                style={{ minWidth: h === 'Employee Mail' ? '200px' : 'auto' }}
                                             >
                                                 {h === 'Actions' ? (
-                                                    <div className="px-6 py-4 flex items-center justify-center">{h}</div>
+                                                    <div className="px-4 py-3 flex items-center justify-center">{h}</div>
                                                 ) : (
                                                     <Dropdown width="64" trigger={
-                                                        <div className="flex items-center justify-between w-full h-full cursor-pointer px-6 py-4 hover:bg-gray-100/80 transition-colors">
+                                                        <div className="flex items-center justify-between w-full h-full cursor-pointer px-4 py-3 hover:bg-gray-100/80 transition-colors">
                                                             <span className="flex-1">{h}</span>
                                                             <div className="ml-2 text-gray-400 group-hover:text-gray-600">
                                                                 {sortConfig.key === h ? (
@@ -294,26 +292,26 @@ const TimesheetsDashboardPage = () => {
                                             return (
                                                 <tr key={rowIndex} className="hover:bg-gray-50/50 transition-colors duration-150">
                                                     {displayRow.map((cell, cellIndex) => (
-                                                        <td key={cellIndex} className="px-6 py-4 text-gray-600 font-medium align-middle">
+                                                        <td key={cellIndex} className="px-4 py-3 text-gray-600 font-medium align-middle break-words">
                                                             {tableHeader[cellIndex] === 'Employee Name' ? (
-                                                                <div className="flex items-center text-gray-900">
-                                                                    <div className="h-8 w-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs mr-3">
+                                                                <div className="flex items-center text-gray-900 whitespace-nowrap">
+                                                                    <div className="h-8 w-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs mr-3 flex-shrink-0">
                                                                         {String(cell).charAt(0).toUpperCase()}
                                                                     </div>
                                                                     {cell}
                                                                 </div>
                                                             ) : tableHeader[cellIndex] === 'Logged Hours' ? (
-                                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 whitespace-nowrap">
                                                                     {cell} hrs
                                                                 </span>
                                                             ) : tableHeader[cellIndex] === 'Employee Mail' ? (
-                                                                <span className="text-gray-500 font-normal">{cell}</span>
+                                                                <span className="text-gray-500 font-normal break-all">{cell}</span>
                                                             ) : (
                                                                 cell
                                                             )}
                                                         </td>
                                                     ))}
-                                                    <td className="px-6 py-4 align-middle border-l border-gray-50">
+                                                    <td className="px-4 py-3 align-middle border-l border-gray-50">
                                                         <div className="flex items-center justify-center space-x-1">
                                                             {canManageTimesheets && (
                                                                 <>
@@ -391,14 +389,13 @@ const TimesheetsDashboardPage = () => {
                 />
             )}
             
-            {/* Global Styles (optional, for scrollbar if you don't have it in your CSS already) */}
             <style jsx>{`
                 .custom-scrollbar::-webkit-scrollbar {
                     width: 8px;
                     height: 8px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-track {
-                    background: #f9fafb;
+                    background: transparent;
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb {
                     background: #e5e7eb;
