@@ -80,11 +80,11 @@ const ApproveAttendancePage = () => {
         try {
             setLoading(true);
             const currentToken = attendanceTokens[currentAttendancePage];
-            const currentYear = new Date().getFullYear().toString(); // FIX: Added current year
+            const currentYear = new Date().getFullYear().toString(); 
             
             const result = await apiService.getAttendance({
                 authenticatedUsername: user.userIdentifier,
-                year: currentYear, // FIX: Passed to backend to pass the 400 Error check
+                year: currentYear, 
                 statusFilter: 'Pending', 
                 pageSize: PAGE_SIZE,
                 continuationToken: currentToken,
@@ -207,7 +207,6 @@ const ApproveAttendancePage = () => {
         setProcessingBulk(true);
         setError('');
         
-        // Map selected rowKeys back to their entity details for the API
         const requestsToProcess = pendingRequests
             .filter(req => selectedStandardRows.has(req.rowKey))
             .map(req => ({
