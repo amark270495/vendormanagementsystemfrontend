@@ -146,6 +146,61 @@ const ApproveAttendancePage = () => {
         else fetchWeekendRequests();
     }, [activeTab, fetchPendingRequests, fetchWeekendRequests, user?.userIdentifier, canApproveAttendance]);
 
+    // --- SINGLE ACTION HANDLERS ---
+    const handleSingleStandardApproval = async (request, statusAction) => {
+        setProcessingBulk(true);
+        setError('');
+        try {
+            const res = await apiService.approveAttendance({
+                authenticatedUsername: user.userIdentifier,
+                requests: [{
+                    targetUsername: request.username,
+                    attendanceDate: request.date,
+                    action: statusAction
+                }]
+            });
+
+            if (res.data.success) {
+                setSuccess(`Shift ${statusAction.toLowerCase()} successfully!`);
+                await fetchPendingRequests();
+            } else {
+                setError(res.data.message || "Failed to process approval.");
+            }
+        } catch (err) {
+            setError(err.message || "An error occurred.");
+        } finally {
+            setProcessingBulk(false);
+            setTimeout(() => setSuccess(''), 3000);
+        }
+    };
+
+    const handleSingleWeekendApproval = async (request, statusAction) => {
+        setProcessingBulk(true);
+        setError('');
+        try {
+            const res = await apiService.approveWeekendWork({
+                requests: [{
+                    employeeEmail: request.partitionKey,
+                    requestId: request.rowKey,
+                    status: statusAction
+                }],
+                status: statusAction,
+                managerNotes: ""
+            });
+            if (res.data.success) {
+                setSuccess(`Weekend request ${statusAction.toLowerCase()} successfully!`);
+                await fetchWeekendRequests();
+            } else {
+                setError(res.data.message || "Failed to process approval.");
+            }
+        } catch (err) {
+            setError(err.message || "An error occurred.");
+        } finally {
+            setProcessingBulk(false);
+            setTimeout(() => setSuccess(''), 3000);
+        }
+    };
+
     // --- BULK ACTION HANDLERS ---
     const handleBulkStandardApproval = async (statusAction) => {
         if (selectedStandardRows.size === 0) return;
@@ -214,33 +269,6 @@ const ApproveAttendancePage = () => {
         } finally {
             setProcessingBulk(false);
             setTimeout(() => setSuccess(''), 4000);
-        }
-    };
-
-    const handleSingleWeekendApproval = async (request, statusAction) => {
-        setProcessingBulk(true);
-        setError('');
-        try {
-            const res = await apiService.approveWeekendWork({
-                requests: [{
-                    employeeEmail: request.partitionKey,
-                    requestId: request.rowKey,
-                    status: statusAction
-                }],
-                status: statusAction,
-                managerNotes: ""
-            });
-            if (res.data.success) {
-                setSuccess(`Weekend request ${statusAction.toLowerCase()} successfully!`);
-                await fetchWeekendRequests();
-            } else {
-                setError(res.data.message || "Failed to process approval.");
-            }
-        } catch (err) {
-            setError(err.message || "An error occurred.");
-        } finally {
-            setProcessingBulk(false);
-            setTimeout(() => setSuccess(''), 3000);
         }
     };
 
@@ -392,9 +420,29 @@ const ApproveAttendancePage = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <button onClick={() => { setSelectedUsername(req.username); setIsCalendarModalOpen(true); }} className="text-indigo-600 hover:text-indigo-900 font-semibold">
-                                                    Review Calendar &rarr;
-                                                </button>
+                                                <div className="flex justify-end items-center gap-2">
+                                                    <button 
+                                                        onClick={() => handleSingleStandardApproval(req, 'Approved')} 
+                                                        disabled={processingBulk} 
+                                                        className="px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleSingleStandardApproval(req, 'Rejected')} 
+                                                        disabled={processingBulk} 
+                                                        className="px-3 py-1.5 bg-white text-gray-700 hover:bg-red-50 hover:text-red-700 border border-gray-300 hover:border-red-200 rounded transition-colors"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                    <span className="text-gray-300">|</span>
+                                                    <button 
+                                                        onClick={() => { setSelectedUsername(req.username); setIsCalendarModalOpen(true); }} 
+                                                        className="text-indigo-600 hover:text-indigo-900 font-semibold px-2"
+                                                    >
+                                                        Review Calendar &rarr;
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     )) : <tr><td colSpan="5" className="px-6 py-12 text-center text-gray-500">No pending requests found for this page.</td></tr>}
