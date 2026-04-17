@@ -118,8 +118,8 @@ export const apiService = {
     }),
 
   // --- Permissions Functions ---
-  getUserPermissionsList: (authenticatedUsername) =>
-    apiClient.get('/getUserPermissionsList', { params: { authenticatedUsername } }),
+  getUsers: (params) =>
+    apiClient.get('/getUsers', { params }),
   updateUserPermissions: (username, permissions, authenticatedUsername) =>
     apiClient.post('/updateUserPermissions', { username, permissions, authenticatedUsername }),
 
