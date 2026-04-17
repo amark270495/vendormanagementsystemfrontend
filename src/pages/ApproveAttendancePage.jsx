@@ -39,7 +39,7 @@ const ApproveAttendancePage = () => {
     // Data State
     const [pendingRequests, setPendingRequests] = useState([]);
     const [weekendRequests, setWeekendRequests] = useState([]);
-    const [usersList, setUsersList] = useState([]); // NEW: For Employee Directory
+    const [usersList, setUsersList] = useState([]); 
 
     // Enterprise Search State (Debounced)
     const [searchTerm, setSearchTerm] = useState('');
@@ -54,7 +54,7 @@ const ApproveAttendancePage = () => {
     const [currentWeekendPage, setCurrentWeekendPage] = useState(0);
     const [hasMoreWeekend, setHasMoreWeekend] = useState(false);
 
-    const [usersTokens, setUsersTokens] = useState([null]); // NEW: Pagination for Directory
+    const [usersTokens, setUsersTokens] = useState([null]); 
     const [currentUsersPage, setCurrentUsersPage] = useState(0);
     const [hasMoreUsers, setHasMoreUsers] = useState(false);
     
@@ -137,13 +137,14 @@ const ApproveAttendancePage = () => {
         finally { setLoading(false); }
     }, [user.userIdentifier, currentWeekendPage, weekendTokens, debouncedSearch]);
 
-    // NEW: Fetch All Users for Directory
+    // NEW: Fetch All Users for Directory (WITH CRITICAL FIX)
     const fetchUsersList = useCallback(async () => {
         try {
             setLoading(true);
             const currentToken = usersTokens[currentUsersPage];
 
             const result = await apiService.getUsers({
+                authenticatedUsername: user.userIdentifier, // <-- CRITICAL FIX ADDED HERE
                 pageSize: PAGE_SIZE,
                 continuationToken: currentToken,
                 searchEmail: debouncedSearch
@@ -161,7 +162,7 @@ const ApproveAttendancePage = () => {
             }
         } catch (err) { console.error("Failed to fetch users:", err); } 
         finally { setLoading(false); }
-    }, [currentUsersPage, usersTokens, debouncedSearch]);
+    }, [user.userIdentifier, currentUsersPage, usersTokens, debouncedSearch]);
 
     // Trigger fetches when tabs or pages change
     useEffect(() => {
