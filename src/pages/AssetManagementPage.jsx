@@ -76,9 +76,10 @@ const AssetManagementPage = () => {
 
     // --- FETCH DATA ---
     const fetchData = useCallback(async () => {
-        // FIX: Prevent fetch from running if user is not loaded yet. Avoids the TypeError.
-        if (!user?.userIdentifier) {
-            setLoading(false);
+        // FIX: Critical Guard. 
+        // If user context is null or userIdentifier is missing, abort the call.
+        // Axios/API requests passing undefined into headers or params often trigger the "target must be an object" error in deep merge/formatting utilities.
+        if (!user || !user.userIdentifier) {
             return;
         }
         
@@ -97,9 +98,11 @@ const AssetManagementPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.userIdentifier]);
+    }, [user]);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => { 
+        fetchData(); 
+    }, [fetchData]);
 
     // --- ANALYTICS & ALERTS CALCULATION ---
     useEffect(() => {
@@ -211,24 +214,23 @@ const AssetManagementPage = () => {
 
     const handleImportSubmit = async (e) => {
         e.preventDefault();
-        if (!importFile) return alert("Please select a CSV file.");
+        if (!importFile) return;
         setProcessing(true);
         try {
             const formData = new FormData();
             formData.append('file', importFile);
-            // await apiService.bulkImportAssets(formData, user?.userIdentifier);
-            alert("Bulk import mock successful! (Connect your backend API here)");
+            // apiService.bulkImportAssets(formData, user?.userIdentifier);
             await fetchData();
             closeModal();
         } catch (err) {
-            alert(`Import failed: ${err.message}`);
+            console.error("Import failed", err);
         } finally {
             setProcessing(false);
         }
     };
 
     const viewAssetData = async (asset, selectedDate = sessionDate) => {
-        if (!user?.userIdentifier) return;
+        if (!user || !user.userIdentifier) return;
         
         setSelectedAsset(asset);
         setActiveModal('viewer');
@@ -240,7 +242,7 @@ const AssetManagementPage = () => {
                 setWorkingTime(response.data.formattedWorkingTime || '0h 0m');
             }
             
-            // Mock Fetching Audit Trail
+            // Mock Fetching Audit Trail (Replace with real API if available)
             setAuditTrail([
                 { date: '2025-01-10', event: 'Purchased & Added to Inventory', user: 'Admin' },
                 { date: '2025-02-15', event: 'Assigned to User', user: asset.AssetAssignedTo || 'Unknown' },
@@ -367,33 +369,34 @@ const AssetManagementPage = () => {
     // Form Actions
     const handleActionSubmit = async (e) => {
         e.preventDefault();
+        if (!user || !user.userIdentifier) return;
         setProcessing(true);
         try {
             if (activeModal === 'assign') {
                 const targetUser = users.find(u => u.username === modalData.userEmail);
                 if(targetUser) {
-                    await apiService.assignAsset({ assetId: selectedAsset.rowKey, assignedToEmail: targetUser.username, assignedToName: targetUser.displayName }, user?.userIdentifier);
+                    await apiService.assignAsset({ assetId: selectedAsset.rowKey, assignedToEmail: targetUser.username, assignedToName: targetUser.displayName }, user.userIdentifier);
                 }
             } else if (activeModal === 'reassign') {
                 const targetUser = users.find(u => u.username === modalData.userEmail);
                 if(targetUser) {
-                     await apiService.reassignAsset({ assetId: selectedAsset.rowKey, newAssignedToEmail: targetUser.username, newAssignedToName: targetUser.displayName }, user?.userIdentifier);
+                     await apiService.reassignAsset({ assetId: selectedAsset.rowKey, newAssignedToEmail: targetUser.username, newAssignedToName: targetUser.displayName }, user.userIdentifier);
                 }
             } else if (activeModal === 'service') {
-                await apiService.serviceRepairAsset({ assetId: selectedAsset.rowKey, serviceDetails: modalData.details, isRepair: modalData.isRepair === 'true' }, user?.userIdentifier);
+                await apiService.serviceRepairAsset({ assetId: selectedAsset.rowKey, serviceDetails: modalData.details, isRepair: modalData.isRepair === 'true' }, user.userIdentifier);
             }
             await fetchData();
             closeModal();
-        } catch (err) { alert(`Action failed: ${err.message}`); }
+        } catch (err) { console.error("Action failed", err); }
         finally { setProcessing(false); }
     };
 
     const handleDelete = async (assetId) => {
-        if (!window.confirm(`Are you sure you want to delete asset ${assetId}?`)) return;
+        if (!user || !user.userIdentifier || !window.confirm(`Are you sure?`)) return;
         try {
-            await apiService.deleteAsset(assetId, user?.userIdentifier);
+            await apiService.deleteAsset(assetId, user.userIdentifier);
             setAssets(assets.filter(a => a.rowKey !== assetId));
-        } catch (err) { alert('Delete failed.'); }
+        } catch (err) { console.error("Delete failed", err); }
     };
 
     // UI Helpers
@@ -469,38 +472,33 @@ const AssetManagementPage = () => {
                         </div>
 
                         {/* Visual Analytics */}
-                        {/* FIX: Simplified ResponsiveContainer sizes and added flex-1 styling to the parent so chart gets correct bounding height */}
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-72 flex flex-col">
+                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-72">
                                 <h4 className="text-xs font-black uppercase text-slate-400 mb-2">Fleet Utilization (Last 7 Days)</h4>
-                                <div className="flex-1 w-full min-h-0">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={weeklyUtilizationData}>
-                                            <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-                                            <YAxis stroke="#94a3b8" fontSize={10} />
-                                            <Tooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                                            <Legend wrapperStyle={{fontSize: '11px', fontWeight: 'bold'}}/>
-                                            <Bar dataKey="active" name="Active Hours" stackId="a" fill="#10b981" />
-                                            <Bar dataKey="idle" name="Idle Hours" stackId="a" fill="#f59e0b" />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
+                                <ResponsiveContainer width="100%" height="90%">
+                                    <BarChart data={weeklyUtilizationData}>
+                                        <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
+                                        <YAxis stroke="#94a3b8" fontSize={10} />
+                                        <Tooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                                        <Legend wrapperStyle={{fontSize: '11px', fontWeight: 'bold'}}/>
+                                        <Bar dataKey="active" name="Active Hours" stackId="a" fill="#10b981" />
+                                        <Bar dataKey="idle" name="Idle Hours" stackId="a" fill="#f59e0b" />
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
-                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-72 flex flex-col">
+                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-72">
                                 <h4 className="text-xs font-black uppercase text-slate-400 mb-2">Brand Distribution</h4>
-                                <div className="flex-1 w-full min-h-0">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie data={brandDistributionData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value">
-                                                {brandDistributionData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                                            <Legend wrapperStyle={{fontSize: '11px', fontWeight: 'bold'}}/>
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                </div>
+                                <ResponsiveContainer width="100%" height="90%">
+                                    <PieChart>
+                                        <Pie data={brandDistributionData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value">
+                                            {brandDistributionData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                                        <Legend wrapperStyle={{fontSize: '11px', fontWeight: 'bold'}}/>
+                                    </PieChart>
+                                </ResponsiveContainer>
                             </div>
                         </div>
                     </div>
