@@ -46,8 +46,15 @@ export const apiService = {
     apiClient.post('/changePassword', { targetUsername, newPassword, authenticatedUsername }),
   requestPasswordReset: (username) =>
     apiClient.post('/requestPasswordReset', { username }),
-  getUsers: (authenticatedUsername) =>
-    apiClient.get('/getUsers', { params: { authenticatedUsername } }),
+    
+  // ✅ FIXED: Single, flexible getUsers function handles both strings and objects safely
+  getUsers: (args) => {
+    if (typeof args === 'string') {
+      return apiClient.get('/getUsers', { params: { authenticatedUsername: args } });
+    }
+    return apiClient.get('/getUsers', { params: args });
+  },
+  
   addUser: (userData, authenticatedUsername) =>
     apiClient.post('/addUser', { ...userData, authenticatedUsername }),
   updateUser: (originalUsername, userData, authenticatedUsername) =>
@@ -118,8 +125,7 @@ export const apiService = {
     }),
 
   // --- Permissions Functions ---
-  getUsers: (params) =>
-    apiClient.get('/getUsers', { params }),
+  // (Removed duplicate getUsers definition from here)
   updateUserPermissions: (username, permissions, authenticatedUsername) =>
     apiClient.post('/updateUserPermissions', { username, permissions, authenticatedUsername }),
 
