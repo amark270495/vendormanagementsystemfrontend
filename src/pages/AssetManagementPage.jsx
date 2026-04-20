@@ -76,14 +76,20 @@ const AssetManagementPage = () => {
 
     // --- FETCH DATA ---
     const fetchData = useCallback(async () => {
+        // FIX: Prevent fetch from running if user is not loaded yet. Avoids the TypeError.
+        if (!user?.userIdentifier) {
+            setLoading(false);
+            return;
+        }
+        
         setLoading(true);
         try {
             const [assetRes, userRes] = await Promise.all([
                 apiService.getAssets(user.userIdentifier),
                 apiService.getUsers(user.userIdentifier)
             ]);
-            setAssets(assetRes.data || []);
-            setUsers(userRes.data?.users || []);
+            setAssets(assetRes?.data || []);
+            setUsers(userRes?.data?.users || []);
             setError('');
         } catch (err) {
             console.error("Error fetching dashboard data:", err);
@@ -91,7 +97,7 @@ const AssetManagementPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [user.userIdentifier]);
+    }, [user?.userIdentifier]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -210,7 +216,7 @@ const AssetManagementPage = () => {
         try {
             const formData = new FormData();
             formData.append('file', importFile);
-            // await apiService.bulkImportAssets(formData, user.userIdentifier);
+            // await apiService.bulkImportAssets(formData, user?.userIdentifier);
             alert("Bulk import mock successful! (Connect your backend API here)");
             await fetchData();
             closeModal();
@@ -222,12 +228,14 @@ const AssetManagementPage = () => {
     };
 
     const viewAssetData = async (asset, selectedDate = sessionDate) => {
+        if (!user?.userIdentifier) return;
+        
         setSelectedAsset(asset);
         setActiveModal('viewer');
         setLoadingSessions(true);
         try {
             const response = await apiService.getAssetSessions(asset.rowKey, selectedDate, user.userIdentifier);
-            if (response.data && response.data.success) {
+            if (response?.data && response.data.success) {
                 setAssetSessions(response.data.sessions || []);
                 setWorkingTime(response.data.formattedWorkingTime || '0h 0m');
             }
@@ -236,13 +244,12 @@ const AssetManagementPage = () => {
             setAuditTrail([
                 { date: '2025-01-10', event: 'Purchased & Added to Inventory', user: 'Admin' },
                 { date: '2025-02-15', event: 'Assigned to User', user: asset.AssetAssignedTo || 'Unknown' },
-                { date: new Date().toISOString().split('T'), event: 'Routine Sync Check', user: 'System' }
+                { date: new Date().toISOString().split('T')[0], event: 'Routine Sync Check', user: 'System' }
             ]);
         } catch (err) { console.error("Error loading asset data", err); } 
         finally { setLoadingSessions(false); }
     };
 
-    // --- FIX 1: Date Change Handler ---
     const handleDateChange = (e) => {
         const newDate = e.target.value;
         setSessionDate(newDate);
@@ -251,11 +258,9 @@ const AssetManagementPage = () => {
         }
     };
 
-    // --- UPDATED QR CODE PRINT FUNCTION ---
     const handlePrintQRCode = () => {
         if (!selectedAsset) return;
 
-        // 1. Format the data that will appear when the QR code is scanned
         const qrScanData = `Asset ID: ${selectedAsset.rowKey}\nModel: ${selectedAsset.AssetBrandName || ''} ${selectedAsset.AssetModelName || ''}\nAssigned To: ${selectedAsset.AssetAssignedTo || 'Unassigned'}\nService Tag: ${selectedAsset.AssetServiceTag || 'N/A'}`;
         const encodedData = encodeURIComponent(qrScanData);
 
@@ -274,25 +279,19 @@ const AssetManagementPage = () => {
                             display: flex;
                             justify-content: flex-start;
                         }
-                        
-                        /* Container to hold QR and Table side-by-side */
                         .label-container {
                             display: flex;
                             align-items: center;
                             width: max-content;
                         }
-                        
-                        /* QR Code Wrapper */
                         .qr-section {
                             padding-right: 15px;
                         }
                         .qr-section img {
-                            width: 110px; /* Adjusted to match scale of your image */
+                            width: 110px;
                             height: 110px;
                             display: block;
                         }
-                        
-                        /* Table Styling to match your screenshot */
                         .details-table {
                             border-collapse: collapse;
                         }
@@ -305,10 +304,8 @@ const AssetManagementPage = () => {
                             color: #000;
                         }
                         .details-table th {
-                            font-weight: normal; /* Matches the standard weight in your image */
+                            font-weight: normal; 
                         }
-
-                        /* Print specific adjustments */
                         @media print {
                             @page { margin: 1cm; }
                             body { 
@@ -346,7 +343,6 @@ const AssetManagementPage = () => {
                     </div>
                     
                     <script>
-                        // Wait slightly longer (500ms) to ensure the denser QR code image fully loads before printing
                         window.onload = () => {
                             setTimeout(() => {
                                 window.print();
@@ -375,12 +371,16 @@ const AssetManagementPage = () => {
         try {
             if (activeModal === 'assign') {
                 const targetUser = users.find(u => u.username === modalData.userEmail);
-                await apiService.assignAsset({ assetId: selectedAsset.rowKey, assignedToEmail: targetUser.username, assignedToName: targetUser.displayName }, user.userIdentifier);
+                if(targetUser) {
+                    await apiService.assignAsset({ assetId: selectedAsset.rowKey, assignedToEmail: targetUser.username, assignedToName: targetUser.displayName }, user?.userIdentifier);
+                }
             } else if (activeModal === 'reassign') {
                 const targetUser = users.find(u => u.username === modalData.userEmail);
-                await apiService.reassignAsset({ assetId: selectedAsset.rowKey, newAssignedToEmail: targetUser.username, newAssignedToName: targetUser.displayName }, user.userIdentifier);
+                if(targetUser) {
+                     await apiService.reassignAsset({ assetId: selectedAsset.rowKey, newAssignedToEmail: targetUser.username, newAssignedToName: targetUser.displayName }, user?.userIdentifier);
+                }
             } else if (activeModal === 'service') {
-                await apiService.serviceRepairAsset({ assetId: selectedAsset.rowKey, serviceDetails: modalData.details, isRepair: modalData.isRepair === 'true' }, user.userIdentifier);
+                await apiService.serviceRepairAsset({ assetId: selectedAsset.rowKey, serviceDetails: modalData.details, isRepair: modalData.isRepair === 'true' }, user?.userIdentifier);
             }
             await fetchData();
             closeModal();
@@ -391,7 +391,7 @@ const AssetManagementPage = () => {
     const handleDelete = async (assetId) => {
         if (!window.confirm(`Are you sure you want to delete asset ${assetId}?`)) return;
         try {
-            await apiService.deleteAsset(assetId, user.userIdentifier);
+            await apiService.deleteAsset(assetId, user?.userIdentifier);
             setAssets(assets.filter(a => a.rowKey !== assetId));
         } catch (err) { alert('Delete failed.'); }
     };
@@ -408,6 +408,7 @@ const AssetManagementPage = () => {
     };
 
     const getEventBadge = (action) => {
+        if(!action) return null;
         const actionLower = action.toLowerCase();
         if (['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat'].includes(actionLower)) return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">{action}</span>;
         if (['logout', 'logoff', 'lock', 'sleep', 'hibernate', 'shutdown'].includes(actionLower)) return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-slate-200 text-slate-700 border border-slate-300">{action}</span>;
@@ -468,26 +469,27 @@ const AssetManagementPage = () => {
                         </div>
 
                         {/* Visual Analytics */}
+                        {/* FIX: Simplified ResponsiveContainer sizes and added flex-1 styling to the parent so chart gets correct bounding height */}
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-72">
+                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-72 flex flex-col">
                                 <h4 className="text-xs font-black uppercase text-slate-400 mb-2">Fleet Utilization (Last 7 Days)</h4>
-                                {/* FIX 2: Added minHeight and minWidth to ResponsiveContainer */}
-                                <ResponsiveContainer width="100%" height="90%" minHeight={200} minWidth={0}>
-                                    <BarChart data={weeklyUtilizationData}>
-                                        <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-                                        <YAxis stroke="#94a3b8" fontSize={10} />
-                                        <Tooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                                        <Legend wrapperStyle={{fontSize: '11px', fontWeight: 'bold'}}/>
-                                        <Bar dataKey="active" name="Active Hours" stackId="a" fill="#10b981" />
-                                        <Bar dataKey="idle" name="Idle Hours" stackId="a" fill="#f59e0b" />
-                                    </BarChart>
-                                </ResponsiveContainer>
+                                <div className="flex-1 w-full min-h-0">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={weeklyUtilizationData}>
+                                            <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
+                                            <YAxis stroke="#94a3b8" fontSize={10} />
+                                            <Tooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                                            <Legend wrapperStyle={{fontSize: '11px', fontWeight: 'bold'}}/>
+                                            <Bar dataKey="active" name="Active Hours" stackId="a" fill="#10b981" />
+                                            <Bar dataKey="idle" name="Idle Hours" stackId="a" fill="#f59e0b" />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </div>
                             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-72 flex flex-col">
                                 <h4 className="text-xs font-black uppercase text-slate-400 mb-2">Brand Distribution</h4>
-                                <div className="flex-1">
-                                    {/* FIX 2: Added minHeight and minWidth to ResponsiveContainer */}
-                                    <ResponsiveContainer width="100%" height="100%" minHeight={200} minWidth={0}>
+                                <div className="flex-1 w-full min-h-0">
+                                    <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie data={brandDistributionData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value">
                                                 {brandDistributionData.map((entry, index) => (
@@ -701,7 +703,6 @@ const AssetManagementPage = () => {
                                                 <div className="text-center font-extrabold text-xl tracking-wider text-slate-800">{selectedAsset.rowKey}</div>
                                                 <div className="text-center text-sm font-medium text-slate-500">{selectedAsset.AssetBrandName} {selectedAsset.AssetModelName}</div>
                                             </div>
-                                            {/* FIX 4: Call the new print function here */}
                                             <button onClick={handlePrintQRCode} className="mt-6 px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-sm hover:bg-indigo-700">Print QR Code</button>
                                         </div>
                                     )}
