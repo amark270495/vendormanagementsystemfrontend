@@ -144,7 +144,9 @@ const DASHBOARD_CONFIGS = {
     'EclatTexasDisplay': { title: 'Eclat Texas VMS' },
     'TaprootTexasDisplay': { title: 'Taproot Texas VMS' },
     'VirtusaDisplay': { title: 'Virtusa Taproot' },
-    'DeloitteDisplay': { title: 'Deloitte Taproot' }
+    'DeloitteDisplay': { title: 'Deloitte Taproot' },
+    // --- ADDED FIX for TSI - BDR Openings ---
+    'tsiBdrDisplay': { title: 'TSI - BDM Openings' }
 };
 
 // --- Main Page ---
