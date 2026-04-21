@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom'; // ✅ Added for URL parameters
+import { useSearchParams } from 'react-router-dom'; 
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
@@ -55,7 +55,7 @@ const MultiSelectDropdown = ({ options, selectedNames, onChange, onBlur }) => {
     };
     
     const displayArray = Array.isArray(selectedNames) ? selectedNames : [];
-    const displayValue = displayArray.length > 0 && displayArray[0] !== "Need To Update"
+    const displayValue = displayArray.length > 0 && displayArray !== "Need To Update"
         ? `${displayArray.length} selected`
         : "Unassigned";
 
@@ -118,7 +118,9 @@ const DASHBOARD_CONFIGS = {
     'EclatTexasDisplay': { title: 'Eclat Texas VMS' },
     'TaprootTexasDisplay': { title: 'Taproot Texas VMS' },
     'VirtusaDisplay': { title: 'Virtusa Taproot' },
-    'DeloitteDisplay': { title: 'Deloitte Taproot' }
+    'DeloitteDisplay': { title: 'Deloitte Taproot' },
+    // --- ADDED FIX for TSI - BDR Openings ---
+    'tsiBdrDisplay': { title: 'TSI - BDR Openings' } 
 };
 const EDITABLE_COLUMNS = ['Working By', '# Submitted', 'Remarks'];
 const CANDIDATE_COLUMNS = ['1st Candidate Name', '2nd Candidate Name', '3rd Candidate Name'];
@@ -136,11 +138,10 @@ const REMARKS_OPTIONS = [
     'Submission Date Closed'
 ];
 
-const DashboardPage = () => { // ✅ Removed { sheetKey } prop
+const DashboardPage = () => { 
     const { user, updatePreferences } = useAuth();
     const { canEditDashboard, canViewDashboards } = usePermissions(); 
     
-    // ✅ NEW: Read the sheetKey from URL Search Params (/dashboard?key=xxxx)
     const [searchParams] = useSearchParams();
     const sheetKey = searchParams.get('key');
 
@@ -200,7 +201,7 @@ const DashboardPage = () => { // ✅ Removed { sheetKey } prop
     }, [user]);
 
     const loadData = useCallback(async () => {
-        if (!sheetKey || !user?.userIdentifier) return; // ✅ Guard: Don't fetch if key is missing
+        if (!sheetKey || !user?.userIdentifier) return; 
         setLoading(true);
         setError('');
         setUnsavedChanges({});
@@ -852,7 +853,7 @@ const DashboardPage = () => { // ✅ Removed { sheetKey } prop
                                 onChange={handleBatchSizeChange}
                                 className="block w-20 border-slate-300 rounded-lg py-1.5 text-sm font-bold text-slate-700 focus:ring-blue-500 shadow-sm bg-white"
                             >
-                                {[15, 30, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
+                                {.map(v => <option key={v} value={v}>{v}</option>)}
                                 <option value={filteredAndSortedData.length}>All</option>
                             </select>
                         </div>
