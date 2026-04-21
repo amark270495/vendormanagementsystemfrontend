@@ -120,7 +120,7 @@ const DASHBOARD_CONFIGS = {
     'VirtusaDisplay': { title: 'Virtusa Taproot' },
     'DeloitteDisplay': { title: 'Deloitte Taproot' },
     // --- ADDED FIX for TSI - BDR Openings ---
-    'tsiBdrDisplay': { title: 'TSI - BDR Openings' } 
+    'tsiBdrDisplay': { title: 'TSI - BDM Openings' } 
 };
 const EDITABLE_COLUMNS = ['Working By', '# Submitted', 'Remarks'];
 const CANDIDATE_COLUMNS = ['1st Candidate Name', '2nd Candidate Name', '3rd Candidate Name'];
