@@ -13,7 +13,9 @@ const DASHBOARD_CONFIGS = {
     'EclatTexasDisplay': { title: 'Eclat Texas VMS' },
     'TaprootTexasDisplay': { title: 'Taproot Texas VMS' },
     'VirtusaDisplay': { title: 'Virtusa Taproot' },
-    'DeloitteDisplay': { title: 'Deloitte Taproot' }
+    'DeloitteDisplay': { title: 'Deloitte Taproot' },
+    // --- ADDED FIX for TSI - BDR Openings ---
+    'tsiBdrDisplay': { title: 'TSI - BDR Openings' } 
 };
 
 const LOGO_URL = "https://vmsdashboardea.blob.core.windows.net/images/Company_logo.png?sp=r&st=2026-03-17T13:15:01Z&se=2027-12-30T21:30:01Z&sv=2024-11-04&sr=b&sig=dAq1%2Bxrcn0KMYfrH%2F9OtOfQUZNqrxdZvGwoNFZfcyFY%3D";
