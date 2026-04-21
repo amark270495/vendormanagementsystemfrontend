@@ -853,7 +853,7 @@ const DashboardPage = () => {
                                 onChange={handleBatchSizeChange}
                                 className="block w-20 border-slate-300 rounded-lg py-1.5 text-sm font-bold text-slate-700 focus:ring-blue-500 shadow-sm bg-white"
                             >
-                                {batchSizes.map(v => <option key={v} value={v}>{v}</option>)}
+                                {[15, 30, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
                                 <option value={filteredAndSortedData.length}>All</option>
                             </select>
                         </div>
