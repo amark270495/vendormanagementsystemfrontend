@@ -15,13 +15,15 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
     
     const [rawText, setRawText] = useState('');
 
+    // --- ADDED 'Other' TO OPTIONS ---
     const postingFromOptions = useMemo(() => [
         'State Of Texas', 'State Of Michigan', 'State of North Carolina', 
         'State Of New Jersey', 'State Of Georgia', 'State Of Iowa', 
         'State Of Connecticut', 'State Of Virginia', 'State Of Indiana', 
-        'Virtusa', 'Deloitte'
+        'Virtusa', 'Deloitte', 'Other'
     ], []);
 
+    // --- ADDED 'TSI - BDR Openings' TO COMPANY OPTIONS ---
     const formFields = useMemo(() => [
         { name: 'Posting ID', id: 'postingId', type: 'text', required: true, half: true },
         { name: 'Posting Title', id: 'postingTitle', type: 'text', required: true, half: true },
@@ -30,7 +32,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         { name: 'Max Submissions', id: 'maxSubmissions', type: 'number', required: true, half: true },
         { name: 'Max C2C Rate', id: 'maxC2CRate', type: 'text', required: true, half: true },
         { name: 'Client Name', id: 'clientName', type: 'text', required: true, half: true },
-        { name: 'Company Name', id: 'companyName', type: 'select', required: true, options: ['Eclat Solutions LLC', 'Taproot Solutions INC'], half: true },
+        { name: 'Company Name', id: 'companyName', type: 'select', required: true, options: ['Eclat Solutions LLC', 'Taproot Solutions INC', 'TSI - BDR Openings'], half: true },
         { name: 'Posting From', id: 'postingFrom', type: 'select', required: true, options: postingFromOptions, half: true },
         { name: 'Work Location', id: 'workLocation', type: 'text', required: true, half: true },
         { name: 'Work Position Type', id: 'workPositionType', type: 'select', required: true, options: ['Hybrid', 'Remote', 'Onsite'], half: true },
@@ -104,7 +106,6 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         'As', 'Be', 'Of', 'To', 'Is', 'It', 'Cluster', 'Primary'
     ]);
 
-
     const handleParseText = () => {
         let text = rawText;
         if (!text) return;
@@ -116,8 +117,8 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         const extract = (patterns) => {
             for (const pattern of patterns) {
                 const match = text.match(pattern);
-                if (match && match[1]) {
-                    return match[1].trim();
+                if (match && match) {
+                    return match.trim();
                 }
             }
             return '';
@@ -171,16 +172,16 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         const rateMatch = text.match(/(?:C 2 C|C2C)\s*(?:[\r\n]+)?(\d+(\.\d{1,2})?)\s*\$/i) 
                        || text.match(/NTE Rate:?\s*(\d+(\.\d{1,2})?)/i);
         if (rateMatch) {
-            parsedData['Max C2C Rate'] = `$${rateMatch[1]}/hr`;
+            parsedData['Max C2C Rate'] = `$${rateMatch}/hr`;
         }
 
         // Date: Handles "Last Date... \n 01-30-2026"
         const dateMatch = text.match(/(?:Last Date For Submission|Dead Line)\s*(?:[\r\n]+)?(\d{2}-\d{2}-\d{4})/i);
         if (dateMatch) {
             try {
-                const [m, d, y] = dateMatch[1].split('-');
+                const [m, d, y] = dateMatch.split('-');
                 parsedData['Last Submission Date'] = `${y}-${m}-${d}`;
-            } catch (e) { console.error("Could not parse date: ", dateMatch[1]); }
+            } catch (e) { console.error("Could not parse date: ", dateMatch); }
         }
 
         // Auto-detect "Posting From" based on Client Name
@@ -194,7 +195,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
             }
         }
         
-        parsedData['Posting Date'] = new Date().toISOString().split('T')[0];
+        parsedData['Posting Date'] = new Date().toISOString().split('T');
 
         // --- Step 2: Skill Extraction ---
         let finalSkills = new Set();
@@ -204,10 +205,10 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         const clusterMatch = text.match(/Skill Cluster:\s*(?:[\r\n]+)?(.+)/i);
         
         if (primarySkillMatch) {
-            primarySkillMatch[1].split(/,|;|\//).forEach(s => finalSkills.add(s.trim()));
+            primarySkillMatch.split(/,|;|\//).forEach(s => finalSkills.add(s.trim()));
         }
         if (clusterMatch) {
-            clusterMatch[1].split(/,|;|\//).forEach(s => finalSkills.add(s.trim()));
+            clusterMatch.split(/,|;|\//).forEach(s => finalSkills.add(s.trim()));
         }
 
         // 2b. Heuristic Extraction (Fallback & Supplement)
@@ -261,7 +262,6 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
     };
     // --- END: Heuristic Skill Parser ---
 
-
     const handleChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
@@ -272,12 +272,18 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
             return setError("You do not have permission to add new job postings.");
         }
 
+        // --- NEW: Client Name -> Posting From Interception ---
+        const payloadToSubmit = { ...formData };
+        if (payloadToSubmit['Posting From'] === 'Other') {
+            payloadToSubmit['Posting From'] = payloadToSubmit['Client Name'] || '';
+        }
+
         setError('');
         setSuccess('');
         setLoading(true);
         try {
-            // Using the REAL apiService
-            const response = await apiService.processJobPosting(formData, user.userIdentifier);
+            // Send the correctly formatted payloadToSubmit to the API
+            const response = await apiService.processJobPosting(payloadToSubmit, user.userIdentifier);
             if (response.data.success) {
                 setSuccess(response.data.message);
                 setFormData({}); // Clear the form
@@ -328,7 +334,6 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
                 </div>
             )}
             {/* --- END: Job Description Parser --- */}
-
 
             {!canAddPosting && !loading && (
                 <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
