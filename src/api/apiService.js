@@ -125,7 +125,10 @@ export const apiService = {
     }),
 
   // --- Permissions Functions ---
-  // (Removed duplicate getUsers definition from here)
+  // ✅ ADDED MISSING FUNCTION HERE
+  getUserPermissionsList: (authenticatedUsername) =>
+    apiClient.get('/getUserPermissionsList', { params: { authenticatedUsername } }),
+    
   updateUserPermissions: (username, permissions, authenticatedUsername) =>
     apiClient.post('/updateUserPermissions', { username, permissions, authenticatedUsername }),
 
