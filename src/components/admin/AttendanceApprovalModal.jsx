@@ -6,9 +6,11 @@ import Modal from '../Modal';
 
 /**
  * Ensures Calendar "Today" respects the 12 PM Noon Cutoff for IST Shifts.
+ * FIX APPLIED: Uses strict UTC mapping to prevent local timezone distortion.
  */
 const getISTShiftDateString = () => {
     const browserNow = new Date();
+    // Shift absolute UTC epoch by 5.5 hours to force IST
     const istTime = new Date(browserNow.getTime() + (5.5 * 60 * 60 * 1000));
     
     if (istTime.getUTCHours() < 12) {
@@ -48,6 +50,7 @@ const ChevronRightIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20
 const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
 
+// --- FIXED TIME CALCULATION LOGIC ---
 const calculateTotalWorkTime = (logs, shiftDateStr) => {
     if (!logs || logs.length === 0 || !shiftDateStr) return { standard: "0h 0m", extra: null, activeStr: "" };
 
@@ -121,6 +124,7 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
             processBlock(sessionStart, now);
             activeString = " (Active Now)";
         } else {
+            // FIX APPLIED: Safely cap sessions to preserve morning hours
             let capTime;
             if (sessionStart < shiftEndIST && effectiveEnd > shiftEndIST) {
                 capTime = shiftEndIST; 
@@ -151,18 +155,17 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, ap
         const dayOfWeek = date.getUTCDay();
         const currentShiftDateStr = getISTShiftDateString();
         const baseClasses = "relative transition-all duration-300 ease-out border flex flex-col justify-between p-1.5 overflow-hidden shadow-sm";
-        
         const attendanceRecord = attendanceData[dateKey];
 
         // 1. Check for Pending Actions FIRST
         if (attendanceRecord && attendanceRecord.status === 'Pending') {
-            const requestedText = (attendanceRecord.requestedStatus || 'Present').includes('Present') ? 'Present?' : 'Absent?';
-            const requestObj = pendingRequestsMap[dateKey] || attendanceRecord;
+            const requestedText = attendanceRecord.requestedStatus === 'Present' ? 'Present?' : 'Absent?';
+            const requestObj = pendingRequestsMap[dateKey] || {};
             return {
                 status: 'Pending', label: requestedText,
                 color: `${baseClasses} bg-amber-50 border-2 border-dashed border-amber-400 text-amber-900 cursor-pointer hover:bg-amber-100 hover:border-amber-500 hover:shadow-md transform hover:-translate-y-0.5`,
                 badgeColor: "bg-amber-400 text-amber-900 font-extrabold shadow-sm",
-                description: `Pending Approval: ${attendanceRecord.requestedStatus || 'Unknown'}`, isPending: true, request: requestObj 
+                description: `Pending Approval: ${attendanceRecord.requestedStatus}`, isPending: true, request: requestObj 
             };
         }
 
@@ -176,8 +179,6 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, ap
         if (attendanceRecord) {
              if (attendanceRecord.status === 'Present') return { status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-50 border-emerald-200 text-emerald-800`, badgeColor: "bg-emerald-200 text-emerald-900" };
              if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') return { status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-800`, badgeColor: "bg-rose-200 text-rose-900" };
-             
-             return { status: 'Logged', label: 'Logged', color: `${baseClasses} bg-blue-50 border-blue-200 text-blue-800`, badgeColor: "bg-blue-200 text-blue-900" };
         }
 
         // 5. Weekend Check
@@ -311,43 +312,12 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             const attMap = {};
             const pendingMap = {};
             
+            // EXACT RESTORATION OF YOUR WORKING DATA MAPPING
             if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendanceRecords)) {
                 attendanceRes.data.attendanceRecords.forEach(att => {
-                    // FIX 1: Safely separate parsing so undefined/array methods never crash the UI
-                    let cleanDate = '';
-                    const rawDateVal = att.date || att.dateKey || att.rowKey || att.RowKey;
-                    
-                    if (rawDateVal) {
-                        const dateParts = String(rawDateVal).split('T');
-                        if (dateParts && dateParts.length > 0) {
-                            cleanDate = String(dateParts).trim();
-                        }
-                    }
-                    
-                    // FIX 2: Bulletproof Status Mapping
-                    const s = String(att.status || att.Status || '').toLowerCase();
-                    let normalizedStatus = 'Pending'; 
-                    
-                    if (s.includes('pending')) {
-                        normalizedStatus = 'Pending';
-                    } else if (s.includes('approve') || s.includes('present')) {
-                        normalizedStatus = 'Present';
-                    } else if (s.includes('absent') || s.includes('reject')) {
-                        normalizedStatus = 'Absent';
-                    }
-
-                    if (cleanDate) {
-                        const record = { 
-                            ...att, 
-                            username: att.username || selectedUsername, 
-                            date: cleanDate, 
-                            status: normalizedStatus,
-                            requestedStatus: att.requestedStatus || 'Present' 
-                        };
-                        
-                        attMap[cleanDate] = record;
-                        if (normalizedStatus === 'Pending') pendingMap[cleanDate] = record;
-                    }
+                    const record = { ...att, username: att.username || selectedUsername, date: att.date || att.rowKey };
+                    attMap[record.date] = record;
+                    if (record.status === 'Pending') pendingMap[record.date] = record;
                 });
             }
             setAttendanceData(attMap);
@@ -382,7 +352,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                  });
             }
             setApprovedWeekends(approvedWknds);
-            
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Failed to load calendar data.');
         } finally { setLoading(false); }
