@@ -177,7 +177,6 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, ap
              if (attendanceRecord.status === 'Present') return { status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-50 border-emerald-200 text-emerald-800`, badgeColor: "bg-emerald-200 text-emerald-900" };
              if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') return { status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-800`, badgeColor: "bg-rose-200 text-rose-900" };
              
-             // Fallback just in case the status is unknown but data exists
              return { status: 'Logged', label: 'Logged', color: `${baseClasses} bg-blue-50 border-blue-200 text-blue-800`, badgeColor: "bg-blue-200 text-blue-900" };
         }
 
@@ -314,13 +313,20 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             
             if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendanceRecords)) {
                 attendanceRes.data.attendanceRecords.forEach(att => {
-                    // FIX 1: Robust Date Extraction
-                    const rawDate = String(att.date || att.dateKey || att.rowKey || att.RowKey || '');
-                    const cleanDate = rawDate.split('T').trim(); 
+                    // FIX 1: Safely separate parsing so undefined/array methods never crash the UI
+                    let cleanDate = '';
+                    const rawDateVal = att.date || att.dateKey || att.rowKey || att.RowKey;
                     
-                    // FIX 2: Bulletproof Status Mapping using .includes() to catch variations
+                    if (rawDateVal) {
+                        const dateParts = String(rawDateVal).split('T');
+                        if (dateParts && dateParts.length > 0) {
+                            cleanDate = String(dateParts).trim();
+                        }
+                    }
+                    
+                    // FIX 2: Bulletproof Status Mapping
                     const s = String(att.status || att.Status || '').toLowerCase();
-                    let normalizedStatus = 'Pending'; // Default
+                    let normalizedStatus = 'Pending'; 
                     
                     if (s.includes('pending')) {
                         normalizedStatus = 'Pending';
@@ -330,15 +336,15 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                         normalizedStatus = 'Absent';
                     }
 
-                    const record = { 
-                        ...att, 
-                        username: att.username || selectedUsername, 
-                        date: cleanDate, 
-                        status: normalizedStatus,
-                        requestedStatus: att.requestedStatus || 'Present' 
-                    };
-                    
                     if (cleanDate) {
+                        const record = { 
+                            ...att, 
+                            username: att.username || selectedUsername, 
+                            date: cleanDate, 
+                            status: normalizedStatus,
+                            requestedStatus: att.requestedStatus || 'Present' 
+                        };
+                        
                         attMap[cleanDate] = record;
                         if (normalizedStatus === 'Pending') pendingMap[cleanDate] = record;
                     }
