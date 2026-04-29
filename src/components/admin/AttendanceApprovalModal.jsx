@@ -6,20 +6,21 @@ import Modal from '../Modal';
 
 /**
  * Ensures Calendar "Today" respects the 12 PM Noon Cutoff for IST Shifts.
- * If the current time in IST is before noon, the "Shift Date" is considered to be the previous day.
+ * FIXED: Strictly uses UTC methods after epoch shift to prevent local timezone distortion.
  */
 const getISTShiftDateString = () => {
     const browserNow = new Date();
-    const utcTime = browserNow.getTime() + (browserNow.getTimezoneOffset() * 60000);
-    const istTime = new Date(utcTime + (5.5 * 60 * 60 * 1000));
+    // Shift the absolute UTC epoch by 5.5 hours to force IST
+    const istTime = new Date(browserNow.getTime() + (5.5 * 60 * 60 * 1000));
     
-    if (istTime.getHours() < 12) {
-        istTime.setDate(istTime.getDate() - 1);
+    // STRICTLY use UTC methods to bypass the local browser timezone
+    if (istTime.getUTCHours() < 12) {
+        istTime.setUTCDate(istTime.getUTCDate() - 1);
     }
     
-    const year = istTime.getFullYear();
-    const month = String(istTime.getMonth() + 1).padStart(2, '0');
-    const day = String(istTime.getDate()).padStart(2, '0');
+    const year = istTime.getUTCFullYear();
+    const month = String(istTime.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(istTime.getUTCDate()).padStart(2, '0');
     
     return `${year}-${month}-${day}`;
 };
@@ -56,7 +57,7 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
 
     let year, month, day;
     const parts = shiftDateStr.split('-');
-    if (parts[0].length === 4) {
+    if (parts.length === 4) {
         [year, month, day] = parts;
     } else {
         [day, month, year] = parts;
@@ -65,11 +66,7 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
     // Define the exact Start of the IST Shift (7 PM)
     const shiftStartIST = new Date(`${year}-${month}-${day}T19:00:00.000+05:30`);
     
-    /**
-     * FIX: Anchor End exactly 9 hours later (4 AM next morning).
-     * This prevents the 13h jump by ensuring the date boundary is handled by the 
-     * Date object math rather than manual string manipulation.
-     */
+    // Anchor End exactly 9 hours later (4 AM next morning).
     const shiftEndIST = new Date(shiftStartIST.getTime() + (9 * 60 * 60 * 1000));
 
     const sortedLogs = [...logs].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
@@ -125,18 +122,20 @@ const calculateTotalWorkTime = (logs, shiftDateStr) => {
         const now = new Date();
         const effectiveEnd = (lastHeartbeat && lastHeartbeat > sessionStart) ? lastHeartbeat : now;
         
-        // Check if currently active within the shift boundary
         const isCurrentlyActive = (now - lastHeartbeat < 15 * 60000) && (now < shiftEndIST);
 
         if (isCurrentlyActive) {
             processBlock(sessionStart, now);
             activeString = " (Active Now)";
         } else {
-            /**
-             * Capping session at last heartbeat or Shift End to avoid overtime jumps 
-             * if a user leaves the computer on past 4 AM without logging out.
-             */
-            const capTime = effectiveEnd < shiftEndIST ? effectiveEnd : shiftEndIST;
+            // FIXED: Only cap at 4 AM if the session started BEFORE 4 AM.
+            let capTime;
+            if (sessionStart < shiftEndIST && effectiveEnd > shiftEndIST) {
+                capTime = shiftEndIST; 
+            } else {
+                capTime = effectiveEnd; // Preserves morning hours 
+            }
+            
             processBlock(sessionStart, capTime);
             activeString = effectiveEnd > shiftEndIST ? " (Shift Ended)" : " (Missing Logout)";
         }
@@ -156,7 +155,7 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, ap
         const date = new Date(Date.UTC(year, month, day));
 
         if (date.getUTCMonth() !== month) return { status: 'Empty' };
-        const dateKey = date.toISOString().split('T')[0];
+        const dateKey = date.toISOString().split('T');
         const dayOfWeek = date.getUTCDay();
         const currentShiftDateStr = getISTShiftDateString();
         const baseClasses = "relative transition-all duration-300 ease-out border flex flex-col justify-between p-1.5 overflow-hidden shadow-sm";
@@ -339,7 +338,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                     const end = new Date(req.endDate + 'T00:00:00Z');
                     for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
                         if (d.getUTCFullYear() === year && d.getUTCMonth() === monthDate.getUTCMonth()) {
-                            leaveSet.add(d.toISOString().split('T')[0]);
+                            leaveSet.add(d.toISOString().split('T'));
                         }
                     }
                 });
