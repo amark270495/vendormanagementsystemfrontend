@@ -315,11 +315,25 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
 
             const attMap = {};
             const pendingMap = {};
+            
             if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendanceRecords)) {
                 attendanceRes.data.attendanceRecords.forEach(att => {
-                    const record = { ...att, username: att.username || selectedUsername, date: att.date || att.rowKey };
-                    attMap[record.date] = record;
-                    if (record.status === 'Pending') pendingMap[record.date] = record;
+                    // FIXED: Defensive parsing handles Azure's serialization and strips timestamps
+                    const rawDate = att.date || att.dateKey || att.rowKey || att.RowKey || '';
+                    const cleanDate = rawDate.split('T'); 
+                    
+                    let rawStatus = att.status || att.Status || '';
+                    let normalizedStatus = rawStatus ? rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase() : 'Pending';
+
+                    const record = { 
+                        ...att, 
+                        username: att.username || selectedUsername, 
+                        date: cleanDate, 
+                        status: normalizedStatus 
+                    };
+                    
+                    attMap[cleanDate] = record;
+                    if (normalizedStatus === 'Pending') pendingMap[cleanDate] = record;
                 });
             }
             setAttendanceData(attMap);
@@ -354,6 +368,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                  });
             }
             setApprovedWeekends(approvedWknds);
+            
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Failed to load calendar data.');
         } finally { setLoading(false); }
