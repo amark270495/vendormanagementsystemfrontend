@@ -12,8 +12,7 @@ const POSTING_FROM_OPTIONS = [
     'Virtusa', 'Deloitte', 'Other'
 ];
 
-// --- MASTER SKILLS DICTIONARY ---
-// Generated from all historically collected skill sets
+// --- MASTER DICTIONARIES ---
 const MASTER_SKILLS_LIST = [
     "RDBMS", "SQL", "Agile/Scrum", "Keylight", "Azure DevOps", "TFS", "Web Services", "ADA compliance", 
     "Regression Testing", ".NET", "HTML", "XML", "SOAP", "REST", "PowerShell", "IaC", "Microsoft Azure", 
@@ -69,9 +68,13 @@ const MASTER_SKILLS_LIST = [
 ];
 
 const MASTER_CERTIFICATIONS_LIST = [
-    "CISSP", "PMP", "CSM (Certified Scrum Master)", "PSM (Professional Scrum Master)", 
-    "AWS Architect", "Azure Architect", "CompTIA", "ITIL", "Web Design/Graphic Design Certification"
+    "CBAP", "ISTQB", "SAFe", "Scrum", "Certified ScrumMaster", "PMI-ACP", "SAFe Agilist", 
+    "Azure Database Administrator Associate", "Microsoft SQL Server", "CSM", "PSM", "Scrum Master", 
+    "BluePrism", "RHCT", "RHCE", "LPIC", "Linux", "Web Design/Graphic Design Certification", "CISSP", "PMP"
 ];
+
+// Helper to escape regex characters in strings (like C# or .NET)
+const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const JobPostingFormPage = ({ onFormSubmit }) => {
     const { user } = useAuth();
@@ -107,7 +110,6 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
 
         let parsedData = {};
 
-        // Helper: Extract using regex, safely grabbing the capture group
         const extract = (patterns) => {
             for (const pattern of patterns) {
                 const match = text.match(pattern);
@@ -119,21 +121,24 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         };
 
         // --- 1. PARSE STANDARD FIELDS ---
+        
+        // Exact targeting for Solicitation numbers and (ID) formats
         parsedData['Posting ID'] = extract([
             /Solicitation Reference Number:\s*([A-Z0-9]+)/i,
-            /Job Id:?\s*(?:[\r\n]+)?.*?\b([A-Z0-9]{6,})\b/i,
-            /\(\s*([A-Z0-9]{6,})\s*\)/i 
+            /Job Id:?\s*(?:[\r\n]+)?.*?\(\s*([A-Z0-9]+)\s*\)/i, // Matches: Specialist Expert - (800826)
+            /\b([A-Z0-9]{6,})\b/ // Fallback for any 6+ char alphanumeric
         ]);
 
+        // Exact targeting for Titles before the ID parenthesis
         parsedData['Posting Title'] = extract([
             /Working Title:\s*(.+)/i,
-            /(?:Job Id:)\s*(?:[\r\n]+)?(.+?)\s*(?:-\s*\([^)]+\)|\([^)]+\)|\n|$)/i,
+            /Job Id:?\s*(?:[\r\n]+)?(.*?)\s*(?:-\s*\([^)]+\)|\([^)]+\))/i, // Captures text before - (ID) or (ID)
             /Title\s*:\s*(.+)/i
         ]);
 
         parsedData['Client Name'] = extract([
             /Client Info\s*(?:[\r\n]+)?(.+)/i,
-            /State Name:\s*(?:[\r\n]+)?(.+)/i,
+            /State Name:\s*(?:[\r\n]+)?(.+?)(?:\r|\n|$)/i,
             /Client Name:\s*(?:[\r\n]+)?(.+)/i
         ]);
 
@@ -177,21 +182,21 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         parsedData['Posting Date'] = new Date().toISOString().split('T')[0];
 
         // --- 2. DICTIONARY SKILL EXTRACTION ---
-        // Instead of AI, we scan the text for exact matches from your massive dictionary list.
         const foundSkills = new Set();
         const foundCerts = new Set();
-        const lowerCaseText = text.toLowerCase();
-
-        // Find Skills
+        
+        // Find Skills using word boundaries so "IT" doesn't match inside "WITH"
         MASTER_SKILLS_LIST.forEach(skill => {
-            if (lowerCaseText.includes(skill.toLowerCase())) {
+            const regex = new RegExp(`(?:^|\\W)${escapeRegExp(skill)}(?:$|\\W)`, 'i');
+            if (regex.test(text)) {
                 foundSkills.add(skill);
             }
         });
 
         // Find Certifications
         MASTER_CERTIFICATIONS_LIST.forEach(cert => {
-            if (lowerCaseText.includes(cert.toLowerCase())) {
+            const regex = new RegExp(`(?:^|\\W)${escapeRegExp(cert)}(?:$|\\W)`, 'i');
+            if (regex.test(text)) {
                 foundCerts.add(cert);
             }
         });
@@ -207,7 +212,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         }
 
         setFormData(prev => ({ ...prev, ...parsedData }));
-        setSuccess("Parsed via Smart Dictionary Extraction!");
+        setSuccess("Parsed successfully via Smart Dictionary!");
     };
 
     const handleChange = (e) => {
@@ -260,7 +265,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
                         ⚡ Smart Dictionary Parser
                     </h2>
                     <p className="text-sm text-gray-600">
-                        Paste the full job description. The system will scan the text against a master dictionary of 200+ IT skills and extract all required fields locally.
+                        Paste the full job description. The system will scan the text against your master dictionary of IT skills and certifications to extract all required fields locally.
                     </p>
                     <textarea
                         rows="8"
