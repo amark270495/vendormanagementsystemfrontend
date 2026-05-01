@@ -14,7 +14,6 @@ const apiClient = axios.create({
 // =========================================================================
 apiClient.interceptors.request.use((config) => {
     try {
-        // ✅ FIXED: Using localStorage instead of sessionStorage to match AuthContext persistence
         const savedUser = localStorage.getItem('vms_user');
         
         if (savedUser) {
@@ -47,7 +46,6 @@ export const apiService = {
   requestPasswordReset: (username) =>
     apiClient.post('/requestPasswordReset', { username }),
     
-  // ✅ FIXED: Single, flexible getUsers function handles both strings and objects safely
   getUsers: (args) => {
     if (typeof args === 'string') {
       return apiClient.get('/getUsers', { params: { authenticatedUsername: args } });
@@ -75,6 +73,10 @@ export const apiService = {
     apiClient.post('/saveUserDashboardPreferences', { authenticatedUsername, preferences }),
   processJobPosting: (formData, authenticatedUsername) =>
     apiClient.post('/processJobPosting', { formData, authenticatedUsername }),
+    
+  // ✅ NEW: Added the Gemini AI parsing endpoint
+  parseJobDescriptionUsingAI: (jobText, authenticatedUsername) =>
+    apiClient.post('/parseJobDescription', { jobText, authenticatedUsername }),
 
   // --- Candidate Functions ---
   addCandidateDetails: (candidateData, authenticatedUsername) =>
@@ -125,7 +127,6 @@ export const apiService = {
     }),
 
   // --- Permissions Functions ---
-  // ✅ ADDED MISSING FUNCTION HERE
   getUserPermissionsList: (authenticatedUsername) =>
     apiClient.get('/getUserPermissionsList', { params: { authenticatedUsername } }),
     
