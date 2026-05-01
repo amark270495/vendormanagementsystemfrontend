@@ -73,7 +73,6 @@ const MASTER_CERTIFICATIONS_LIST = [
     "BluePrism", "RHCT", "RHCE", "LPIC", "Linux", "Web Design/Graphic Design Certification", "CISSP", "PMP"
 ];
 
-// Helper to escape regex characters in strings (like C# or .NET)
 const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const JobPostingFormPage = ({ onFormSubmit }) => {
@@ -83,7 +82,11 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
     const [formData, setFormData] = useState({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
+    
+    // Split the success states to prevent blocking the submit button
+    const [submitSuccess, setSubmitSuccess] = useState('');
+    const [parseSuccess, setParseSuccess] = useState('');
+    
     const [rawText, setRawText] = useState('');
 
     const postingFromOptions = useMemo(() => POSTING_FROM_OPTIONS, []);
@@ -96,7 +99,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         { name: 'Max Submissions', id: 'maxSubmissions', type: 'number', required: true, half: true },
         { name: 'Max C2C Rate', id: 'maxC2CRate', type: 'text', required: true, half: true },
         { name: 'Client Name', id: 'clientName', type: 'text', required: true, half: true },
-        { name: 'Company Name', id: 'companyName', type: 'select', required: true, options: ['Eclat Solutions LLC', 'Taproot Solutions INC', 'TSI - BDM Openings'], half: true },
+        { name: 'Company Name', id: 'companyName', type: 'select', required: true, options: ['Eclat Solutions LLC', 'Taproot Solutions INC', 'Rent Excel', 'TSI - BDM Openings'], half: true },
         { name: 'Posting From', id: 'postingFrom', type: 'select', required: true, options: postingFromOptions, half: true },
         { name: 'Work Location', id: 'workLocation', type: 'text', required: true, half: true },
         { name: 'Work Position Type', id: 'workPositionType', type: 'select', required: true, options: ['Hybrid', 'Remote', 'Onsite', 'Telework'], half: true },
@@ -108,6 +111,9 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         let text = rawText;
         if (!text) return;
 
+        setParseSuccess('');
+        setError('');
+        
         let parsedData = {};
 
         const extract = (patterns) => {
@@ -121,18 +127,15 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         };
 
         // --- 1. PARSE STANDARD FIELDS ---
-        
-        // Exact targeting for Solicitation numbers and (ID) formats
         parsedData['Posting ID'] = extract([
             /Solicitation Reference Number:\s*([A-Z0-9]+)/i,
-            /Job Id:?\s*(?:[\r\n]+)?.*?\(\s*([A-Z0-9]+)\s*\)/i, // Matches: Specialist Expert - (800826)
-            /\b([A-Z0-9]{6,})\b/ // Fallback for any 6+ char alphanumeric
+            /Job Id:?\s*(?:[\r\n]+)?.*?\(\s*([A-Z0-9]+)\s*\)/i, 
+            /\b([A-Z0-9]{6,})\b/ 
         ]);
 
-        // Exact targeting for Titles before the ID parenthesis
         parsedData['Posting Title'] = extract([
             /Working Title:\s*(.+)/i,
-            /Job Id:?\s*(?:[\r\n]+)?(.*?)\s*(?:-\s*\([^)]+\)|\([^)]+\))/i, // Captures text before - (ID) or (ID)
+            /Job Id:?\s*(?:[\r\n]+)?(.*?)\s*(?:-\s*\([^)]+\)|\([^)]+\))/i, 
             /Title\s*:\s*(.+)/i
         ]);
 
@@ -185,7 +188,6 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         const foundSkills = new Set();
         const foundCerts = new Set();
         
-        // Find Skills using word boundaries so "IT" doesn't match inside "WITH"
         MASTER_SKILLS_LIST.forEach(skill => {
             const regex = new RegExp(`(?:^|\\W)${escapeRegExp(skill)}(?:$|\\W)`, 'i');
             if (regex.test(text)) {
@@ -193,7 +195,6 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
             }
         });
 
-        // Find Certifications
         MASTER_CERTIFICATIONS_LIST.forEach(cert => {
             const regex = new RegExp(`(?:^|\\W)${escapeRegExp(cert)}(?:$|\\W)`, 'i');
             if (regex.test(text)) {
@@ -212,7 +213,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         }
 
         setFormData(prev => ({ ...prev, ...parsedData }));
-        setSuccess("Parsed successfully via Smart Dictionary!");
+        setParseSuccess("Data extracted successfully! Please select your 'Company Name' below and review the fields before submitting.");
     };
 
     const handleChange = (e) => {
@@ -231,12 +232,13 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         }
 
         setError('');
-        setSuccess('');
+        setSubmitSuccess('');
+        setParseSuccess(''); // Clear parse message on submit
         setLoading(true);
         try {
             const response = await apiService.processJobPosting(payloadToSubmit, user.userIdentifier);
             if (response.data.success) {
-                setSuccess(response.data.message);
+                setSubmitSuccess(response.data.message);
                 setFormData({}); 
                 setRawText(''); 
                 if (onFormSubmit) {
@@ -298,7 +300,9 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
                 <form onSubmit={handleSubmit}>
                     <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border">
                         {error && <div className="bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">{error}</div>}
-                        {success && <div className="bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6">{success}</div>}
+                        {submitSuccess && <div className="bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6">{submitSuccess}</div>}
+                        {/* Display Parse Success Separately */}
+                        {parseSuccess && !submitSuccess && <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-700 px-4 py-3 rounded-lg mb-6">{parseSuccess}</div>}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
                             {formFields.map(field => (
@@ -321,7 +325,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
                         </div>
                     </div>
                     <div className="mt-6 flex justify-end">
-                        <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center w-48 h-12 disabled:bg-green-400" disabled={loading || !!success}>
+                        <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center w-48 h-12 disabled:bg-green-400" disabled={loading || !!submitSuccess}>
                             {loading ? <Spinner size="6" /> : 'Submit Job Posting'}
                         </button>
                     </div>
