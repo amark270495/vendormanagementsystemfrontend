@@ -99,7 +99,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         { name: 'Max Submissions', id: 'maxSubmissions', type: 'number', required: true, half: true },
         { name: 'Max C2C Rate', id: 'maxC2CRate', type: 'text', required: true, half: true },
         { name: 'Client Name', id: 'clientName', type: 'text', required: true, half: true },
-        { name: 'Company Name', id: 'companyName', type: 'select', required: true, options: ['Eclat Solutions LLC', 'Taproot Solutions INC', 'Rent Excel', 'TSI - BDM Openings'], half: true },
+        { name: 'Company Name', id: 'companyName', type: 'select', required: true, options: ['Eclat Solutions LLC', 'Taproot Solutions INC', 'TSI - BDM Openings'], half: true },
         { name: 'Posting From', id: 'postingFrom', type: 'select', required: true, options: postingFromOptions, half: true },
         { name: 'Work Location', id: 'workLocation', type: 'text', required: true, half: true },
         { name: 'Work Position Type', id: 'workPositionType', type: 'select', required: true, options: ['Hybrid', 'Remote', 'Onsite', 'Telework'], half: true },
