@@ -15,12 +15,12 @@ const UserIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 const IdCardIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2" /></svg>;
 const BriefcaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.03 23.03 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
-const CakeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 15.25v-4.25a2 2 0 00-2-2H5a2 2 0 00-2 2v4.25a2 2 0 002 2h14a2 2 0 002-2zM6 18v-3M9 18v-3M12 18v-3m3 0v3m3 0v-3m-15-4.5a.75.75 0 100-1.5.75.75 0 000 1.5zM18 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM9 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM15 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM12 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM6 9V6a3 3 0 013-3h6a3 3 0 013 3v3" /></svg>;
+const HeartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 015.13-1.424l.89.445.89-.445a4.5 4.5 0 015.13 1.424A4.5 4.5 0 0119.682 11.5a4.5 4.5 0 01-1.424 5.13l-.445.89-.445.89a4.5 4.5 0 01-5.13 1.424A4.5 4.5 0 0112 19.682a4.5 4.5 0 01-1.424-5.13l-.89-.445-.89-.445a4.5 4.5 0 01-1.424-5.13A4.5 4.5 0 014.318 6.318z" /></svg>;
+const ShieldCheckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
 const PhoneIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>;
 const LocationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
 const LinkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" /></svg>;
-const HeartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 015.13-1.424l.89.445.89-.445a4.5 4.5 0 015.13 1.424A4.5 4.5 0 0119.682 11.5a4.5 4.5 0 01-1.424 5.13l-.445.89-.445.89a4.5 4.5 0 01-5.13 1.424A4.5 4.5 0 0112 19.682a4.5 4.5 0 01-1.424-5.13l-.89-.445-.89-.445a4.5 4.5 0 01-1.424-5.13A4.5 4.5 0 014.318 6.318z" /></svg>;
-const ShieldCheckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
+const CakeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 15.25v-4.25a2 2 0 00-2-2H5a2 2 0 00-2 2v4.25a2 2 0 002 2h14a2 2 0 002-2zM6 18v-3M9 18v-3M12 18v-3m3 0v3m3 0v-3m-15-4.5a.75.75 0 100-1.5.75.75 0 000 1.5zM18 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM9 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM15 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM12 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM6 9V6a3 3 0 013-3h6a3 3 0 013 3v3" /></svg>;
 const LaptopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
 
 // --- Helper Functions ---
@@ -384,6 +384,33 @@ const ProfilePage = () => {
         } finally { setStatsLoading(false); }
     }, [user?.userIdentifier]);
 
+    // RESTORED: Calculation Logic for PTO Tracker
+    const calculateBalance = (typeKey, typeLabel) => {
+        if (!leaveQuota) return { total: 0, used: 0, remaining: 0 };
+        const total = leaveQuota[typeKey] || 0;
+        const used = (leaveHistory || [])
+            .filter(req => req.status === 'Approved' && req.leaveType === typeLabel)
+            .reduce((acc, req) => {
+                const start = new Date(req.startDate); const end = new Date(req.endDate);
+                const diffTime = Math.abs(end - start);
+                return acc + (isNaN(diffTime) ? 0 : Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
+            }, 0);
+        return { total, used, remaining: total - used };
+    };
+
+    const sickLeave = calculateBalance('sickLeave', 'Sick Leave (SL)');
+    const casualLeave = calculateBalance('casualLeave', 'Casual Leave (CL)');
+    const earnedLeave = calculateBalance('earnedLeave', 'Earned Leave (EL)');
+    const maternityLeave = calculateBalance('maternityLeave', 'Maternity Leave');
+    const paternityLeave = calculateBalance('paternityLeave', 'Paternity Leave');
+    const lwp = calculateBalance('lwp', 'Leave Without Pay (LWP)');
+    const lop = calculateBalance('lop', 'Loss of Pay (LOP)');
+
+    const overallPaidTotal = sickLeave.total + casualLeave.total + earnedLeave.total;
+    const overallPaidUsed = sickLeave.used + casualLeave.used + earnedLeave.used;
+    const overallPaidRemaining = overallPaidTotal - overallPaidUsed;
+    const overallPaidPercentage = overallPaidTotal > 0 ? Math.min((overallPaidUsed / overallPaidTotal) * 100, 100) : 0;
+
     // Monthly Statistics Dashboard Logic
     const monthStats = useMemo(() => {
         let totalMs = 0, present = 0, absent = 0, leaves = 0;
@@ -565,11 +592,7 @@ const ProfilePage = () => {
             {/* TAB CONTENT: ATTENDANCE (SMART CALENDAR INTEGRATION) */}
             {activeTab === 'attendance' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 animate-fadeIn">
-                    <div className="lg:col-span-4">
-                        <AttendanceMarker selectedDate={selectedDate} onDateChange={handleDateChange} onMarkAttendance={handleMarkAttendance} authUser={user} />
-                    </div>
-                    
-                    <div className="lg:col-span-8 bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col h-full overflow-hidden">
+                    <div className="lg:col-span-12 bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col h-full overflow-hidden">
                         
                         {/* --- MONTHLY STATISTICS DASHBOARD --- */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-6">
@@ -597,6 +620,8 @@ const ProfilePage = () => {
                                 key={calendarRefreshKey} 
                                 onMonthChange={handleMonthNavigation} 
                                 onDayClick={handleDateChange} 
+                                selectedMarkerDate={selectedDate}
+                                onMarkAttendance={handleMarkAttendance}
                             />
                         </div>
                     </div>
@@ -612,12 +637,44 @@ const ProfilePage = () => {
                             <h3 className="text-xl font-extrabold mb-6 flex items-center text-slate-800 gap-2 border-b border-slate-100 pb-5 relative z-10"><QuotaIcon /> Paid Time Off Tracker</h3>
                             {leaveQuota ? (
                                 <div className="space-y-6 relative z-10">
-                                    <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md relative overflow-hidden">
-                                        <div className="flex justify-between items-center mb-4"><p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Paid Leave Balance</p><div className="bg-white/10 px-2 py-1 rounded-md"><p className="text-[10px] font-bold text-white uppercase">{overallPaidPercentage.toFixed(0)}% Used</p></div></div>
-                                        <div className="flex items-end gap-3"><h4 className="text-5xl font-black">{overallPaidRemaining}</h4><p className="text-sm font-bold text-slate-400 mb-1.5">days available</p></div>
-                                        <div className="w-full h-1.5 bg-white/10 rounded-full mt-5"><div className="h-full bg-indigo-400 rounded-full transition-all duration-1000" style={{ width: `${overallPaidPercentage}%` }}></div></div>
+                                    {/* Overall Health Card */}
+                                    <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md relative overflow-hidden group">
+                                        <div className="absolute right-0 top-0 w-32 h-full bg-gradient-to-l from-indigo-500/20 to-transparent pointer-events-none"></div>
+                                        <div className="flex justify-between items-center mb-4 relative z-10">
+                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Paid Leave Balance</p>
+                                            <div className="bg-white/10 px-2 py-1 rounded-md backdrop-blur-sm">
+                                                <p className="text-[10px] font-bold text-white uppercase">{overallPaidPercentage.toFixed(0)}% Used</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-end gap-3 relative z-10">
+                                            <h4 className="text-5xl font-black">{overallPaidRemaining}</h4>
+                                            <p className="text-sm font-bold text-slate-400 mb-1.5">days available</p>
+                                        </div>
+                                        <div className="w-full h-1.5 bg-white/10 rounded-full mt-5 overflow-hidden">
+                                            <div className="h-full bg-indigo-400 rounded-full transition-all duration-1000" style={{ width: `${overallPaidPercentage}%` }}></div>
+                                        </div>
                                     </div>
-                                    {/* Additional balance calculations can be added here if needed */}
+
+                                    {/* Detailed breakdown grid */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-4">
+                                        <LeaveBalanceBar title="Sick (SL)" data={sickLeave} color="bg-rose-400" />
+                                        <LeaveBalanceBar title="Casual (CL)" data={casualLeave} color="bg-blue-400" />
+                                        <LeaveBalanceBar title="Earned (EL)" data={earnedLeave} color="bg-emerald-400" />
+                                        <LeaveBalanceBar title="Maternity" data={maternityLeave} color="bg-purple-400" />
+                                        <LeaveBalanceBar title="Paternity" data={paternityLeave} color="bg-indigo-400" />
+                                    </div>
+
+                                    {/* Unpaid section */}
+                                    <div className="pt-5 border-t border-slate-100 grid grid-cols-2 gap-4">
+                                        <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 flex flex-col hover:bg-slate-100 transition-colors">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Leave W/O Pay</span>
+                                            <span className="text-xl font-black text-slate-700">{lwp.used} <span className="font-bold text-xs text-slate-400 ml-0.5">days</span></span>
+                                        </div>
+                                        <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 flex flex-col hover:bg-slate-100 transition-colors">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Loss Of Pay</span>
+                                            <span className="text-xl font-black text-slate-700">{lop.used} <span className="font-bold text-xs text-slate-400 ml-0.5">days</span></span>
+                                        </div>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="bg-slate-50 rounded-2xl p-10 text-center border border-slate-100 border-dashed relative z-10"><div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mx-auto mb-4 text-slate-300"><QuotaIcon /></div><p className="text-base text-slate-600 font-bold">Leave quotas not configured</p></div>
