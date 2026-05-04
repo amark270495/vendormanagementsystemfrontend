@@ -59,7 +59,6 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, ap
         const baseClasses = "relative transition-all duration-300 ease-out border flex flex-col justify-between p-1.5 overflow-hidden shadow-sm";
         const attendanceRecord = attendanceData[dateKey];
 
-        // Ensure we pass the record to the UI if it exists so we can map the hours
         const recordDetails = attendanceRecord ? { record: attendanceRecord, isClickable: true, request: attendanceRecord } : {};
 
         if (attendanceRecord && attendanceRecord.status === 'Pending') {
@@ -167,7 +166,6 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, ap
                                 </div>
                                 
                                 <div className="flex-1 flex flex-col justify-end w-full mb-1 items-center">
-                                    {/* Display Calculated Hours directly on the calendar block */}
                                     {cell.statusInfo.record && (cell.statusInfo.record.standardTimeMs > 0 || cell.statusInfo.record.extraTimeMs > 0) && (
                                         <div className="text-[10px] sm:text-xs font-black opacity-60 mb-1">
                                             {formatMsToTime((cell.statusInfo.record.standardTimeMs || 0) + (cell.statusInfo.record.extraTimeMs || 0))}
@@ -202,6 +200,31 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const [trackingLogs, setTrackingLogs] = useState([]);
     const [logsLoading, setLogsLoading] = useState(false);
     const [timeCalculations, setTimeCalculations] = useState({ standard: "0h 0m", extra: null, activeStr: "" });
+
+    // --- MONTHLY STATISTICS CALCULATOR ---
+    const monthStats = useMemo(() => {
+        let totalMs = 0;
+        let daysPresent = 0;
+        let daysAbsent = 0;
+        let approvedLeaves = 0;
+
+        Object.values(attendanceData).forEach(record => {
+            if (record.status === 'Present') daysPresent++;
+            if (record.status === 'Absent' || record.status === 'Rejected') daysAbsent++;
+            totalMs += (record.standardTimeMs || 0) + (record.extraTimeMs || 0);
+        });
+
+        Object.values(leaveDaysMap).forEach(status => {
+            if (status === 'Approved') approvedLeaves++;
+        });
+
+        return {
+            totalHoursStr: formatMsToTime(totalMs),
+            daysPresent,
+            daysAbsent,
+            approvedLeaves
+        };
+    }, [attendanceData, leaveDaysMap]);
 
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
@@ -301,7 +324,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         });
     };
 
-    // Modified to open for ANY clickable day, not just 'Pending'
     const handleDayClick = async (request) => {
         if (request && request.username && request.date) {
             setReviewingRequest(request);
@@ -345,7 +367,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 await fetchDataForUserAndMonth(currentMonthDate);
                 setReviewingRequest(null);
                 
-                // Refresh if needed
                 if (onApprovalComplete) {
                     onApprovalComplete();
                 }
@@ -499,7 +520,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                                 </div>
                             </div>
 
-                            {/* UI Change: Only show Approve/Reject buttons if the shift is still Pending */}
                             {reviewingRequest.status === 'Pending' ? (
                                 <div className="flex justify-end gap-4 pt-6 border-t border-slate-100">
                                     <button 
@@ -540,6 +560,28 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                         <h3 className="text-xl font-black text-slate-800 tracking-tight">{monthName}</h3>
                         <button onClick={() => changeMonth(1)} className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors disabled:opacity-30" disabled={loading || actionLoading}><ChevronRightIcon /></button>
                     </div>
+
+                    {/* --- MONTHLY STATISTICS DASHBOARD --- */}
+                    {!loading && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-6">
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                                <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Total Hours</span>
+                                <span className="text-xl sm:text-2xl font-black text-indigo-600">{monthStats.totalHoursStr}</span>
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                                <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Days Present</span>
+                                <span className="text-xl sm:text-2xl font-black text-emerald-600">{monthStats.daysPresent}</span>
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                                <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Approved Leaves</span>
+                                <span className="text-xl sm:text-2xl font-black text-violet-600">{monthStats.approvedLeaves}</span>
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                                <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Absents</span>
+                                <span className="text-xl sm:text-2xl font-black text-rose-600">{monthStats.daysAbsent}</span>
+                            </div>
+                        </div>
+                    )}
 
                     {loading ? (
                         <div className="flex flex-col justify-center items-center h-[28rem] text-slate-400 bg-white rounded-2xl border border-slate-200 shadow-sm">
