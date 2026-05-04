@@ -14,7 +14,8 @@ import {
     Clock,
     UserCheck,
     AlertCircle,
-    CalendarDays
+    CalendarDays,
+    Send
 } from 'lucide-react';
 
 const formatMsToTime = (ms) => {
@@ -43,8 +44,13 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
     const [holidays, setHolidays] = useState({});
     const [leaveDaysMap, setLeaveDaysMap] = useState({});
     const [approvedWeekends, setApprovedWeekends] = useState(new Set());
+    const [weekendWorkRequests, setWeekendWorkRequests] = useState({}); // Detailed map for statuses
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
+    
+    // Weekend Work Logic State
+    const [showWeekendInput, setShowWeekendInput] = useState(false);
+    const [weekendReason, setWeekendReason] = useState('');
 
     const todayStr = getISTShiftDateString();
 
@@ -93,12 +99,17 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
             setLeaveDaysMap(lMap);
 
             const approvedWknds = new Set();
+            const wkndReqMap = {};
             if (weekendRes?.data?.success && Array.isArray(weekendRes.data.requests)) {
                  weekendRes.data.requests.forEach(req => {
-                     if (req.partitionKey === user.userIdentifier && req.status === 'Approved') approvedWknds.add(req.date);
+                     if (req.partitionKey === user.userIdentifier) {
+                        wkndReqMap[req.date] = req.status;
+                        if (req.status === 'Approved') approvedWknds.add(req.date);
+                     }
                  });
             }
             setApprovedWeekends(approvedWknds);
+            setWeekendWorkRequests(wkndReqMap);
         } catch (err) { console.error(err); } finally { setLoading(false); }
     }, [user?.userIdentifier, onMonthChange]);
 
@@ -108,6 +119,21 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
         setActionLoading(true);
         try {
             await onMarkAttendance(selectedMarkerDate, status, "");
+            await fetchData(currentMonthDate);
+        } catch (err) { alert(err.message); } finally { setActionLoading(false); }
+    };
+
+    const handleWeekendRequest = async () => {
+        if (!weekendReason.trim()) return alert("Please provide a business justification.");
+        setActionLoading(true);
+        try {
+            await apiService.requestWeekendWork({ 
+                authenticatedUsername: user.userIdentifier, 
+                date: selectedMarkerDate, 
+                reason: weekendReason 
+            });
+            setWeekendReason('');
+            setShowWeekendInput(false);
             await fetchData(currentMonthDate);
         } catch (err) { alert(err.message); } finally { setActionLoading(false); }
     };
@@ -166,51 +192,90 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
     }, [currentMonthDate, getDayStatus]);
 
     const activeRecord = attendanceData[selectedMarkerDate];
-    const canMark = !loading && selectedMarkerDate <= todayStr && !activeRecord && !leaveDaysMap[selectedMarkerDate] && !holidays[selectedMarkerDate];
+    const isWeekend = new Date(selectedMarkerDate + 'T00:00:00Z').getUTCDay() === 0 || new Date(selectedMarkerDate + 'T00:00:00Z').getUTCDay() === 6;
+    const isApprovedWknd = approvedWeekends.has(selectedMarkerDate);
+    const wkndStatus = weekendWorkRequests[selectedMarkerDate];
+
+    const canMark = !loading && selectedMarkerDate <= todayStr && !activeRecord && !leaveDaysMap[selectedMarkerDate] && !holidays[selectedMarkerDate] && (!isWeekend || isApprovedWknd);
+    const needsWeekendApproval = isWeekend && !isApprovedWknd && !activeRecord && selectedMarkerDate <= todayStr;
+
     const displaySelectedDay = new Date(selectedMarkerDate + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
     return (
         <div className="flex flex-col gap-6">
-            {/* 1. HORIZONTAL STRAIGHT-LINE TOOLBAR */}
-            <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="flex bg-slate-100 p-1 rounded-xl">
-                        <button onClick={() => changeMonth(-1)} className="p-1.5 hover:bg-white rounded-lg transition-all text-slate-500"><ChevronLeft size={18}/></button>
-                        <button onClick={() => changeMonth(1)} className="p-1.5 hover:bg-white rounded-lg transition-all text-slate-500"><ChevronRight size={18}/></button>
+            {/* 1. THE ACTION TOOLBAR */}
+            <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 flex flex-col gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="flex bg-slate-100 p-1 rounded-xl">
+                            <button onClick={() => setCurrentMonthDate(d => new Date(d.setUTCMonth(d.getUTCMonth()-1)))} className="p-1.5 hover:bg-white rounded-lg transition-all text-slate-500"><ChevronLeft size={18}/></button>
+                            <button onClick={() => setCurrentMonthDate(d => new Date(d.setUTCMonth(d.getUTCMonth()+1)))} className="p-1.5 hover:bg-white rounded-lg transition-all text-slate-500"><ChevronRight size={18}/></button>
+                        </div>
+                        <span className="font-black text-slate-700 min-w-[120px] text-center">{currentMonthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</span>
                     </div>
-                    <span className="font-black text-slate-700 min-w-[120px] text-center">{monthNameFromDate(currentMonthDate)}</span>
+
+                    <div className="h-8 w-px bg-slate-200 hidden lg:block"></div>
+
+                    <div className="flex flex-1 flex-wrap items-center gap-4 justify-center lg:justify-start">
+                        {/* Date Picker */}
+                        <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+                            <CalendarDays size={16} className="text-indigo-500"/>
+                            <input type="date" value={selectedMarkerDate} max={todayStr} onChange={(e) => { onDayClick(e.target.value); setShowWeekendInput(false); }} className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer" />
+                        </div>
+                        
+                        {/* Date/Day Label */}
+                        <div className="text-sm font-black text-indigo-600 bg-indigo-50/50 px-4 py-2 rounded-2xl border border-indigo-100">
+                            {displaySelectedDay}
+                        </div>
+
+                        {/* Marking Actions */}
+                        {canMark ? (
+                            <div className="flex gap-2 animate-fadeIn">
+                                <button onClick={() => handleQuickMark('Present')} disabled={actionLoading} className="px-5 py-2 bg-emerald-600 text-white text-[11px] font-black rounded-xl hover:bg-emerald-500 transition-all flex items-center gap-2">
+                                    <UserCheck size={14}/> PRESENT
+                                </button>
+                                <button onClick={() => handleQuickMark('Absent')} disabled={actionLoading} className="px-5 py-2 bg-rose-600 text-white text-[11px] font-black rounded-xl hover:bg-rose-500 transition-all flex items-center gap-2">
+                                    <AlertCircle size={14}/> ABSENT
+                                </button>
+                            </div>
+                        ) : needsWeekendApproval ? (
+                            <div className="flex items-center gap-2 animate-fadeIn">
+                                {wkndStatus === 'Pending' ? (
+                                    <span className="px-4 py-2 bg-amber-50 text-amber-600 text-[10px] font-black rounded-xl border border-amber-200 uppercase tracking-widest">
+                                        Weekend Request Pending
+                                    </span>
+                                ) : (
+                                    <button onClick={() => setShowWeekendInput(!showWeekendInput)} className="px-5 py-2 bg-indigo-600 text-white text-[11px] font-black rounded-xl hover:bg-indigo-500 transition-all flex items-center gap-2">
+                                        <Briefcase size={14}/> REQUEST WEEKEND WORK
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="px-4 py-2 bg-slate-100 text-slate-400 text-[11px] font-black rounded-xl border border-slate-200 uppercase tracking-widest">
+                                {activeRecord ? `Status: ${activeRecord.status}` : 'Action Locked'}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <div className="h-8 w-px bg-slate-200 hidden lg:block"></div>
-
-                <div className="flex flex-1 flex-wrap items-center gap-4 justify-center lg:justify-start">
-                    {/* Date Picker */}
-                    <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
-                        <CalendarDays size={16} className="text-indigo-500"/>
-                        <input type="date" value={selectedMarkerDate} max={todayStr} onChange={(e) => onDayClick(e.target.value)} className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer" />
-                    </div>
-                    
-                    {/* Date/Day Label */}
-                    <div className="text-sm font-black text-indigo-600 bg-indigo-50/50 px-4 py-2 rounded-2xl border border-indigo-100">
-                        {displaySelectedDay}
-                    </div>
-
-                    {/* Actions */}
-                    {canMark ? (
+                {/* --- WEEKEND JUSTIFICATION INPUT --- */}
+                {showWeekendInput && needsWeekendApproval && (
+                    <div className="flex flex-col md:flex-row gap-3 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 animate-slideDown">
+                        <input 
+                            type="text" 
+                            placeholder="Provide business justification for working this weekend..." 
+                            value={weekendReason}
+                            onChange={(e) => setWeekendReason(e.target.value)}
+                            className="flex-1 px-4 py-2 text-sm bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                        />
                         <div className="flex gap-2">
-                            <button onClick={() => handleQuickMark('Present')} disabled={actionLoading} className="px-5 py-2 bg-emerald-600 text-white text-[11px] font-black rounded-xl hover:bg-emerald-500 transition-all flex items-center gap-2">
-                                <UserCheck size={14}/> PRESENT
+                            <button onClick={handleWeekendRequest} disabled={actionLoading} className="px-6 py-2 bg-indigo-600 text-white text-xs font-black rounded-xl hover:bg-indigo-700 flex items-center gap-2">
+                                {actionLoading ? <Spinner size="4" /> : <><Send size={14}/> SUBMIT REQUEST</>}
                             </button>
-                            <button onClick={() => handleQuickMark('Absent')} disabled={actionLoading} className="px-5 py-2 bg-rose-600 text-white text-[11px] font-black rounded-xl hover:bg-rose-500 transition-all flex items-center gap-2">
-                                <AlertCircle size={14}/> ABSENT
-                            </button>
+                            <button onClick={() => setShowWeekendInput(false)} className="px-4 py-2 bg-white text-slate-500 text-xs font-black rounded-xl border border-slate-200 hover:bg-slate-50">CANCEL</button>
                         </div>
-                    ) : (
-                        <div className="px-4 py-2 bg-slate-100 text-slate-400 text-[11px] font-black rounded-xl border border-slate-200 uppercase tracking-widest">
-                            {activeRecord ? `Status: ${activeRecord.status}` : 'Action Locked'}
-                        </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
             {/* 2. CALENDAR GRID */}
@@ -230,7 +295,7 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
                             const isSelected = selectedMarkerDate === dKey;
 
                             return (
-                                <div key={idx} onClick={() => onDayClick(dKey)} className={`relative h-24 sm:h-28 rounded-3xl border-2 transition-all duration-300 flex flex-col items-center justify-center cursor-pointer group ${isSelected ? 'border-indigo-500 shadow-md ring-4 ring-indigo-50' : config.border} ${config.bg}`}>
+                                <div key={idx} onClick={() => { onDayClick(dKey); setShowWeekendInput(false); }} className={`relative h-24 sm:h-28 rounded-3xl border-2 transition-all duration-300 flex flex-col items-center justify-center cursor-pointer group ${isSelected ? 'border-indigo-500 shadow-md ring-4 ring-indigo-50' : config.border} ${config.bg}`}>
                                     <span className={`absolute top-3 left-3 text-[10px] font-black ${isSelected ? 'text-indigo-600' : 'text-slate-400'}`}>{cell.day}</span>
                                     {record && (record.standardTimeMs > 0 || record.extraTimeMs > 0) && (
                                         <div className="text-[10px] font-black text-slate-900/30 mb-1">{formatMsToTime((record.standardTimeMs || 0) + (record.extraTimeMs || 0))}</div>
@@ -251,7 +316,5 @@ const dateKeyFromDay = (day, mDate) => {
     const d = new Date(Date.UTC(mDate.getUTCFullYear(), mDate.getUTCMonth(), day));
     return d.toISOString().split('T')[0];
 };
-
-const monthNameFromDate = (mDate) => mDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 export default AttendanceCalendar;
