@@ -13,7 +13,8 @@ import {
     Briefcase,
     Clock,
     UserCheck,
-    AlertCircle
+    AlertCircle,
+    CalendarDays
 } from 'lucide-react';
 
 const formatMsToTime = (ms) => {
@@ -98,9 +99,7 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
                  });
             }
             setApprovedWeekends(approvedWknds);
-        } catch (err) {
-            console.error(err);
-        } finally { setLoading(false); }
+        } catch (err) { console.error(err); } finally { setLoading(false); }
     }, [user?.userIdentifier, onMonthChange]);
 
     useEffect(() => { fetchData(currentMonthDate); }, [currentMonthDate, fetchData]);
@@ -110,9 +109,7 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
         try {
             await onMarkAttendance(selectedMarkerDate, status, "");
             await fetchData(currentMonthDate);
-        } catch (err) {
-            alert(err.message);
-        } finally { setActionLoading(false); }
+        } catch (err) { alert(err.message); } finally { setActionLoading(false); }
     };
 
     const getStatusConfig = (statusKey) => {
@@ -135,17 +132,13 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
         const month = currentMonthDate.getUTCMonth();
         const date = new Date(Date.UTC(year, month, day));
         if (date.getUTCMonth() !== month) return { status: 'Empty' };
-        
         const dateKey = date.toISOString().split('T')[0];
         const dayOfWeek = date.getUTCDay();
         const today = new Date(); today.setUTCHours(0,0,0,0);
 
-        const leaveStatus = leaveDaysMap[dateKey];
-        if (leaveStatus === 'Approved') return { status: 'On Leave' };
+        if (leaveDaysMap[dateKey]) return { status: 'On Leave' };
         if (holidays[dateKey]) return { status: 'Holiday' };
-
-        const attendance = attendanceData[dateKey];
-        if (attendance) return { status: attendance.status, record: attendance };
+        if (attendanceData[dateKey]) return { status: attendanceData[dateKey].status, record: attendanceData[dateKey] };
 
         if (dayOfWeek === 0 || dayOfWeek === 6) {
             return approvedWeekends.has(dateKey) ? { status: 'ApprovedWeekend' } : { status: 'Weekend' };
@@ -174,83 +167,76 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
 
     const activeRecord = attendanceData[selectedMarkerDate];
     const canMark = !loading && selectedMarkerDate <= todayStr && !activeRecord && !leaveDaysMap[selectedMarkerDate] && !holidays[selectedMarkerDate];
+    const displaySelectedDay = new Date(selectedMarkerDate + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
     return (
-        <div className="flex flex-col gap-6 animate-fadeIn">
-            {/* 1. THE STRAIGHT-LINE TOOLBAR */}
-            <div className="bg-slate-900 rounded-3xl p-4 shadow-xl border border-slate-800 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="flex gap-1">
-                        <button onClick={() => setCurrentMonthDate(d => new Date(d.setUTCMonth(d.getUTCMonth()-1)))} className="p-2 bg-slate-800 text-slate-400 rounded-xl hover:text-white transition-all"><ChevronLeft size={20}/></button>
-                        <button onClick={() => setCurrentMonthDate(d => new Date(d.setUTCMonth(d.getUTCMonth()+1)))} className="p-2 bg-slate-800 text-slate-400 rounded-xl hover:text-white transition-all"><ChevronRight size={20}/></button>
+        <div className="flex flex-col gap-6">
+            {/* 1. HORIZONTAL STRAIGHT-LINE TOOLBAR */}
+            <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="flex bg-slate-100 p-1 rounded-xl">
+                        <button onClick={() => changeMonth(-1)} className="p-1.5 hover:bg-white rounded-lg transition-all text-slate-500"><ChevronLeft size={18}/></button>
+                        <button onClick={() => changeMonth(1)} className="p-1.5 hover:bg-white rounded-lg transition-all text-slate-500"><ChevronRight size={18}/></button>
                     </div>
-                    <span className="text-white font-black tracking-tight text-lg min-w-[140px] text-center">
-                        {currentMonthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' })}
-                    </span>
+                    <span className="font-black text-slate-700 min-w-[120px] text-center">{monthNameFromDate(currentMonthDate)}</span>
                 </div>
 
-                <div className="h-10 w-px bg-slate-800 hidden md:block"></div>
+                <div className="h-8 w-px bg-slate-200 hidden lg:block"></div>
 
-                {/* Manual Marking Actions */}
-                <div className="flex items-center gap-3 flex-1 justify-center md:justify-end">
-                    <div className="relative group">
-                        <input 
-                            type="date" 
-                            value={selectedMarkerDate} 
-                            max={todayStr}
-                            onChange={(e) => onDayClick(e.target.value)}
-                            className="bg-slate-800 border border-slate-700 text-indigo-300 text-xs font-bold rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none transition-all cursor-pointer"
-                        />
+                <div className="flex flex-1 flex-wrap items-center gap-4 justify-center lg:justify-start">
+                    {/* Date Picker */}
+                    <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+                        <CalendarDays size={16} className="text-indigo-500"/>
+                        <input type="date" value={selectedMarkerDate} max={todayStr} onChange={(e) => onDayClick(e.target.value)} className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer" />
                     </div>
+                    
+                    {/* Date/Day Label */}
+                    <div className="text-sm font-black text-indigo-600 bg-indigo-50/50 px-4 py-2 rounded-2xl border border-indigo-100">
+                        {displaySelectedDay}
+                    </div>
+
+                    {/* Actions */}
                     {canMark ? (
-                        <div className="flex gap-2 animate-fadeIn">
-                            <button onClick={() => handleQuickMark('Present')} disabled={actionLoading} className="px-4 py-2.5 bg-emerald-600 text-white text-xs font-black rounded-xl hover:bg-emerald-500 shadow-lg transition-all flex items-center gap-2">
-                                <UserCheck size={14}/> MARK PRESENT
+                        <div className="flex gap-2">
+                            <button onClick={() => handleQuickMark('Present')} disabled={actionLoading} className="px-5 py-2 bg-emerald-600 text-white text-[11px] font-black rounded-xl hover:bg-emerald-500 transition-all flex items-center gap-2">
+                                <UserCheck size={14}/> PRESENT
                             </button>
-                            <button onClick={() => handleQuickMark('Absent')} disabled={actionLoading} className="px-4 py-2.5 bg-rose-600 text-white text-xs font-black rounded-xl hover:bg-rose-500 shadow-lg transition-all flex items-center gap-2">
-                                <AlertCircle size={14}/> MARK ABSENT
+                            <button onClick={() => handleQuickMark('Absent')} disabled={actionLoading} className="px-5 py-2 bg-rose-600 text-white text-[11px] font-black rounded-xl hover:bg-rose-500 transition-all flex items-center gap-2">
+                                <AlertCircle size={14}/> ABSENT
                             </button>
                         </div>
                     ) : (
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-800/50 px-4 py-2.5 rounded-xl border border-slate-800">
-                            {activeRecord ? `Status: ${activeRecord.status}` : 'Date Locked'}
-                        </span>
+                        <div className="px-4 py-2 bg-slate-100 text-slate-400 text-[11px] font-black rounded-xl border border-slate-200 uppercase tracking-widest">
+                            {activeRecord ? `Status: ${activeRecord.status}` : 'Action Locked'}
+                        </div>
                     )}
                 </div>
             </div>
 
-            {/* 2. THE MODERNIZED CALENDAR VIEW */}
-            <div className="bg-white p-2 sm:p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            {/* 2. CALENDAR GRID */}
+            <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
                 <div className="grid grid-cols-7 gap-2 mb-4">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
                         <div key={d} className="text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">{d}</div>
                     ))}
                 </div>
-                {loading ? (
-                    <div className="flex justify-center items-center py-40"><Spinner size="10"/></div>
-                ) : (
+                {loading ? <div className="py-20 flex justify-center"><Spinner/></div> : (
                     <div className="grid grid-cols-7 gap-3">
                         {calendarGrid.flat().map((cell, idx) => {
                             if (cell.day === null) return <div key={idx} className="invisible" />;
                             const config = getStatusConfig(cell.statusInfo.status);
                             const record = cell.statusInfo.record;
-                            const isSelected = selectedMarkerDate === dateKeyFromDay(cell.day, currentMonthDate);
+                            const dKey = dateKeyFromDay(cell.day, currentMonthDate);
+                            const isSelected = selectedMarkerDate === dKey;
 
                             return (
-                                <div key={idx} 
-                                    onClick={() => onDayClick(dateKeyFromDay(cell.day, currentMonthDate))}
-                                    className={`relative h-24 sm:h-28 rounded-3xl border-2 transition-all duration-300 flex flex-col items-center justify-center cursor-pointer group hover:-translate-y-1 ${isSelected ? 'border-indigo-500 shadow-md ring-4 ring-indigo-50' : config.border} ${config.bg}`}
-                                >
+                                <div key={idx} onClick={() => onDayClick(dKey)} className={`relative h-24 sm:h-28 rounded-3xl border-2 transition-all duration-300 flex flex-col items-center justify-center cursor-pointer group ${isSelected ? 'border-indigo-500 shadow-md ring-4 ring-indigo-50' : config.border} ${config.bg}`}>
                                     <span className={`absolute top-3 left-3 text-[10px] font-black ${isSelected ? 'text-indigo-600' : 'text-slate-400'}`}>{cell.day}</span>
-                                    
                                     {record && (record.standardTimeMs > 0 || record.extraTimeMs > 0) && (
-                                        <div className="text-[10px] font-black text-slate-900/40 mb-1">
-                                            {formatMsToTime((record.standardTimeMs || 0) + (record.extraTimeMs || 0))}
-                                        </div>
+                                        <div className="text-[10px] font-black text-slate-900/30 mb-1">{formatMsToTime((record.standardTimeMs || 0) + (record.extraTimeMs || 0))}</div>
                                     )}
-
                                     <div className={`${config.text} transform group-hover:scale-110 transition-transform`}>{config.icon}</div>
-                                    {config.label && <span className={`text-[9px] font-black uppercase mt-1.5 tracking-tighter ${config.text}`}>{config.label}</span>}
+                                    {config.label && <span className={`text-[9px] font-black uppercase mt-1 tracking-tighter ${config.text}`}>{config.label}</span>}
                                 </div>
                             );
                         })}
@@ -261,9 +247,11 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
     );
 };
 
-const dateKeyFromDay = (day, monthDate) => {
-    const d = new Date(Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), day));
+const dateKeyFromDay = (day, mDate) => {
+    const d = new Date(Date.UTC(mDate.getUTCFullYear(), mDate.getUTCMonth(), day));
     return d.toISOString().split('T')[0];
 };
+
+const monthNameFromDate = (mDate) => mDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 export default AttendanceCalendar;
