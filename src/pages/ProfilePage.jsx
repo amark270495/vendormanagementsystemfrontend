@@ -290,10 +290,10 @@ const ProfilePage = () => {
     const [editLoading, setEditLoading] = useState(false);
     const [formData, setFormData] = useState({});
 
-    // --- State for the Monthly Integrated Calendar ---
-    const [monthlyAttendanceData, setMonthlyAttendanceData] = useState({});
-    const [monthlyLeaveMap, setMonthlyLeaveMap] = useState({});
-    const [monthlyLoading, setMonthlyLoading] = useState(false);
+    // --- State for Statistics Syncing ---
+    const [statsAttendanceData, setStatsAttendanceData] = useState({});
+    const [statsLeaveMap, setStatsLeaveMap] = useState({});
+    const [statsLoading, setStatsLoading] = useState(false);
     const [calendarRefreshKey, setCalendarRefreshKey] = useState(Date.now());
 
     const employmentTypes = ['Full-Time', 'Part-Time', 'Contractor (C2C)', 'Contractor (1099)'];
@@ -350,70 +350,54 @@ const ProfilePage = () => {
 
     useEffect(() => { loadInitialData(); }, [loadInitialData]);
 
-    // --- Logic for Syncing Data for Stats Calculation[cite: 1] ---
-    const fetchMonthlyDataForStats = useCallback(async () => {
+    // --- Statistics Navigation Handler ---
+    const handleMonthNavigation = useCallback(async (monthString, monthEndDay) => {
         if (!user?.userIdentifier) return;
-        const currentMonthString = getISTShiftDateString().substring(0, 7);
-        const monthEndDay = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth() + 1, 0)).getUTCDate();
-
+        setStatsLoading(true);
         try {
             const [attendanceRes, leaveRes] = await Promise.all([
-                apiService.getAttendance({ authenticatedUsername: user.userIdentifier, username: user.userIdentifier, month: currentMonthString }),
-                apiService.getLeaveRequests({ authenticatedUsername: user.userIdentifier, targetUsername: user.userIdentifier, startDateFilter: `${currentMonthString}-01`, endDateFilter: `${currentMonthString}-${monthEndDay.toString().padStart(2,'0')}` }),
+                apiService.getAttendance({ authenticatedUsername: user.userIdentifier, username: user.userIdentifier, month: monthString }),
+                apiService.getLeaveRequests({ authenticatedUsername: user.userIdentifier, targetUsername: user.userIdentifier, startDateFilter: `${monthString}-01`, endDateFilter: `${monthString}-${monthEndDay}` }),
             ]);
 
             const attMap = {};
             if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendanceRecords)) {
                 attendanceRes.data.attendanceRecords.forEach(att => attMap[att.date] = att);
             }
-            setMonthlyAttendanceData(attMap);
+            setStatsAttendanceData(attMap);
 
             const lMap = {};
             if (leaveRes?.data?.success && Array.isArray(leaveRes.data.requests)) {
                 leaveRes.data.requests.forEach(req => {
-                    if (req.status === 'Approved' || req.status === 'Pending') {
+                    if (req.status === 'Approved') {
                         const start = new Date(req.startDate + 'T00:00:00Z');
                         const end = new Date(req.endDate + 'T00:00:00Z');
                         for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
-                            if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) { // Skip weekends
-                                lMap[d.toISOString().split('T')[0]] = req.status;
-                            }
+                            if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) lMap[d.toISOString().split('T')[0]] = 'Approved';
                         }
                     }
                 });
             }
-            setMonthlyLeaveMap(lMap);
-        } catch (err) { console.error(err); }
+            setStatsLeaveMap(lMap);
+        } catch (err) {
+            console.error("Stats Sync Error", err);
+        } finally { setStatsLoading(false); }
     }, [user?.userIdentifier]);
 
-    useEffect(() => {
-        if (activeTab === 'attendance') fetchMonthlyDataForStats();
-    }, [activeTab, fetchMonthlyDataForStats, calendarRefreshKey]);
-
-    // --- Analytics Calculations[cite: 1] ---
+    // Monthly Statistics Dashboard Logic
     const monthStats = useMemo(() => {
-        let totalMs = 0;
-        let daysPresent = 0;
-        let daysAbsent = 0;
-        let approvedLeaves = 0;
+        let totalMs = 0, present = 0, absent = 0, leaves = 0;
 
-        Object.values(monthlyAttendanceData).forEach(record => {
-            if (record.status === 'Present') daysPresent++;
-            if (record.status === 'Absent' || record.status === 'Rejected') daysAbsent++;
+        Object.values(statsAttendanceData).forEach(record => {
+            if (record.status === 'Present') present++;
+            if (record.status === 'Absent' || record.status === 'Rejected') absent++;
             totalMs += (record.standardTimeMs || 0) + (record.extraTimeMs || 0);
         });
+        
+        leaves = Object.keys(statsLeaveMap).length;
 
-        Object.values(monthlyLeaveMap).forEach(status => {
-            if (status === 'Approved') approvedLeaves++;
-        });
-
-        return {
-            totalHoursStr: formatMsToTime(totalMs),
-            daysPresent,
-            daysAbsent,
-            approvedLeaves
-        };
-    }, [monthlyAttendanceData, monthlyLeaveMap]);
+        return { totalHoursStr: formatMsToTime(totalMs), present, absent, leaves };
+    }, [statsAttendanceData, statsLeaveMap]);
 
 
     const handleMarkAttendance = async (dateToMark, requestedStatus, reason = "") => {
@@ -462,32 +446,6 @@ const ProfilePage = () => {
     const renderEditTextArea = (name) => (
         <textarea name={name} id={name} value={formData[name] || ''} onChange={handleFormChange} rows="3" className="w-full px-4 py-3 border border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white transition-all resize-y text-sm font-semibold text-slate-700" />
     );
-
-    const calculateBalance = (typeKey, typeLabel) => {
-        if (!leaveQuota) return { total: 0, used: 0, remaining: 0 };
-        const total = leaveQuota[typeKey] || 0;
-        const used = (leaveHistory || [])
-            .filter(req => req.status === 'Approved' && req.leaveType === typeLabel)
-            .reduce((acc, req) => {
-                const start = new Date(req.startDate); const end = new Date(req.endDate);
-                const diffTime = Math.abs(end - start);
-                return acc + (isNaN(diffTime) ? 0 : Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
-            }, 0);
-        return { total, used, remaining: total - used };
-    };
-
-    const sickLeave = calculateBalance('sickLeave', 'Sick Leave (SL)');
-    const casualLeave = calculateBalance('casualLeave', 'Casual Leave (CL)');
-    const earnedLeave = calculateBalance('earnedLeave', 'Earned Leave (EL)');
-    const maternityLeave = calculateBalance('maternityLeave', 'Maternity Leave');
-    const paternityLeave = calculateBalance('paternityLeave', 'Paternity Leave');
-    const lwp = calculateBalance('lwp', 'Leave Without Pay (LWP)');
-    const lop = calculateBalance('lop', 'Loss of Pay (LOP)');
-
-    const overallPaidTotal = sickLeave.total + casualLeave.total + earnedLeave.total;
-    const overallPaidUsed = sickLeave.used + casualLeave.used + earnedLeave.used;
-    const overallPaidRemaining = overallPaidTotal - overallPaidUsed;
-    const overallPaidPercentage = overallPaidTotal > 0 ? Math.min((overallPaidUsed / overallPaidTotal) * 100, 100) : 0;
 
     if (loading) return <div className="flex justify-center items-center h-[70vh]"><Spinner size="12" /></div>;
 
@@ -604,7 +562,7 @@ const ProfilePage = () => {
                 </form>
             )}
 
-            {/* TAB CONTENT: ATTENDANCE (SMART CALENDAR INTEGRATION)[cite: 1] */}
+            {/* TAB CONTENT: ATTENDANCE (SMART CALENDAR INTEGRATION) */}
             {activeTab === 'attendance' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 animate-fadeIn">
                     <div className="lg:col-span-4">
@@ -613,40 +571,34 @@ const ProfilePage = () => {
                     
                     <div className="lg:col-span-8 bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col h-full overflow-hidden">
                         
-                        {/* --- MONTHLY STATISTICS DASHBOARD[cite: 1] --- */}
-                        {!monthlyLoading && (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-6">
-                                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
-                                    <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Total Hours</span>
-                                    <span className="text-xl sm:text-2xl font-black text-indigo-600">{monthStats.totalHoursStr}</span>
-                                </div>
-                                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
-                                    <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Days Present</span>
-                                    <span className="text-xl sm:text-2xl font-black text-emerald-600">{monthStats.daysPresent}</span>
-                                </div>
-                                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
-                                    <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Approved Leaves</span>
-                                    <span className="text-xl sm:text-2xl font-black text-violet-600">{monthStats.approvedLeaves}</span>
-                                </div>
-                                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
-                                    <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Absents</span>
-                                    <span className="text-xl sm:text-2xl font-black text-rose-600">{monthStats.daysAbsent}</span>
-                                </div>
+                        {/* --- MONTHLY STATISTICS DASHBOARD --- */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-6">
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                                <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Total Hours</span>
+                                <span className="text-xl sm:text-2xl font-black text-indigo-600">{statsLoading ? '...' : monthStats.totalHoursStr}</span>
                             </div>
-                        )}
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                                <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Days Present</span>
+                                <span className="text-xl sm:text-2xl font-black text-emerald-600">{statsLoading ? '...' : monthStats.present}</span>
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                                <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Leaves</span>
+                                <span className="text-xl sm:text-2xl font-black text-violet-600">{statsLoading ? '...' : monthStats.leaves}</span>
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                                <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Absents</span>
+                                <span className="text-xl sm:text-2xl font-black text-rose-600">{statsLoading ? '...' : monthStats.absent}</span>
+                            </div>
+                        </div>
 
                         <div className="flex-1 min-h-[400px]">
                             <AttendanceCalendar 
                                 initialMonthString={getISTShiftDateString().substring(0, 7)} 
                                 key={calendarRefreshKey} 
+                                onMonthChange={handleMonthNavigation} 
                                 onDayClick={handleDateChange} 
                             />
                         </div>
-                        
-                        <button onClick={refreshCalendar} className="mt-6 px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-bold rounded-xl flex items-center justify-center transition-colors self-end">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                            Sync Calendar
-                        </button>
                     </div>
                 </div>
             )}
@@ -665,8 +617,7 @@ const ProfilePage = () => {
                                         <div className="flex items-end gap-3"><h4 className="text-5xl font-black">{overallPaidRemaining}</h4><p className="text-sm font-bold text-slate-400 mb-1.5">days available</p></div>
                                         <div className="w-full h-1.5 bg-white/10 rounded-full mt-5"><div className="h-full bg-indigo-400 rounded-full transition-all duration-1000" style={{ width: `${overallPaidPercentage}%` }}></div></div>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-4"><LeaveBalanceBar title="Sick (SL)" data={sickLeave} color="bg-rose-400" /><LeaveBalanceBar title="Casual (CL)" data={casualLeave} color="bg-blue-400" /><LeaveBalanceBar title="Earned (EL)" data={earnedLeave} color="bg-emerald-400" /><LeaveBalanceBar title="Maternity" data={maternityLeave} color="bg-purple-400" /><LeaveBalanceBar title="Paternity" data={paternityLeave} color="bg-indigo-400" /></div>
-                                    <div className="pt-5 border-t border-slate-100 grid grid-cols-2 gap-4"><div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 flex flex-col"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Leave W/O Pay</span><span className="text-xl font-black text-slate-700">{lwp.used} days</span></div><div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 flex flex-col"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Loss Of Pay</span><span className="text-xl font-black text-slate-700">{lop.used} days</span></div></div>
+                                    {/* Additional balance calculations can be added here if needed */}
                                 </div>
                             ) : (
                                 <div className="bg-slate-50 rounded-2xl p-10 text-center border border-slate-100 border-dashed relative z-10"><div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mx-auto mb-4 text-slate-300"><QuotaIcon /></div><p className="text-base text-slate-600 font-bold">Leave quotas not configured</p></div>

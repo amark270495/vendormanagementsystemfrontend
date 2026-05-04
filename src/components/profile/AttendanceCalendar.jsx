@@ -21,12 +21,13 @@ const formatMsToTime = (ms) => {
     return `${h}h ${m}m`;
 };
 
-const AttendanceCalendar = ({ initialMonthString, onDayClick }) => {
+const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick }) => {
     const { user } = useAuth();
     const [currentMonthDate, setCurrentMonthDate] = useState(() => {
         const [year, month] = initialMonthString.split('-').map(Number);
         return new Date(Date.UTC(year, month - 1, 1));
     });
+    
     const [attendanceData, setAttendanceData] = useState({});
     const [holidays, setHolidays] = useState({});
     const [leaveDaysMap, setLeaveDaysMap] = useState({});
@@ -44,6 +45,9 @@ const AttendanceCalendar = ({ initialMonthString, onDayClick }) => {
             const monthString = `${year}-${month}`;
             const monthEndDay = new Date(Date.UTC(year, monthDate.getUTCMonth() + 1, 0)).getUTCDate();
 
+            // Trigger callback to ProfilePage so the Statistics Row updates for the new month
+            if (onMonthChange) onMonthChange(monthString, monthEndDay);
+
             const [attendanceRes, holidaysRes, leaveRes, weekendRes] = await Promise.all([
                 apiService.getAttendance({ authenticatedUsername: user.userIdentifier, username: user.userIdentifier, month: monthString }),
                 apiService.getHolidays({ authenticatedUsername: user.userIdentifier, year: year.toString() }),
@@ -51,17 +55,17 @@ const AttendanceCalendar = ({ initialMonthString, onDayClick }) => {
                 apiService.getWeekendWorkRequests({ authenticatedUsername: user.userIdentifier }).catch(() => null)
             ]);
 
-            const attendanceMap = {};
+            const attMap = {};
             if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendanceRecords)) {
-                attendanceRes.data.attendanceRecords.forEach(att => attendanceMap[att.date] = att);
+                attendanceRes.data.attendanceRecords.forEach(att => attMap[att.date] = att);
             }
-            setAttendanceData(attendanceMap);
+            setAttendanceData(attMap);
 
-            const holidaysMap = {};
+            const holMap = {};
             if (holidaysRes?.data?.success && Array.isArray(holidaysRes.data.holidays)) {
-                holidaysRes.data.holidays.forEach(h => holidaysMap[h.date] = h.description);
+                holidaysRes.data.holidays.forEach(h => holMap[h.date] = h.description);
             }
-            setHolidays(holidaysMap);
+            setHolidays(holMap);
 
             const lMap = {};
             if (leaveRes?.data?.success && Array.isArray(leaveRes.data.requests)) {
@@ -70,9 +74,8 @@ const AttendanceCalendar = ({ initialMonthString, onDayClick }) => {
                         const start = new Date(req.startDate + 'T00:00:00Z');
                         const end = new Date(req.endDate + 'T00:00:00Z');
                         for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
-                            // FIX: Skip weekends for leave badges[cite: 1]
                             const dayOfWeek = d.getUTCDay();
-                            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                            if (dayOfWeek !== 0 && dayOfWeek !== 6) { // No-Sandwich Policy Fix[cite: 1]
                                 if (d.getUTCFullYear() === year && d.getUTCMonth() === monthDate.getUTCMonth()) {
                                     const dateKey = d.toISOString().split('T')[0];
                                     if (lMap[dateKey] !== 'Approved') lMap[dateKey] = req.status;
@@ -92,11 +95,19 @@ const AttendanceCalendar = ({ initialMonthString, onDayClick }) => {
             }
             setApprovedWeekends(approvedWknds);
         } catch (err) {
-            setError('Failed to load data.');
+            setError('Failed to load monthly records.');
         } finally { setLoading(false); }
-    }, [user?.userIdentifier]);
+    }, [user?.userIdentifier, onMonthChange]);
 
     useEffect(() => { fetchData(currentMonthDate); }, [currentMonthDate, fetchData]);
+
+    const changeMonth = (offset) => {
+        setCurrentMonthDate(prev => {
+            const newDate = new Date(prev);
+            newDate.setUTCMonth(newDate.getUTCMonth() + offset, 1);
+            return newDate;
+        });
+    };
 
     const getStatusConfig = (statusKey) => {
         const configs = {
@@ -163,42 +174,72 @@ const AttendanceCalendar = ({ initialMonthString, onDayClick }) => {
         return grid;
     }, [currentMonthDate, getDayStatus]);
 
+    const monthName = currentMonthDate.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
     return (
-        <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-7 gap-2 mb-2">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                    <div key={d} className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">{d}</div>
-                ))}
+        <div className="flex flex-col gap-6 h-full">
+            {/* 1. Header Navigation Bar[cite: 1] */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
+                <div className="flex items-center gap-4">
+                    <button onClick={() => changeMonth(-1)} className="p-2.5 bg-slate-50 text-slate-500 rounded-xl hover:bg-slate-100 hover:text-indigo-600 transition-colors" disabled={loading}><ChevronLeft size={20} /></button>
+                    <div>
+                        <h3 className="text-xl font-extrabold text-slate-800">{monthName}</h3>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">Timesheet History</p>
+                    </div>
+                    <button onClick={() => changeMonth(1)} className="p-2.5 bg-slate-50 text-slate-500 rounded-xl hover:bg-slate-100 hover:text-indigo-600 transition-colors" disabled={loading}><ChevronRight size={20} /></button>
+                </div>
+                
+                <button onClick={() => fetchData(currentMonthDate)} className="px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-bold rounded-xl flex items-center justify-center transition-colors">
+                    <Clock size={16} className="mr-2" /> Sync Records
+                </button>
             </div>
-            <div className="grid grid-cols-7 gap-3">
-                {calendarGrid.flat().map((cell, idx) => {
-                    if (cell.day === null) return <div key={idx} className="invisible" />;
-                    const config = getStatusConfig(cell.statusInfo.status);
-                    const record = cell.statusInfo.record;
-                    const dateKey = cell.day ? new Date(Date.UTC(currentMonthDate.getUTCFullYear(), currentMonthDate.getUTCMonth(), cell.day)).toISOString().split('T')[0] : null;
 
-                    return (
-                        <div key={idx} 
-                            onClick={() => onDayClick && dateKey && onDayClick(dateKey)}
-                            className={`relative h-24 sm:h-28 rounded-2xl border ${config.bg} ${config.border} flex flex-col items-center justify-center cursor-pointer transition-all hover:-translate-y-1 hover:shadow-md`}
-                        >
-                            <span className="absolute top-2 left-2 text-[10px] font-bold text-slate-500">{cell.day}</span>
-                            
-                            {/* --- THE HOURS DISPLAY --- */}
-                            {record && (record.standardTimeMs > 0 || record.extraTimeMs > 0) && (
-                                <div className="text-[10px] font-black text-slate-700 opacity-60 mb-1">
-                                    {formatMsToTime((record.standardTimeMs || 0) + (record.extraTimeMs || 0))}
+            {loading ? (
+                <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-400">
+                    <Spinner size="10" /><p className="text-sm font-bold animate-pulse mt-4">FETCHING RECORDS...</p>
+                </div>
+            ) : (
+                <>
+                    <div className="grid grid-cols-7 gap-2 mb-2">
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                            <div key={d} className="text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">{d}</div>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-7 gap-3 flex-1">
+                        {calendarGrid.flat().map((cell, idx) => {
+                            if (cell.day === null) return <div key={idx} className="invisible" />;
+                            const config = getStatusConfig(cell.statusInfo.status);
+                            const record = cell.statusInfo.record;
+                            const dateKey = dateKeyFromDay(cell.day, currentMonthDate);
+
+                            return (
+                                <div key={idx} 
+                                    onClick={() => onDayClick && onDayClick(dateKey)}
+                                    className={`relative h-24 sm:h-28 rounded-2xl border ${config.bg} ${config.border} flex flex-col items-center justify-center cursor-pointer transition-all hover:-translate-y-1 hover:shadow-md`}
+                                >
+                                    <span className="absolute top-2 left-2 text-[10px] font-bold text-slate-400">{cell.day}</span>
+                                    
+                                    {record && (record.standardTimeMs > 0 || record.extraTimeMs > 0) && (
+                                        <div className="text-[10px] font-black text-slate-800 opacity-60 mb-1">
+                                            {formatMsToTime((record.standardTimeMs || 0) + (record.extraTimeMs || 0))}
+                                        </div>
+                                    )}
+
+                                    <div className={config.text}>{config.icon}</div>
+                                    {config.label && <span className={`text-[9px] font-bold uppercase mt-1 ${config.text}`}>{config.label}</span>}
                                 </div>
-                            )}
-
-                            <div className={config.text}>{config.icon}</div>
-                            {config.label && <span className={`text-[9px] font-bold uppercase mt-1 ${config.text}`}>{config.label}</span>}
-                        </div>
-                    );
-                })}
-            </div>
+                            );
+                        })}
+                    </div>
+                </>
+            )}
         </div>
     );
+};
+
+const dateKeyFromDay = (day, monthDate) => {
+    const d = new Date(Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth(), day));
+    return d.toISOString().split('T')[0];
 };
 
 export default AttendanceCalendar;
