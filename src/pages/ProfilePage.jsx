@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
@@ -23,7 +23,29 @@ const HeartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 const ShieldCheckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
 const LaptopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
 
-// --- 1. Leave Balance Bar Widget ---
+// --- Helper Functions ---
+const getISTShiftDateString = () => {
+    const d = new Date();
+    const istFormatter = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false });
+    const istHour = parseInt(istFormatter.format(d), 10);
+    if (istHour < 12) d.setHours(d.getHours() - 12); 
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+};
+
+const formatMsToTime = (ms) => {
+    if (!ms || ms <= 0) return "0h 0m";
+    const h = Math.floor(ms / (1000 * 60 * 60));
+    const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    return `${h}h ${m}m`;
+};
+
+const formatDateForInput = (dateString) => {
+    if (!dateString) return '';
+    if (typeof dateString === 'string' && dateString.includes('T')) return dateString.split('T')[0];
+    return dateString;
+};
+
+// --- Sub-Components ---
 const LeaveBalanceBar = ({ title, data, color }) => {
     const { used, total, remaining } = data;
     const percent = total > 0 ? Math.min((used / total) * 100, 100) : 0;
@@ -51,7 +73,6 @@ const LeaveBalanceBar = ({ title, data, color }) => {
     );
 };
 
-// --- 2. Detailed Profile Info Card ---
 const DetailItem = ({ label, value, icon, isEditing = false, children }) => (
     <div className="flex flex-col p-4 rounded-2xl bg-slate-50/50 border border-slate-100 hover:bg-slate-50 hover:border-indigo-100 transition-colors duration-300 h-full">
         <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-2">
@@ -67,16 +88,7 @@ const DetailItem = ({ label, value, icon, isEditing = false, children }) => (
     </div>
 );
 
-// --- 3. Shift Time Helper ---
-const getISTShiftDateString = () => {
-    const d = new Date();
-    const istFormatter = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false });
-    const istHour = parseInt(istFormatter.format(d), 10);
-    if (istHour < 12) d.setHours(d.getHours() - 12); 
-    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
-};
-
-// --- 4. Attendance Marker Widget ---
+// --- Attendance Marker Widget (Left Panel) ---
 const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUser }) => {
     const [statusInfo, setStatusInfo] = useState({ 
         status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isApprovedWeekend: false, weekendWorkStatus: null, isLoading: true, holidayDescription: '' 
@@ -259,13 +271,6 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
     );
 };
 
-const formatDateForInput = (dateString) => {
-    if (!dateString) return '';
-    if (typeof dateString === 'string' && dateString.includes('T')) return dateString.split('T')[0];
-    return dateString;
-};
-
-
 // === MAIN PAGE COMPONENT ===
 const ProfilePage = () => {
     const { user, login: updateUserInContext } = useAuth();
@@ -284,6 +289,12 @@ const ProfilePage = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editLoading, setEditLoading] = useState(false);
     const [formData, setFormData] = useState({});
+
+    // --- State for the Monthly Integrated Calendar ---
+    const [monthlyAttendanceData, setMonthlyAttendanceData] = useState({});
+    const [monthlyLeaveMap, setMonthlyLeaveMap] = useState({});
+    const [monthlyLoading, setMonthlyLoading] = useState(false);
+    const [calendarRefreshKey, setCalendarRefreshKey] = useState(Date.now());
 
     const employmentTypes = ['Full-Time', 'Part-Time', 'Contractor (C2C)', 'Contractor (1099)'];
     const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -304,8 +315,6 @@ const ProfilePage = () => {
         }
     }, [userStr]);
 
-    const initialMonthString = selectedDate ? selectedDate.substring(0, 7) : '';
-    const [calendarRefreshKey, setCalendarRefreshKey] = useState(Date.now());
     const refreshCalendar = () => setCalendarRefreshKey(Date.now());
 
     const fetchLeaveHistory = useCallback(async () => {
@@ -340,6 +349,72 @@ const ProfilePage = () => {
     }, [user?.userIdentifier, fetchLeaveHistory]);
 
     useEffect(() => { loadInitialData(); }, [loadInitialData]);
+
+    // --- Logic for Syncing Data for Stats Calculation[cite: 1] ---
+    const fetchMonthlyDataForStats = useCallback(async () => {
+        if (!user?.userIdentifier) return;
+        const currentMonthString = getISTShiftDateString().substring(0, 7);
+        const monthEndDay = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth() + 1, 0)).getUTCDate();
+
+        try {
+            const [attendanceRes, leaveRes] = await Promise.all([
+                apiService.getAttendance({ authenticatedUsername: user.userIdentifier, username: user.userIdentifier, month: currentMonthString }),
+                apiService.getLeaveRequests({ authenticatedUsername: user.userIdentifier, targetUsername: user.userIdentifier, startDateFilter: `${currentMonthString}-01`, endDateFilter: `${currentMonthString}-${monthEndDay.toString().padStart(2,'0')}` }),
+            ]);
+
+            const attMap = {};
+            if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendanceRecords)) {
+                attendanceRes.data.attendanceRecords.forEach(att => attMap[att.date] = att);
+            }
+            setMonthlyAttendanceData(attMap);
+
+            const lMap = {};
+            if (leaveRes?.data?.success && Array.isArray(leaveRes.data.requests)) {
+                leaveRes.data.requests.forEach(req => {
+                    if (req.status === 'Approved' || req.status === 'Pending') {
+                        const start = new Date(req.startDate + 'T00:00:00Z');
+                        const end = new Date(req.endDate + 'T00:00:00Z');
+                        for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+                            if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) { // Skip weekends
+                                lMap[d.toISOString().split('T')[0]] = req.status;
+                            }
+                        }
+                    }
+                });
+            }
+            setMonthlyLeaveMap(lMap);
+        } catch (err) { console.error(err); }
+    }, [user?.userIdentifier]);
+
+    useEffect(() => {
+        if (activeTab === 'attendance') fetchMonthlyDataForStats();
+    }, [activeTab, fetchMonthlyDataForStats, calendarRefreshKey]);
+
+    // --- Analytics Calculations[cite: 1] ---
+    const monthStats = useMemo(() => {
+        let totalMs = 0;
+        let daysPresent = 0;
+        let daysAbsent = 0;
+        let approvedLeaves = 0;
+
+        Object.values(monthlyAttendanceData).forEach(record => {
+            if (record.status === 'Present') daysPresent++;
+            if (record.status === 'Absent' || record.status === 'Rejected') daysAbsent++;
+            totalMs += (record.standardTimeMs || 0) + (record.extraTimeMs || 0);
+        });
+
+        Object.values(monthlyLeaveMap).forEach(status => {
+            if (status === 'Approved') approvedLeaves++;
+        });
+
+        return {
+            totalHoursStr: formatMsToTime(totalMs),
+            daysPresent,
+            daysAbsent,
+            approvedLeaves
+        };
+    }, [monthlyAttendanceData, monthlyLeaveMap]);
+
 
     const handleMarkAttendance = async (dateToMark, requestedStatus, reason = "") => {
         try {
@@ -388,12 +463,9 @@ const ProfilePage = () => {
         <textarea name={name} id={name} value={formData[name] || ''} onChange={handleFormChange} rows="3" className="w-full px-4 py-3 border border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white transition-all resize-y text-sm font-semibold text-slate-700" />
     );
 
-    // --- Analytics Calculations (FIXED) ---
     const calculateBalance = (typeKey, typeLabel) => {
         if (!leaveQuota) return { total: 0, used: 0, remaining: 0 };
         const total = leaveQuota[typeKey] || 0;
-        
-        // SAFE FALLBACK: (leaveHistory || []) ensures it never crashes if undefined
         const used = (leaveHistory || [])
             .filter(req => req.status === 'Approved' && req.leaveType === typeLabel)
             .reduce((acc, req) => {
@@ -401,7 +473,6 @@ const ProfilePage = () => {
                 const diffTime = Math.abs(end - start);
                 return acc + (isNaN(diffTime) ? 0 : Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
             }, 0);
-            
         return { total, used, remaining: total - used };
     };
 
@@ -413,7 +484,6 @@ const ProfilePage = () => {
     const lwp = calculateBalance('lwp', 'Leave Without Pay (LWP)');
     const lop = calculateBalance('lop', 'Loss of Pay (LOP)');
 
-    // Overall PTO Calculation
     const overallPaidTotal = sickLeave.total + casualLeave.total + earnedLeave.total;
     const overallPaidUsed = sickLeave.used + casualLeave.used + earnedLeave.used;
     const overallPaidRemaining = overallPaidTotal - overallPaidUsed;
@@ -426,7 +496,6 @@ const ProfilePage = () => {
             
             {/* --- HERO HEADER --- */}
             <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden relative">
-                {/* Gradient Cover Photo */}
                 <div className="h-32 sm:h-40 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 relative">
                     <div className="absolute inset-0 bg-black/10"></div>
                 </div>
@@ -456,8 +525,8 @@ const ProfilePage = () => {
                 </div>
             </div>
 
-            {error && <div className="bg-rose-50 border border-rose-200 text-rose-700 px-5 py-4 rounded-2xl flex items-center shadow-sm animate-shake"><svg className="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span className="font-bold text-sm">{error}</span></div>}
-            {success && <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-4 rounded-2xl flex items-center shadow-sm animate-fadeIn"><svg className="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span className="font-bold text-sm">{success}</span></div>}
+            {error && <div className="bg-rose-50 border border-rose-200 text-rose-700 px-5 py-4 rounded-2xl flex items-center shadow-sm animate-shake font-bold text-sm">{error}</div>}
+            {success && <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-4 rounded-2xl flex items-center shadow-sm animate-fadeIn font-bold text-sm">{success}</div>}
              
             {/* --- SEGMENTED TABS --- */}
             <div className="flex justify-center w-full">
@@ -474,14 +543,10 @@ const ProfilePage = () => {
                 </div>
             </div>
 
-            {/* ========================================= */}
             {/* TAB CONTENT: PROFILE */}
-            {/* ========================================= */}
             {activeTab === 'profile' && (
                 <form onSubmit={handleSaveChanges} className="animate-fadeIn">
                     <div className="bg-white p-6 sm:p-10 rounded-3xl shadow-sm border border-slate-100 space-y-10">
-                        
-                        {/* Block 1 */}
                         <div>
                             <h3 className="text-lg font-black text-slate-800 flex items-center gap-2.5 mb-6"><UserIcon /> Personal Information</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -498,208 +563,120 @@ const ProfilePage = () => {
                                     )}
                                 </div>
                                 <DetailItem label="Email Address" icon={<UserIcon />} value={user?.userIdentifier} />
-                                <DetailItem label="Personal Mobile" icon={<PhoneIcon />} isEditing={isEditing} value={user?.personalMobileNumber}>
-                                    {renderEditInput('personalMobileNumber', 'tel')}
-                                </DetailItem>
-                                <DetailItem label="Date of Birth" icon={<CakeIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfBirth)}>
-                                    {renderEditInput('dateOfBirth', 'date')}
-                                </DetailItem>
-                                <DetailItem label="Blood Group" icon={<HeartIcon />} isEditing={isEditing} value={user?.bloodGroup}>
-                                    {renderEditSelect('bloodGroup', bloodGroups)}
-                                </DetailItem>
-                                <DetailItem label="LinkedIn Profile" icon={<LinkIcon />} isEditing={isEditing} value={user?.linkedInProfile}>
-                                    {renderEditInput('linkedInProfile', 'url')}
-                                </DetailItem>
-                                <div className="md:col-span-2 lg:col-span-3">
-                                    <DetailItem label="Current Address" icon={<LocationIcon />} isEditing={isEditing} value={user?.currentAddress}>
-                                        {renderEditTextArea('currentAddress')}
-                                    </DetailItem>
-                                </div>
+                                <DetailItem label="Personal Mobile" icon={<PhoneIcon />} isEditing={isEditing} value={user?.personalMobileNumber}>{renderEditInput('personalMobileNumber', 'tel')}</DetailItem>
+                                <DetailItem label="Date of Birth" icon={<CakeIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfBirth)}>{renderEditInput('dateOfBirth', 'date')}</DetailItem>
+                                <DetailItem label="Blood Group" icon={<HeartIcon />} isEditing={isEditing} value={user?.bloodGroup}>{renderEditSelect('bloodGroup', bloodGroups)}</DetailItem>
+                                <DetailItem label="LinkedIn Profile" icon={<LinkIcon />} isEditing={isEditing} value={user?.linkedInProfile}>{renderEditInput('linkedInProfile', 'url')}</DetailItem>
+                                <div className="md:col-span-2 lg:col-span-3"><DetailItem label="Current Address" icon={<LocationIcon />} isEditing={isEditing} value={user?.currentAddress}>{renderEditTextArea('currentAddress')}</DetailItem></div>
                             </div>
                         </div>
-
                         <hr className="border-slate-100" />
-
-                        {/* Block 2 */}
                         <div>
                             <h3 className="text-lg font-black text-slate-800 flex items-center gap-2.5 mb-6"><BriefcaseIcon /> Employment & Assets</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                 <DetailItem label="Employee Code" icon={<IdCardIcon />} value={user?.employeeCode} />
-                                <DetailItem label="Date of Joining" icon={<CalendarIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfJoining)}>
-                                    <input type="date" name="dateOfJoining" value={formData.dateOfJoining} className="w-full px-4 py-3 border border-slate-200 rounded-xl shadow-sm bg-slate-50 text-slate-500 cursor-not-allowed mt-1 text-sm font-semibold" readOnly title="Only an admin can edit this." />
-                                </DetailItem>
-                                <DetailItem label="Employment Type" icon={<BriefcaseIcon />} isEditing={isEditing} value={user?.employmentType}>
-                                    <input type="text" name="employmentType" value={formData.employmentType} className="w-full px-4 py-3 border border-slate-200 rounded-xl shadow-sm bg-slate-50 text-slate-500 cursor-not-allowed mt-1 text-sm font-semibold" readOnly title="Only an admin can edit this." />
-                                </DetailItem>
-                                <DetailItem label="Work Location" icon={<LocationIcon />} isEditing={isEditing} value={user?.workLocation}>
-                                    <input type="text" name="workLocation" value={formData.workLocation} className="w-full px-4 py-3 border border-slate-200 rounded-xl shadow-sm bg-slate-50 text-slate-500 cursor-not-allowed mt-1 text-sm font-semibold" readOnly title="Only an admin can edit this." />
-                                </DetailItem>
-                                <DetailItem label="Reports To" icon={<UsersIcon />} isEditing={isEditing} value={user?.reportsTo}>
-                                    <input type="text" name="reportsTo" value={formData.reportsTo} className="w-full px-4 py-3 border border-slate-200 rounded-xl shadow-sm bg-slate-50 text-slate-500 cursor-not-allowed mt-1 text-sm font-semibold" readOnly title="Only an admin can edit this." />
-                                </DetailItem>
-                                
+                                <DetailItem label="Date of Joining" icon={<CalendarIcon />} isEditing={isEditing} value={formatDateForInput(user?.dateOfJoining)}><input type="date" name="dateOfJoining" value={formData.dateOfJoining} className="w-full px-4 py-3 border border-slate-200 rounded-xl shadow-sm bg-slate-50 text-slate-500 cursor-not-allowed mt-1 text-sm font-semibold" readOnly /></DetailItem>
+                                <DetailItem label="Employment Type" icon={<BriefcaseIcon />} isEditing={isEditing} value={user?.employmentType}><input type="text" name="employmentType" value={formData.employmentType} className="w-full px-4 py-3 border border-slate-200 rounded-xl shadow-sm bg-slate-50 text-slate-500 cursor-not-allowed mt-1 text-sm font-semibold" readOnly /></DetailItem>
+                                <DetailItem label="Work Location" icon={<LocationIcon />} isEditing={isEditing} value={user?.workLocation}><input type="text" name="workLocation" value={formData.workLocation} className="w-full px-4 py-3 border border-slate-200 rounded-xl shadow-sm bg-slate-50 text-slate-500 cursor-not-allowed mt-1 text-sm font-semibold" readOnly /></DetailItem>
+                                <DetailItem label="Reports To" icon={<UsersIcon />} isEditing={isEditing} value={user?.reportsTo}><input type="text" name="reportsTo" value={formData.reportsTo} className="w-full px-4 py-3 border border-slate-200 rounded-xl shadow-sm bg-slate-50 text-slate-500 cursor-not-allowed mt-1 text-sm font-semibold" readOnly /></DetailItem>
                                 <div className="flex flex-col gap-3">
-                                    <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-indigo-100 text-indigo-500 rounded-xl flex items-center justify-center"><LaptopIcon /></div>
-                                            <div>
-                                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Asset Tag</p>
-                                                <p className="text-sm font-bold text-indigo-900">{myAsset?.rowKey || 'None Assigned'}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-white text-slate-400 rounded-xl flex items-center justify-center shadow-sm border border-slate-100"><LaptopIcon /></div>
-                                            <div>
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Asset Model</p>
-                                                <p className="text-sm font-bold text-slate-700">{myAsset ? `${myAsset.AssetBrandName || ''} ${myAsset.AssetModelName || ''}`.trim() : 'N/A'}</p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-indigo-100 text-indigo-500 rounded-xl flex items-center justify-center"><LaptopIcon /></div><div><p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Asset Tag</p><p className="text-sm font-bold text-indigo-900">{myAsset?.rowKey || 'None Assigned'}</p></div></div></div>
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-white text-slate-400 rounded-xl flex items-center justify-center shadow-sm border border-slate-100"><LaptopIcon /></div><div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Asset Model</p><p className="text-sm font-bold text-slate-700">{myAsset ? `${myAsset.AssetBrandName || ''} ${myAsset.AssetModelName || ''}`.trim() : 'N/A'}</p></div></div></div>
                                 </div>
                             </div>
                         </div>
-
                         <hr className="border-slate-100" />
-
-                        {/* Block 3 */}
                         <div>
                              <h3 className="text-lg font-black text-slate-800 flex items-center gap-2.5 mb-6"><HeartIcon /> Emergency Contact</h3>
                              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                 <DetailItem label="Contact Name" icon={<UserIcon />} isEditing={isEditing} value={user?.emergencyContactName}>
-                                     {renderEditInput('emergencyContactName')}
-                                  </DetailItem>
-                                  <DetailItem label="Contact Phone" icon={<PhoneIcon />} isEditing={isEditing} value={user?.emergencyContactPhone}>
-                                     {renderEditInput('emergencyContactPhone', 'tel')}
-                                  </DetailItem>
-                                  <DetailItem label="Relation" icon={<UsersIcon />} isEditing={isEditing} value={user?.emergencyContactRelation}>
-                                       {renderEditSelect('emergencyContactRelation', relations)}
-                                  </DetailItem>
+                                 <DetailItem label="Contact Name" icon={<UserIcon />} isEditing={isEditing} value={user?.emergencyContactName}>{renderEditInput('emergencyContactName')}</DetailItem>
+                                 <DetailItem label="Contact Phone" icon={<PhoneIcon />} isEditing={isEditing} value={user?.emergencyContactPhone}>{renderEditInput('emergencyContactPhone', 'tel')}</DetailItem>
+                                 <DetailItem label="Relation" icon={<UsersIcon />} isEditing={isEditing} value={user?.emergencyContactRelation}>{renderEditSelect('emergencyContactRelation', relations)}</DetailItem>
                              </div>
                         </div>
-
-                        {/* Save Actions */}
                         {isEditing && (
                             <div className="flex flex-col sm:flex-row justify-end gap-3 mt-10 pt-6 border-t border-slate-200">
-                                 <button type="button" onClick={() => setIsEditing(false)} className="px-8 py-3 bg-white border-2 border-slate-200 text-slate-600 font-black rounded-xl hover:bg-slate-50 transition-colors" disabled={editLoading}>Cancel Edits</button>
-                                <button type="submit" className="px-10 py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 shadow-md hover:shadow-lg flex items-center justify-center min-w-[160px] transition-all disabled:opacity-50" disabled={editLoading}>{editLoading ? <Spinner size="5" /> : 'Save Profile Changes'}</button>
+                                 <button type="button" onClick={() => setIsEditing(false)} className="px-8 py-3 bg-white border-2 border-slate-200 text-slate-600 font-black rounded-xl hover:bg-slate-50" disabled={editLoading}>Cancel Edits</button>
+                                <button type="submit" className="px-10 py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 shadow-md min-w-[160px]" disabled={editLoading}>{editLoading ? <Spinner size="5" /> : 'Save Profile Changes'}</button>
                             </div>
                         )}
                     </div>
                 </form>
             )}
 
-            {/* ========================================= */}
-            {/* TAB CONTENT: ATTENDANCE */}
-            {/* ========================================= */}
+            {/* TAB CONTENT: ATTENDANCE (SMART CALENDAR INTEGRATION)[cite: 1] */}
             {activeTab === 'attendance' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 animate-fadeIn">
                     <div className="lg:col-span-4">
                         <AttendanceMarker selectedDate={selectedDate} onDateChange={handleDateChange} onMarkAttendance={handleMarkAttendance} authUser={user} />
                     </div>
                     
-                    <div className="lg:col-span-8 bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col h-full">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 border-b border-slate-100 pb-6">
-                            <div>
-                                <h3 className="text-xl font-extrabold text-slate-800 flex items-center gap-2"><CalendarIcon /> Monthly Timesheet</h3>
-                                <p className="text-sm text-slate-500 font-medium mt-1">View your past and present shift records</p>
+                    <div className="lg:col-span-8 bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col h-full overflow-hidden">
+                        
+                        {/* --- MONTHLY STATISTICS DASHBOARD[cite: 1] --- */}
+                        {!monthlyLoading && (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-6">
+                                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                                    <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Total Hours</span>
+                                    <span className="text-xl sm:text-2xl font-black text-indigo-600">{monthStats.totalHoursStr}</span>
+                                </div>
+                                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                                    <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Days Present</span>
+                                    <span className="text-xl sm:text-2xl font-black text-emerald-600">{monthStats.daysPresent}</span>
+                                </div>
+                                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                                    <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Approved Leaves</span>
+                                    <span className="text-xl sm:text-2xl font-black text-violet-600">{monthStats.approvedLeaves}</span>
+                                </div>
+                                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                                    <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">Absents</span>
+                                    <span className="text-xl sm:text-2xl font-black text-rose-600">{monthStats.daysAbsent}</span>
+                                </div>
                             </div>
-                            <button onClick={refreshCalendar} className="px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-bold rounded-xl flex items-center justify-center transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                Sync Calendar
-                            </button>
-                        </div>
+                        )}
+
                         <div className="flex-1 min-h-[400px]">
-                            <AttendanceCalendar initialMonthString={initialMonthString} key={calendarRefreshKey} />
+                            <AttendanceCalendar 
+                                initialMonthString={getISTShiftDateString().substring(0, 7)} 
+                                key={calendarRefreshKey} 
+                                onDayClick={handleDateChange} 
+                            />
                         </div>
+                        
+                        <button onClick={refreshCalendar} className="mt-6 px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-bold rounded-xl flex items-center justify-center transition-colors self-end">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            Sync Calendar
+                        </button>
                     </div>
                 </div>
             )}
 
-            {/* ========================================= */}
             {/* TAB CONTENT: LEAVES */}
-            {/* ========================================= */}
             {activeTab === 'leaves' && (
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8 animate-fadeIn">
-                    
-                    {/* Left Column: Comprehensive Balances */}
                     <div className="xl:col-span-5 space-y-6 lg:space-y-8">
                         <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
                             <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-indigo-50/50 rounded-full blur-3xl pointer-events-none"></div>
-
                             <h3 className="text-xl font-extrabold mb-6 flex items-center text-slate-800 gap-2 border-b border-slate-100 pb-5 relative z-10"><QuotaIcon /> Paid Time Off Tracker</h3>
-                            
                             {leaveQuota ? (
                                 <div className="space-y-6 relative z-10">
-                                    
-                                    {/* Overall PTO Health Card */}
-                                    <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md relative overflow-hidden group">
-                                        <div className="absolute right-0 top-0 w-32 h-full bg-gradient-to-l from-indigo-500/20 to-transparent pointer-events-none"></div>
-                                        <div className="flex justify-between items-center mb-4 relative z-10">
-                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Paid Leave Balance</p>
-                                            <div className="bg-white/10 px-2 py-1 rounded-md backdrop-blur-sm">
-                                                <p className="text-[10px] font-bold text-white uppercase">{overallPaidPercentage.toFixed(0)}% Used</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-end gap-3 relative z-10">
-                                            <h4 className="text-5xl font-black">{overallPaidRemaining}</h4>
-                                            <p className="text-sm font-bold text-slate-400 mb-1.5">days available</p>
-                                        </div>
-                                        <div className="w-full h-1.5 bg-white/10 rounded-full mt-5 overflow-hidden">
-                                            <div className="h-full bg-indigo-400 rounded-full transition-all duration-1000" style={{ width: `${overallPaidPercentage}%` }}></div>
-                                        </div>
+                                    <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md relative overflow-hidden">
+                                        <div className="flex justify-between items-center mb-4"><p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Paid Leave Balance</p><div className="bg-white/10 px-2 py-1 rounded-md"><p className="text-[10px] font-bold text-white uppercase">{overallPaidPercentage.toFixed(0)}% Used</p></div></div>
+                                        <div className="flex items-end gap-3"><h4 className="text-5xl font-black">{overallPaidRemaining}</h4><p className="text-sm font-bold text-slate-400 mb-1.5">days available</p></div>
+                                        <div className="w-full h-1.5 bg-white/10 rounded-full mt-5"><div className="h-full bg-indigo-400 rounded-full transition-all duration-1000" style={{ width: `${overallPaidPercentage}%` }}></div></div>
                                     </div>
-
-                                    {/* Detailed breakdown grid */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-4">
-                                        <LeaveBalanceBar title="Sick (SL)" data={sickLeave} color="bg-rose-400" />
-                                        <LeaveBalanceBar title="Casual (CL)" data={casualLeave} color="bg-blue-400" />
-                                        <LeaveBalanceBar title="Earned (EL)" data={earnedLeave} color="bg-emerald-400" />
-                                        <LeaveBalanceBar title="Maternity" data={maternityLeave} color="bg-purple-400" />
-                                        <LeaveBalanceBar title="Paternity" data={paternityLeave} color="bg-indigo-400" />
-                                    </div>
-                                    
-                                    {/* Unpaid section */}
-                                    <div className="pt-5 border-t border-slate-100 grid grid-cols-2 gap-4">
-                                        <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 flex flex-col hover:bg-slate-100 transition-colors">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Leave W/O Pay</span>
-                                            <span className="text-xl font-black text-slate-700">{lwp.used} <span className="font-bold text-xs text-slate-400 ml-0.5">days</span></span>
-                                        </div>
-                                        <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 flex flex-col hover:bg-slate-100 transition-colors">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Loss Of Pay</span>
-                                            <span className="text-xl font-black text-slate-700">{lop.used} <span className="font-bold text-xs text-slate-400 ml-0.5">days</span></span>
-                                        </div>
-                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-4"><LeaveBalanceBar title="Sick (SL)" data={sickLeave} color="bg-rose-400" /><LeaveBalanceBar title="Casual (CL)" data={casualLeave} color="bg-blue-400" /><LeaveBalanceBar title="Earned (EL)" data={earnedLeave} color="bg-emerald-400" /><LeaveBalanceBar title="Maternity" data={maternityLeave} color="bg-purple-400" /><LeaveBalanceBar title="Paternity" data={paternityLeave} color="bg-indigo-400" /></div>
+                                    <div className="pt-5 border-t border-slate-100 grid grid-cols-2 gap-4"><div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 flex flex-col"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Leave W/O Pay</span><span className="text-xl font-black text-slate-700">{lwp.used} days</span></div><div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 flex flex-col"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Loss Of Pay</span><span className="text-xl font-black text-slate-700">{lop.used} days</span></div></div>
                                 </div>
                             ) : (
-                                <div className="bg-slate-50 rounded-2xl p-10 text-center border border-slate-100 border-dashed relative z-10">
-                                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mx-auto mb-4 text-slate-300"><QuotaIcon /></div>
-                                    <p className="text-base text-slate-600 font-bold">Leave quotas not configured</p>
-                                    <p className="text-sm text-slate-400 mt-1">Please contact your HR administrator to set up your annual allowances.</p>
-                                </div>
+                                <div className="bg-slate-50 rounded-2xl p-10 text-center border border-slate-100 border-dashed relative z-10"><div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mx-auto mb-4 text-slate-300"><QuotaIcon /></div><p className="text-base text-slate-600 font-bold">Leave quotas not configured</p></div>
                             )}
                         </div>
                     </div>
-
-                    {/* Right Column: Request Form & History Feed */}
                     <div className="xl:col-span-7 flex flex-col gap-6 lg:gap-8">
-                        
-                        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
-                             <h3 className="text-xl font-extrabold mb-6 flex items-center text-slate-800 gap-2 border-b border-slate-100 pb-5"><RequestIcon /> Submit New Request</h3>
-                            <LeaveRequestForm onLeaveRequested={handleLeaveRequested} />
-                        </div>
-
-                        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 flex-1">
-                            <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-5">
-                                <h3 className="text-xl font-extrabold text-slate-800 flex items-center gap-2"><HistoryIcon /> Application History</h3>
-                                <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg">{leaveHistory.length} Records</span>
-                            </div>
-                            <LeaveHistory leaveHistory={leaveHistory} />
-                        </div>
-
+                        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100"><h3 className="text-xl font-extrabold mb-6 flex items-center text-slate-800 gap-2 border-b border-slate-100 pb-5"><RequestIcon /> Submit New Request</h3><LeaveRequestForm onLeaveRequested={handleLeaveRequested} /></div>
+                        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 flex-1"><div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-5"><h3 className="text-xl font-extrabold text-slate-800 flex items-center gap-2"><HistoryIcon /> Application History</h3><span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg">{leaveHistory.length} Records</span></div><LeaveHistory leaveHistory={leaveHistory} /></div>
                     </div>
-
                 </div>
             )}
         </div>
