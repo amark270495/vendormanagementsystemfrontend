@@ -277,10 +277,14 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                         const start = new Date(req.startDate + 'T00:00:00Z');
                         const end = new Date(req.endDate + 'T00:00:00Z');
                         for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
-                            if (d.getUTCFullYear() === year && d.getUTCMonth() === monthDate.getUTCMonth()) {
-                                const dateKey = d.toISOString().split('T')[0];
-                                if (leaveMap[dateKey] !== 'Approved') {
-                                    leaveMap[dateKey] = req.status;
+                            // SKIP WEEKENDS (0 = Sunday, 6 = Saturday)
+                            const dayOfWeek = d.getUTCDay();
+                            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                                if (d.getUTCFullYear() === year && d.getUTCMonth() === monthDate.getUTCMonth()) {
+                                    const dateKey = d.toISOString().split('T')[0];
+                                    if (leaveMap[dateKey] !== 'Approved') {
+                                        leaveMap[dateKey] = req.status;
+                                    }
                                 }
                             }
                         }
@@ -328,6 +332,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         if (request && request.username && request.date) {
             setReviewingRequest(request);
             
+            // Instantly pull pre-calculated totals from the backend record
             setTimeCalculations({
                 standard: formatMsToTime(request.standardTimeMs),
                 extra: request.extraTimeMs > 60000 ? formatMsToTime(request.extraTimeMs) : null,
@@ -336,6 +341,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
 
             setLogsLoading(true);
             try {
+                // Fetch purely to display the UI tracking log table
                 const res = await apiService.getUserTrackingLogs(request.username, request.date, user.userIdentifier);
                 if (res.data && res.data.success) {
                     setTrackingLogs(res.data.logs);
