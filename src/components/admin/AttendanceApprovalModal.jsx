@@ -6,7 +6,6 @@ import Modal from '../Modal';
 
 /**
  * Ensures Calendar "Today" respects the 12 PM Noon Cutoff for IST Shifts.
- * If the current time in IST is before noon, the "Shift Date" is considered to be the previous day.
  */
 const getISTShiftDateString = () => {
     const browserNow = new Date();
@@ -25,7 +24,7 @@ const getISTShiftDateString = () => {
 };
 
 const formatMsToTime = (ms) => {
-    if (ms < 0) ms = 0;
+    if (!ms || ms < 0) return "0h 0m";
     const h = Math.floor(ms / (1000 * 60 * 60));
     const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
     return `${h}h ${m}m`;
@@ -50,109 +49,7 @@ const ChevronRightIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20
 const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
 
-// --- FIXED TIME CALCULATION LOGIC ---
-const calculateTotalWorkTime = (logs, shiftDateStr) => {
-    if (!logs || logs.length === 0 || !shiftDateStr) return { standard: "0h 0m", extra: null, activeStr: "" };
-
-    let year, month, day;
-    const parts = shiftDateStr.split('-');
-    if (parts[0].length === 4) {
-        [year, month, day] = parts;
-    } else {
-        [day, month, year] = parts;
-    }
-
-    // Define the exact Start of the IST Shift (7 PM)
-    const shiftStartIST = new Date(`${year}-${month}-${day}T19:00:00.000+05:30`);
-    
-    // Core Shift Boundary (4 AM next morning)
-    const shiftEndIST = new Date(shiftStartIST.getTime() + (9 * 60 * 60 * 1000));
-
-    // Define the 12 PM Noon to 12 PM Noon Logical Day Boundary
-    const logicalDayStartIST = new Date(shiftStartIST.getTime() - (7 * 60 * 60 * 1000));
-    const logicalDayEndIST = new Date(logicalDayStartIST.getTime() + (24 * 60 * 60 * 1000));
-
-    // Pre-filter rogue logs that do not belong in this 24-hour logical block
-    const validLogs = logs.filter(log => {
-        const t = new Date(log.eventTimestamp);
-        return t >= logicalDayStartIST && t <= logicalDayEndIST;
-    });
-
-    const sortedLogs = [...validLogs].sort((a, b) => new Date(a.eventTimestamp) - new Date(b.eventTimestamp));
-    let standardMs = 0;
-    let extraMs = 0;
-    let sessionStart = null;
-    let lastHeartbeat = null;
-    let activeString = "";
-
-    const processBlock = (start, end) => {
-        const blockTotal = end - start;
-        if (blockTotal <= 0) return;
-
-        const overlapStart = start > shiftStartIST ? start : shiftStartIST;
-        const overlapEnd = end < shiftEndIST ? end : shiftEndIST;
-
-        let blockStandard = 0;
-        if (overlapStart < overlapEnd) {
-            blockStandard = overlapEnd - overlapStart;
-        }
-
-        standardMs += blockStandard;
-        extraMs += (blockTotal - blockStandard);
-    };
-
-    const startActions = ['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat', 'usage update'];
-    const stopActions = ['logout', 'logoff', 'lock', 'idle', 'sleep', 'hibernate', 'shutdown', 'restartaccepted', 'shiftendenforced', 'agentcrash'];
-
-    sortedLogs.forEach(log => {
-        const act = log.actionType.toLowerCase();
-        const logTime = new Date(log.eventTimestamp);
-        const notes = (log.workDoneNotes || "").toLowerCase();
-        
-        if (act === 'heartbeat' || act.includes('usage')) lastHeartbeat = logTime;
-        
-        if (startActions.includes(act) && !sessionStart) {
-            sessionStart = logTime;
-            lastHeartbeat = logTime;
-        } else if (stopActions.includes(act) && sessionStart) {
-            if (notes.includes("previous shutdown detected")) {
-                if (lastHeartbeat && lastHeartbeat > sessionStart) {
-                    processBlock(sessionStart, lastHeartbeat);
-                }
-                sessionStart = null;
-            } else {
-                processBlock(sessionStart, logTime);
-                sessionStart = null;
-            }
-        }
-    });
-
-    if (sessionStart) {
-        const now = new Date();
-        let effectiveEnd = (lastHeartbeat && lastHeartbeat > sessionStart) ? lastHeartbeat : now;
-        
-        // Currently active if within 15 mins AND we are still before the logical day cutoff (12 PM Next Day)
-        const isCurrentlyActive = lastHeartbeat && (now - lastHeartbeat < 15 * 60000) && (now < logicalDayEndIST);
-
-        if (isCurrentlyActive) {
-            processBlock(sessionStart, now);
-            activeString = " (Active Now)";
-        } else {
-            // Cap session at effectiveEnd or the absolute Logical Day End (12 PM Next Day)
-            const capTime = effectiveEnd < logicalDayEndIST ? effectiveEnd : logicalDayEndIST;
-            processBlock(sessionStart, capTime);
-            activeString = effectiveEnd >= logicalDayEndIST ? " (Day Cutoff Reached)" : " (Missing Logout)";
-        }
-    }
-
-    return { 
-        standard: formatMsToTime(standardMs), 
-        extra: extraMs > 60000 ? formatMsToTime(extraMs) : null,
-        activeStr: activeString 
-    };
-};
-
-const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, approvedWeekends, onDayClick, pendingRequestsMap }) => {
+const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, approvedWeekends, onDayClick, pendingRequestsMap }) => {
     const getDayStatus = (day) => {
         const year = monthDate.getUTCFullYear();
         const month = monthDate.getUTCMonth();
@@ -177,8 +74,25 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, ap
             };
         }
 
-        // 2. Check Leave
-        if (leaveDaysSet.has(dateKey)) return { status: 'On Leave', label: 'Leave', color: `${baseClasses} bg-violet-50 border-violet-200 text-violet-700`, badgeColor: "bg-violet-200 text-violet-800" };
+        // 2. Check Leaves (Now mapped to display Approved vs Pending)
+        const leaveStatus = leaveDaysMap[dateKey];
+        if (leaveStatus === 'Approved') {
+            return { 
+                status: 'On Leave', 
+                label: 'Leave', 
+                color: `${baseClasses} bg-violet-50 border-violet-200 text-violet-700`, 
+                badgeColor: "bg-violet-200 text-violet-800",
+                description: "Approved Leave"
+            };
+        } else if (leaveStatus === 'Pending') {
+            return { 
+                status: 'Leave Requested', 
+                label: 'Pending Leave', 
+                color: `${baseClasses} bg-fuchsia-50 border-2 border-dashed border-fuchsia-300 text-fuchsia-800`, 
+                badgeColor: "bg-fuchsia-200 text-fuchsia-900",
+                description: "Leave Request Pending Approval"
+            };
+        }
         
         // 3. Check Holiday
         if (holidays[dateKey]) return { status: 'Holiday', label: 'Holiday', color: `${baseClasses} bg-orange-50 border-orange-200 text-orange-800`, badgeColor: "bg-orange-200 text-orange-800", description: holidays[dateKey] };
@@ -229,7 +143,7 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysSet, ap
             if (dayCounter > daysInMonth) break;
         }
         return grid;
-    }, [monthDate, attendanceData, holidays, leaveDaysSet, approvedWeekends, pendingRequestsMap]);
+    }, [monthDate, attendanceData, holidays, leaveDaysMap, approvedWeekends, pendingRequestsMap]);
 
     return (
         <div className="select-none">
@@ -277,7 +191,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const [currentMonthDate, setCurrentMonthDate] = useState(() => new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1)));
     const [attendanceData, setAttendanceData] = useState({});
     const [holidays, setHolidays] = useState({});
-    const [leaveDaysSet, setLeaveDaysSet] = useState(new Set());
+    const [leaveDaysMap, setLeaveDaysMap] = useState({});
     const [approvedWeekends, setApprovedWeekends] = useState(new Set());
     const [pendingRequestsMap, setPendingRequestsMap] = useState({});
     const [loading, setLoading] = useState(true);
@@ -310,10 +224,11 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             const monthString = `${year}-${month}`;
             const monthEndDay = new Date(Date.UTC(year, monthDate.getUTCMonth() + 1, 0)).getUTCDate();
 
+            // Fetch Data (Notice leaveRes no longer explicitly requests statusFilter: 'Approved')
             const [attendanceRes, holidaysRes, leaveRes, weekendRes] = await Promise.all([
                 apiService.getAttendance({ authenticatedUsername: user.userIdentifier, username: selectedUsername, month: monthString }),
                 apiService.getHolidays({ authenticatedUsername: user.userIdentifier, year: year.toString() }),
-                apiService.getLeaveRequests({ authenticatedUsername: user.userIdentifier, targetUsername: selectedUsername, statusFilter: 'Approved', startDateFilter: `${monthString}-01`, endDateFilter: `${monthString}-${monthEndDay.toString().padStart(2,'0')}` }),
+                apiService.getLeaveRequests({ authenticatedUsername: user.userIdentifier, targetUsername: selectedUsername, startDateFilter: `${monthString}-01`, endDateFilter: `${monthString}-${monthEndDay.toString().padStart(2,'0')}` }),
                 apiService.getWeekendWorkRequests().catch(() => null)
             ]);
 
@@ -335,19 +250,26 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             }
             setHolidays(holMap);
 
-            const leaveSet = new Set();
+            // Process leaves into a Map to store status (Approved vs Pending)
+            const leaveMap = {};
             if (leaveRes?.data?.success && Array.isArray(leaveRes.data.requests)) {
                 leaveRes.data.requests.forEach(req => {
-                    const start = new Date(req.startDate + 'T00:00:00Z');
-                    const end = new Date(req.endDate + 'T00:00:00Z');
-                    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
-                        if (d.getUTCFullYear() === year && d.getUTCMonth() === monthDate.getUTCMonth()) {
-                            leaveSet.add(d.toISOString().split('T')[0]);
+                    if (req.status === 'Approved' || req.status === 'Pending') {
+                        const start = new Date(req.startDate + 'T00:00:00Z');
+                        const end = new Date(req.endDate + 'T00:00:00Z');
+                        for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+                            if (d.getUTCFullYear() === year && d.getUTCMonth() === monthDate.getUTCMonth()) {
+                                const dateKey = d.toISOString().split('T')[0];
+                                // Approved status overwrites Pending if there is an overlap
+                                if (leaveMap[dateKey] !== 'Approved') {
+                                    leaveMap[dateKey] = req.status;
+                                }
+                            }
                         }
                     }
                 });
             }
-            setLeaveDaysSet(leaveSet);
+            setLeaveDaysMap(leaveMap);
 
             const approvedWknds = new Set();
             if (weekendRes?.data?.success && Array.isArray(weekendRes.data.requests)) {
@@ -391,20 +313,26 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 return;
             }
             setReviewingRequest(request);
+            
+            // Instantly display times provided by the backend state machine
+            setTimeCalculations({
+                standard: formatMsToTime(request.standardTimeMs),
+                extra: request.extraTimeMs > 60000 ? formatMsToTime(request.extraTimeMs) : null,
+                activeStr: ''
+            });
+
             setLogsLoading(true);
             try {
+                // Fetch the raw audit trail just to display the events
                 const res = await apiService.getUserTrackingLogs(request.username, request.date, user.userIdentifier);
                 if (res.data && res.data.success) {
                     setTrackingLogs(res.data.logs);
-                    setTimeCalculations(calculateTotalWorkTime(res.data.logs, request.date));
                 } else {
                     setTrackingLogs([]);
-                    setTimeCalculations({ standard: "0h 0m", extra: null, activeStr: "" });
                 }
             } catch (err) {
                 console.error("Failed to fetch tracking logs", err);
                 setTrackingLogs([]);
-                setTimeCalculations({ standard: "Error", extra: null, activeStr: "" });
             } finally { setLogsLoading(false); }
         }
     };
@@ -501,7 +429,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                                             <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Core Shift (19:00 - 04:00)</p>
                                             <p className="text-3xl font-black text-indigo-700 leading-none mt-1">
                                                 {timeCalculations.standard}
-                                                <span className="text-sm font-bold ml-1.5 text-indigo-500">{timeCalculations.activeStr}</span>
                                             </p>
                                         </div>
                                     </div>
@@ -620,7 +547,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                                 monthDate={currentMonthDate} 
                                 attendanceData={attendanceData} 
                                 holidays={holidays} 
-                                leaveDaysSet={leaveDaysSet} 
+                                leaveDaysMap={leaveDaysMap} 
                                 approvedWeekends={approvedWeekends} 
                                 onDayClick={handleDayClick} 
                                 pendingRequestsMap={pendingRequestsMap} 
