@@ -4,9 +4,6 @@ import { apiService } from '../../api/apiService';
 import Spinner from '../Spinner';
 import Modal from '../Modal';
 
-/**
- * Ensures Calendar "Today" respects the 12 PM Noon Cutoff for IST Shifts.
- */
 const getISTShiftDateString = () => {
     const browserNow = new Date();
     const utcTime = browserNow.getTime() + (browserNow.getTimezoneOffset() * 60000);
@@ -24,7 +21,7 @@ const getISTShiftDateString = () => {
 };
 
 const formatMsToTime = (ms) => {
-    if (!ms || ms < 0) return "0h 0m";
+    if (!ms || ms <= 0) return "0h 0m";
     const h = Math.floor(ms / (1000 * 60 * 60));
     const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
     return `${h}h ${m}m`;
@@ -49,7 +46,7 @@ const ChevronRightIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20
 const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
 
-const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, approvedWeekends, onDayClick, pendingRequestsMap }) => {
+const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, approvedWeekends, onDayClick }) => {
     const getDayStatus = (day) => {
         const year = monthDate.getUTCFullYear();
         const month = monthDate.getUTCMonth();
@@ -62,48 +59,47 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, ap
         const baseClasses = "relative transition-all duration-300 ease-out border flex flex-col justify-between p-1.5 overflow-hidden shadow-sm";
         const attendanceRecord = attendanceData[dateKey];
 
-        // 1. Check for Pending Actions FIRST
+        // Ensure we pass the record to the UI if it exists so we can map the hours
+        const recordDetails = attendanceRecord ? { record: attendanceRecord, isClickable: true, request: attendanceRecord } : {};
+
         if (attendanceRecord && attendanceRecord.status === 'Pending') {
-            const requestedText = attendanceRecord.requestedStatus === 'Present' ? 'Present?' : 'Absent?';
-            const requestObj = pendingRequestsMap[dateKey] || {};
             return {
-                status: 'Pending', label: requestedText,
+                ...recordDetails,
+                status: 'Pending', label: attendanceRecord.requestedStatus === 'Present' ? 'Present?' : 'Absent?',
                 color: `${baseClasses} bg-amber-50 border-2 border-dashed border-amber-400 text-amber-900 cursor-pointer hover:bg-amber-100 hover:border-amber-500 hover:shadow-md transform hover:-translate-y-0.5`,
                 badgeColor: "bg-amber-400 text-amber-900 font-extrabold shadow-sm",
-                description: `Pending Approval: ${attendanceRecord.requestedStatus}`, isPending: true, request: requestObj 
+                description: `Pending Approval: ${attendanceRecord.requestedStatus}`
             };
         }
 
-        // 2. Check Leaves (Now mapped to display Approved vs Pending)
         const leaveStatus = leaveDaysMap[dateKey];
         if (leaveStatus === 'Approved') {
             return { 
-                status: 'On Leave', 
-                label: 'Leave', 
-                color: `${baseClasses} bg-violet-50 border-violet-200 text-violet-700`, 
-                badgeColor: "bg-violet-200 text-violet-800",
-                description: "Approved Leave"
+                ...recordDetails, status: 'On Leave', label: 'Leave', 
+                color: `${baseClasses} bg-violet-50 border-violet-200 text-violet-700 ${attendanceRecord ? 'cursor-pointer hover:bg-violet-100 hover:shadow-md transform hover:-translate-y-0.5' : ''}`, 
+                badgeColor: "bg-violet-200 text-violet-800", description: "Approved Leave"
             };
         } else if (leaveStatus === 'Pending') {
             return { 
-                status: 'Leave Requested', 
-                label: 'Pending Leave', 
-                color: `${baseClasses} bg-fuchsia-50 border-2 border-dashed border-fuchsia-300 text-fuchsia-800`, 
-                badgeColor: "bg-fuchsia-200 text-fuchsia-900",
-                description: "Leave Request Pending Approval"
+                ...recordDetails, status: 'Leave Requested', label: 'Pending Leave', 
+                color: `${baseClasses} bg-fuchsia-50 border-2 border-dashed border-fuchsia-300 text-fuchsia-800 ${attendanceRecord ? 'cursor-pointer hover:bg-fuchsia-100 hover:shadow-md transform hover:-translate-y-0.5' : ''}`, 
+                badgeColor: "bg-fuchsia-200 text-fuchsia-900", description: "Leave Request Pending Approval"
             };
         }
         
-        // 3. Check Holiday
-        if (holidays[dateKey]) return { status: 'Holiday', label: 'Holiday', color: `${baseClasses} bg-orange-50 border-orange-200 text-orange-800`, badgeColor: "bg-orange-200 text-orange-800", description: holidays[dateKey] };
+        if (holidays[dateKey]) {
+            return { 
+                ...recordDetails, status: 'Holiday', label: 'Holiday', 
+                color: `${baseClasses} bg-orange-50 border-orange-200 text-orange-800 ${attendanceRecord ? 'cursor-pointer hover:bg-orange-100 hover:shadow-md transform hover:-translate-y-0.5' : ''}`, 
+                badgeColor: "bg-orange-200 text-orange-800", description: holidays[dateKey] 
+            };
+        }
         
-        // 4. Check Finalized Attendance
         if (attendanceRecord) {
-             if (attendanceRecord.status === 'Present') return { status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-50 border-emerald-200 text-emerald-800`, badgeColor: "bg-emerald-200 text-emerald-900" };
-             if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') return { status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-800`, badgeColor: "bg-rose-200 text-rose-900" };
+             if (attendanceRecord.status === 'Present') return { ...recordDetails, status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-50 border-emerald-200 text-emerald-800 cursor-pointer hover:bg-emerald-100 hover:shadow-md transform hover:-translate-y-0.5`, badgeColor: "bg-emerald-200 text-emerald-900" };
+             if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') return { ...recordDetails, status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-800 cursor-pointer hover:bg-rose-100 hover:shadow-md transform hover:-translate-y-0.5`, badgeColor: "bg-rose-200 text-rose-900" };
         }
 
-        // 5. Weekend Check
         if (dayOfWeek === 0 || dayOfWeek === 6) {
             if (approvedWeekends.has(dateKey)) {
                 if (dateKey < currentShiftDateStr) {
@@ -114,7 +110,6 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, ap
             return { status: 'Weekend', label: 'WKND', color: `${baseClasses} bg-slate-50 border-slate-200 text-slate-400`, badgeColor: "hidden" };
         }
 
-        // 6. Regular un-marked weekdays
         if (dateKey < currentShiftDateStr) {
             return { status: 'Absent (Unmarked)', label: 'N/A', color: `${baseClasses} bg-slate-100/50 border-slate-200 text-slate-500 italic`, badgeColor: "bg-slate-200 text-slate-600" };
         } else if (dateKey === currentShiftDateStr) {
@@ -143,7 +138,7 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, ap
             if (dayCounter > daysInMonth) break;
         }
         return grid;
-    }, [monthDate, attendanceData, holidays, leaveDaysMap, approvedWeekends, pendingRequestsMap]);
+    }, [monthDate, attendanceData, holidays, leaveDaysMap, approvedWeekends]);
 
     return (
         <div className="select-none">
@@ -155,24 +150,31 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, ap
             <div className="grid grid-cols-7 gap-3">
                 {calendarGrid.flat().map((cell, index) => (
                     <div key={index} 
-                        className={`h-20 sm:h-24 rounded-2xl ${cell.day === null ? 'invisible' : cell.statusInfo.color}`}
+                        className={`h-24 sm:h-28 rounded-2xl ${cell.day === null ? 'invisible' : cell.statusInfo.color}`}
                         title={cell.statusInfo.description || cell.statusInfo.status}
-                        onClick={() => cell.statusInfo.isPending && onDayClick(cell.statusInfo.request)} 
+                        onClick={() => cell.statusInfo.isClickable && onDayClick(cell.statusInfo.request)} 
                     >
                         {cell.day !== null && (
                             <>
                                 <div className="flex justify-between items-start w-full px-1">
-                                    <span className={`text-sm sm:text-base ${cell.statusInfo.isPending ? 'font-black text-amber-900' : 'font-bold'}`}>{cell.day}</span>
-                                    {cell.statusInfo.isPending && (
+                                    <span className={`text-sm sm:text-base ${cell.statusInfo.status === 'Pending' ? 'font-black text-amber-900' : 'font-bold'}`}>{cell.day}</span>
+                                    {cell.statusInfo.status === 'Pending' && (
                                         <span className="flex h-2.5 w-2.5 relative mt-1 mr-1">
                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                                             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex justify-center w-full mb-1 mt-auto">
+                                
+                                <div className="flex-1 flex flex-col justify-end w-full mb-1 items-center">
+                                    {/* Display Calculated Hours directly on the calendar block */}
+                                    {cell.statusInfo.record && (cell.statusInfo.record.standardTimeMs > 0 || cell.statusInfo.record.extraTimeMs > 0) && (
+                                        <div className="text-[10px] sm:text-xs font-black opacity-60 mb-1">
+                                            {formatMsToTime((cell.statusInfo.record.standardTimeMs || 0) + (cell.statusInfo.record.extraTimeMs || 0))}
+                                        </div>
+                                    )}
                                     {cell.statusInfo.label && (
-                                        <span className={`text-[10px] sm:text-xs uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${cell.statusInfo.badgeColor || 'bg-white/50 border border-black/5'}`}>
+                                        <span className={`text-[9px] sm:text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${cell.statusInfo.badgeColor || 'bg-white/50 border border-black/5'}`}>
                                             {cell.statusInfo.label}
                                         </span>
                                     )}
@@ -193,7 +195,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const [holidays, setHolidays] = useState({});
     const [leaveDaysMap, setLeaveDaysMap] = useState({});
     const [approvedWeekends, setApprovedWeekends] = useState(new Set());
-    const [pendingRequestsMap, setPendingRequestsMap] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
@@ -224,7 +225,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             const monthString = `${year}-${month}`;
             const monthEndDay = new Date(Date.UTC(year, monthDate.getUTCMonth() + 1, 0)).getUTCDate();
 
-            // Fetch Data (Notice leaveRes no longer explicitly requests statusFilter: 'Approved')
             const [attendanceRes, holidaysRes, leaveRes, weekendRes] = await Promise.all([
                 apiService.getAttendance({ authenticatedUsername: user.userIdentifier, username: selectedUsername, month: monthString }),
                 apiService.getHolidays({ authenticatedUsername: user.userIdentifier, year: year.toString() }),
@@ -233,16 +233,13 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             ]);
 
             const attMap = {};
-            const pendingMap = {};
             if (attendanceRes?.data?.success && Array.isArray(attendanceRes.data.attendanceRecords)) {
                 attendanceRes.data.attendanceRecords.forEach(att => {
                     const record = { ...att, username: att.username || selectedUsername, date: att.date || att.rowKey };
                     attMap[record.date] = record;
-                    if (record.status === 'Pending') pendingMap[record.date] = record;
                 });
             }
             setAttendanceData(attMap);
-            setPendingRequestsMap(pendingMap);
 
             const holMap = {};
             if (holidaysRes?.data?.success && Array.isArray(holidaysRes.data.holidays)) {
@@ -250,7 +247,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             }
             setHolidays(holMap);
 
-            // Process leaves into a Map to store status (Approved vs Pending)
             const leaveMap = {};
             if (leaveRes?.data?.success && Array.isArray(leaveRes.data.requests)) {
                 leaveRes.data.requests.forEach(req => {
@@ -260,7 +256,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                         for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
                             if (d.getUTCFullYear() === year && d.getUTCMonth() === monthDate.getUTCMonth()) {
                                 const dateKey = d.toISOString().split('T')[0];
-                                // Approved status overwrites Pending if there is an overlap
                                 if (leaveMap[dateKey] !== 'Approved') {
                                     leaveMap[dateKey] = req.status;
                                 }
@@ -306,15 +301,11 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         });
     };
 
+    // Modified to open for ANY clickable day, not just 'Pending'
     const handleDayClick = async (request) => {
-        if (request && request.status === 'Pending') {
-            if (!request.username || !request.date) {
-                setError("Internal error: Request data missing.");
-                return;
-            }
+        if (request && request.username && request.date) {
             setReviewingRequest(request);
             
-            // Instantly display times provided by the backend state machine
             setTimeCalculations({
                 standard: formatMsToTime(request.standardTimeMs),
                 extra: request.extraTimeMs > 60000 ? formatMsToTime(request.extraTimeMs) : null,
@@ -323,7 +314,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
 
             setLogsLoading(true);
             try {
-                // Fetch the raw audit trail just to display the events
                 const res = await apiService.getUserTrackingLogs(request.username, request.date, user.userIdentifier);
                 if (res.data && res.data.success) {
                     setTrackingLogs(res.data.logs);
@@ -354,10 +344,9 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             if (response.data.success) {
                 await fetchDataForUserAndMonth(currentMonthDate);
                 setReviewingRequest(null);
-                const remainingPendingInMonth = Object.values(pendingRequestsMap).some(p => 
-                    p.date !== reviewingRequest.date && p.status === 'Pending'
-                );
-                if (!remainingPendingInMonth && onApprovalComplete) {
+                
+                // Refresh if needed
+                if (onApprovalComplete) {
                     onApprovalComplete();
                 }
             } else { throw new Error(response.data.message); }
@@ -510,22 +499,37 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-4 pt-6 border-t border-slate-100">
-                                <button 
-                                    onClick={() => handleConfirmAction('Rejected')} 
-                                    disabled={actionLoading} 
-                                    className="px-6 py-3 bg-white border border-rose-200 text-rose-700 text-sm font-bold rounded-xl hover:bg-rose-50 hover:shadow-sm disabled:opacity-50 transition-all min-w-[120px]"
-                                >
-                                    Reject Shift
-                                </button>
-                                <button 
-                                    onClick={() => handleConfirmAction('Approved')} 
-                                    disabled={actionLoading} 
-                                    className="px-6 py-3 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-500 shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 flex items-center justify-center min-w-[150px] transition-all"
-                                >
-                                    {actionLoading ? <Spinner size="5" /> : 'Approve Shift'}
-                                </button>
-                            </div>
+                            {/* UI Change: Only show Approve/Reject buttons if the shift is still Pending */}
+                            {reviewingRequest.status === 'Pending' ? (
+                                <div className="flex justify-end gap-4 pt-6 border-t border-slate-100">
+                                    <button 
+                                        onClick={() => handleConfirmAction('Rejected')} 
+                                        disabled={actionLoading} 
+                                        className="px-6 py-3 bg-white border border-rose-200 text-rose-700 text-sm font-bold rounded-xl hover:bg-rose-50 hover:shadow-sm disabled:opacity-50 transition-all min-w-[120px]"
+                                    >
+                                        Reject Shift
+                                    </button>
+                                    <button 
+                                        onClick={() => handleConfirmAction('Approved')} 
+                                        disabled={actionLoading} 
+                                        className="px-6 py-3 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-500 shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 flex items-center justify-center min-w-[150px] transition-all"
+                                    >
+                                        {actionLoading ? <Spinner size="5" /> : 'Approve Shift'}
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex justify-between items-center w-full pt-6 border-t border-slate-100">
+                                    <div className="text-sm font-bold text-slate-500">
+                                        Shift Status: <span className={`uppercase ml-1 tracking-wider ${reviewingRequest.status === 'Present' ? 'text-emerald-600' : 'text-rose-600'}`}>{reviewingRequest.status === 'Present' ? 'Approved' : reviewingRequest.status}</span>
+                                    </div>
+                                    <button 
+                                        onClick={() => setReviewingRequest(null)} 
+                                        className="px-6 py-3 bg-slate-100 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-200 shadow-sm transition-all"
+                                    >
+                                        Close Viewer
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -550,7 +554,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                                 leaveDaysMap={leaveDaysMap} 
                                 approvedWeekends={approvedWeekends} 
                                 onDayClick={handleDayClick} 
-                                pendingRequestsMap={pendingRequestsMap} 
                             />
                         </div>
                     )}
