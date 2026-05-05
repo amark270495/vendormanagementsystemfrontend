@@ -14,7 +14,6 @@ const apiClient = axios.create({
 // =========================================================================
 apiClient.interceptors.request.use((config) => {
     try {
-        // ✅ FIXED: Using localStorage instead of sessionStorage to match AuthContext persistence
         const savedUser = localStorage.getItem('vms_user');
         
         if (savedUser) {
@@ -47,7 +46,6 @@ export const apiService = {
   requestPasswordReset: (username) =>
     apiClient.post('/requestPasswordReset', { username }),
     
-  // ✅ FIXED: Single, flexible getUsers function handles both strings and objects safely
   getUsers: (args) => {
     if (typeof args === 'string') {
       return apiClient.get('/getUsers', { params: { authenticatedUsername: args } });
@@ -125,7 +123,6 @@ export const apiService = {
     }),
 
   // --- Permissions Functions ---
-  // ✅ ADDED MISSING FUNCTION HERE
   getUserPermissionsList: (authenticatedUsername) =>
     apiClient.get('/getUserPermissionsList', { params: { authenticatedUsername } }),
     
@@ -277,4 +274,15 @@ export const apiService = {
     
   logAssetSession: (sessionData, authenticatedUsername) =>
     apiClient.post('/logAssetSession', { ...sessionData, authenticatedUsername }),
+
+  // --- NEW: Advanced Enterprise Telemetry & Bulk Tools ---
+  
+  bulkImportAssets: (formData, authenticatedUsername) =>
+    apiClient.post('/bulkImportAssets', formData), // Axios automatically sets multipart/form-data when passing FormData
+
+  getAssetAuditTrail: (assetId, authenticatedUsername) =>
+    apiClient.get('/getAssetAuditTrail', { params: { assetId, authenticatedUsername } }),
+
+  getFleetUtilizationStats: (authenticatedUsername) =>
+    apiClient.get('/getFleetUtilizationStats', { params: { authenticatedUsername } }),
 };
