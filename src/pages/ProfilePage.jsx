@@ -6,7 +6,7 @@ import AttendanceCalendar from '../components/profile/AttendanceCalendar';
 import LeaveRequestForm from '../components/profile/LeaveRequestForm';
 import LeaveHistory from '../components/profile/LeaveHistory';
 
-// --- Modern Enterprise Icons ---
+// --- Elegant Enterprise Icons (Light/Medium Stroke) ---
 const CalendarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
 const QuotaIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
 const RequestIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>;
@@ -47,49 +47,49 @@ const formatDateForInput = (dateString) => {
 };
 
 // --- Sub-Components ---
-const LeaveBalanceBar = ({ title, data, color }) => {
+const LeaveBalanceBar = ({ title, data, colorClass }) => {
     const { used, total, remaining } = data;
     const percent = total > 0 ? Math.min((used / total) * 100, 100) : 0;
     const isExhausted = remaining <= 0 && total > 0;
     
     return (
-        <div className="p-4 border border-gray-200 rounded-lg bg-white hover:border-gray-300 transition-all duration-200">
+        <div className="p-4 bg-white border border-slate-200 rounded-xl hover:border-blue-200 transition-all duration-200 shadow-sm group">
             <div className="flex justify-between items-end mb-2">
                 <div>
-                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">{title}</p>
-                    <p className={`text-xl font-bold ${isExhausted ? 'text-red-600' : 'text-gray-900'}`}>
-                        {remaining} <span className="text-xs font-medium text-gray-500 ml-0.5">left</span>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{title}</p>
+                    <p className={`text-2xl font-bold leading-none ${isExhausted ? 'text-red-600' : 'text-slate-900'}`}>
+                        {remaining} <span className="text-xs font-medium text-slate-400 ml-0.5">left</span>
                     </p>
                 </div>
                 <div className="text-right">
-                    <p className="text-xs font-medium text-gray-500">
-                        <span className="text-gray-900 font-semibold">{used}</span> / {total}
+                    <p className="text-xs font-medium text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                        <span className="text-slate-800 font-semibold">{used}</span> / {total}
                     </p>
                 </div>
             </div>
-            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-500 ${isExhausted ? 'bg-red-500' : color}`} style={{ width: `${percent}%` }}></div>
+            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-500 ${isExhausted ? 'bg-red-500' : colorClass}`} style={{ width: `${percent}%` }}></div>
             </div>
         </div>
     );
 };
 
 const DetailItem = ({ label, value, icon, isEditing = false, children }) => (
-    <div className="flex flex-col p-4 rounded-lg bg-white border border-gray-200 h-full">
-        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-2">
-            <span className="text-gray-400">{icon}</span> {label}
+    <div className="flex flex-col p-4 rounded-xl bg-white border border-slate-200 hover:border-blue-100 hover:shadow-sm transition-all duration-300 h-full">
+        <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2 mb-2.5">
+            <span className="text-blue-500/70">{icon}</span> {label}
         </label>
         {isEditing ? (
             <div className="mt-auto w-full">{children}</div>
         ) : (
-            <p className="text-[14px] font-medium text-gray-900 break-words mt-auto">
-                {value || <span className="text-gray-400 italic">Not provided</span>}
+            <p className="text-[14px] font-medium text-slate-900 break-words mt-auto">
+                {value || <span className="text-slate-400 italic font-normal">Not provided</span>}
             </p>
         )}
     </div>
 );
 
-// --- Attendance Marker Widget (Restored and Styled for Enterprise) ---
+// --- Attendance Marker Widget (Restored & Styled) ---
 const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUser }) => {
     const [statusInfo, setStatusInfo] = useState({ 
         status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isApprovedWeekend: false, weekendWorkStatus: null, isLoading: true, holidayDescription: '' 
@@ -200,71 +200,71 @@ const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUs
         if (!dateStr) return '';
         const date = new Date(dateStr + 'T00:00:00Z');
         if (isNaN(date.getTime())) return '';
-        return date.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        return date.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
     };
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-full flex flex-col justify-center relative">
-            <div className="relative z-10 flex flex-col items-center text-center">
-                <div className="w-full mb-6">
-                    <label htmlFor="attendanceDate" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Select Active Date</label>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-full flex flex-col justify-center">
+            <div className="flex flex-col items-center text-center">
+                <div className="w-full mb-5">
+                    <label htmlFor="attendanceDate" className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Select Active Date</label>
                     <input 
                         type="date" id="attendanceDate" value={selectedDate} onChange={(e) => onDateChange(e.target.value)} max={todayDateString} 
-                        className="w-full bg-white border border-gray-300 text-gray-900 text-base font-medium rounded-md px-4 py-2 focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 transition-all cursor-pointer text-center" 
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-medium rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer text-center" 
                     />
                 </div>
                 
-                <h3 className="text-lg font-bold text-gray-900 mb-1">{formatDateDisplay(selectedDate)}</h3>
+                <h3 className="text-lg font-semibold text-slate-800 mb-1">{formatDateDisplay(selectedDate)}</h3>
                 
-                <div className="min-h-[50px] flex justify-center items-center my-4 w-full">
-                    {statusInfo.isLoading ? <Spinner size="8" /> : statusInfo.status ? (
-                        <div className={`px-4 py-2 text-sm font-semibold rounded-md w-full border ${statusInfo.status === 'Present' ? 'bg-green-50 text-green-700 border-green-200' : statusInfo.status === 'Absent' || statusInfo.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200' : statusInfo.status === 'On Leave' ? 'bg-purple-50 text-purple-700 border-purple-200' : statusInfo.status === 'Pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : statusInfo.status === 'Holiday' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                <div className="min-h-[44px] flex justify-center items-center my-3 w-full">
+                    {statusInfo.isLoading ? <Spinner size="6" /> : statusInfo.status ? (
+                        <div className={`px-4 py-2 text-xs font-semibold rounded-lg w-full border ${statusInfo.status === 'Present' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : statusInfo.status === 'Absent' || statusInfo.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200' : statusInfo.status === 'On Leave' ? 'bg-purple-50 text-purple-700 border-purple-200' : statusInfo.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : statusInfo.status === 'Holiday' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
                             {statusInfo.status === 'Pending' ? `Pending (${statusInfo.requestedStatus})` : (statusInfo.status === 'Present' && statusInfo.requestedStatus === 'System Auto-Marked') ? '✅ Auto-Marked Present' : statusInfo.status.toUpperCase()}
                             {statusInfo.isHoliday ? ` - ${statusInfo.holidayDescription || 'Holiday'}` : ''}
                         </div>
                     ) : (
-                        <div className="px-4 py-2 text-sm font-semibold rounded-md border border-gray-200 bg-gray-50 text-gray-500 uppercase tracking-wide w-full">
-                            {statusInfo.isApprovedWeekend ? 'Approved (Ready to Mark)' : 'Not Marked Yet'}
+                        <div className="px-4 py-2 text-xs font-medium rounded-lg border border-slate-200 bg-slate-50 text-slate-400 uppercase tracking-wider w-full">
+                            {statusInfo.isApprovedWeekend ? 'Approved (Ready)' : 'Not Marked'}
                         </div>
                     )}
                 </div>
                 
                 {canMarkSelectedDate && !isFutureDate && (
-                    <div className="w-full mt-2 space-y-3">
-                        <button onClick={() => handleMark('Present')} className="w-full py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50" disabled={actionLoading}>
+                    <div className="w-full mt-2 space-y-2.5">
+                        <button onClick={() => handleMark('Present')} className="w-full py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 shadow-sm transition-all disabled:opacity-50" disabled={actionLoading}>
                             {actionLoading ? <Spinner size="5" /> : 'Mark as Present'}
                         </button>
-                        <button onClick={() => handleMark('Absent')} className="w-full py-2.5 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50" disabled={actionLoading}>
+                        <button onClick={() => handleMark('Absent')} className="w-full py-2.5 bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-all disabled:opacity-50" disabled={actionLoading}>
                             {actionLoading ? <Spinner size="5" /> : 'Mark as Absent'}
                         </button>
                     </div>
                 )}
 
                 {statusInfo.isWeekend && !isFutureDate && !statusInfo.isLoading && statusInfo.status === 'Weekend' && (
-                    <div className="w-full mt-4">
+                    <div className="w-full mt-3">
                         {statusInfo.weekendWorkStatus === 'Pending' ? (
-                            <div className="w-full px-4 py-3 bg-yellow-50 text-yellow-800 border border-yellow-200 text-sm font-medium rounded-md text-center">Request Pending Manager Approval</div>
+                            <div className="w-full px-4 py-2.5 bg-amber-50 text-amber-800 border border-amber-200 text-xs font-medium rounded-lg text-center">Request Pending Approval</div>
                         ) : statusInfo.weekendWorkStatus === 'Rejected' ? (
-                            <div className="w-full px-4 py-3 bg-red-50 text-red-800 border border-red-200 text-sm font-medium rounded-md text-center">Weekend Request Rejected</div>
+                            <div className="w-full px-4 py-2.5 bg-red-50 text-red-800 border border-red-200 text-xs font-medium rounded-lg text-center">Request Rejected</div>
                         ) : !showWeekendRequest ? (
-                            <button onClick={() => setShowWeekendRequest(true)} className="w-full py-2.5 bg-white border border-blue-600 text-blue-600 text-sm font-medium rounded-md hover:bg-blue-50 transition-colors">Request Weekend Work</button>
+                            <button onClick={() => setShowWeekendRequest(true)} className="w-full py-2.5 bg-white border border-blue-600 text-blue-600 text-sm font-medium rounded-lg hover:bg-blue-50 transition-all">Request Weekend Work</button>
                         ) : (
-                            <div className="w-full bg-gray-50 p-4 rounded-md border border-gray-200 text-left">
-                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Business Justification</p>
-                                <textarea value={reason} onChange={(e) => { setReason(e.target.value); }} placeholder="Why are you working this weekend?" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 bg-white mb-3 resize-y" rows="2" />
+                            <div className="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 text-left">
+                                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Business Justification</p>
+                                <textarea value={reason} onChange={(e) => { setReason(e.target.value); }} placeholder="Why are you working this weekend?" className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white mb-3 resize-y" rows="2" />
                                 <div className="flex gap-2">
-                                    <button onClick={handleWeekendRequestSubmit} className="flex-1 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors" disabled={actionLoading}>{actionLoading ? <Spinner size="4" /> : 'Submit'}</button>
-                                    <button onClick={() => { setShowWeekendRequest(false); setReason(''); setLocalError(''); }} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors" disabled={actionLoading}>Cancel</button>
+                                    <button onClick={handleWeekendRequestSubmit} className="flex-1 py-2 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors" disabled={actionLoading}>{actionLoading ? <Spinner size="4" /> : 'Submit'}</button>
+                                    <button onClick={() => { setShowWeekendRequest(false); setReason(''); setLocalError(''); }} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 text-xs font-medium rounded-md hover:bg-slate-50 transition-colors" disabled={actionLoading}>Cancel</button>
                                 </div>
                             </div>
                         )}
                     </div>
                 )}
 
-                {isFutureDate && <p className="mt-4 text-xs font-medium text-gray-500 bg-gray-50 px-4 py-2 rounded-md border border-gray-200 w-full">Cannot mark future dates</p>}
+                {isFutureDate && <p className="mt-3 text-xs font-medium text-slate-400 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100 w-full">Cannot mark future dates</p>}
                 
-                {localError && <p className="mt-4 w-full text-sm text-red-700 font-medium bg-red-50 py-2 px-3 rounded-md border border-red-200">{localError}</p>}
-                {localSuccess && <p className="mt-4 w-full text-sm text-green-800 font-medium bg-green-50 py-2 px-3 rounded-md border border-green-200">{localSuccess}</p>}
+                {localError && <p className="mt-3 w-full text-xs text-red-700 font-medium bg-red-50 py-2 px-3 rounded-lg border border-red-200">{localError}</p>}
+                {localSuccess && <p className="mt-3 w-full text-xs text-emerald-800 font-medium bg-emerald-50 py-2 px-3 rounded-lg border border-emerald-200">{localSuccess}</p>}
             </div>
         </div>
     );
@@ -455,89 +455,101 @@ const ProfilePage = () => {
     };
 
     const renderEditInput = (name, type = 'text') => (
-        <input type={type} name={name} id={name} value={formData[name] || ''} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-1 focus:ring-blue-600 focus:border-blue-600 bg-white text-sm text-gray-900 outline-none" />
+        <input type={type} name={name} id={name} value={formData[name] || ''} onChange={handleFormChange} className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-sm text-slate-900 outline-none transition-all" />
     );
 
     const renderEditSelect = (name, options) => (
-         <select name={name} id={name} value={formData[name] || ''} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-1 focus:ring-blue-600 focus:border-blue-600 bg-white text-sm text-gray-900 outline-none cursor-pointer">
+         <select name={name} id={name} value={formData[name] || ''} onChange={handleFormChange} className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-sm text-slate-900 outline-none cursor-pointer transition-all">
             <option value="">Select...</option>
             {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
         </select>
     );
 
     const renderEditTextArea = (name) => (
-        <textarea name={name} id={name} value={formData[name] || ''} onChange={handleFormChange} rows="3" className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-1 focus:ring-blue-600 focus:border-blue-600 bg-white text-sm text-gray-900 outline-none resize-y" />
+        <textarea name={name} id={name} value={formData[name] || ''} onChange={handleFormChange} rows="3" className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-sm text-slate-900 outline-none resize-y transition-all" />
     );
 
-    if (loading) return <div className="flex justify-center items-center h-[70vh]"><Spinner size="10" /></div>;
+    if (loading) return <div className="flex justify-center items-center min-h-screen bg-slate-50"><Spinner size="10" /></div>;
 
     return (
-        <div className="max-w-7xl mx-auto font-sans pb-12 bg-gray-50 min-h-screen pt-6 px-4 sm:px-6 lg:px-8 space-y-6">
+        <div className="min-h-screen bg-slate-50 pb-12 font-sans text-slate-900">
             
-            {/* --- CORPORATE HEADER --- */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="h-32 w-full bg-gradient-to-r from-blue-900 to-slate-800 relative"></div>
+            {/* --- ELEVATED ENTERPRISE HEADER --- */}
+            <div className="bg-white border-b border-slate-200">
+                {/* Soft, professional gradient cover */}
+                <div className="h-40 w-full bg-gradient-to-r from-blue-50 via-sky-50 to-white relative overflow-hidden border-b border-blue-100/50">
+                    {/* Abstract decorative element for premium feel */}
+                    <div className="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-blue-100/30 to-transparent"></div>
+                </div>
                 
-                <div className="px-6 sm:px-8 pb-6 relative flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6">
-                    <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
-                        <div className="w-32 h-32 rounded-lg bg-white p-1 shadow-md relative z-10 border border-gray-200 flex-shrink-0">
-                            <div className="w-full h-full bg-gray-100 rounded flex items-center justify-center text-gray-500 text-5xl font-medium">
-                                {user?.userName ? user.userName.charAt(0).toUpperCase() : 'U'}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 relative">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6">
+                        <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
+                            {/* Premium Avatar Container */}
+                            <div className="w-32 h-32 rounded-2xl bg-white p-1.5 shadow-sm border border-slate-200 relative z-10 flex-shrink-0">
+                                <div className="w-full h-full bg-gradient-to-br from-blue-50 to-slate-100 rounded-xl flex items-center justify-center text-blue-600/50 text-5xl font-semibold border border-slate-100/50">
+                                    {user?.userName ? user.userName.charAt(0).toUpperCase() : 'U'}
+                                </div>
+                            </div>
+                            <div className="text-center sm:text-left mb-2">
+                                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{user?.userName || 'Employee Profile'}</h1>
+                                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-2">
+                                    <span className="text-sm font-medium text-slate-600 flex items-center gap-1.5"><BriefcaseIcon /> {user?.backendOfficeRole || 'Staff'}</span>
+                                    <span className="text-sm font-medium text-slate-600 flex items-center gap-1.5 border-l border-slate-300 pl-4"><IdCardIcon /> {user?.employeeCode || 'ID: N/A'}</span>
+                                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-md border border-emerald-200 flex items-center gap-1.5"><ShieldCheckIcon /> Active Status</span>
+                                </div>
                             </div>
                         </div>
-                        <div className="text-center sm:text-left mb-2">
-                            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{user?.userName || 'Employee Profile'}</h1>
-                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-1.5">
-                                <span className="text-sm font-medium text-gray-600 flex items-center gap-1"><BriefcaseIcon /> {user?.backendOfficeRole || 'Staff'}</span>
-                                <span className="text-sm font-medium text-gray-600 flex items-center gap-1 border-l border-gray-300 pl-3"><IdCardIcon /> {user?.employeeCode || 'ID: N/A'}</span>
-                                <span className="px-2 py-0.5 bg-green-50 text-green-700 text-xs font-semibold rounded border border-green-200 flex items-center gap-1"><ShieldCheckIcon /> Active</span>
-                            </div>
-                        </div>
+                        
+                        {activeTab === 'profile' && !isEditing && (
+                            <button onClick={() => setIsEditing(true)} className="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 mb-2 shadow-sm">
+                                <EditIcon /> Edit Details
+                            </button>
+                        )}
                     </div>
-                    
-                    {activeTab === 'profile' && !isEditing && (
-                        <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors flex items-center gap-2 mb-2">
-                            <EditIcon /> Edit Details
+                </div>
+
+                {/* --- SEAMLESS TABS --- */}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                        <button onClick={() => setActiveTab('profile')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-all duration-300 ${activeTab === 'profile' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
+                            <UserIcon /> Profile Overview
                         </button>
-                    )}
+                        <button onClick={() => setActiveTab('attendance')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-all duration-300 ${activeTab === 'attendance' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
+                            <CalendarIcon /> Time & Attendance
+                        </button>
+                        <button onClick={() => setActiveTab('leaves')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-all duration-300 ${activeTab === 'leaves' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
+                            <RequestIcon /> Leave Management
+                        </button>
+                    </nav>
                 </div>
             </div>
 
-            {error && <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded text-sm font-medium">{error}</div>}
-            {success && <div className="bg-green-50 border-l-4 border-green-500 text-green-800 p-4 rounded text-sm font-medium">{success}</div>}
-             
-            {/* --- ENTERPRISE TABS --- */}
-            <div className="bg-white border-b border-gray-200 px-6 pt-2 rounded-t-lg">
-                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                    <button onClick={() => setActiveTab('profile')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'profile' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                        <UserIcon /> Profile Details
-                    </button>
-                    <button onClick={() => setActiveTab('attendance')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'attendance' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                        <CalendarIcon /> Time & Attendance
-                    </button>
-                    <button onClick={() => setActiveTab('leaves')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'leaves' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                        <RequestIcon /> Leave Management
-                    </button>
-                </nav>
-            </div>
-
-            {/* TAB CONTENT: PROFILE */}
-            {activeTab === 'profile' && (
-                <form onSubmit={handleSaveChanges} className="space-y-6">
-                    <div className="bg-white p-6 rounded-b-lg shadow-sm border border-gray-200 border-t-0 space-y-8">
-                        <div>
-                            <h3 className="text-base font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">Personal Information</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <div className="flex flex-col p-4 rounded-lg bg-white border border-gray-200 h-full">
-                                    <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-2"><UserIcon /> Full Name</label>
+            {/* --- MAIN CONTENT AREA --- */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-6">
+                
+                {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium shadow-sm flex items-center gap-2">{error}</div>}
+                {success && <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-sm font-medium shadow-sm flex items-center gap-2">{success}</div>}
+                 
+                {/* TAB CONTENT: PROFILE */}
+                {activeTab === 'profile' && (
+                    <form onSubmit={handleSaveChanges} className="space-y-8 animate-fadeIn">
+                        
+                        <section>
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2"><UserIcon /> Personal Information</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                <div className="flex flex-col p-4 rounded-xl bg-white border border-slate-200 h-full shadow-sm">
+                                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2 mb-2.5">
+                                        <span className="text-blue-500/70"><UserIcon /></span> Full Name
+                                    </label>
                                     {isEditing ? (
-                                        <div className="space-y-2 mt-auto w-full">
-                                            <input type="text" name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600" />
-                                            <input type="text" name="middleName" placeholder="Middle (Optional)" value={formData.middleName} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600" />
-                                            <input type="text" name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600" />
+                                        <div className="space-y-3 mt-auto w-full">
+                                            <input type="text" name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleFormChange} className="w-full px-3.5 py-2 border border-slate-300 rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                                            <input type="text" name="middleName" placeholder="Middle (Optional)" value={formData.middleName} onChange={handleFormChange} className="w-full px-3.5 py-2 border border-slate-300 rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                                            <input type="text" name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleFormChange} className="w-full px-3.5 py-2 border border-slate-300 rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
                                         </div>
                                     ) : (
-                                        <p className="text-[14px] font-medium text-gray-900 mt-auto">{user?.userName}</p>
+                                        <p className="text-[14px] font-medium text-slate-900 mt-auto">{user?.userName}</p>
                                     )}
                                 </div>
                                 <DetailItem label="Email Address" icon={<UserIcon />} value={user?.userIdentifier} />
@@ -547,153 +559,175 @@ const ProfilePage = () => {
                                 <DetailItem label="LinkedIn Profile" icon={<LinkIcon />} isEditing={isEditing} value={user?.linkedInProfile}>{renderEditInput('linkedInProfile', 'url')}</DetailItem>
                                 <div className="md:col-span-2 lg:col-span-3"><DetailItem label="Current Address" icon={<LocationIcon />} isEditing={isEditing} value={user?.currentAddress}>{renderEditTextArea('currentAddress')}</DetailItem></div>
                             </div>
-                        </div>
+                        </section>
 
-                        <div>
-                            <h3 className="text-base font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">Employment & Assets</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <hr className="border-slate-200" />
+
+                        <section>
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2"><BriefcaseIcon /> Employment & Assets</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                 <DetailItem label="Date of Joining" icon={<CalendarIcon />} value={formatDateForInput(user?.dateOfJoining)} />
                                 <DetailItem label="Employment Type" icon={<BriefcaseIcon />} value={user?.employmentType} />
                                 <DetailItem label="Work Location" icon={<LocationIcon />} value={user?.workLocation} />
                                 <DetailItem label="Reporting Manager" icon={<UsersIcon />} value={user?.reportsTo} />
-                                <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex items-start gap-3">
-                                        <div className="text-gray-400 mt-0.5"><LaptopIcon /></div>
+                                
+                                {/* Asset Card - Elevated Design */}
+                                <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="bg-gradient-to-br from-blue-50/50 to-white p-5 rounded-xl border border-blue-100 flex items-start gap-4 shadow-sm">
+                                        <div className="bg-white p-2.5 rounded-lg border border-blue-100 text-blue-500 shadow-sm"><LaptopIcon /></div>
                                         <div>
-                                            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Allocated Asset Tag</p>
-                                            <p className="text-sm font-medium text-gray-900 mt-1">{myAsset?.rowKey || 'Not Assigned'}</p>
+                                            <p className="text-[11px] font-semibold text-blue-600/70 uppercase tracking-wider">Allocated Asset Tag</p>
+                                            <p className="text-sm font-semibold text-slate-900 mt-1">{myAsset?.rowKey || 'Not Assigned'}</p>
                                         </div>
                                     </div>
-                                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex items-start gap-3">
-                                        <div className="text-gray-400 mt-0.5"><LaptopIcon /></div>
+                                    <div className="bg-white p-5 rounded-xl border border-slate-200 flex items-start gap-4 shadow-sm hover:border-blue-100 transition-colors">
+                                        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-400"><LaptopIcon /></div>
                                         <div>
-                                            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Asset Specification</p>
-                                            <p className="text-sm font-medium text-gray-900 mt-1">{myAsset ? `${myAsset.AssetBrandName || ''} ${myAsset.AssetModelName || ''}`.trim() : 'N/A'}</p>
+                                            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Asset Specification</p>
+                                            <p className="text-sm font-medium text-slate-900 mt-1">{myAsset ? `${myAsset.AssetBrandName || ''} ${myAsset.AssetModelName || ''}`.trim() : 'N/A'}</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </section>
 
-                        <div>
-                             <h3 className="text-base font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">Emergency Contact</h3>
-                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <hr className="border-slate-200" />
+
+                        <section>
+                             <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2"><HeartIcon /> Emergency Contact</h3>
+                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                  <DetailItem label="Contact Name" icon={<UserIcon />} isEditing={isEditing} value={user?.emergencyContactName}>{renderEditInput('emergencyContactName')}</DetailItem>
                                  <DetailItem label="Contact Phone" icon={<PhoneIcon />} isEditing={isEditing} value={user?.emergencyContactPhone}>{renderEditInput('emergencyContactPhone', 'tel')}</DetailItem>
                                  <DetailItem label="Relationship" icon={<UsersIcon />} isEditing={isEditing} value={user?.emergencyContactRelation}>{renderEditSelect('emergencyContactRelation', relations)}</DetailItem>
                              </div>
-                        </div>
+                        </section>
+
                         {isEditing && (
-                            <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-200">
-                                 <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50" disabled={editLoading}>Cancel</button>
-                                <button type="submit" className="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 shadow-sm" disabled={editLoading}>{editLoading ? <Spinner size="4" /> : 'Save Changes'}</button>
+                            <div className="flex justify-end gap-3 pt-6">
+                                 <button type="button" onClick={() => setIsEditing(false)} className="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors" disabled={editLoading}>Cancel</button>
+                                <button type="submit" className="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 shadow-sm transition-colors flex items-center justify-center min-w-[140px]" disabled={editLoading}>{editLoading ? <Spinner size="5" /> : 'Save Changes'}</button>
                             </div>
                         )}
-                    </div>
-                </form>
-            )}
+                    </form>
+                )}
 
-            {/* TAB CONTENT: ATTENDANCE */}
-            {activeTab === 'attendance' && (
-                <div className="grid grid-cols-1 gap-6">
-                    <div className="bg-white p-6 rounded-b-lg shadow-sm border border-gray-200 border-t-0 flex flex-col">
+                {/* TAB CONTENT: ATTENDANCE */}
+                {activeTab === 'attendance' && (
+                    <div className="space-y-6 animate-fadeIn">
                         
-                        {/* --- MONTHLY STATISTICS DASHBOARD --- */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col">
-                                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Total Logged Hours</span>
-                                <span className="text-2xl font-bold text-gray-900">{statsLoading ? '...' : monthStats.totalHoursStr}</span>
+                        {/* Monthly Statistics Dashboard */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Logged</span>
+                                <span className="text-2xl font-bold text-slate-900">{statsLoading ? '...' : monthStats.totalHoursStr}</span>
                             </div>
-                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col">
-                                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Days Present</span>
-                                <span className="text-2xl font-bold text-green-700">{statsLoading ? '...' : monthStats.present}</span>
+                            <div className="bg-white p-5 rounded-2xl border border-emerald-100/50 shadow-sm flex flex-col items-center justify-center">
+                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Days Present</span>
+                                <span className="text-2xl font-bold text-emerald-600">{statsLoading ? '...' : monthStats.present}</span>
                             </div>
-                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col">
-                                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Leaves Taken</span>
-                                <span className="text-2xl font-bold text-blue-700">{statsLoading ? '...' : monthStats.leaves}</span>
+                            <div className="bg-white p-5 rounded-2xl border border-blue-100/50 shadow-sm flex flex-col items-center justify-center">
+                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Leaves Taken</span>
+                                <span className="text-2xl font-bold text-blue-600">{statsLoading ? '...' : monthStats.leaves}</span>
                             </div>
-                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col">
-                                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Absences</span>
+                            <div className="bg-white p-5 rounded-2xl border border-red-100/50 shadow-sm flex flex-col items-center justify-center">
+                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Absences</span>
                                 <span className="text-2xl font-bold text-red-600">{statsLoading ? '...' : monthStats.absent}</span>
                             </div>
                         </div>
 
-                        <div className="flex-1 min-h-[400px]">
-                            {/* If you wanted AttendanceMarker alongside the calendar, you can render it here in a grid layout */}
-                            <AttendanceCalendar 
-                                initialMonthString={getISTShiftDateString().substring(0, 7)} 
-                                key={calendarRefreshKey} 
-                                onMonthChange={handleMonthNavigation} 
-                                onDayClick={handleDateChange} 
-                                selectedMarkerDate={selectedDate}
-                                onMarkAttendance={handleMarkAttendance}
-                            />
+                        {/* Calendar & Marker Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            <div className="lg:col-span-4 order-2 lg:order-1">
+                                <AttendanceMarker 
+                                    selectedDate={selectedDate} 
+                                    onDateChange={handleDateChange} 
+                                    onMarkAttendance={handleMarkAttendance} 
+                                    authUser={user} 
+                                />
+                            </div>
+                            <div className="lg:col-span-8 order-1 lg:order-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 min-h-[450px]">
+                                <AttendanceCalendar 
+                                    initialMonthString={getISTShiftDateString().substring(0, 7)} 
+                                    key={calendarRefreshKey} 
+                                    onMonthChange={handleMonthNavigation} 
+                                    onDayClick={handleDateChange} 
+                                    selectedMarkerDate={selectedDate}
+                                    onMarkAttendance={handleMarkAttendance}
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* TAB CONTENT: LEAVES */}
-            {activeTab === 'leaves' && (
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-                    <div className="xl:col-span-4 space-y-6">
-                        <div className="bg-white p-6 rounded-b-lg shadow-sm border border-gray-200 border-t-0">
-                            <h3 className="text-base font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2 flex items-center gap-2"><QuotaIcon /> Paid Time Off (PTO) Balance</h3>
-                            {leaveQuota ? (
-                                <div className="space-y-4">
-                                    {/* Overall Health Card */}
-                                    <div className="bg-slate-800 text-white rounded-lg p-5 border border-slate-700">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <p className="text-[11px] font-semibold text-gray-300 uppercase tracking-wide">Total Paid Leave Balance</p>
-                                            <span className="px-2 py-0.5 bg-slate-700 rounded text-[10px] font-medium text-gray-200">{overallPaidPercentage.toFixed(0)}% Used</span>
+                {/* TAB CONTENT: LEAVES */}
+                {activeTab === 'leaves' && (
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-fadeIn">
+                        
+                        {/* Left Column: PTO Balance */}
+                        <div className="xl:col-span-4 space-y-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                <h3 className="text-base font-semibold text-slate-900 mb-5 flex items-center gap-2"><QuotaIcon /> Paid Time Off (PTO)</h3>
+                                {leaveQuota ? (
+                                    <div className="space-y-4">
+                                        
+                                        {/* Elevated Overall Health Card (Light Blue Focus) */}
+                                        <div className="bg-gradient-to-br from-blue-50 to-white rounded-xl p-6 border border-blue-100 shadow-sm relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 p-4 opacity-10 text-blue-600">
+                                                <QuotaIcon size={64} />
+                                            </div>
+                                            <div className="flex justify-between items-center mb-3 relative z-10">
+                                                <p className="text-[11px] font-semibold text-blue-600/70 uppercase tracking-wider">Total Balance</p>
+                                                <span className="px-2.5 py-1 bg-white rounded-md text-[10px] font-semibold text-blue-700 shadow-sm border border-blue-50">{overallPaidPercentage.toFixed(0)}% Used</span>
+                                            </div>
+                                            <div className="flex items-baseline gap-2 relative z-10">
+                                                <h4 className="text-5xl font-bold text-slate-900 tracking-tight">{overallPaidRemaining}</h4>
+                                                <p className="text-sm font-medium text-slate-500">Days Available</p>
+                                            </div>
                                         </div>
-                                        <div className="flex items-baseline gap-2">
-                                            <h4 className="text-4xl font-bold">{overallPaidRemaining}</h4>
-                                            <p className="text-sm font-medium text-gray-400">Days Available</p>
+
+                                        {/* Detailed breakdown grid */}
+                                        <div className="grid grid-cols-1 gap-3 mt-5">
+                                            <LeaveBalanceBar title="Sick Leave (SL)" data={sickLeave} colorClass="bg-sky-400" />
+                                            <LeaveBalanceBar title="Casual Leave (CL)" data={casualLeave} colorClass="bg-blue-500" />
+                                            <LeaveBalanceBar title="Earned Leave (EL)" data={earnedLeave} colorClass="bg-indigo-500" />
+                                        </div>
+
+                                        {/* Unpaid section */}
+                                        <div className="pt-5 mt-2 border-t border-slate-100 grid grid-cols-2 gap-4">
+                                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">Leave W/O Pay</span>
+                                                <span className="text-xl font-bold text-slate-800">{lwp.used} <span className="font-medium text-xs text-slate-400">days</span></span>
+                                            </div>
+                                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">Loss Of Pay</span>
+                                                <span className="text-xl font-bold text-slate-800">{lop.used} <span className="font-medium text-xs text-slate-400">days</span></span>
+                                            </div>
                                         </div>
                                     </div>
-
-                                    {/* Detailed breakdown grid */}
-                                    <div className="grid grid-cols-1 gap-3">
-                                        <LeaveBalanceBar title="Sick Leave (SL)" data={sickLeave} color="bg-blue-500" />
-                                        <LeaveBalanceBar title="Casual Leave (CL)" data={casualLeave} color="bg-indigo-500" />
-                                        <LeaveBalanceBar title="Earned Leave (EL)" data={earnedLeave} color="bg-teal-500" />
-                                    </div>
-
-                                    {/* Unpaid section */}
-                                    <div className="pt-4 border-t border-gray-200 grid grid-cols-2 gap-3">
-                                        <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">Leave W/O Pay</span>
-                                            <span className="text-lg font-bold text-gray-900">{lwp.used} <span className="font-medium text-xs text-gray-500">days</span></span>
-                                        </div>
-                                        <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">Loss Of Pay</span>
-                                            <span className="text-lg font-bold text-gray-900">{lop.used} <span className="font-medium text-xs text-gray-500">days</span></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="bg-gray-50 rounded-lg p-8 text-center border border-gray-200"><p className="text-sm text-gray-500 font-medium">Leave quotas are not configured for your profile.</p></div>
-                            )}
-                        </div>
-                    </div>
-                    
-                    <div className="xl:col-span-8 flex flex-col gap-6">
-                        <div className="bg-white p-6 rounded-b-lg shadow-sm border border-gray-200 border-t-0">
-                            <h3 className="text-base font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2 flex items-center gap-2"><RequestIcon /> Apply for Leave</h3>
-                            <LeaveRequestForm onLeaveRequested={handleLeaveRequested} />
+                                ) : (
+                                    <div className="bg-slate-50 rounded-xl p-8 text-center border border-slate-200"><p className="text-sm text-slate-500 font-medium">Leave quotas are not configured for your profile.</p></div>
+                                )}
+                            </div>
                         </div>
                         
-                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex-1">
-                            <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-2">
-                                <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2"><HistoryIcon /> Leave Application History</h3>
-                                <span className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-md">{leaveHistory.length} Records</span>
+                        {/* Right Column: Request Form & History */}
+                        <div className="xl:col-span-8 flex flex-col gap-6">
+                            <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
+                                <h3 className="text-base font-semibold text-slate-900 mb-6 flex items-center gap-2"><RequestIcon /> Apply for Leave</h3>
+                                <LeaveRequestForm onLeaveRequested={handleLeaveRequested} />
                             </div>
-                            <LeaveHistory leaveHistory={leaveHistory} />
+                            
+                            <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 flex-1">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
+                                    <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2"><HistoryIcon /> Leave Application History</h3>
+                                    <span className="px-3 py-1.5 bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg border border-slate-200 self-start sm:self-auto">{leaveHistory.length} Records</span>
+                                </div>
+                                <LeaveHistory leaveHistory={leaveHistory} />
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };
