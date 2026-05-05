@@ -63,7 +63,7 @@ const AssetManagementPage = () => {
     const [showLiveDashboard, setShowLiveDashboard] = useState(true);
     const [machineStats, setMachineStats] = useState({ active: 0, idle: 0, offline: 0 });
     const [systemAlerts, setSystemAlerts] = useState([]);
-    const [weeklyUtilizationData, setWeeklyUtilizationData] = useState([]); // FIX 2: State for dynamic chart data
+    const [weeklyUtilizationData, setWeeklyUtilizationData] = useState([]);
 
     // Filtering & Pagination
     const [generalFilter, setGeneralFilter] = useState('');
@@ -74,23 +74,24 @@ const AssetManagementPage = () => {
     // Bulk Import
     const [importFile, setImportFile] = useState(null);
 
-    // --- FETCH DATA (UPDATED) ---
+    // --- FETCH DATA ---
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
+            // Concurrent fetching for real-time asset data, user lists, and aggregated chart stats
             const [assetRes, userRes, statsRes] = await Promise.all([
                 apiService.getAssets(user.userIdentifier),
                 apiService.getUsers(user.userIdentifier),
-                // Safe catch if the fleet utilization endpoint isn't built yet
-                apiService.getFleetUtilizationStats ? apiService.getFleetUtilizationStats(user.userIdentifier).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+                apiService.getFleetUtilizationStats(user.userIdentifier) 
             ]);
+            
             setAssets(assetRes.data || []);
             setUsers(userRes.data?.users || []);
             setWeeklyUtilizationData(statsRes.data || []); 
             setError('');
         } catch (err) {
             console.error("Error fetching dashboard data:", err);
-            setError('Failed to load asset data.');
+            setError('Failed to load asset data. Please check your connection.');
         } finally {
             setLoading(false);
         }
@@ -218,29 +219,26 @@ const AssetManagementPage = () => {
         document.body.removeChild(link);
     };
 
-    // --- FIX 3: Bulk Import Actual API Trigger ---
     const handleImportSubmit = async (e) => {
         e.preventDefault();
         if (!importFile) return alert("Please select a CSV file.");
         setProcessing(true);
         try {
             const formData = new FormData();
-            formData.append('file', importFile);
+            formData.append('file', importFile[0]); // Ensure we grab the actual file object
             
-            // Trigger the real bulk import API call (Will fail gracefully if endpoint not yet built)
-            if (apiService.bulkImportAssets) {
-                await apiService.bulkImportAssets(formData, user.userIdentifier);
-            } else {
-                console.warn("apiService.bulkImportAssets is not defined yet. Mocking success.");
-            }
+            const response = await apiService.bulkImportAssets(formData, user.userIdentifier);
+            alert(response.data?.message || "Import completed.");
             
             await fetchData();
             closeModal();
-        } catch (err) { alert(`Import failed: ${err.message}`); } 
-        finally { setProcessing(false); }
+        } catch (err) { 
+            alert(`Import failed: ${err.message || 'Server error'}`); 
+        } finally { 
+            setProcessing(false); 
+        }
     };
 
-    // --- FIX 1: Historical Audit Trail Fetching ---
     const viewAssetData = async (asset, selectedDate = sessionDate) => {
         const latestAssetData = assets.find(a => a.rowKey === asset.rowKey) || asset;
         setSelectedAsset(latestAssetData);
@@ -254,18 +252,18 @@ const AssetManagementPage = () => {
                 setWorkingTime(response.data.formattedWorkingTime || '0h 0m');
             }
             
-            // 2. Fetch Historical Audit Trail Data safely
-            try {
-                if(apiService.getAssetAuditTrail) {
-                    const auditResponse = await apiService.getAssetAuditTrail(latestAssetData.rowKey, user.userIdentifier);
-                    setAuditTrail(auditResponse.data || []);
-                } else {
-                    setAuditTrail([]); // Empty until endpoint is connected
-                }
-            } catch(e) { setAuditTrail([]); }
+            // 2. Fetch Historical Audit Trail Data
+            const auditResponse = await apiService.getAssetAuditTrail(latestAssetData.rowKey, user.userIdentifier);
+            if(auditResponse.data && auditResponse.data.success) {
+                setAuditTrail(auditResponse.data.data || []);
+            }
 
-        } catch (err) { console.error("Error loading asset data", err); } 
-        finally { setLoadingSessions(false); }
+        } catch (err) { 
+            console.error("Error loading asset data", err); 
+            setAuditTrail([]); // Safe fallback on error
+        } finally { 
+            setLoadingSessions(false); 
+        }
     };
 
     const handleDateChange = (e) => {
@@ -528,6 +526,9 @@ const AssetManagementPage = () => {
                                             <div className="ml-3">
                                                 <div className="text-sm font-extrabold text-slate-900">{asset.rowKey}</div>
                                                 <div className="text-xs font-medium text-slate-500">{asset.AssetBrandName} {asset.AssetModelName}</div>
+                                                <div className={`mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${asset.AgentVersion && asset.AgentVersion.startsWith('5') ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                                    Agent: v{asset.AgentVersion || 'Legacy'}
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
