@@ -3,13 +3,14 @@ import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../api/apiService';
 import Spinner from '../Spinner';
 import { usePermissions } from '../../hooks/usePermissions';
+import { CalendarDays, FileText, Send, AlertCircle } from 'lucide-react';
 
 const LeaveRequestForm = ({ onLeaveRequested }) => {
     const { user } = useAuth();
     const { canRequestLeave } = usePermissions();
 
     const [formData, setFormData] = useState({
-        leaveType: 'Sick Leave (SL)', // Default value
+        leaveType: 'Sick Leave (SL)',
         startDate: '',
         endDate: '',
         reason: ''
@@ -18,7 +19,6 @@ const LeaveRequestForm = ({ onLeaveRequested }) => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    // --- Define Leave Types ---
     const leaveTypes = [
         { value: 'Sick Leave (SL)', label: 'Sick Leave (SL)' },
         { value: 'Casual Leave (CL)', label: 'Casual Leave (CL)' },
@@ -45,131 +45,121 @@ const LeaveRequestForm = ({ onLeaveRequested }) => {
         setError('');
         setSuccess('');
 
-        if (!canRequestLeave) {
-            setError("You do not have permission to request leave.");
-            return;
-        }
-
-        if (!user?.userIdentifier) {
-            setError("Cannot submit request: User is not properly authenticated.");
-            return;
-        }
-
-        if (!formData.startDate || !formData.endDate || !formData.reason.trim()) {
-            setError("Please fill in all required fields.");
-            return;
-        }
-        if (new Date(formData.endDate) < new Date(formData.startDate)) {
-            setError("End date cannot be before start date.");
-            return;
-        }
+        if (!canRequestLeave) return setError("Permission denied.");
+        if (!formData.startDate || !formData.endDate || !formData.reason.trim()) return setError("Missing required fields.");
 
         setLoading(true);
         try {
             const response = await apiService.requestLeave(formData, user.userIdentifier);
-
             if (response.data.success) {
                 setSuccess(response.data.message);
-                setFormData({ 
-                    leaveType: 'Sick Leave (SL)',
-                    startDate: '',
-                    endDate: '',
-                    reason: ''
-                });
-                if (onLeaveRequested) {
-                    onLeaveRequested();
-                }
+                setFormData({ leaveType: 'Sick Leave (SL)', startDate: '', endDate: '', reason: '' });
+                if (onLeaveRequested) onLeaveRequested();
                 setTimeout(() => setSuccess(''), 4000);
             } else {
                 setError(response.data.message);
             }
         } catch (err) {
-            setError(err.response?.data?.message || "An unexpected error occurred while submitting the request.");
+            setError(err.response?.data?.message || "Server error.");
         } finally {
             setLoading(false);
         }
     };
 
+    if (!canRequestLeave) return <p className="text-sm text-slate-400 italic">Leave requests are currently disabled for your account.</p>;
+
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <h3 className="text-md font-semibold mb-3 flex items-center text-gray-800">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                Request Leave
-            </h3>
-
-            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded text-sm animate-shake">{error}</div>}
-            {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded text-sm animate-fadeIn">{success}</div>}
-
-            {canRequestLeave ? (
-                <>
-                    <div>
-                        <label htmlFor="leaveType" className="block text-xs font-medium text-gray-600 mb-1">Leave Type <span className="text-red-500">*</span></label>
-                        <select
-                            id="leaveType"
-                            name="leaveType"
-                            value={formData.leaveType}
-                            onChange={handleChange}
-                            required
-                            className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                        >
-                            {leaveTypes.map(type => (
-                                <option key={type.value} value={type.value}>{type.label}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="startDate" className="block text-xs font-medium text-gray-600 mb-1">Start Date <span className="text-red-500">*</span></label>
-                            <input
-                                type="date"
-                                id="startDate"
-                                name="startDate"
-                                value={formData.startDate}
-                                onChange={handleChange}
-                                required
-                                className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="endDate" className="block text-xs font-medium text-gray-600 mb-1">End Date <span className="text-red-500">*</span></label>
-                            <input
-                                type="date"
-                                id="endDate"
-                                name="endDate"
-                                value={formData.endDate}
-                                onChange={handleChange}
-                                required
-                                min={formData.startDate} 
-                                className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label htmlFor="reason" className="block text-xs font-medium text-gray-600 mb-1">Reason <span className="text-red-500">*</span></label>
-                        <textarea
-                            id="reason"
-                            name="reason"
-                            value={formData.reason}
-                            onChange={handleChange}
-                            required
-                            rows="3"
-                            placeholder="Briefly explain the reason for your leave..."
-                            className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                        ></textarea>
-                    </div>
-                    <div className="flex justify-end pt-2">
-                        <button
-                            type="submit"
-                            className="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 flex items-center justify-center w-36 h-10 disabled:bg-indigo-400 shadow transition"
-                            disabled={loading}
-                        >
-                            {loading ? <Spinner size="5" /> : 'Submit Request'}
-                        </button>
-                    </div>
-                </>
-            ) : (
-                 <p className="text-sm text-gray-500 italic">You do not have permission to request leave.</p>
+        <form onSubmit={handleSubmit} className="space-y-6 animate-fadeIn">
+            {error && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 animate-shake">
+                    <AlertCircle size={14} /> {error}
+                </div>
             )}
+            {success && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2">
+                    <Check size={14} /> {success}
+                </div>
+            )}
+
+            {/* Leave Type Select */}
+            <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Type of Leave</label>
+                <div className="relative">
+                    <select
+                        name="leaveType"
+                        value={formData.leaveType}
+                        onChange={handleChange}
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer"
+                    >
+                        {leaveTypes.map(type => (
+                            <option key={type.value} value={type.value}>{type.label}</option>
+                        ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <ChevronRight size={16} className="rotate-90" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Dates Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Start Date</label>
+                    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-3 rounded-2xl focus-within:ring-2 focus:ring-indigo-500 transition-all">
+                        <CalendarDays size={18} className="text-indigo-400" />
+                        <input
+                            type="date"
+                            name="startDate"
+                            value={formData.startDate}
+                            onChange={handleChange}
+                            required
+                            className="bg-transparent text-sm font-bold text-slate-700 outline-none w-full"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">End Date</label>
+                    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-3 rounded-2xl focus-within:ring-2 focus:ring-indigo-500 transition-all">
+                        <CalendarDays size={18} className="text-indigo-400" />
+                        <input
+                            type="date"
+                            name="endDate"
+                            value={formData.endDate}
+                            onChange={handleChange}
+                            min={formData.startDate}
+                            required
+                            className="bg-transparent text-sm font-bold text-slate-700 outline-none w-full"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Reason Textarea */}
+            <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Business Justification</label>
+                <div className="flex items-start gap-3 bg-slate-50 border border-slate-200 px-4 py-3 rounded-2xl focus-within:ring-2 focus:ring-indigo-500 transition-all">
+                    <FileText size={18} className="text-indigo-400 mt-1" />
+                    <textarea
+                        name="reason"
+                        value={formData.reason}
+                        onChange={handleChange}
+                        required
+                        rows="3"
+                        placeholder="Why are you requesting this leave?"
+                        className="bg-transparent text-sm font-bold text-slate-700 outline-none w-full resize-none"
+                    ></textarea>
+                </div>
+            </div>
+
+            <div className="flex justify-end">
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-8 py-3 bg-indigo-600 text-white text-xs font-black rounded-xl hover:bg-indigo-700 shadow-lg hover:shadow-indigo-200 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                    {loading ? <Spinner size="4" /> : <><Send size={14} /> SUBMIT APPLICATION</>}
+                </button>
+            </div>
         </form>
     );
 };
