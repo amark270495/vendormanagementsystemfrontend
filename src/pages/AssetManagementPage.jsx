@@ -13,7 +13,6 @@ const UploadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 
 const ShieldIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
 const CpuIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>;
 
-// --- CHART COLORS ---
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 const getISTShiftDateString = () => {
@@ -39,7 +38,6 @@ const AssetManagementPage = () => {
     const { user } = useAuth();
     const { canManageAssets, canAssignAssets } = usePermissions();
 
-    // --- STATES ---
     const [assets, setAssets] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -50,7 +48,6 @@ const AssetManagementPage = () => {
     const [modalData, setModalData] = useState({});
     const [processing, setProcessing] = useState(false);
 
-    // Modal Tabs
     const [modalTab, setModalTab] = useState('tracking'); 
     const [assetSessions, setAssetSessions] = useState([]);
     const [auditTrail, setAuditTrail] = useState([]);
@@ -59,26 +56,20 @@ const AssetManagementPage = () => {
     const [logLimit, setLogLimit] = useState(100);
     const [workingTime, setWorkingTime] = useState('0h 0m');
 
-    // Dashboard & Analytics
     const [showLiveDashboard, setShowLiveDashboard] = useState(true);
     const [machineStats, setMachineStats] = useState({ active: 0, idle: 0, offline: 0 });
     const [systemAlerts, setSystemAlerts] = useState([]);
     const [weeklyUtilizationData, setWeeklyUtilizationData] = useState([]);
 
-    // Filtering & Pagination
     const [generalFilter, setGeneralFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-
-    // Bulk Import
     const [importFile, setImportFile] = useState(null);
 
-    // --- FETCH DATA ---
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            // Concurrent fetching for real-time asset data, user lists, and aggregated chart stats
             const [assetRes, userRes, statsRes] = await Promise.all([
                 apiService.getAssets(user.userIdentifier),
                 apiService.getUsers(user.userIdentifier),
@@ -99,7 +90,6 @@ const AssetManagementPage = () => {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    // --- ANALYTICS & ALERTS CALCULATION ---
     useEffect(() => {
         let active = 0, idle = 0, offline = 0;
         const now = new Date();
@@ -152,14 +142,12 @@ const AssetManagementPage = () => {
         setSystemAlerts(alerts);
     }, [assets]);
 
-    // --- CHART DATA PREP ---
     const brandDistributionData = useMemo(() => {
         const counts = {};
         assets.forEach(a => { counts[a.AssetBrandName || 'Unknown'] = (counts[a.AssetBrandName || 'Unknown'] || 0) + 1; });
         return Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
     }, [assets]);
 
-    // --- FILTER & PAGINATE ---
     const filteredAssets = useMemo(() => {
         let data = [...assets];
         if (statusFilter !== 'All') data = data.filter(a => a.AssetStatus === statusFilter);
@@ -178,7 +166,6 @@ const AssetManagementPage = () => {
     const totalPages = Math.ceil(filteredAssets.length / itemsPerPage) || 1;
     const paginatedAssets = filteredAssets.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-    // --- MODALS & ACTIONS ---
     const openModal = (type, asset) => {
         setSelectedAsset(asset);
         setModalData({});
@@ -225,7 +212,7 @@ const AssetManagementPage = () => {
         setProcessing(true);
         try {
             const formData = new FormData();
-            formData.append('file', importFile[0]); // Ensure we grab the actual file object
+            formData.append('file', importFile[0]); 
             
             const response = await apiService.bulkImportAssets(formData, user.userIdentifier);
             alert(response.data?.message || "Import completed.");
@@ -245,14 +232,12 @@ const AssetManagementPage = () => {
         setActiveModal('viewer');
         setLoadingSessions(true);
         try {
-            // 1. Fetch Session Tracking Data
             const response = await apiService.getAssetSessions(latestAssetData.rowKey, selectedDate, user.userIdentifier);
             if (response.data && response.data.success) {
                 setAssetSessions(response.data.sessions || []);
                 setWorkingTime(response.data.formattedWorkingTime || '0h 0m');
             }
             
-            // 2. Fetch Historical Audit Trail Data
             const auditResponse = await apiService.getAssetAuditTrail(latestAssetData.rowKey, user.userIdentifier);
             if(auditResponse.data && auditResponse.data.success) {
                 setAuditTrail(auditResponse.data.data || []);
@@ -260,7 +245,7 @@ const AssetManagementPage = () => {
 
         } catch (err) { 
             console.error("Error loading asset data", err); 
-            setAuditTrail([]); // Safe fallback on error
+            setAuditTrail([]);
         } finally { 
             setLoadingSessions(false); 
         }
@@ -337,7 +322,6 @@ const AssetManagementPage = () => {
         } catch (err) { alert('Delete failed.'); }
     };
 
-    // UI Helpers
     const getStatusBadge = (status) => {
         const styles = {
             'Available': 'bg-green-100/80 text-green-800 border-green-200',
@@ -348,8 +332,11 @@ const AssetManagementPage = () => {
         return <span className={`px-3 py-1 text-xs font-bold rounded-full border ${styles[status] || 'bg-gray-100 text-gray-800 border-gray-200'}`}>{status}</span>;
     };
 
+    // --- CRITICAL FIX 1: Add Strict Null Checking to Badge Renderer ---
     const getEventBadge = (action) => {
-        const actionLower = action.toLowerCase();
+        if (!action) return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-gray-100 text-gray-700 border border-gray-200">SYSTEM</span>;
+        
+        const actionLower = String(action).toLowerCase();
         if (['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat'].includes(actionLower)) return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">{action}</span>;
         if (['logout', 'logoff', 'lock', 'sleep', 'hibernate', 'shutdown', 'offlineshutdown'].includes(actionLower)) return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-slate-200 text-slate-700 border border-slate-300">{action}</span>;
         return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-gray-100 text-gray-700 border border-gray-200">{action}</span>;
@@ -650,7 +637,7 @@ const AssetManagementPage = () => {
                                                                 <tr key={idx}>
                                                                     <td className="px-5 py-3.5">{getEventBadge(session.actionType)}</td>
                                                                     <td className="px-5 py-3.5 text-indigo-600 font-bold">{formatLogTime(session.eventTimestamp)}</td>
-                                                                    <td className="px-5 py-3.5 text-slate-600 italic truncate max-w-xs" title={session.workDoneNotes}>{session.workDoneNotes || '-'}</td>
+                                                                    <td className="px-5 py-3.5 text-slate-600 italic truncate max-w-xs" title={session.workDoneNotes}>{String(session.workDoneNotes || '-')}</td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
