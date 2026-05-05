@@ -3,7 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../api/apiService';
 import Spinner from '../Spinner';
 import { usePermissions } from '../../hooks/usePermissions';
-import { CalendarDays, FileText, Send, AlertCircle } from 'lucide-react';
+// ADDED: ChevronRight and Check to the import list
+import { CalendarDays, FileText, Send, AlertCircle, ChevronRight, Check } from 'lucide-react';
 
 const LeaveRequestForm = ({ onLeaveRequested }) => {
     const { user } = useAuth();
