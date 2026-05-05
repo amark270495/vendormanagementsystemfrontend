@@ -3,7 +3,6 @@ import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../api/apiService';
 import Spinner from '../Spinner';
 import { usePermissions } from '../../hooks/usePermissions';
-// ADDED: ChevronRight and Check to the import list
 import { CalendarDays, FileText, Send, AlertCircle, ChevronRight, Check } from 'lucide-react';
 
 const LeaveRequestForm = ({ onLeaveRequested }) => {
@@ -67,61 +66,75 @@ const LeaveRequestForm = ({ onLeaveRequested }) => {
         }
     };
 
-    if (!canRequestLeave) return <p className="text-sm text-slate-400 italic">Leave requests are currently disabled for your account.</p>;
+    if (!canRequestLeave) return (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+            <p className="text-sm font-medium text-gray-500">Leave requests are currently disabled for your account.</p>
+        </div>
+    );
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6 animate-fadeIn">
+        <form onSubmit={handleSubmit} className="space-y-5 bg-white">
+            
+            {/* Enterprise Standard Alerts */}
             {error && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 animate-shake">
-                    <AlertCircle size={14} /> {error}
+                <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-r-md text-sm font-medium flex items-start gap-2 shadow-sm">
+                    <AlertCircle size={18} className="mt-0.5 shrink-0" /> 
+                    <p>{error}</p>
                 </div>
             )}
             {success && (
-                <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2">
-                    <Check size={14} /> {success}
+                <div className="bg-green-50 border-l-4 border-green-500 text-green-800 px-4 py-3 rounded-r-md text-sm font-medium flex items-start gap-2 shadow-sm">
+                    <Check size={18} className="mt-0.5 shrink-0" /> 
+                    <p>{success}</p>
                 </div>
             )}
 
             {/* Leave Type Select */}
             <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Type of Leave</label>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                    Type of Leave
+                </label>
                 <div className="relative">
                     <select
                         name="leaveType"
                         value={formData.leaveType}
                         onChange={handleChange}
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer"
+                        className="w-full bg-white border border-gray-300 text-gray-900 text-sm font-medium rounded-md px-3 py-2.5 outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none cursor-pointer shadow-sm"
                     >
                         {leaveTypes.map(type => (
                             <option key={type.value} value={type.value}>{type.label}</option>
                         ))}
                     </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
                         <ChevronRight size={16} className="rotate-90" />
                     </div>
                 </div>
             </div>
 
             {/* Dates Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Start Date</label>
-                    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-3 rounded-2xl focus-within:ring-2 focus:ring-indigo-500 transition-all">
-                        <CalendarDays size={18} className="text-indigo-400" />
+                    <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                        Start Date
+                    </label>
+                    <div className="flex items-center gap-2.5 bg-white border border-gray-300 px-3 py-2.5 rounded-md focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all shadow-sm group">
+                        <CalendarDays size={16} className="text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                         <input
                             type="date"
                             name="startDate"
                             value={formData.startDate}
                             onChange={handleChange}
                             required
-                            className="bg-transparent text-sm font-bold text-slate-700 outline-none w-full"
+                            className="bg-transparent text-sm font-medium text-gray-900 outline-none w-full"
                         />
                     </div>
                 </div>
                 <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">End Date</label>
-                    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-3 rounded-2xl focus-within:ring-2 focus:ring-indigo-500 transition-all">
-                        <CalendarDays size={18} className="text-indigo-400" />
+                    <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                        End Date
+                    </label>
+                    <div className="flex items-center gap-2.5 bg-white border border-gray-300 px-3 py-2.5 rounded-md focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all shadow-sm group">
+                        <CalendarDays size={16} className="text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                         <input
                             type="date"
                             name="endDate"
@@ -129,7 +142,7 @@ const LeaveRequestForm = ({ onLeaveRequested }) => {
                             onChange={handleChange}
                             min={formData.startDate}
                             required
-                            className="bg-transparent text-sm font-bold text-slate-700 outline-none w-full"
+                            className="bg-transparent text-sm font-medium text-gray-900 outline-none w-full"
                         />
                     </div>
                 </div>
@@ -137,28 +150,31 @@ const LeaveRequestForm = ({ onLeaveRequested }) => {
 
             {/* Reason Textarea */}
             <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Business Justification</label>
-                <div className="flex items-start gap-3 bg-slate-50 border border-slate-200 px-4 py-3 rounded-2xl focus-within:ring-2 focus:ring-indigo-500 transition-all">
-                    <FileText size={18} className="text-indigo-400 mt-1" />
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                    Business Justification
+                </label>
+                <div className="flex items-start gap-2.5 bg-white border border-gray-300 px-3 py-2.5 rounded-md focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all shadow-sm group">
+                    <FileText size={16} className="text-gray-400 mt-0.5 group-focus-within:text-blue-500 transition-colors shrink-0" />
                     <textarea
                         name="reason"
                         value={formData.reason}
                         onChange={handleChange}
                         required
                         rows="3"
-                        placeholder="Why are you requesting this leave?"
-                        className="bg-transparent text-sm font-bold text-slate-700 outline-none w-full resize-none"
+                        placeholder="Provide a reason for your leave request..."
+                        className="bg-transparent text-sm font-medium text-gray-900 outline-none w-full resize-y placeholder-gray-400"
                     ></textarea>
                 </div>
             </div>
 
-            <div className="flex justify-end">
+            {/* Action Button */}
+            <div className="flex justify-end pt-2">
                 <button
                     type="submit"
                     disabled={loading}
-                    className="px-8 py-3 bg-indigo-600 text-white text-xs font-black rounded-xl hover:bg-indigo-700 shadow-lg hover:shadow-indigo-200 transition-all flex items-center gap-2 disabled:opacity-50"
+                    className="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 active:bg-blue-800 shadow-sm transition-all flex items-center gap-2 justify-center min-w-[160px] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                    {loading ? <Spinner size="4" /> : <><Send size={14} /> SUBMIT APPLICATION</>}
+                    {loading ? <Spinner size="4" /> : <><Send size={14} /> Submit Application</>}
                 </button>
             </div>
         </form>
