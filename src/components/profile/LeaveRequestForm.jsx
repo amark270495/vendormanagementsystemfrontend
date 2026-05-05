@@ -174,7 +174,7 @@ const LeaveRequestForm = ({ onLeaveRequested }) => {
                     disabled={loading}
                     className="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 active:bg-blue-800 shadow-sm transition-all flex items-center gap-2 justify-center min-w-[160px] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                    {loading ? <Spinner size="4" /> : <><Send size={14} /> Submit Application</>}
+                    {loading ? <Spinner size="4" /> : <><Send size={14} /> Submit Leave Request</>}
                 </button>
             </div>
         </form>
