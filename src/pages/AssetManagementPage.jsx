@@ -6,12 +6,12 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Resp
 
 // --- Icons ---
 const LaptopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
-const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-500 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
-const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 const AlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-rose-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>;
 const DownloadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>;
 const UploadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>;
+const ShieldIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
+const CpuIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>;
 
 // --- CHART COLORS ---
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -51,12 +51,11 @@ const AssetManagementPage = () => {
     const [processing, setProcessing] = useState(false);
 
     // Modal Tabs
-    const [modalTab, setModalTab] = useState('tracking'); // 'tracking', 'audit', 'qrcode'
+    const [modalTab, setModalTab] = useState('tracking'); // 'tracking', 'telemetry', 'audit', 'qrcode'
     const [assetSessions, setAssetSessions] = useState([]);
     const [auditTrail, setAuditTrail] = useState([]);
     const [loadingSessions, setLoadingSessions] = useState(false);
     const [sessionDate, setSessionDate] = useState(getISTShiftDateString());
-    const [activeSessionTab, setActiveSessionTab] = useState('all');
     const [logLimit, setLogLimit] = useState(100);
     const [workingTime, setWorkingTime] = useState('0h 0m');
 
@@ -124,6 +123,11 @@ const AssetManagementPage = () => {
                     alerts.push({ id: asset.rowKey, type: 'warning', msg: `Asset ${asset.rowKey} in repair for ${Math.floor(repairDays)} days.` });
                 }
             }
+
+            // NEW Alert: Critical Windows Updates Pending
+            if (asset.CriticalUpdatesCount > 0) {
+                 alerts.push({ id: asset.rowKey, type: 'danger', msg: `Asset ${asset.rowKey} is missing ${asset.CriticalUpdatesCount} critical security updates.` });
+            }
         });
 
         setMachineStats({ active, idle, offline });
@@ -137,7 +141,6 @@ const AssetManagementPage = () => {
         return Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
     }, [assets]);
 
-    // Mock Utilization Chart Data
     const weeklyUtilizationData = useMemo(() => [
         { name: 'Mon', active: 400, idle: 240 },
         { name: 'Tue', active: 300, idle: 139 },
@@ -182,16 +185,16 @@ const AssetManagementPage = () => {
         setImportFile(null);
         setAssetSessions([]);
         setAuditTrail([]);
-        setActiveSessionTab('all');
         setLogLimit(100);
         setSessionDate(getISTShiftDateString());
     };
 
     const exportToCSV = () => {
-        const headers = ['Asset ID', 'Brand', 'Model', 'Status', 'Assigned To', 'Last Heartbeat'];
+        const headers = ['Asset ID', 'Brand', 'Model', 'Status', 'Assigned To', 'Last Heartbeat', 'CPU Usage %', 'RAM Usage %', 'Pending Updates'];
         const rows = filteredAssets.map(a => [
             a.rowKey, a.AssetBrandName, a.AssetModelName, a.AssetStatus, 
-            a.AssetAssignedTo || 'Unassigned', a.LastHeartbeat || 'Unknown'
+            a.AssetAssignedTo || 'Unassigned', a.LastHeartbeat || 'Unknown',
+            a.CPUUsagePercent || 0, a.MemoryUsagePercent || 0, a.PendingUpdatesCount || 0
         ]);
         const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
         const encodedUri = encodeURI(csvContent);
@@ -210,163 +213,78 @@ const AssetManagementPage = () => {
         try {
             const formData = new FormData();
             formData.append('file', importFile);
-            // await apiService.bulkImportAssets(formData, user.userIdentifier);
             alert("Bulk import mock successful! (Connect your backend API here)");
             await fetchData();
             closeModal();
-        } catch (err) {
-            alert(`Import failed: ${err.message}`);
-        } finally {
-            setProcessing(false);
-        }
+        } catch (err) { alert(`Import failed: ${err.message}`); } 
+        finally { setProcessing(false); }
     };
 
     const viewAssetData = async (asset, selectedDate = sessionDate) => {
-        setSelectedAsset(asset);
+        // Find the absolute latest version of the asset from the main state array
+        const latestAssetData = assets.find(a => a.rowKey === asset.rowKey) || asset;
+        setSelectedAsset(latestAssetData);
         setActiveModal('viewer');
         setLoadingSessions(true);
         try {
-            const response = await apiService.getAssetSessions(asset.rowKey, selectedDate, user.userIdentifier);
+            const response = await apiService.getAssetSessions(latestAssetData.rowKey, selectedDate, user.userIdentifier);
             if (response.data && response.data.success) {
                 setAssetSessions(response.data.sessions || []);
                 setWorkingTime(response.data.formattedWorkingTime || '0h 0m');
             }
             
-            // Mock Fetching Audit Trail
             setAuditTrail([
                 { date: '2025-01-10', event: 'Purchased & Added to Inventory', user: 'Admin' },
-                { date: '2025-02-15', event: 'Assigned to User', user: asset.AssetAssignedTo || 'Unknown' },
-                { date: new Date().toISOString().split('T'), event: 'Routine Sync Check', user: 'System' }
+                { date: '2025-02-15', event: 'Assigned to User', user: latestAssetData.AssetAssignedTo || 'Unknown' },
+                { date: new Date().toISOString().split('T')[0], event: 'Routine Sync Check', user: 'System' }
             ]);
         } catch (err) { console.error("Error loading asset data", err); } 
         finally { setLoadingSessions(false); }
     };
 
-    // --- FIX 1: Date Change Handler ---
     const handleDateChange = (e) => {
         const newDate = e.target.value;
         setSessionDate(newDate);
-        if (selectedAsset) {
-            viewAssetData(selectedAsset, newDate);
-        }
+        if (selectedAsset) viewAssetData(selectedAsset, newDate);
     };
 
-    // --- UPDATED QR CODE PRINT FUNCTION ---
     const handlePrintQRCode = () => {
         if (!selectedAsset) return;
-
-        // 1. Format the data that will appear when the QR code is scanned
         const qrScanData = `Asset ID: ${selectedAsset.rowKey}\nModel: ${selectedAsset.AssetBrandName || ''} ${selectedAsset.AssetModelName || ''}\nAssigned To: ${selectedAsset.AssetAssignedTo || 'Unassigned'}\nService Tag: ${selectedAsset.AssetServiceTag || 'N/A'}`;
         const encodedData = encodeURIComponent(qrScanData);
 
         const printWindow = window.open('', '_blank', 'width=800,height=600');
-        
         printWindow.document.write(`
             <html>
                 <head>
                     <title>Print Asset Label - ${selectedAsset.rowKey}</title>
                     <style>
-                        body {
-                            font-family: Arial, sans-serif;
-                            margin: 0;
-                            padding: 20px;
-                            background: white;
-                            display: flex;
-                            justify-content: flex-start;
-                        }
-                        
-                        /* Container to hold QR and Table side-by-side */
-                        .label-container {
-                            display: flex;
-                            align-items: center;
-                            width: max-content;
-                        }
-                        
-                        /* QR Code Wrapper */
-                        .qr-section {
-                            padding-right: 15px;
-                        }
-                        .qr-section img {
-                            width: 110px; /* Adjusted to match scale of your image */
-                            height: 110px;
-                            display: block;
-                        }
-                        
-                        /* Table Styling to match your screenshot */
-                        .details-table {
-                            border-collapse: collapse;
-                        }
-                        .details-table th, .details-table td {
-                            border: 1px solid #000;
-                            padding: 6px 12px;
-                            font-size: 14px;
-                            text-align: left;
-                            white-space: nowrap;
-                            color: #000;
-                        }
-                        .details-table th {
-                            font-weight: normal; /* Matches the standard weight in your image */
-                        }
-
-                        /* Print specific adjustments */
-                        @media print {
-                            @page { margin: 1cm; }
-                            body { 
-                                margin: 0; 
-                                padding: 0;
-                                -webkit-print-color-adjust: exact; 
-                                print-color-adjust: exact; 
-                            }
-                        }
+                        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; display: flex; justify-content: flex-start; }
+                        .label-container { display: flex; align-items: center; width: max-content; }
+                        .qr-section { padding-right: 15px; }
+                        .qr-section img { width: 110px; height: 110px; display: block; }
+                        .details-table { border-collapse: collapse; }
+                        .details-table th, .details-table td { border: 1px solid #000; padding: 6px 12px; font-size: 14px; text-align: left; }
+                        .details-table th { font-weight: normal; }
+                        @media print { @page { margin: 1cm; } body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
                     </style>
                 </head>
                 <body>
                     <div class="label-container">
-                        <div class="qr-section">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodedData}" alt="QR Code" />
-                        </div>
+                        <div class="qr-section"><img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodedData}" alt="QR Code" /></div>
                         <table class="details-table">
-                            <tr>
-                                <th>Asset Id</th>
-                                <td>${selectedAsset.rowKey || ''}</td>
-                            </tr>
-                            <tr>
-                                <th>Asset Brand & Model</th>
-                                <td>${selectedAsset.AssetBrandName || ''} ${selectedAsset.AssetModelName || ''}</td>
-                            </tr>
-                            <tr>
-                                <th>Asset Assigned To</th>
-                                <td>${selectedAsset.AssetAssignedTo || ''}</td>
-                            </tr>
-                            <tr>
-                                <th>Asset Service Tag</th>
-                                <td>${selectedAsset.AssetServiceTag || ''}</td>
-                            </tr>
+                            <tr><th>Asset Id</th><td>${selectedAsset.rowKey || ''}</td></tr>
+                            <tr><th>Asset Brand & Model</th><td>${selectedAsset.AssetBrandName || ''} ${selectedAsset.AssetModelName || ''}</td></tr>
+                            <tr><th>Asset Assigned To</th><td>${selectedAsset.AssetAssignedTo || ''}</td></tr>
+                            <tr><th>Asset Service Tag</th><td>${selectedAsset.AssetServiceTag || ''}</td></tr>
                         </table>
                     </div>
-                    
-                    <script>
-                        // Wait slightly longer (500ms) to ensure the denser QR code image fully loads before printing
-                        window.onload = () => {
-                            setTimeout(() => {
-                                window.print();
-                                window.close();
-                            }, 500);
-                        };
-                    </script>
+                    <script>window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 500); };</script>
                 </body>
             </html>
         `);
-        
         printWindow.document.close();
     };
-
-    // Auto Refresh Tracking
-    useEffect(() => {
-        if (activeModal !== 'viewer' || modalTab !== 'tracking' || !selectedAsset) return;
-        const interval = setInterval(() => { viewAssetData(selectedAsset, sessionDate); }, 30000); 
-        return () => clearInterval(interval);
-    }, [activeModal, modalTab, selectedAsset, sessionDate]);
 
     // Form Actions
     const handleActionSubmit = async (e) => {
@@ -410,8 +328,14 @@ const AssetManagementPage = () => {
     const getEventBadge = (action) => {
         const actionLower = action.toLowerCase();
         if (['login', 'unlock', 'resume', 'active', 'wake', 'heartbeat'].includes(actionLower)) return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">{action}</span>;
-        if (['logout', 'logoff', 'lock', 'sleep', 'hibernate', 'shutdown'].includes(actionLower)) return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-slate-200 text-slate-700 border border-slate-300">{action}</span>;
+        if (['logout', 'logoff', 'lock', 'sleep', 'hibernate', 'shutdown', 'offlineshutdown'].includes(actionLower)) return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-slate-200 text-slate-700 border border-slate-300">{action}</span>;
         return <span className="px-2 py-1 text-[11px] font-bold uppercase rounded-md bg-gray-100 text-gray-700 border border-gray-200">{action}</span>;
+    };
+
+    // Helper to safely parse the Updates list JSON from the backend
+    const getParsedUpdates = (jsonString) => {
+        if (!jsonString) return [];
+        try { return JSON.parse(jsonString); } catch(e) { return []; }
     };
 
     return (
@@ -421,7 +345,7 @@ const AssetManagementPage = () => {
             <div className="px-6 py-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white gap-4">
                 <div>
                     <h2 className="text-2xl font-extrabold text-slate-800 flex items-center"><LaptopIcon /> Hardware Assets</h2>
-                    <p className="text-sm text-slate-500 mt-1 font-medium">Manage inventory, monitor lifecycle, and track live activity.</p>
+                    <p className="text-sm text-slate-500 mt-1 font-medium">Manage inventory, monitor lifecycle, and track live telemetry.</p>
                 </div>
             </div>
 
@@ -471,7 +395,6 @@ const AssetManagementPage = () => {
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-72">
                                 <h4 className="text-xs font-black uppercase text-slate-400 mb-2">Fleet Utilization (Last 7 Days)</h4>
-                                {/* FIX 2: Added minHeight and minWidth to ResponsiveContainer */}
                                 <ResponsiveContainer width="100%" height="90%" minHeight={200} minWidth={0}>
                                     <BarChart data={weeklyUtilizationData}>
                                         <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
@@ -486,7 +409,6 @@ const AssetManagementPage = () => {
                             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-72 flex flex-col">
                                 <h4 className="text-xs font-black uppercase text-slate-400 mb-2">Brand Distribution</h4>
                                 <div className="flex-1">
-                                    {/* FIX 2: Added minHeight and minWidth to ResponsiveContainer */}
                                     <ResponsiveContainer width="100%" height="100%" minHeight={200} minWidth={0}>
                                         <PieChart>
                                             <Pie data={brandDistributionData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value">
@@ -534,8 +456,6 @@ const AssetManagementPage = () => {
                 </div>
             </div>
 
-            {error && <div className="m-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r-lg text-sm font-medium">{error}</div>}
-
             {/* ASSET TABLE */}
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200">
@@ -543,8 +463,8 @@ const AssetManagementPage = () => {
                         <tr>
                             <th className="px-6 py-4 text-left text-xs font-black text-slate-400 uppercase">Asset Information</th>
                             <th className="px-6 py-4 text-left text-xs font-black text-slate-400 uppercase">Status & Assignment</th>
-                            <th className="px-6 py-4 text-left text-xs font-black text-slate-400 uppercase">Tracking & Logs</th>
-                            <th className="px-6 py-4 text-right text-xs font-black text-slate-400 uppercase">Actions</th>
+                            <th className="px-6 py-4 text-left text-xs font-black text-slate-400 uppercase">Health & Sec</th>
+                            <th className="px-6 py-4 text-left text-xs font-black text-slate-400 uppercase">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-slate-100">
@@ -555,34 +475,49 @@ const AssetManagementPage = () => {
                         ) : (
                             paginatedAssets.map((asset) => (
                                 <tr key={asset.rowKey} className="hover:bg-indigo-50/30 transition-colors group">
-                                    <td className="px-6 py-5 whitespace-nowrap">
+                                    <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <div className="flex-shrink-0 h-12 w-12 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-200 text-slate-400 shadow-sm"><LaptopIcon /></div>
-                                            <div className="ml-4">
+                                            <div className="flex-shrink-0 h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-200 text-slate-400 shadow-sm"><LaptopIcon /></div>
+                                            <div className="ml-3">
                                                 <div className="text-sm font-extrabold text-slate-900">{asset.rowKey}</div>
-                                                <div className="text-xs font-medium text-slate-500 mt-0.5">{asset.AssetBrandName} {asset.AssetModelName}</div>
+                                                <div className="text-xs font-medium text-slate-500">{asset.AssetBrandName} {asset.AssetModelName}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-5 whitespace-nowrap">
-                                        <div className="flex flex-col items-start gap-2">
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="flex flex-col items-start gap-1.5">
                                             {getStatusBadge(asset.AssetStatus)}
                                             <div className="text-xs text-slate-600 font-medium">{asset.AssetAssignedTo ? `Assigned: ${asset.AssetAssignedTo}` : <span className="italic text-slate-400">Unassigned</span>}</div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-5 whitespace-nowrap">
-                                        <button onClick={() => viewAssetData(asset)} className="inline-flex items-center px-4 py-2 border border-indigo-100 text-xs font-bold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:shadow-sm transition-all">
-                                            <ActivityIcon /> View Asset File
-                                        </button>
+                                    
+                                    {/* NEW: Health & Security Summary Column */}
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="flex flex-col gap-1 text-xs font-medium">
+                                            <div className="flex items-center gap-1">
+                                                <span className={`h-2 w-2 rounded-full ${asset.AVEnabled ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                                                <span className="text-slate-600">Defender: {asset.AVEnabled ? 'Active' : 'Off'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className={`h-2 w-2 rounded-full ${asset.CriticalUpdatesCount > 0 ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
+                                                <span className={asset.CriticalUpdatesCount > 0 ? 'text-rose-600 font-bold' : 'text-slate-600'}>
+                                                    Updates: {asset.CriticalUpdatesCount > 0 ? `${asset.CriticalUpdatesCount} Critical` : 'Up to date'}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </td>
-                                    <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
-                                        <div className="flex justify-end gap-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {canAssignAssets && asset.AssetStatus === 'Available' && (<button onClick={() => openModal('assign', asset)} className="text-indigo-600 border border-indigo-100 bg-white px-3.5 py-1.5 rounded-lg hover:bg-indigo-50 shadow-sm transition-colors">Assign</button>)}
-                                            {canAssignAssets && asset.AssetStatus === 'Assigned' && (<button onClick={() => openModal('reassign', asset)} className="text-indigo-600 border border-indigo-100 bg-white px-3.5 py-1.5 rounded-lg hover:bg-indigo-50 shadow-sm transition-colors">Reassign</button>)}
+
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex items-center gap-2">
+                                        <button onClick={() => viewAssetData(asset)} className="inline-flex items-center px-3 py-1.5 border border-indigo-100 text-xs font-bold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:shadow-sm transition-all">
+                                            View Asset
+                                        </button>
+                                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                                            {canAssignAssets && asset.AssetStatus === 'Available' && (<button onClick={() => openModal('assign', asset)} className="text-indigo-600 border border-indigo-100 bg-white px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 shadow-sm transition-colors text-xs font-bold">Assign</button>)}
+                                            {canAssignAssets && asset.AssetStatus === 'Assigned' && (<button onClick={() => openModal('reassign', asset)} className="text-indigo-600 border border-indigo-100 bg-white px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 shadow-sm transition-colors text-xs font-bold">Reassign</button>)}
                                             {canManageAssets && (
                                                 <>
-                                                    <button onClick={() => openModal('service', asset)} className="text-amber-600 border border-amber-100 bg-white px-3.5 py-1.5 rounded-lg hover:bg-amber-50 shadow-sm transition-colors">Service</button>
-                                                    <button onClick={() => handleDelete(asset.rowKey)} className="text-red-600 border border-red-100 bg-white px-3.5 py-1.5 rounded-lg hover:bg-red-50 shadow-sm transition-colors">Delete</button>
+                                                    <button onClick={() => openModal('service', asset)} className="text-amber-600 border border-amber-100 bg-white px-2.5 py-1.5 rounded-lg hover:bg-amber-50 shadow-sm transition-colors text-xs font-bold">Service</button>
+                                                    <button onClick={() => handleDelete(asset.rowKey)} className="text-red-600 border border-red-100 bg-white px-2.5 py-1.5 rounded-lg hover:bg-red-50 shadow-sm transition-colors text-xs font-bold">Delete</button>
                                                 </>
                                             )}
                                         </div>
@@ -620,7 +555,7 @@ const AssetManagementPage = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
                     <div className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col border border-slate-200 overflow-hidden transform transition-all ${activeModal === 'viewer' ? 'max-w-5xl max-h-[90vh]' : 'max-w-md'}`}>
                         
-                        {/* MULTI-TAB ASSET VIEWER (Tracking, Audit, QR) */}
+                        {/* MULTI-TAB ASSET VIEWER */}
                         {activeModal === 'viewer' ? (
                             <div className="flex flex-col h-full overflow-hidden">
                                 <div className="px-6 py-5 border-b border-slate-200 bg-white flex justify-between items-center shadow-sm z-10">
@@ -630,10 +565,11 @@ const AssetManagementPage = () => {
                                     <button onClick={closeModal} className="text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 rounded-full p-1.5 border border-slate-200 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                 </div>
 
-                                {/* Tabs Navigation */}
+                                {/* Tabs Navigation - ADDED TELEMETRY */}
                                 <div className="px-6 pt-3 border-b border-slate-200 bg-slate-50">
-                                    <nav className="-mb-px flex space-x-8">
+                                    <nav className="-mb-px flex space-x-8 overflow-x-auto">
                                         <button onClick={() => setModalTab('tracking')} className={`whitespace-nowrap pb-3 px-1 border-b-2 font-bold text-sm transition-colors ${modalTab === 'tracking' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Live Session Tracking</button>
+                                        <button onClick={() => setModalTab('telemetry')} className={`whitespace-nowrap pb-3 px-1 border-b-2 font-bold text-sm transition-colors flex items-center gap-1.5 ${modalTab === 'telemetry' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}><CpuIcon/> Device Telemetry</button>
                                         <button onClick={() => setModalTab('audit')} className={`whitespace-nowrap pb-3 px-1 border-b-2 font-bold text-sm transition-colors ${modalTab === 'audit' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Lifecycle Audit Trail</button>
                                         <button onClick={() => setModalTab('qrcode')} className={`whitespace-nowrap pb-3 px-1 border-b-2 font-bold text-sm transition-colors ${modalTab === 'qrcode' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Asset QR Code</button>
                                     </nav>
@@ -666,7 +602,7 @@ const AssetManagementPage = () => {
                                                                 <tr key={idx}>
                                                                     <td className="px-5 py-3.5">{getEventBadge(session.actionType)}</td>
                                                                     <td className="px-5 py-3.5 text-indigo-600 font-bold">{formatLogTime(session.eventTimestamp)}</td>
-                                                                    <td className="px-5 py-3.5 text-slate-600 italic">{session.workDoneNotes || '-'}</td>
+                                                                    <td className="px-5 py-3.5 text-slate-600 italic truncate max-w-xs" title={session.workDoneNotes}>{session.workDoneNotes || '-'}</td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
@@ -676,7 +612,107 @@ const AssetManagementPage = () => {
                                         </div>
                                     )}
 
-                                    {/* TAB 2: AUDIT TRAIL */}
+                                    {/* TAB 2: DEVICE TELEMETRY (NEW) */}
+                                    {modalTab === 'telemetry' && (
+                                        <div className="space-y-6">
+                                            {/* System Resources */}
+                                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                                                <h4 className="text-sm font-black uppercase text-slate-800 mb-4 flex items-center border-b border-slate-100 pb-3"><CpuIcon /> System Resources & Health</h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                    <div className="space-y-4">
+                                                        <div>
+                                                            <div className="flex justify-between text-xs font-bold text-slate-600 mb-1">
+                                                                <span>CPU Utilization</span>
+                                                                <span>{selectedAsset.CPUUsagePercent || 0}%</span>
+                                                            </div>
+                                                            <div className="w-full bg-slate-100 rounded-full h-2.5"><div className={`h-2.5 rounded-full ${selectedAsset.CPUUsagePercent > 80 ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ width: `${selectedAsset.CPUUsagePercent || 0}%` }}></div></div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex justify-between text-xs font-bold text-slate-600 mb-1">
+                                                                <span>Memory (RAM)</span>
+                                                                <span>{selectedAsset.MemoryUsagePercent || 0}%</span>
+                                                            </div>
+                                                            <div className="w-full bg-slate-100 rounded-full h-2.5"><div className={`h-2.5 rounded-full ${selectedAsset.MemoryUsagePercent > 85 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${selectedAsset.MemoryUsagePercent || 0}%` }}></div></div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                                            <div className="text-xs font-bold text-slate-500">Storage (C:)</div>
+                                                            <div className="text-lg font-black text-slate-800 mt-1">{selectedAsset.DiskFreeGB || 0} <span className="text-sm text-slate-500 font-medium">GB Free</span></div>
+                                                            <div className="text-[10px] text-slate-400 font-medium mt-1">of {selectedAsset.DiskTotalGB || 0} GB Total</div>
+                                                        </div>
+                                                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                                            <div className="text-xs font-bold text-slate-500">System Uptime</div>
+                                                            <div className="text-lg font-black text-slate-800 mt-1">{selectedAsset.UptimeHours || 0} <span className="text-sm text-slate-500 font-medium">Hours</span></div>
+                                                            <div className="text-[10px] text-slate-400 font-medium mt-1">OS: {selectedAsset.OSVersion || 'Unknown'}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {/* Security Status */}
+                                                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                                                    <h4 className="text-sm font-black uppercase text-slate-800 mb-4 flex items-center border-b border-slate-100 pb-3"><ShieldIcon /> Windows Defender</h4>
+                                                    <ul className="space-y-3">
+                                                        <li className="flex justify-between items-center text-sm">
+                                                            <span className="font-bold text-slate-600">Antivirus Status</span>
+                                                            {selectedAsset.AVEnabled ? <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 font-bold text-xs rounded">Active</span> : <span className="px-2 py-0.5 bg-rose-100 text-rose-700 font-bold text-xs rounded">Disabled</span>}
+                                                        </li>
+                                                        <li className="flex justify-between items-center text-sm">
+                                                            <span className="font-bold text-slate-600">Real-Time Protection</span>
+                                                            <span className="font-medium text-slate-800">{selectedAsset.RealTimeProtection ? 'Enabled' : 'Disabled'}</span>
+                                                        </li>
+                                                        <li className="flex justify-between items-center text-sm">
+                                                            <span className="font-bold text-slate-600">Signature Age</span>
+                                                            <span className="font-medium text-slate-800">{selectedAsset.AVSignatureAge || 0} Days</span>
+                                                        </li>
+                                                        <li className="flex justify-between items-center text-sm">
+                                                            <span className="font-bold text-slate-600">Engine Version</span>
+                                                            <span className="font-medium text-slate-800">{selectedAsset.AVEngineVersion || 'Unknown'}</span>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+
+                                                {/* Windows Updates */}
+                                                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                                                    <h4 className="text-sm font-black uppercase text-slate-800 mb-4 flex items-center border-b border-slate-100 pb-3">
+                                                        <svg className="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                                        Software Updates
+                                                    </h4>
+                                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                                        <div className={`p-3 rounded-lg border ${selectedAsset.PendingUpdatesCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                                                            <div className="text-xs font-bold text-slate-500 mb-1">Total Pending</div>
+                                                            <div className="text-2xl font-black text-slate-800">{selectedAsset.PendingUpdatesCount || 0}</div>
+                                                        </div>
+                                                        <div className={`p-3 rounded-lg border ${selectedAsset.CriticalUpdatesCount > 0 ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200'}`}>
+                                                            <div className="text-xs font-bold text-slate-500 mb-1">Critical/Security</div>
+                                                            <div className="text-2xl font-black text-rose-600">{selectedAsset.CriticalUpdatesCount || 0}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-1 bg-slate-50 rounded-lg border border-slate-200 p-2 overflow-y-auto max-h-32">
+                                                        {getParsedUpdates(selectedAsset.PendingUpdatesList).length === 0 ? (
+                                                            <div className="text-xs text-center text-slate-500 font-medium py-4">System is up to date or data unavailable.</div>
+                                                        ) : (
+                                                            <ul className="space-y-1.5">
+                                                                {getParsedUpdates(selectedAsset.PendingUpdatesList).map((update, idx) => (
+                                                                    <li key={idx} className="text-[11px] bg-white p-2 border border-slate-200 rounded shadow-sm flex items-start gap-2">
+                                                                        {update.severity === 'Critical' ? <span className="h-2 w-2 mt-1 rounded-full bg-rose-500 flex-shrink-0"></span> : <span className="h-2 w-2 mt-1 rounded-full bg-amber-400 flex-shrink-0"></span>}
+                                                                        <div>
+                                                                            <span className="font-bold text-slate-700">{update.kb ? `KB${update.kb}: ` : ''}</span>
+                                                                            <span className="text-slate-600">{update.title}</span>
+                                                                        </div>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* TAB 3: AUDIT TRAIL */}
                                     {modalTab === 'audit' && (
                                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                                             <h4 className="text-sm font-black uppercase text-slate-400 mb-6">Hardware Lifecycle Events</h4>
@@ -693,7 +729,7 @@ const AssetManagementPage = () => {
                                         </div>
                                     )}
 
-                                    {/* TAB 3: QR CODE */}
+                                    {/* TAB 4: QR CODE */}
                                     {modalTab === 'qrcode' && (
                                         <div className="flex flex-col items-center justify-center py-10">
                                             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-lg">
@@ -701,7 +737,6 @@ const AssetManagementPage = () => {
                                                 <div className="text-center font-extrabold text-xl tracking-wider text-slate-800">{selectedAsset.rowKey}</div>
                                                 <div className="text-center text-sm font-medium text-slate-500">{selectedAsset.AssetBrandName} {selectedAsset.AssetModelName}</div>
                                             </div>
-                                            {/* FIX 4: Call the new print function here */}
                                             <button onClick={handlePrintQRCode} className="mt-6 px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-sm hover:bg-indigo-700">Print QR Code</button>
                                         </div>
                                     )}
