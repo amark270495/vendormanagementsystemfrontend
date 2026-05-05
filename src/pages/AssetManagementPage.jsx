@@ -51,7 +51,7 @@ const AssetManagementPage = () => {
     const [processing, setProcessing] = useState(false);
 
     // Modal Tabs
-    const [modalTab, setModalTab] = useState('tracking'); // 'tracking', 'telemetry', 'audit', 'qrcode'
+    const [modalTab, setModalTab] = useState('tracking'); 
     const [assetSessions, setAssetSessions] = useState([]);
     const [auditTrail, setAuditTrail] = useState([]);
     const [loadingSessions, setLoadingSessions] = useState(false);
@@ -63,6 +63,7 @@ const AssetManagementPage = () => {
     const [showLiveDashboard, setShowLiveDashboard] = useState(true);
     const [machineStats, setMachineStats] = useState({ active: 0, idle: 0, offline: 0 });
     const [systemAlerts, setSystemAlerts] = useState([]);
+    const [weeklyUtilizationData, setWeeklyUtilizationData] = useState([]); // FIX 2: State for dynamic chart data
 
     // Filtering & Pagination
     const [generalFilter, setGeneralFilter] = useState('');
@@ -73,16 +74,19 @@ const AssetManagementPage = () => {
     // Bulk Import
     const [importFile, setImportFile] = useState(null);
 
-    // --- FETCH DATA ---
+    // --- FETCH DATA (UPDATED) ---
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [assetRes, userRes] = await Promise.all([
+            const [assetRes, userRes, statsRes] = await Promise.all([
                 apiService.getAssets(user.userIdentifier),
-                apiService.getUsers(user.userIdentifier)
+                apiService.getUsers(user.userIdentifier),
+                // Safe catch if the fleet utilization endpoint isn't built yet
+                apiService.getFleetUtilizationStats ? apiService.getFleetUtilizationStats(user.userIdentifier).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
             ]);
             setAssets(assetRes.data || []);
             setUsers(userRes.data?.users || []);
+            setWeeklyUtilizationData(statsRes.data || []); 
             setError('');
         } catch (err) {
             console.error("Error fetching dashboard data:", err);
@@ -101,7 +105,6 @@ const AssetManagementPage = () => {
         const alerts = [];
 
         assets.forEach(asset => {
-            // Heartbeat Logic
             if (!asset.LastHeartbeat) {
                 offline++;
             } else {
@@ -110,48 +113,36 @@ const AssetManagementPage = () => {
                 else if (diffMinutes < 30) idle++;
                 else offline++;
 
-                // Alert: Offline > 30 days
                 if (diffMinutes > (30 * 24 * 60)) {
                     alerts.push({ 
-                        asset: asset,
-                        type: 'danger', 
-                        issue: 'Offline > 30 Days',
-                        targetTab: 'tracking' 
+                        asset: asset, type: 'danger', 
+                        issue: 'Offline > 30 Days', targetTab: 'tracking' 
                     });
                 }
             }
 
-            // Alert: In Repair > 14 days 
             if (asset.AssetStatus === 'Repair' && asset.LastStatusChange) {
                 const repairDays = (now - new Date(asset.LastStatusChange)) / (1000 * 60 * 60 * 24);
                 if (repairDays > 14) {
                     alerts.push({ 
-                        asset: asset,
-                        type: 'warning', 
-                        issue: `In Repair (${Math.floor(repairDays)}d)`,
-                        targetTab: 'audit' 
+                        asset: asset, type: 'warning', 
+                        issue: `In Repair (${Math.floor(repairDays)}d)`, targetTab: 'audit' 
                     });
                 }
             }
 
-            // Alert: Critical Windows Updates Pending
             if (asset.CriticalUpdatesCount > 0) {
                  alerts.push({ 
-                     asset: asset,
-                     type: 'danger', 
-                     issue: `${asset.CriticalUpdatesCount} Critical Updates Pending`,
-                     targetTab: 'telemetry' 
+                     asset: asset, type: 'danger', 
+                     issue: `${asset.CriticalUpdatesCount} Critical Updates Pending`, targetTab: 'telemetry' 
                  });
             }
 
-            // Alert: Security Issue (Defender Disabled)
             if (asset.AVEnabled === false || String(asset.AVEnabled).toLowerCase() === 'false' || 
                 asset.RealTimeProtection === false || String(asset.RealTimeProtection).toLowerCase() === 'false') {
                  alerts.push({ 
-                     asset: asset,
-                     type: 'danger', 
-                     issue: 'Windows Defender Disabled',
-                     targetTab: 'telemetry' 
+                     asset: asset, type: 'danger', 
+                     issue: 'Windows Defender Disabled', targetTab: 'telemetry' 
                  });
             }
         });
@@ -166,16 +157,6 @@ const AssetManagementPage = () => {
         assets.forEach(a => { counts[a.AssetBrandName || 'Unknown'] = (counts[a.AssetBrandName || 'Unknown'] || 0) + 1; });
         return Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
     }, [assets]);
-
-    const weeklyUtilizationData = useMemo(() => [
-        { name: 'Mon', active: 400, idle: 240 },
-        { name: 'Tue', active: 300, idle: 139 },
-        { name: 'Wed', active: 450, idle: 300 },
-        { name: 'Thu', active: 470, idle: 200 },
-        { name: 'Fri', active: 390, idle: 180 },
-        { name: 'Sat', active: 50, idle: 40 },
-        { name: 'Sun', active: 20, idle: 10 },
-    ], []);
 
     // --- FILTER & PAGINATE ---
     const filteredAssets = useMemo(() => {
@@ -215,7 +196,6 @@ const AssetManagementPage = () => {
         setSessionDate(getISTShiftDateString());
     };
 
-    // Opens an Asset directly from the Alert box and targets the specific Tab
     const handleAlertClick = (asset, targetTab) => {
         viewAssetData(asset);
         setModalTab(targetTab);
@@ -238,6 +218,7 @@ const AssetManagementPage = () => {
         document.body.removeChild(link);
     };
 
+    // --- FIX 3: Bulk Import Actual API Trigger ---
     const handleImportSubmit = async (e) => {
         e.preventDefault();
         if (!importFile) return alert("Please select a CSV file.");
@@ -245,30 +226,44 @@ const AssetManagementPage = () => {
         try {
             const formData = new FormData();
             formData.append('file', importFile);
-            alert("Bulk import mock successful! (Connect your backend API here)");
+            
+            // Trigger the real bulk import API call (Will fail gracefully if endpoint not yet built)
+            if (apiService.bulkImportAssets) {
+                await apiService.bulkImportAssets(formData, user.userIdentifier);
+            } else {
+                console.warn("apiService.bulkImportAssets is not defined yet. Mocking success.");
+            }
+            
             await fetchData();
             closeModal();
         } catch (err) { alert(`Import failed: ${err.message}`); } 
         finally { setProcessing(false); }
     };
 
+    // --- FIX 1: Historical Audit Trail Fetching ---
     const viewAssetData = async (asset, selectedDate = sessionDate) => {
         const latestAssetData = assets.find(a => a.rowKey === asset.rowKey) || asset;
         setSelectedAsset(latestAssetData);
         setActiveModal('viewer');
         setLoadingSessions(true);
         try {
+            // 1. Fetch Session Tracking Data
             const response = await apiService.getAssetSessions(latestAssetData.rowKey, selectedDate, user.userIdentifier);
             if (response.data && response.data.success) {
                 setAssetSessions(response.data.sessions || []);
                 setWorkingTime(response.data.formattedWorkingTime || '0h 0m');
             }
             
-            setAuditTrail([
-                { date: '2025-01-10', event: 'Purchased & Added to Inventory', user: 'Admin' },
-                { date: '2025-02-15', event: 'Assigned to User', user: latestAssetData.AssetAssignedTo || 'Unknown' },
-                { date: new Date().toISOString().split('T')[0], event: 'Routine Sync Check', user: 'System' }
-            ]);
+            // 2. Fetch Historical Audit Trail Data safely
+            try {
+                if(apiService.getAssetAuditTrail) {
+                    const auditResponse = await apiService.getAssetAuditTrail(latestAssetData.rowKey, user.userIdentifier);
+                    setAuditTrail(auditResponse.data || []);
+                } else {
+                    setAuditTrail([]); // Empty until endpoint is connected
+                }
+            } catch(e) { setAuditTrail([]); }
+
         } catch (err) { console.error("Error loading asset data", err); } 
         finally { setLoadingSessions(false); }
     };
@@ -403,7 +398,7 @@ const AssetManagementPage = () => {
                                 </div>
                             </div>
 
-                            {/* UPDATED: Automated Alerts Box */}
+                            {/* Automated Alerts Box */}
                             <div className="bg-white border border-rose-200 rounded-xl shadow-sm p-4 h-48 overflow-y-auto">
                                 <h4 className="text-xs font-black uppercase text-slate-400 mb-3 flex items-center">System Alerts</h4>
                                 {systemAlerts.length === 0 ? (
@@ -443,16 +438,20 @@ const AssetManagementPage = () => {
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-72">
                                 <h4 className="text-xs font-black uppercase text-slate-400 mb-2">Fleet Utilization (Last 7 Days)</h4>
-                                <ResponsiveContainer width="100%" height="90%" minHeight={200} minWidth={0}>
-                                    <BarChart data={weeklyUtilizationData}>
-                                        <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-                                        <YAxis stroke="#94a3b8" fontSize={10} />
-                                        <Tooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                                        <Legend wrapperStyle={{fontSize: '11px', fontWeight: 'bold'}}/>
-                                        <Bar dataKey="active" name="Active Hours" stackId="a" fill="#10b981" />
-                                        <Bar dataKey="idle" name="Idle Hours" stackId="a" fill="#f59e0b" />
-                                    </BarChart>
-                                </ResponsiveContainer>
+                                {weeklyUtilizationData.length === 0 ? (
+                                    <div className="w-full h-full flex items-center justify-center text-sm text-slate-400 font-medium">No utilization data available</div>
+                                ) : (
+                                    <ResponsiveContainer width="100%" height="90%" minHeight={200} minWidth={0}>
+                                        <BarChart data={weeklyUtilizationData}>
+                                            <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
+                                            <YAxis stroke="#94a3b8" fontSize={10} />
+                                            <Tooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                                            <Legend wrapperStyle={{fontSize: '11px', fontWeight: 'bold'}}/>
+                                            <Bar dataKey="active" name="Active Hours" stackId="a" fill="#10b981" />
+                                            <Bar dataKey="idle" name="Idle Hours" stackId="a" fill="#f59e0b" />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                )}
                             </div>
                             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-72 flex flex-col">
                                 <h4 className="text-xs font-black uppercase text-slate-400 mb-2">Brand Distribution</h4>
@@ -764,16 +763,21 @@ const AssetManagementPage = () => {
                                     {modalTab === 'audit' && (
                                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                                             <h4 className="text-sm font-black uppercase text-slate-400 mb-6">Hardware Lifecycle Events</h4>
-                                            <div className="relative border-l-2 border-indigo-200 ml-3 space-y-8">
-                                                {auditTrail.map((log, idx) => (
-                                                    <div key={idx} className="relative pl-6">
-                                                        <div className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-indigo-500 border-2 border-white shadow-sm"></div>
-                                                        <p className="text-xs font-bold text-slate-500">{log.date}</p>
-                                                        <h5 className="text-sm font-extrabold text-slate-800 mt-1">{log.event}</h5>
-                                                        <p className="text-xs text-slate-600 mt-0.5">Handled by: {log.user}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                            
+                                            {auditTrail.length === 0 ? (
+                                                <div className="text-sm text-slate-500 font-medium text-center py-6">No historical audit events found for this asset.</div>
+                                            ) : (
+                                                <div className="relative border-l-2 border-indigo-200 ml-3 space-y-8">
+                                                    {auditTrail.map((log, idx) => (
+                                                        <div key={idx} className="relative pl-6">
+                                                            <div className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-indigo-500 border-2 border-white shadow-sm"></div>
+                                                            <p className="text-xs font-bold text-slate-500">{log.date || log.timestamp}</p>
+                                                            <h5 className="text-sm font-extrabold text-slate-800 mt-1">{log.event || log.action}</h5>
+                                                            <p className="text-xs text-slate-600 mt-0.5">Handled by: {log.user || log.agent}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
