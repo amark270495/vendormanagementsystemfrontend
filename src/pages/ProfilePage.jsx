@@ -89,7 +89,7 @@ const DetailItem = ({ label, value, icon, isEditing = false, children }) => (
     </div>
 );
 
-// --- Attendance Marker Widget (Restored & Styled) ---
+// --- RESTORED: Attendance Marker Widget (Styled for new theme, available for use if needed) ---
 const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUser }) => {
     const [statusInfo, setStatusInfo] = useState({ 
         status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isApprovedWeekend: false, weekendWorkStatus: null, isLoading: true, holidayDescription: '' 
@@ -611,7 +611,7 @@ const ProfilePage = () => {
                     </form>
                 )}
 
-                {/* TAB CONTENT: ATTENDANCE */}
+                {/* TAB CONTENT: ATTENDANCE (FULL WIDTH "STRAIGHT LINE" CALENDAR) */}
                 {activeTab === 'attendance' && (
                     <div className="space-y-6 animate-fadeIn">
                         
@@ -635,26 +635,16 @@ const ProfilePage = () => {
                             </div>
                         </div>
 
-                        {/* Calendar & Marker Grid */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                            <div className="lg:col-span-4 order-2 lg:order-1">
-                                <AttendanceMarker 
-                                    selectedDate={selectedDate} 
-                                    onDateChange={handleDateChange} 
-                                    onMarkAttendance={handleMarkAttendance} 
-                                    authUser={user} 
-                                />
-                            </div>
-                            <div className="lg:col-span-8 order-1 lg:order-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 min-h-[450px]">
-                                <AttendanceCalendar 
-                                    initialMonthString={getISTShiftDateString().substring(0, 7)} 
-                                    key={calendarRefreshKey} 
-                                    onMonthChange={handleMonthNavigation} 
-                                    onDayClick={handleDateChange} 
-                                    selectedMarkerDate={selectedDate}
-                                    onMarkAttendance={handleMarkAttendance}
-                                />
-                            </div>
+                        {/* Full-Width Calendar & Straight-Line Manual Marking Toolbar */}
+                        <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 min-h-[450px]">
+                            <AttendanceCalendar 
+                                initialMonthString={getISTShiftDateString().substring(0, 7)} 
+                                key={calendarRefreshKey} 
+                                onMonthChange={handleMonthNavigation} 
+                                onDayClick={handleDateChange} 
+                                selectedMarkerDate={selectedDate}
+                                onMarkAttendance={handleMarkAttendance}
+                            />
                         </div>
                     </div>
                 )}
