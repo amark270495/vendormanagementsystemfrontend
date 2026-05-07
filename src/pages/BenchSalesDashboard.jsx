@@ -3,18 +3,27 @@ import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
 
-// --- Icons ---
+// --- Polished Enterprise Icons ---
 const SearchIcon = () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
 );
 const EditIcon = () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
 );
 const DeleteIcon = () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
 );
 const PlusIcon = () => (
-    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+);
+const XIcon = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+);
+const UsersIcon = () => (
+    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+);
+const BuildingIcon = () => (
+    <svg className="w-4 h-4 text-gray-400 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m3-4h1m-1 4h1m-5 8h8"></path></svg>
 );
 
 const BenchSalesDashboard = () => {
@@ -25,19 +34,17 @@ const BenchSalesDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     
-    // Recruiter List for the "Assigned To" dropdown
     const [recruiters, setRecruiters] = useState([]);
 
     // Modal States
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
     const [editingCandidate, setEditingCandidate] = useState(null);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [deletingCandidate, setDeletingCandidate] = useState(null);
 
-    // Form State
-    const [formData, setFormData] = useState({});
+    // Form State (Now includes an array for submissions)
+    const [formData, setFormData] = useState({ submissions: [] });
 
-    // Initial Fetch
     useEffect(() => {
         fetchCandidates();
         fetchRecruiters();
@@ -61,7 +68,6 @@ const BenchSalesDashboard = () => {
         try {
             const response = await apiService.getUsers(user.userIdentifier);
             if (response.data.success) {
-                // Assuming recruiters have a specific role, or you just list all users
                 setRecruiters(response.data.users);
             }
         } catch (error) {
@@ -69,7 +75,6 @@ const BenchSalesDashboard = () => {
         }
     };
 
-    // --- Derived State (Filtering) ---
     const filteredCandidates = useMemo(() => {
         if (!searchTerm) return candidates;
         const lowerSearch = searchTerm.toLowerCase();
@@ -77,29 +82,29 @@ const BenchSalesDashboard = () => {
             c.firstName?.toLowerCase().includes(lowerSearch) ||
             c.lastName?.toLowerCase().includes(lowerSearch) ||
             c.email?.toLowerCase().includes(lowerSearch) ||
-            c.companyName?.toLowerCase().includes(lowerSearch) ||
-            c.appliedRole?.toLowerCase().includes(lowerSearch) ||
-            c.workingBy?.toLowerCase().includes(lowerSearch)
+            c.skillSet?.toLowerCase().includes(lowerSearch) ||
+            c.assignedTo?.toLowerCase().includes(lowerSearch)
         );
     }, [candidates, searchTerm]);
 
-    // --- Modal Handlers ---
-    const openAddModal = () => {
+    // --- Modal & Form Handlers ---
+    const openAddSlideOver = () => {
         setEditingCandidate(null);
         setFormData({
             firstName: '', lastName: '', email: '', mobileNumber: '',
-            workAuthorizationStatus: '', workAuthorizationValidDate: '',
-            totalExperience: '', usExperience: '', skillSet: '',
-            companyName: '', appliedRole: '', appliedC2CRate: '', 
-            status: 'Submitted', workingBy: user.userName // Default assign to self
+            currentLocation: '', workArrangementDesire: '',
+            workAuthorizationStatus: '', totalExperience: '', usExperience: '', skillSet: '',
+            assignedTo: user.userName,
+            submissions: [] // Initialize empty array for companies
         });
-        setIsModalOpen(true);
+        setIsSlideOverOpen(true);
     };
 
-    const openEditModal = (candidate) => {
+    const openEditSlideOver = (candidate) => {
         setEditingCandidate(candidate);
-        setFormData({ ...candidate });
-        setIsModalOpen(true);
+        // Ensure submissions is always an array
+        setFormData({ ...candidate, submissions: candidate.submissions || [] });
+        setIsSlideOverOpen(true);
     };
 
     const handleFormChange = (e) => {
@@ -107,15 +112,41 @@ const BenchSalesDashboard = () => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    // --- Submissions (Nested Array) Handlers ---
+    const addSubmission = () => {
+        setFormData(prev => ({
+            ...prev,
+            submissions: [
+                ...prev.submissions,
+                { id: crypto.randomUUID(), companyName: '', appliedRole: '', c2cRate: '', status: 'Submitted', pocName: '', pocEmail: '', pocMobile: '' }
+            ]
+        }));
+    };
+
+    const updateSubmission = (id, field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            submissions: prev.submissions.map(sub => sub.id === id ? { ...sub, [field]: value } : sub)
+        }));
+    };
+
+    const removeSubmission = (id) => {
+        setFormData(prev => ({
+            ...prev,
+            submissions: prev.submissions.filter(sub => sub.id !== id)
+        }));
+    };
+
+    // --- API Calls ---
     const handleSave = async (e) => {
         e.preventDefault();
         try {
             if (editingCandidate) {
                 await apiService.updateBenchCandidate(editingCandidate.rowKey, formData, user.userIdentifier);
             } else {
-                await apiService.addBenchCandidate(formData, user.userIdentifier);
+                await apiService.addBenchCandidate({ candidateData: formData, authenticatedUsername: user.userIdentifier });
             }
-            setIsModalOpen(false);
+            setIsSlideOverOpen(false);
             fetchCandidates();
         } catch (error) {
             alert(error.response?.data?.message || "An error occurred while saving.");
@@ -132,303 +163,267 @@ const BenchSalesDashboard = () => {
         }
     };
 
-    // --- Permissions Logic for Rows ---
+    // --- Permissions & Styling ---
     const isAdmin = canEditUsers || canManageBenchSales;
-    
-    const canEditRow = (candidate) => {
-        if (isAdmin) return true;
-        if (candidate.submittedBy === user.userIdentifier) return true;
-        if (candidate.workingBy === user.userName) return true;
-        return false;
-    };
-
-    const canDeleteRow = (candidate) => {
-        if (isAdmin) return true;
-        if (candidate.submittedBy === user.userIdentifier) return true;
-        return false;
-    };
+    const canEditRow = (candidate) => isAdmin || candidate.submittedBy === user.userIdentifier || candidate.assignedTo === user.userName;
+    const canDeleteRow = (candidate) => isAdmin || candidate.submittedBy === user.userIdentifier;
 
     const getStatusStyle = (status) => {
         switch(status?.toLowerCase()) {
-            case 'submitted': return 'bg-blue-100 text-blue-800 border-blue-200';
-            case 'in the review': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-            case 'in the interview': return 'bg-purple-100 text-purple-800 border-purple-200';
-            case 'selected': return 'bg-green-100 text-green-800 border-green-200';
-            case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
-            default: return 'bg-slate-100 text-slate-800 border-slate-200';
+            case 'submitted': return 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20';
+            case 'in the review': return 'bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20';
+            case 'in the interview': return 'bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-600/20';
+            case 'selected': return 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20';
+            case 'rejected': return 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/10';
+            default: return 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10';
         }
     };
 
+    const getAvatarInitials = (firstName, lastName) => `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
+
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {/* Header Area */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Bench Sales Dashboard</h1>
-                    <p className="text-sm text-slate-500 mt-1">Manage W2 candidate submissions and marketing.</p>
-                </div>
+        <div className="min-h-screen bg-gray-50 font-sans">
+            <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                            <SearchIcon />
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Search candidates, roles, companies..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="block w-full sm:w-80 pl-10 pr-3 py-2 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
-                        />
+                {/* Header Area */}
+                <div className="sm:flex sm:items-center sm:justify-between mb-8">
+                    <div>
+                        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Bench Candidates</h1>
+                        <p className="mt-1.5 text-sm text-gray-500">
+                            Manage W2 candidates and track their multi-company application pipeline.
+                        </p>
                     </div>
                     
-                    <button
-                        onClick={openAddModal}
-                        className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                    >
-                        <PlusIcon /> Add Candidate
-                    </button>
+                    <div className="mt-4 sm:mt-0 sm:flex-none flex flex-col sm:flex-row gap-3">
+                        <div className="relative rounded-md shadow-sm">
+                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><SearchIcon /></div>
+                            <input type="text" placeholder="Search candidates..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="block w-full sm:w-72 rounded-md border-0 py-2 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 transition-all"/>
+                        </div>
+                        <button onClick={openAddSlideOver} className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-all">
+                            <PlusIcon /> Add Candidate
+                        </button>
+                    </div>
+                </div>
+
+                {/* Main Table Card */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50/50">
+                                <tr>
+                                    <th scope="col" className="py-3.5 pl-6 pr-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Candidate</th>
+                                    <th scope="col" className="px-3 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Location & Auth</th>
+                                    <th scope="col" className="px-3 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Skill Set</th>
+                                    <th scope="col" className="px-3 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Assigned To</th>
+                                    <th scope="col" className="px-3 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Pipeline</th>
+                                    <th scope="col" className="relative py-3.5 pl-3 pr-6 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 bg-white">
+                                {loading ? (
+                                    <tr><td colSpan="6" className="py-12 text-center"><div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-indigo-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div></td></tr>
+                                ) : filteredCandidates.length === 0 ? (
+                                    <tr><td colSpan="6" className="py-16 text-center"><UsersIcon className="mx-auto" /><h3 className="mt-4 text-sm font-semibold text-gray-900">No candidates found</h3></td></tr>
+                                ) : (
+                                    filteredCandidates.map((candidate) => (
+                                        <tr key={candidate.rowKey} className="hover:bg-gray-50/50 transition-colors group">
+                                            <td className="whitespace-nowrap py-4 pl-6 pr-3">
+                                                <div className="flex items-center">
+                                                    <div className="h-10 w-10 flex-shrink-0 rounded-full bg-indigo-50 flex items-center justify-center border border-indigo-100">
+                                                        <span className="text-sm font-medium text-indigo-600">{getAvatarInitials(candidate.firstName, candidate.lastName)}</span>
+                                                    </div>
+                                                    <div className="ml-4">
+                                                        <div className="font-medium text-gray-900">{candidate.firstName} {candidate.lastName}</div>
+                                                        <div className="text-gray-500 text-sm mt-0.5">{candidate.email}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="whitespace-nowrap px-3 py-4">
+                                                <div className="text-sm text-gray-900">{candidate.currentLocation || 'N/A'}</div>
+                                                <div className="text-xs text-gray-500 mt-1 flex gap-2">
+                                                    <span>{candidate.workAuthorizationStatus || 'No Auth'}</span>
+                                                    <span>•</span>
+                                                    <span>{candidate.workArrangementDesire || 'Any'}</span>
+                                                </div>
+                                            </td>
+                                            <td className="whitespace-nowrap px-3 py-4">
+                                                <div className="text-sm text-gray-900 truncate max-w-[200px]" title={candidate.skillSet}>{candidate.skillSet || 'Not Specified'}</div>
+                                                <div className="text-xs text-gray-500 mt-1">Exp: {candidate.totalExperience || '0'}y (US: {candidate.usExperience || '0'}y)</div>
+                                            </td>
+                                            <td className="whitespace-nowrap px-3 py-4">
+                                                {candidate.assignedTo ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="h-6 w-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-medium text-gray-600 border border-gray-200">{candidate.assignedTo.charAt(0).toUpperCase()}</div>
+                                                        <span className="text-sm text-gray-700">{candidate.assignedTo}</span>
+                                                    </div>
+                                                ) : <span className="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-500 ring-1 ring-inset ring-gray-500/10">Unassigned</span>}
+                                            </td>
+                                            <td className="whitespace-nowrap px-3 py-4">
+                                                <div className="flex items-center text-sm text-gray-700">
+                                                    <BuildingIcon />
+                                                    <span className="font-medium">{candidate.submissions?.length || 0}</span>&nbsp;Applications
+                                                </div>
+                                            </td>
+                                            <td className="whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
+                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {canEditRow(candidate) && (
+                                                        <button onClick={() => openEditSlideOver(candidate)} className="text-gray-400 hover:text-indigo-600 p-1.5 rounded-md hover:bg-indigo-50 transition-colors" title="Edit Pipeline"><EditIcon /></button>
+                                                    )}
+                                                    {canDeleteRow(candidate) && (
+                                                        <button onClick={() => { setDeletingCandidate(candidate); setIsDeleteOpen(true); }} className="text-gray-400 hover:text-red-600 p-1.5 rounded-md hover:bg-red-50 transition-colors" title="Delete"><DeleteIcon /></button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            {/* Main Table */}
-            <div className="bg-white shadow-sm ring-1 ring-slate-200 rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200">
-                        <thead className="bg-slate-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Candidate</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Auth / Skills</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Target Role & Company</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Assigned To</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-slate-200">
-                            {loading ? (
-                                <tr><td colSpan="6" className="px-6 py-8 text-center text-slate-500">Loading candidates...</td></tr>
-                            ) : filteredCandidates.length === 0 ? (
-                                <tr><td colSpan="6" className="px-6 py-8 text-center text-slate-500">No candidates found matching your criteria.</td></tr>
-                            ) : (
-                                filteredCandidates.map((candidate) => (
-                                    <tr key={candidate.rowKey} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="font-medium text-slate-900">{candidate.firstName} {candidate.lastName}</div>
-                                            <div className="text-sm text-slate-500">{candidate.email}</div>
-                                            <div className="text-xs text-slate-400 mt-0.5">{candidate.mobileNumber}</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-sm text-slate-900 font-medium">{candidate.workAuthorizationStatus || 'N/A'}</div>
-                                            <div className="text-xs text-slate-500 truncate max-w-xs" title={candidate.skillSet}>{candidate.skillSet || 'No skills listed'}</div>
-                                            <div className="text-xs text-slate-400">Exp: {candidate.totalExperience || '0'} yrs</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-sm font-medium text-indigo-600">{candidate.appliedRole || 'Not Specified'}</div>
-                                            <div className="text-sm text-slate-700">{candidate.companyName || 'No Company'}</div>
-                                            <div className="text-xs text-slate-500">Rate: {candidate.appliedC2CRate || 'N/A'}</div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-slate-900">
-                                                {candidate.workingBy ? (
-                                                    <span className="inline-flex items-center gap-1.5">
-                                                        <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">
-                                                            {candidate.workingBy.charAt(0).toUpperCase()}
+            {/* --- SLIDE-OVER (DRAWER) FOR ADD/EDIT & SUBMISSIONS --- */}
+            {isSlideOverOpen && (
+                <div className="relative z-50">
+                    <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" onClick={() => setIsSlideOverOpen(false)}></div>
+                    <div className="fixed inset-0 overflow-hidden">
+                        <div className="absolute inset-0 overflow-hidden">
+                            <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10 sm:pl-16">
+                                {/* Increased width to max-w-3xl to accommodate the nested table comfortably */}
+                                <div className="pointer-events-auto w-screen max-w-3xl transform transition-transform ease-in-out duration-300">
+                                    <form onSubmit={handleSave} className="flex h-full flex-col divide-y divide-gray-200 bg-white shadow-2xl">
+                                        
+                                        {/* Slide-over Header */}
+                                        <div className="bg-gray-50 px-6 py-6 sm:px-8 flex-shrink-0">
+                                            <div className="flex items-center justify-between">
+                                                <h2 className="text-xl font-semibold leading-6 text-gray-900">
+                                                    {editingCandidate ? 'Candidate Profile & Pipeline' : 'New Candidate'}
+                                                </h2>
+                                                <button type="button" className="text-gray-400 hover:text-gray-500" onClick={() => setIsSlideOverOpen(false)}><XIcon /></button>
+                                            </div>
+                                        </div>
+
+                                        {/* Slide-over Body */}
+                                        <div className="h-0 flex-1 overflow-y-auto px-6 py-8 sm:px-8">
+                                            <div className="flex flex-col gap-y-10">
+                                                
+                                                {/* Candidate Personal & Professional Info */}
+                                                <div>
+                                                    <h3 className="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 uppercase tracking-wider text-indigo-600">Candidate Details</h3>
+                                                    <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+                                                        <div><label className="block text-sm font-medium text-gray-900">First Name *</label><input required type="text" name="firstName" value={formData.firstName || ''} onChange={handleFormChange} className="mt-1.5 block w-full rounded-md border-0 py-2 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm" /></div>
+                                                        <div><label className="block text-sm font-medium text-gray-900">Last Name *</label><input required type="text" name="lastName" value={formData.lastName || ''} onChange={handleFormChange} className="mt-1.5 block w-full rounded-md border-0 py-2 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm" /></div>
+                                                        <div><label className="block text-sm font-medium text-gray-900">Email *</label><input required type="email" name="email" value={formData.email || ''} onChange={handleFormChange} className="mt-1.5 block w-full rounded-md border-0 py-2 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm" /></div>
+                                                        <div><label className="block text-sm font-medium text-gray-900">Mobile</label><input type="text" name="mobileNumber" value={formData.mobileNumber || ''} onChange={handleFormChange} className="mt-1.5 block w-full rounded-md border-0 py-2 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm" /></div>
+                                                        <div><label className="block text-sm font-medium text-gray-900">Current Location</label><input type="text" name="currentLocation" value={formData.currentLocation || ''} onChange={handleFormChange} className="mt-1.5 block w-full rounded-md border-0 py-2 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm" /></div>
+                                                        <div>
+                                                            <label className="block text-sm font-medium text-gray-900">Work Arrangement Desire</label>
+                                                            <select name="workArrangementDesire" value={formData.workArrangementDesire || ''} onChange={handleFormChange} className="mt-1.5 block w-full rounded-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm">
+                                                                <option value="">Select...</option>
+                                                                <option value="Remote">Remote</option>
+                                                                <option value="Hybrid">Hybrid</option>
+                                                                <option value="On-site">On-site</option>
+                                                            </select>
                                                         </div>
-                                                        {candidate.workingBy}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-slate-400 italic">Unassigned</span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusStyle(candidate.status)}`}>
-                                                {candidate.status || 'Draft'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <div className="flex items-center justify-end gap-3">
-                                                {canEditRow(candidate) && (
-                                                    <button onClick={() => openEditModal(candidate)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-1.5 rounded hover:bg-indigo-100 transition-colors" title="Edit">
-                                                        <EditIcon />
-                                                    </button>
-                                                )}
-                                                {canDeleteRow(candidate) && (
-                                                    <button onClick={() => { setDeletingCandidate(candidate); setIsDeleteOpen(true); }} className="text-red-600 hover:text-red-900 bg-red-50 p-1.5 rounded hover:bg-red-100 transition-colors" title="Delete">
-                                                        <DeleteIcon />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                                                        <div>
+                                                            <label className="block text-sm font-medium text-gray-900">Work Auth Status</label>
+                                                            <select name="workAuthorizationStatus" value={formData.workAuthorizationStatus || ''} onChange={handleFormChange} className="mt-1.5 block w-full rounded-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm">
+                                                                <option value="">Select...</option>
+                                                                <option value="H1B">H1B</option><option value="US Citizen">US Citizen</option><option value="Green Card">Green Card</option><option value="OPT">OPT</option><option value="CPT">CPT</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-sm font-medium text-gray-900">Assigned Recruiter</label>
+                                                            <select name="assignedTo" value={formData.assignedTo || ''} onChange={handleFormChange} disabled={!isAdmin} className="mt-1.5 block w-full rounded-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 disabled:bg-gray-50 sm:text-sm">
+                                                                <option value="">Unassigned</option>
+                                                                {recruiters.map(r => <option key={r.username} value={r.displayName}>{r.displayName}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        <div className="sm:col-span-2"><label className="block text-sm font-medium text-gray-900">Skill Set</label><input type="text" name="skillSet" placeholder="Java, React, AWS..." value={formData.skillSet || ''} onChange={handleFormChange} className="mt-1.5 block w-full rounded-md border-0 py-2 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm" /></div>
+                                                        <div><label className="block text-sm font-medium text-gray-900">Total Exp (Yrs)</label><input type="number" name="totalExperience" value={formData.totalExperience || ''} onChange={handleFormChange} className="mt-1.5 block w-full rounded-md border-0 py-2 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm" /></div>
+                                                        <div><label className="block text-sm font-medium text-gray-900">US Exp (Yrs)</label><input type="number" name="usExperience" value={formData.usExperience || ''} onChange={handleFormChange} className="mt-1.5 block w-full rounded-md border-0 py-2 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm" /></div>
+                                                    </div>
+                                                </div>
 
-            {/* --- ADD/EDIT MODAL --- */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        {/* Background overlay */}
-                        <div className="fixed inset-0 bg-slate-900 bg-opacity-75 transition-opacity" onClick={() => setIsModalOpen(false)}></div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                        
-                        <div className="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl w-full">
-                            <form onSubmit={handleSave}>
-                                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                    <h3 className="text-lg leading-6 font-semibold text-slate-900 mb-5 border-b pb-3">
-                                        {editingCandidate ? 'Edit Candidate Submission' : 'Add New Candidate Submission'}
-                                    </h3>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        {/* Column 1: Personal Info */}
-                                        <div className="space-y-4">
-                                            <h4 className="font-medium text-indigo-600 text-sm uppercase tracking-wide">Personal Details</h4>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700">First Name <span className="text-red-500">*</span></label>
-                                                <input required type="text" name="firstName" value={formData.firstName || ''} onChange={handleFormChange} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700">Last Name <span className="text-red-500">*</span></label>
-                                                <input required type="text" name="lastName" value={formData.lastName || ''} onChange={handleFormChange} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700">Email <span className="text-red-500">*</span></label>
-                                                <input required type="email" name="email" value={formData.email || ''} onChange={handleFormChange} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700">Mobile Number <span className="text-red-500">*</span></label>
-                                                <input required type="text" name="mobileNumber" value={formData.mobileNumber || ''} onChange={handleFormChange} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                                {/* --- THE SUBMISSIONS / APPLICATION PIPELINE PIPELINE SECTION --- */}
+                                                <div>
+                                                    <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-4">
+                                                        <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider text-indigo-600">Application Pipeline</h3>
+                                                        <button type="button" onClick={addSubmission} className="inline-flex items-center text-xs font-semibold text-indigo-600 hover:text-indigo-500 bg-indigo-50 px-2.5 py-1.5 rounded-md transition-colors">
+                                                            + Add Company
+                                                        </button>
+                                                    </div>
+
+                                                    {formData.submissions?.length === 0 ? (
+                                                        <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                                                            <p className="text-sm text-gray-500">No companies applied to yet.</p>
+                                                            <button type="button" onClick={addSubmission} className="mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">Start adding submissions</button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-6">
+                                                            {formData.submissions.map((sub, index) => (
+                                                                <div key={sub.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative group">
+                                                                    <button type="button" onClick={() => removeSubmission(sub.id)} className="absolute top-3 right-3 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" title="Remove Submission">
+                                                                        <XIcon />
+                                                                    </button>
+                                                                    
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                                        {/* Core Submission Info */}
+                                                                        <div>
+                                                                            <label className="block text-xs font-medium text-gray-700">Company Name</label>
+                                                                            <input type="text" value={sub.companyName} onChange={(e) => updateSubmission(sub.id, 'companyName', e.target.value)} className="mt-1 block w-full rounded border-gray-300 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="e.g. Google" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-xs font-medium text-gray-700">Applied Role</label>
+                                                                            <input type="text" value={sub.appliedRole} onChange={(e) => updateSubmission(sub.id, 'appliedRole', e.target.value)} className="mt-1 block w-full rounded border-gray-300 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Sr. Developer" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-xs font-medium text-gray-700">Status</label>
+                                                                            <select value={sub.status} onChange={(e) => updateSubmission(sub.id, 'status', e.target.value)} className="mt-1 block w-full rounded border-gray-300 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white">
+                                                                                <option value="Submitted">Submitted</option>
+                                                                                <option value="In The Review">In The Review</option>
+                                                                                <option value="In The Interview">In The Interview</option>
+                                                                                <option value="Selected">Selected</option>
+                                                                                <option value="Rejected">Rejected</option>
+                                                                            </select>
+                                                                        </div>
+
+                                                                        {/* Extended Details */}
+                                                                        <div>
+                                                                            <label className="block text-xs font-medium text-gray-700">C2C Rate</label>
+                                                                            <input type="text" value={sub.c2cRate} onChange={(e) => updateSubmission(sub.id, 'c2cRate', e.target.value)} className="mt-1 block w-full rounded border-gray-300 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="$80/hr" />
+                                                                        </div>
+                                                                        <div className="sm:col-span-2">
+                                                                            <label className="block text-xs font-medium text-gray-700">POC Details (Name / Email / Phone)</label>
+                                                                            <div className="mt-1 flex gap-2">
+                                                                                <input type="text" value={sub.pocName} onChange={(e) => updateSubmission(sub.id, 'pocName', e.target.value)} className="block w-1/3 rounded border-gray-300 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Name" />
+                                                                                <input type="email" value={sub.pocEmail} onChange={(e) => updateSubmission(sub.id, 'pocEmail', e.target.value)} className="block w-1/3 rounded border-gray-300 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Email" />
+                                                                                <input type="text" value={sub.pocMobile} onChange={(e) => updateSubmission(sub.id, 'pocMobile', e.target.value)} className="block w-1/3 rounded border-gray-300 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Phone" />
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+
                                             </div>
                                         </div>
 
-                                        {/* Column 2: Professional Info */}
-                                        <div className="space-y-4">
-                                            <h4 className="font-medium text-indigo-600 text-sm uppercase tracking-wide">Professional Info</h4>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700">Work Auth Status</label>
-                                                <select name="workAuthorizationStatus" value={formData.workAuthorizationStatus || ''} onChange={handleFormChange} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                                    <option value="">Select...</option>
-                                                    <option value="H1B">H1B</option>
-                                                    <option value="US Citizen">US Citizen</option>
-                                                    <option value="Green Card">Green Card</option>
-                                                    <option value="OPT">OPT</option>
-                                                    <option value="CPT">CPT</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700">Skill Set</label>
-                                                <input type="text" name="skillSet" placeholder="Java, React, AWS..." value={formData.skillSet || ''} onChange={handleFormChange} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <div className="w-1/2">
-                                                    <label className="block text-sm font-medium text-slate-700">Total Exp (Yrs)</label>
-                                                    <input type="number" name="totalExperience" value={formData.totalExperience || ''} onChange={handleFormChange} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                                                </div>
-                                                <div className="w-1/2">
-                                                    <label className="block text-sm font-medium text-slate-700">US Exp (Yrs)</label>
-                                                    <input type="number" name="usExperience" value={formData.usExperience || ''} onChange={handleFormChange} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700">Assigned Recruiter</label>
-                                                <select name="workingBy" value={formData.workingBy || ''} onChange={handleFormChange} disabled={!isAdmin} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-slate-100">
-                                                    <option value="">Unassigned</option>
-                                                    {recruiters.map(r => (
-                                                        <option key={r.username} value={r.displayName}>{r.displayName}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
+                                        {/* Slide-over Footer */}
+                                        <div className="flex flex-shrink-0 justify-end px-6 py-4 border-t border-gray-200 bg-gray-50">
+                                            <button type="button" className="rounded-md bg-white px-3.5 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" onClick={() => setIsSlideOverOpen(false)}>Cancel</button>
+                                            <button type="submit" className="ml-4 inline-flex justify-center rounded-md bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">Save Candidate & Pipeline</button>
                                         </div>
-
-                                        {/* Column 3: Submission Details */}
-                                        <div className="space-y-4">
-                                            <h4 className="font-medium text-indigo-600 text-sm uppercase tracking-wide">Submission Details</h4>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700">Applied Role</label>
-                                                <input type="text" name="appliedRole" value={formData.appliedRole || ''} onChange={handleFormChange} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700">Target Company</label>
-                                                <input type="text" name="companyName" value={formData.companyName || ''} onChange={handleFormChange} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <div className="w-1/2">
-                                                    <label className="block text-sm font-medium text-slate-700">C2C Rate</label>
-                                                    <input type="text" name="appliedC2CRate" placeholder="$75/hr" value={formData.appliedC2CRate || ''} onChange={handleFormChange} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                                                </div>
-                                                <div className="w-1/2">
-                                                    <label className="block text-sm font-medium text-slate-700">Status</label>
-                                                    <select name="status" value={formData.status || 'Submitted'} onChange={handleFormChange} className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-semibold">
-                                                        <option value="Submitted">Submitted</option>
-                                                        <option value="In The Review">In The Review</option>
-                                                        <option value="In The Interview">In The Interview</option>
-                                                        <option value="Selected">Selected</option>
-                                                        <option value="Rejected">Rejected</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div className="bg-slate-50 p-3 rounded border border-slate-200 mt-2">
-                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Company POC</label>
-                                                <input type="text" name="pocName" placeholder="POC Name" value={formData.pocName || ''} onChange={handleFormChange} className="mb-2 block w-full border border-slate-300 rounded shadow-sm py-1.5 px-2 text-sm" />
-                                                <input type="email" name="pocEmail" placeholder="POC Email" value={formData.pocEmail || ''} onChange={handleFormChange} className="block w-full border border-slate-300 rounded shadow-sm py-1.5 px-2 text-sm" />
-                                            </div>
-                                        </div>
-                                    </div>
+                                    </form>
                                 </div>
-                                <div className="bg-slate-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-slate-200">
-                                    <button type="submit" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
-                                        Save Candidate
-                                    </button>
-                                    <button type="button" onClick={() => setIsModalOpen(false)} className="mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* --- DELETE CONFIRMATION MODAL --- */}
-            {isDeleteOpen && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-slate-900 bg-opacity-75 transition-opacity" onClick={() => setIsDeleteOpen(false)}></div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
-                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                <div className="sm:flex sm:items-start">
-                                    <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                                        <DeleteIcon className="h-6 w-6 text-red-600" />
-                                    </div>
-                                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                        <h3 className="text-lg leading-6 font-medium text-slate-900">Delete Candidate Record</h3>
-                                        <div className="mt-2">
-                                            <p className="text-sm text-slate-500">
-                                                Are you sure you want to delete the record for <strong>{deletingCandidate?.firstName} {deletingCandidate?.lastName}</strong>? This action cannot be undone.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="bg-slate-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-slate-200">
-                                <button type="button" onClick={confirmDelete} className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
-                                    Delete
-                                </button>
-                                <button type="button" onClick={() => setIsDeleteOpen(false)} className="mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
-                                    Cancel
-                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
-
         </div>
     );
 };
