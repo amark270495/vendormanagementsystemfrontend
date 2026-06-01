@@ -47,8 +47,8 @@ const CreateOfferLetterPage = () => {
         setLoading(true);
 
         try {
-            // Passing isPreview: true to the backend
-            const response = await apiService.createOfferLetter({ ...formData, isPreview: true }, user.userIdentifier);
+            // *** FIXED: Passing true as the third explicit argument for isPreview ***
+            const response = await apiService.createOfferLetter(formData, user.userIdentifier, true);
             
             if (response.data.success && response.data.pdfBase64) {
                 // Convert Base64 back to a Blob URL for local viewing
@@ -80,8 +80,8 @@ const CreateOfferLetterPage = () => {
         setLoading(true);
 
         try {
-            // Passing isPreview: false (or omitting it) triggers the full backend flow
-            const response = await apiService.createOfferLetter({ ...formData, isPreview: false }, user.userIdentifier);
+            // *** FIXED: Passing false as the third explicit argument for isPreview ***
+            const response = await apiService.createOfferLetter(formData, user.userIdentifier, false);
             
             if (response.data.success) {
                 setSuccess(response.data.message);
