@@ -188,8 +188,10 @@ export const apiService = {
     apiClient.post('/resendMSAWOEmail', { partitionKey, rowKey, authenticatedUsername }),
 
   // --- Offer Letter Functions ---
-  createOfferLetter: (formData, authenticatedUsername) =>
-    apiClient.post('/createOfferLetter', { formData, authenticatedUsername }),
+  // FIXED: Added isPreview parameter and passed it at the root of the JSON body
+  createOfferLetter: (formData, authenticatedUsername, isPreview = false) =>
+    apiClient.post('/createOfferLetter', { formData, authenticatedUsername, isPreview }),
+    
   getOfferLetterDashboardData: (authenticatedUsername) =>
     apiClient.get('/getOfferLetterDashboardData', { params: { authenticatedUsername } }),
   deleteOfferLetter: (rowKey, authenticatedUsername, pdfUrl) =>
