@@ -47,8 +47,15 @@ const CreateOfferLetterPage = () => {
         setLoading(true);
 
         try {
-            // *** FIXED: Passing true as the third explicit argument for isPreview ***
-            const response = await apiService.createOfferLetter(formData, user.userIdentifier, true);
+            // EXPLICIT PAYLOAD: Guarantees the backend catches the isPreview flag
+            const payload = {
+                formData: formData,
+                authenticatedUsername: user.userIdentifier,
+                isPreview: true 
+            };
+            
+            // Send the single payload object
+            const response = await apiService.createOfferLetter(payload);
             
             if (response.data.success && response.data.pdfBase64) {
                 // Convert Base64 back to a Blob URL for local viewing
@@ -80,8 +87,15 @@ const CreateOfferLetterPage = () => {
         setLoading(true);
 
         try {
-            // *** FIXED: Passing false as the third explicit argument for isPreview ***
-            const response = await apiService.createOfferLetter(formData, user.userIdentifier, false);
+            // EXPLICIT PAYLOAD: Final submission flag
+            const payload = {
+                formData: formData,
+                authenticatedUsername: user.userIdentifier,
+                isPreview: false 
+            };
+
+            // Send the single payload object
+            const response = await apiService.createOfferLetter(payload);
             
             if (response.data.success) {
                 setSuccess(response.data.message);

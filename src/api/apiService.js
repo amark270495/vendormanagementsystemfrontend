@@ -189,8 +189,8 @@ export const apiService = {
 
   // --- Offer Letter Functions ---
   // FIXED: Added isPreview parameter and passed it at the root of the JSON body
-  createOfferLetter: (formData, authenticatedUsername, isPreview = false) =>
-    apiClient.post('/createOfferLetter', { formData, authenticatedUsername, isPreview }),
+  createOfferLetter: (payload) =>
+    apiClient.post('/createOfferLetter', payload),
     
   getOfferLetterDashboardData: (authenticatedUsername) =>
     apiClient.get('/getOfferLetterDashboardData', { params: { authenticatedUsername } }),
