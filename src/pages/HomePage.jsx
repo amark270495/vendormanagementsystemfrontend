@@ -25,7 +25,7 @@ const getUrgency = (dateInput) => {
     return { label: 'Healthy', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', ring: 'ring-emerald-200' };
 };
 
-// --- Helper: Generate Avatar from Name ---
+// --- Helper: Generate Avatar from a Single Name ---
 const getAvatar = (name) => {
     if (!name || name === 'Unassigned') return { initials: '?', color: 'bg-slate-100 text-slate-500 border border-slate-200' };
     const parts = name.trim().split(' ');
@@ -191,7 +191,6 @@ const HomePage = () => {
     };
 
     const chartData = useMemo(() => {
-        // Lighter charting colors
         const colors = ['#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#38bdf8'];
         return Object.entries(data).map(([assignee, jobs], idx) => ({
             name: assignee,
@@ -204,11 +203,8 @@ const HomePage = () => {
         <div className="space-y-8 pb-12 relative font-sans text-left" onClick={() => setOpenMenuId(null)}>
             
             {/* --- Light Welcome Banner --- */}
-            <div className="relative overflow-hidden bg-gradient-to-r from-blue-50 to-white p-8 rounded-3xl shadow-sm mt-6 border border-blue-100 group">
-                {/* Subtle decorative circles */}
+            <div className="relative overflow-hidden bg-gradient-to-r from-blue-50 to-white p-8 rounded-2xl shadow-sm mt-6 border border-blue-100 group">
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-blue-100/50 blur-3xl group-hover:scale-105 transition-transform duration-1000"></div>
-                <div className="absolute bottom-0 right-1/4 -mb-16 w-48 h-48 rounded-full bg-indigo-50/50 blur-2xl"></div>
-                
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 text-left">
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -218,11 +214,10 @@ const HomePage = () => {
                             You have <strong className="text-blue-800 bg-blue-100 px-2 py-0.5 rounded-md mx-1">{stats.openJobs} active jobs</strong> in the pipeline today.
                         </p>
                     </div>
-                    
                     <button 
                         onClick={fetchData} 
                         disabled={loading} 
-                        className="flex items-center justify-center space-x-2 px-6 py-3 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl border border-slate-200 transition-all disabled:opacity-50 hover:shadow-sm"
+                        className="flex items-center justify-center space-x-2 px-6 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl border border-slate-200 transition-all disabled:opacity-50 shadow-sm"
                     >
                         <RefreshIcon className={`w-4 h-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
                         <span>Refresh Pipeline</span>
@@ -239,11 +234,11 @@ const HomePage = () => {
             {canViewDashboards && !error && (
                 <>
                     {/* --- Metrics Grid --- */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between group transition-all hover:shadow-md">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-left">
+                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-center justify-between transition-all hover:shadow-md">
                             <div>
                                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Assignments</p>
-                                <span className="text-4xl font-black text-slate-800 mt-2 block tracking-tight">{loading ? '-' : stats.openJobs}</span>
+                                <span className="text-3xl font-black text-slate-800 mt-2 block tracking-tight">{loading ? '-' : stats.openJobs}</span>
                             </div>
                             {chartData.length > 0 ? (
                                 <DonutChart data={chartData} />
@@ -251,37 +246,32 @@ const HomePage = () => {
                                 <div className="p-4 rounded-2xl bg-blue-50 text-blue-500"><BriefcaseIcon className="w-8 h-8" /></div>
                             )}
                         </div>
-                        
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-start justify-between group transition-all hover:shadow-md">
+                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-start justify-between transition-all hover:shadow-md">
                             <div>
                                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pipeline Health</p>
                                 <span className="text-2xl font-extrabold text-emerald-600 mt-3 block tracking-tight">Optimal</span>
-                                <p className="mt-1 text-xs font-medium text-slate-500">Based on deadlines</p>
                             </div>
                             <div className="p-3.5 rounded-2xl bg-emerald-50 text-emerald-600"><ClockIcon className="w-6 h-6" /></div>
                         </div>
-
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-start justify-between group transition-all hover:shadow-md">
+                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-start justify-between transition-all hover:shadow-md">
                             <div>
                                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Candidates</p>
                                 <span className="text-2xl font-extrabold text-slate-800 mt-3 block tracking-tight">Tracking</span>
-                                <p className="mt-1 text-xs font-medium text-slate-500">View inside job details</p>
                             </div>
                             <div className="p-3.5 rounded-2xl bg-indigo-50 text-indigo-600"><UserGroupIcon className="w-6 h-6" /></div>
                         </div>
                     </div>
 
                     {/* --- Team Pipeline (Kanban Grid) --- */}
-                    <div className="bg-white p-2 rounded-3xl shadow-sm border border-slate-100 text-left">
-                        {/* Header Actions */}
-                        <div className="px-6 pt-6 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <h2 className="text-xl font-bold text-slate-800 tracking-tight">Team Workload</h2>
-                            <div className="relative w-full md:w-80 group">
-                                <SearchIcon className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
+                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 text-left">
+                        <div className="px-5 pt-4 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 mb-4">
+                            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Team Workload</h2>
+                            <div className="relative w-full md:w-72">
+                                <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                                 <input
                                     type="text" placeholder="Search jobs, IDs, or clients..."
                                     value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-2.5 border border-slate-200 rounded-2xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 focus:bg-white text-sm font-medium transition-all"
+                                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 focus:bg-white text-sm font-medium transition-all"
                                 />
                             </div>
                         </div>
@@ -294,45 +284,59 @@ const HomePage = () => {
                                 </div>
                             </div>
                         ) : (
-                            <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {Object.entries(filteredData).map(([assignee, jobs]) => {
-                                    const avatar = getAvatar(assignee);
+                            <div className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                                {Object.entries(filteredData).map(([assigneeGroup, jobs]) => {
+                                    // Parse comma separated assignees for the Avatar Stack
+                                    const assignees = assigneeGroup.split(',').map(n => n.trim()).filter(Boolean);
+                                    
                                     return (
                                         <div 
-                                            key={assignee} 
-                                            className="flex flex-col bg-slate-50/70 rounded-3xl border border-slate-200 h-[650px] w-full overflow-hidden text-left"
+                                            key={assigneeGroup} 
+                                            className="flex flex-col bg-slate-50/80 rounded-2xl border border-slate-200 h-[650px] w-full overflow-hidden text-left"
                                             onDragOver={e => e.preventDefault()}
-                                            onDrop={() => onDrop(assignee)}
+                                            onDrop={() => onDrop(assigneeGroup)}
                                         >
                                             {/* Column Header */}
-                                            <div className="p-5 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 flex justify-between items-center text-left">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${avatar.color}`}>
-                                                        {avatar.initials}
+                                            <div className="p-4 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 flex flex-col gap-3 text-left">
+                                                <div className="flex justify-between items-start">
+                                                    {/* Avatar Stack for Multiple Users */}
+                                                    <div className="flex -space-x-2 overflow-hidden">
+                                                        {assignees.map((name, i) => {
+                                                            const avatar = getAvatar(name);
+                                                            return (
+                                                                <div 
+                                                                    key={i} 
+                                                                    title={name}
+                                                                    className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-bold ring-2 ring-white ${avatar.color}`}
+                                                                >
+                                                                    {avatar.initials}
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
-                                                    <h3 className="font-bold text-slate-800 truncate pr-2 max-w-[120px]" title={assignee}>{assignee}</h3>
+                                                    <span className="bg-white border border-slate-200 text-slate-700 text-xs font-bold px-2 py-0.5 rounded-lg shadow-sm">{jobs.length}</span>
                                                 </div>
-                                                <span className="bg-white border border-slate-200 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm">{jobs.length}</span>
+                                                {/* Text Wrapping Enabled Here */}
+                                                <h3 className="font-bold text-slate-800 text-sm leading-tight break-words">{assigneeGroup}</h3>
                                             </div>
                                             
                                             {/* Job Cards */}
-                                            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar text-left">
+                                            <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar text-left">
                                                 {jobs.map(job => {
                                                     const urgency = getUrgency(job.deadline);
                                                     return (
                                                         <div 
                                                             key={job.postingId} 
                                                             draggable={canEditDashboard}
-                                                            onDragStart={() => onDragStart(job, assignee)}
-                                                            className={`relative group bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-200 cursor-grab active:cursor-grabbing text-left ${draggedJob?.postingId === job.postingId ? 'opacity-40 scale-95' : ''}`}
+                                                            onDragStart={() => onDragStart(job, assigneeGroup)}
+                                                            className={`relative group bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-200 cursor-grab active:cursor-grabbing text-left ${draggedJob?.postingId === job.postingId ? 'opacity-40 scale-95' : ''}`}
                                                         >
-                                                            {/* Menu Button */}
-                                                            <div className="absolute top-4 right-4 text-left z-20" onClick={e => e.stopPropagation()}>
+                                                            <div className="absolute top-3 right-3 text-left z-20" onClick={e => e.stopPropagation()}>
                                                                 <button onClick={() => setOpenMenuId(openMenuId === job.postingId ? null : job.postingId)} className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-md hover:bg-slate-50">
                                                                     <DotsVertical className="w-5 h-5" />
                                                                 </button>
                                                                 {openMenuId === job.postingId && (
-                                                                    <div className="origin-top-right absolute right-0 mt-1 w-40 rounded-xl shadow-lg border border-slate-200 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none text-left">
+                                                                    <div className="origin-top-right absolute right-0 mt-1 w-36 rounded-xl shadow-lg border border-slate-200 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none text-left">
                                                                         <div className="p-1.5">
                                                                             <button onClick={() => setSelectedJob(job)} className="block w-full text-left px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">View Details</button>
                                                                             <button onClick={() => handleArchive(job.postingId)} className="block w-full text-left px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg mt-1">Archive Job</button>
@@ -341,22 +345,21 @@ const HomePage = () => {
                                                                 )}
                                                             </div>
 
-                                                            {/* Card Body */}
                                                             <div onClick={() => { if(openMenuId !== job.postingId) setSelectedJob(job); }}>
                                                                 <div className="flex justify-between items-center mb-3 pr-8 text-left">
-                                                                    <span className="inline-block px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 tracking-wide border border-slate-200">{job.postingId}</span>
-                                                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${urgency.bg} ${urgency.text} flex items-center border border-slate-100`}>
-                                                                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ring-2 ${urgency.ring} ${urgency.dot}`}></span>
+                                                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 tracking-wide border border-slate-200">{job.postingId}</span>
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${urgency.bg} ${urgency.text} flex items-center border border-slate-100`}>
+                                                                        <span className={`w-1.5 h-1.5 rounded-full mr-1 ring-2 ${urgency.ring} ${urgency.dot}`}></span>
                                                                         {urgency.label}
                                                                     </span>
                                                                 </div>
                                                                 
-                                                                <h4 className="text-sm font-bold text-slate-900 leading-snug mb-2 line-clamp-2 text-left">
+                                                                <h4 className="text-sm font-bold text-slate-900 leading-snug mb-2 break-words text-left">
                                                                     {job.jobTitle}
                                                                 </h4>
                                                                 
                                                                 <div className="flex items-center text-xs font-medium text-slate-600 mb-4 bg-slate-50 p-2 rounded-lg border border-slate-100 text-left">
-                                                                    <BriefcaseIcon className="w-4 h-4 mr-2 text-slate-400" />
+                                                                    <BriefcaseIcon className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
                                                                     <span className="truncate">{job.clientName}</span>
                                                                 </div>
 
@@ -369,7 +372,7 @@ const HomePage = () => {
                                                     );
                                                 })}
                                                 {jobs.length === 0 && (
-                                                    <div className="h-full flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-200 rounded-2xl bg-white/50 text-left">
+                                                    <div className="h-full flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-200 rounded-xl bg-white/50 text-left">
                                                         <BriefcaseIcon className="w-8 h-8 text-slate-300 mb-2" />
                                                         <p className="text-sm font-medium text-slate-500">No active jobs</p>
                                                     </div>
@@ -408,12 +411,17 @@ const HomePage = () => {
                             <div className="flex-1 overflow-y-auto p-8 bg-slate-50 text-left">
                                 <div className="grid grid-cols-2 gap-4 mb-8">
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left">
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2">Assignee</p>
-                                        <div className="flex items-center gap-2 text-left">
-                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${getAvatar(selectedJob.workingBy).color}`}>
-                                                {getAvatar(selectedJob.workingBy).initials}
-                                            </div>
-                                            <p className="font-bold text-slate-900 text-sm">{selectedJob.workingBy || 'Unassigned'}</p>
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-3">Assignee(s)</p>
+                                        <div className="flex flex-col gap-2 text-left">
+                                            {selectedJob.workingBy?.split(',').map(n => n.trim()).filter(Boolean).map((name, i) => (
+                                                <div key={i} className="flex items-center gap-2 text-left">
+                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${getAvatar(name).color}`}>
+                                                        {getAvatar(name).initials}
+                                                    </div>
+                                                    <p className="font-bold text-slate-900 text-xs truncate">{name}</p>
+                                                </div>
+                                            ))}
+                                            {!selectedJob.workingBy && <p className="font-bold text-slate-900 text-sm">Unassigned</p>}
                                         </div>
                                     </div>
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left">
@@ -432,7 +440,6 @@ const HomePage = () => {
 
                                     {loadingCandidates ? (
                                         <div className="animate-pulse space-y-4">
-                                            {/* --- UPDATED Array.from SKELETON LOADER --- */}
                                             {Array.from({ length: 3 }).map((_, i) => (
                                                 <div key={i} className="h-20 bg-slate-200/50 rounded-2xl"></div>
                                             ))}
@@ -440,8 +447,8 @@ const HomePage = () => {
                                     ) : jobCandidates.length > 0 ? (
                                         <div className="space-y-4">
                                             {jobCandidates.map(candidate => (
-                                                <div key={candidate.email} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow text-left">
-                                                    <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 font-black text-lg flex-shrink-0 border border-slate-200">
+                                                <div key={candidate.email} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow text-left">
+                                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 font-black flex-shrink-0 border border-slate-200">
                                                         {candidate.firstName?.charAt(0)}{candidate.lastName?.charAt(0)}
                                                     </div>
                                                     <div className="text-left">
