@@ -25,11 +25,13 @@ const getUrgency = (dateInput) => {
     return { label: 'Healthy', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', ring: 'ring-emerald-200' };
 };
 
-// --- Helper: Generate Avatar from Name ---
+// --- Helper: Generate Avatar from a Single Name ---
 const getAvatar = (name) => {
     if (!name || name === 'Unassigned') return { initials: '?', color: 'bg-slate-100 text-slate-500 border border-slate-200' };
     const parts = name.trim().split(' ');
-    const initials = parts.length > 1 ? parts + parts : parts.substring(0, 2);
+    
+    // FIXED BUG: Correctly extract the first letter of the first and last name
+    const initials = parts.length > 1 ? (parts + parts) : parts.substring(0, 2);
     
     // Light pastel colors for avatars
     const colors = [
@@ -200,13 +202,13 @@ const HomePage = () => {
     }, [data]);
 
     return (
-        <div className="space-y-8 pb-12 relative font-sans text-left w-full" onClick={() => setOpenMenuId(null)}>
+        <div className="space-y-8 pb-12 relative font-sans text-left" onClick={() => setOpenMenuId(null)}>
             
             {/* --- Light Welcome Banner --- */}
-            <div className="relative overflow-hidden bg-gradient-to-r from-blue-50 to-white p-8 rounded-2xl shadow-sm mt-6 border border-blue-100 group">
+            <div className="relative overflow-hidden bg-gradient-to-r from-blue-50 to-white p-8 rounded-2xl shadow-sm mt-6 border border-blue-100 group text-left">
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-blue-100/50 blur-3xl group-hover:scale-105 transition-transform duration-1000"></div>
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 text-left">
-                    <div>
+                    <div className="text-left w-full">
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight text-left">
                             {getGreeting()}, <span className="text-blue-600">{user?.displayName || 'User'}</span>
                         </h1>
@@ -217,7 +219,7 @@ const HomePage = () => {
                     <button 
                         onClick={fetchData} 
                         disabled={loading} 
-                        className="flex items-center justify-center space-x-2 px-6 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl border border-slate-200 transition-all disabled:opacity-50 shadow-sm"
+                        className="shrink-0 flex items-center justify-center space-x-2 px-6 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl border border-slate-200 transition-all disabled:opacity-50 shadow-sm"
                     >
                         <RefreshIcon className={`w-4 h-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
                         <span>Refresh Pipeline</span>
@@ -234,39 +236,39 @@ const HomePage = () => {
             {canViewDashboards && !error && (
                 <>
                     {/* --- Metrics Grid --- */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-left">
-                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-center justify-between transition-all hover:shadow-md">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-left w-full">
+                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-center justify-between transition-all hover:shadow-md text-left w-full">
                             <div className="text-left w-full">
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Assignments</p>
-                                <span className="text-3xl font-black text-slate-800 mt-2 block tracking-tight">{loading ? '-' : stats.openJobs}</span>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Active Assignments</p>
+                                <span className="text-3xl font-black text-slate-800 mt-2 block tracking-tight text-left">{loading ? '-' : stats.openJobs}</span>
                             </div>
                             {chartData.length > 0 ? (
                                 <DonutChart data={chartData} />
                             ) : (
-                                <div className="p-4 rounded-2xl bg-blue-50 text-blue-500"><BriefcaseIcon className="w-8 h-8" /></div>
+                                <div className="p-4 rounded-2xl bg-blue-50 text-blue-500 shrink-0"><BriefcaseIcon className="w-8 h-8" /></div>
                             )}
                         </div>
-                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-start justify-between transition-all hover:shadow-md">
-                            <div className="text-left">
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pipeline Health</p>
-                                <span className="text-2xl font-extrabold text-emerald-600 mt-3 block tracking-tight">Optimal</span>
+                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-start justify-between transition-all hover:shadow-md text-left w-full">
+                            <div className="text-left w-full">
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Pipeline Health</p>
+                                <span className="text-2xl font-extrabold text-emerald-600 mt-3 block tracking-tight text-left">Optimal</span>
                             </div>
-                            <div className="p-3.5 rounded-2xl bg-emerald-50 text-emerald-600"><ClockIcon className="w-6 h-6" /></div>
+                            <div className="p-3.5 rounded-2xl bg-emerald-50 text-emerald-600 shrink-0"><ClockIcon className="w-6 h-6" /></div>
                         </div>
-                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-start justify-between transition-all hover:shadow-md">
-                            <div className="text-left">
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Candidates</p>
-                                <span className="text-2xl font-extrabold text-slate-800 mt-3 block tracking-tight">Tracking</span>
+                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-start justify-between transition-all hover:shadow-md text-left w-full">
+                            <div className="text-left w-full">
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Total Candidates</p>
+                                <span className="text-2xl font-extrabold text-slate-800 mt-3 block tracking-tight text-left">Tracking</span>
                             </div>
-                            <div className="p-3.5 rounded-2xl bg-indigo-50 text-indigo-600"><UserGroupIcon className="w-6 h-6" /></div>
+                            <div className="p-3.5 rounded-2xl bg-indigo-50 text-indigo-600 shrink-0"><UserGroupIcon className="w-6 h-6" /></div>
                         </div>
                     </div>
 
                     {/* --- Team Pipeline (Kanban Grid) --- */}
                     <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 text-left w-full">
-                        <div className="px-5 pt-4 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 mb-4 text-left">
-                            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Team Workload</h2>
-                            <div className="relative w-full md:w-72">
+                        <div className="px-5 pt-4 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 mb-4 text-left w-full">
+                            <h2 className="text-lg font-bold text-slate-800 tracking-tight text-left w-full md:w-auto">Team Workload</h2>
+                            <div className="relative w-full md:w-72 shrink-0">
                                 <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                                 <input
                                     type="text" placeholder="Search jobs, IDs, or clients..."
@@ -296,18 +298,20 @@ const HomePage = () => {
                                             onDrop={() => onDrop(assigneeGroup)}
                                         >
                                             {/* --- FULLY ALIGNED, TEXT-WRAPPING COLUMN HEADER --- */}
-                                            <div className="p-4 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 flex items-center justify-between gap-3 text-left w-full">
+                                            <div className="p-4 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 flex items-start justify-between gap-3 text-left w-full rounded-t-2xl">
                                                 
-                                                {/* Left Side: Avatars + Name wrapped in a flex container */}
-                                                <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
-                                                    <div className="flex -space-x-2 shrink-0">
+                                                {/* Left Side: Avatars + Name wrapped in a flex container aligned to the top */}
+                                                <div className="flex items-start gap-2.5 flex-1 min-w-0 text-left">
+                                                    
+                                                    {/* Avatar Stack */}
+                                                    <div className="flex -space-x-2 shrink-0 pt-0.5">
                                                         {assignees.map((name, i) => {
                                                             const avatar = getAvatar(name);
                                                             return (
                                                                 <div 
                                                                     key={i} 
                                                                     title={name}
-                                                                    className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-bold ring-2 ring-white ${avatar.color} shadow-sm`}
+                                                                    className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-bold ring-2 ring-white ${avatar.color}`}
                                                                 >
                                                                     {avatar.initials}
                                                                 </div>
@@ -315,21 +319,21 @@ const HomePage = () => {
                                                         })}
                                                     </div>
                                                     
-                                                    {/* min-w-0 forces the text to wrap instead of overflowing the flex container */}
-                                                    <div className="flex-1 min-w-0 text-left">
-                                                        <h3 className="font-bold text-slate-800 text-sm leading-tight break-words text-left w-full">
-                                                            {assigneeGroup}
-                                                        </h3>
-                                                    </div>
+                                                    {/* Assignee Name (Flex-1 and min-w-0 forces wrapping) */}
+                                                    <h3 className="font-bold text-slate-800 text-sm leading-snug break-words flex-1 min-w-0 pt-1 text-left w-full">
+                                                        {assigneeGroup}
+                                                    </h3>
                                                 </div>
 
-                                                {/* Right Side: Job Count Pill */}
-                                                <span className="shrink-0 bg-white border border-slate-200 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm">
-                                                    {jobs.length}
-                                                </span>
+                                                {/* Right Side: Job Count Pill aligned to the top */}
+                                                <div className="shrink-0 pt-0.5">
+                                                    <span className="bg-white border border-slate-200 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-md shadow-sm">
+                                                        {jobs.length}
+                                                    </span>
+                                                </div>
                                             </div>
                                             
-                                            {/* Job Cards Container */}
+                                            {/* Job Cards */}
                                             <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar text-left w-full">
                                                 {jobs.map(job => {
                                                     const urgency = getUrgency(job.deadline);
@@ -346,7 +350,7 @@ const HomePage = () => {
                                                                 </button>
                                                                 {openMenuId === job.postingId && (
                                                                     <div className="origin-top-right absolute right-0 mt-1 w-36 rounded-xl shadow-lg border border-slate-200 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none text-left">
-                                                                        <div className="p-1.5 text-left">
+                                                                        <div className="p-1.5 text-left w-full">
                                                                             <button onClick={() => setSelectedJob(job)} className="block w-full text-left px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">View Details</button>
                                                                             <button onClick={() => handleArchive(job.postingId)} className="block w-full text-left px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg mt-1">Archive Job</button>
                                                                         </div>
@@ -355,9 +359,9 @@ const HomePage = () => {
                                                             </div>
 
                                                             <div onClick={() => { if(openMenuId !== job.postingId) setSelectedJob(job); }} className="text-left w-full block">
-                                                                <div className="flex justify-between items-center mb-3 pr-8 text-left w-full">
-                                                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 tracking-wide border border-slate-200">{job.postingId}</span>
-                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${urgency.bg} ${urgency.text} flex items-center border border-slate-100 shrink-0`}>
+                                                                <div className="flex justify-between items-start mb-3 pr-8 text-left w-full">
+                                                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 tracking-wide border border-slate-200 shrink-0">{job.postingId}</span>
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${urgency.bg} ${urgency.text} flex items-center border border-slate-100 shrink-0 mt-0.5`}>
                                                                         <span className={`w-1.5 h-1.5 rounded-full mr-1 ring-2 ${urgency.ring} ${urgency.dot}`}></span>
                                                                         {urgency.label}
                                                                     </span>
@@ -383,7 +387,7 @@ const HomePage = () => {
                                                 {jobs.length === 0 && (
                                                     <div className="h-full flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-200 rounded-xl bg-white/50 text-left w-full">
                                                         <BriefcaseIcon className="w-8 h-8 text-slate-300 mb-2" />
-                                                        <p className="text-sm font-medium text-slate-500">No active jobs</p>
+                                                        <p className="text-sm font-medium text-slate-500 text-left w-full text-center">No active jobs</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -406,7 +410,7 @@ const HomePage = () => {
                             <div className="bg-white border-b border-slate-200 px-8 py-8 relative text-left w-full">
                                 <div className="flex items-center justify-between text-left">
                                     <h2 className="text-xs font-bold tracking-widest uppercase text-slate-500 text-left">Job Workspace</h2>
-                                    <button onClick={() => setSelectedJob(null)} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition-all border border-slate-200">
+                                    <button onClick={() => setSelectedJob(null)} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition-all border border-slate-200 shrink-0">
                                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                 </div>
@@ -420,21 +424,21 @@ const HomePage = () => {
                             <div className="flex-1 overflow-y-auto p-8 bg-slate-50 text-left w-full">
                                 <div className="grid grid-cols-2 gap-4 mb-8 text-left w-full">
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left w-full">
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-3">Assignee(s)</p>
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-3 text-left">Assignee(s)</p>
                                         <div className="flex flex-col gap-2 text-left w-full">
                                             {selectedJob.workingBy?.split(',').map(n => n.trim()).filter(Boolean).map((name, i) => (
-                                                <div key={i} className="flex items-center gap-2 text-left w-full">
+                                                <div key={i} className="flex items-center gap-2 text-left w-full min-w-0">
                                                     <div className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${getAvatar(name).color}`}>
                                                         {getAvatar(name).initials}
                                                     </div>
-                                                    <p className="font-bold text-slate-900 text-xs truncate w-full text-left">{name}</p>
+                                                    <p className="font-bold text-slate-900 text-xs truncate text-left w-full">{name}</p>
                                                 </div>
                                             ))}
-                                            {!selectedJob.workingBy && <p className="font-bold text-slate-900 text-sm text-left">Unassigned</p>}
+                                            {!selectedJob.workingBy && <p className="font-bold text-slate-900 text-sm text-left w-full">Unassigned</p>}
                                         </div>
                                     </div>
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left w-full">
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2">Deadline</p>
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2 text-left">Deadline</p>
                                         <p className="font-bold text-slate-900 text-sm text-left">{formatDate(selectedJob.deadline)}</p>
                                     </div>
                                 </div>
@@ -442,7 +446,7 @@ const HomePage = () => {
                                 <div className="border-t border-slate-200 pt-8 text-left w-full">
                                     <div className="flex items-center justify-between mb-6 text-left w-full">
                                         <h4 className="text-lg font-extrabold text-slate-900 text-left">Submitted Candidates</h4>
-                                        <span className="bg-white border border-slate-200 text-slate-700 font-bold px-3 py-1 rounded-lg text-xs shadow-sm">
+                                        <span className="bg-white border border-slate-200 text-slate-700 font-bold px-3 py-1 rounded-lg text-xs shadow-sm shrink-0">
                                             {jobCandidates.length}
                                         </span>
                                     </div>
@@ -464,8 +468,8 @@ const HomePage = () => {
                                                         <h5 className="font-bold text-slate-900 text-sm truncate w-full text-left">{candidate.firstName} {candidate.lastName}</h5>
                                                         <p className="text-xs text-slate-600 font-medium mb-2.5 mt-0.5 truncate w-full text-left">{candidate.currentRole || 'Candidate'}</p>
                                                         <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-left w-full">
-                                                            <span className="bg-slate-100 px-2 py-1 rounded-md text-slate-700 border border-slate-200">{candidate.currentLocation || 'Location N/A'}</span>
-                                                            <span className={`px-2 py-1 rounded-md border ${candidate.remarks === 'Rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
+                                                            <span className="bg-slate-100 px-2 py-1 rounded-md text-slate-700 border border-slate-200 shrink-0">{candidate.currentLocation || 'Location N/A'}</span>
+                                                            <span className={`px-2 py-1 rounded-md border shrink-0 ${candidate.remarks === 'Rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
                                                                 {candidate.remarks || 'Under Review'}
                                                             </span>
                                                         </div>
@@ -478,7 +482,7 @@ const HomePage = () => {
                                             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
                                                 <UserGroupIcon className="w-8 h-8 text-slate-400" />
                                             </div>
-                                            <p className="text-slate-600 font-medium text-sm">No candidates submitted yet.</p>
+                                            <p className="text-slate-600 font-medium text-sm text-center w-full">No candidates submitted yet.</p>
                                         </div>
                                     )}
                                 </div>
