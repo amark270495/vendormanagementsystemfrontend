@@ -25,7 +25,7 @@ const getUrgency = (dateInput) => {
     return { label: 'Healthy', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', ring: 'ring-emerald-200' };
 };
 
-// --- Helper: Generate Avatar from a Single Name ---
+// --- Helper: Generate Avatar from Name ---
 const getAvatar = (name) => {
     if (!name || name === 'Unassigned') return { initials: '?', color: 'bg-slate-100 text-slate-500 border border-slate-200' };
     const parts = name.trim().split(' ');
@@ -296,28 +296,34 @@ const HomePage = () => {
                                             onDragOver={e => e.preventDefault()}
                                             onDrop={() => onDrop(assigneeGroup)}
                                         >
-                                            {/* Column Header */}
-                                            <div className="p-4 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 flex flex-col gap-3 text-left">
-                                                <div className="flex justify-between items-start">
-                                                    {/* Avatar Stack for Multiple Users */}
-                                                    <div className="flex -space-x-2 overflow-hidden">
-                                                        {assignees.map((name, i) => {
-                                                            const avatar = getAvatar(name);
-                                                            return (
-                                                                <div 
-                                                                    key={i} 
-                                                                    title={name}
-                                                                    className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-bold ring-2 ring-white ${avatar.color}`}
-                                                                >
-                                                                    {avatar.initials}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                    <span className="bg-white border border-slate-200 text-slate-700 text-xs font-bold px-2 py-0.5 rounded-lg shadow-sm">{jobs.length}</span>
+                                            {/* --- UPDATED CRISP COLUMN HEADER --- */}
+                                            <div className="p-4 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 flex items-start gap-3">
+                                                
+                                                {/* Avatar Stack */}
+                                                <div className="flex -space-x-2 shrink-0 pt-0.5">
+                                                    {assignees.map((name, i) => {
+                                                        const avatar = getAvatar(name);
+                                                        return (
+                                                            <div 
+                                                                key={i} 
+                                                                title={name}
+                                                                className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-bold ring-2 ring-white ${avatar.color} shadow-sm`}
+                                                            >
+                                                                {avatar.initials}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
-                                                {/* Text Wrapping Enabled Here */}
-                                                <h3 className="font-bold text-slate-800 text-sm leading-tight break-words">{assigneeGroup}</h3>
+                                                
+                                                {/* Assignee Name(s) - Flex-1 allows taking remaining space and wrapping tightly */}
+                                                <h3 className="font-bold text-slate-800 text-sm leading-tight flex-1 break-words pt-1">
+                                                    {assigneeGroup}
+                                                </h3>
+                                                
+                                                {/* Job Count Pill */}
+                                                <span className="shrink-0 bg-white border border-slate-200 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm">
+                                                    {jobs.length}
+                                                </span>
                                             </div>
                                             
                                             {/* Job Cards */}
