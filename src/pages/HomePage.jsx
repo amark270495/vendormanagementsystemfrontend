@@ -200,17 +200,17 @@ const HomePage = () => {
     }, [data]);
 
     return (
-        <div className="space-y-8 pb-12 relative font-sans text-left" onClick={() => setOpenMenuId(null)}>
+        <div className="space-y-8 pb-12 relative font-sans text-left w-full" onClick={() => setOpenMenuId(null)}>
             
             {/* --- Light Welcome Banner --- */}
             <div className="relative overflow-hidden bg-gradient-to-r from-blue-50 to-white p-8 rounded-2xl shadow-sm mt-6 border border-blue-100 group">
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-blue-100/50 blur-3xl group-hover:scale-105 transition-transform duration-1000"></div>
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 text-left">
                     <div>
-                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight text-left">
                             {getGreeting()}, <span className="text-blue-600">{user?.displayName || 'User'}</span>
                         </h1>
-                        <p className="text-slate-600 mt-2 font-medium">
+                        <p className="text-slate-600 mt-2 font-medium text-left">
                             You have <strong className="text-blue-800 bg-blue-100 px-2 py-0.5 rounded-md mx-1">{stats.openJobs} active jobs</strong> in the pipeline today.
                         </p>
                     </div>
@@ -236,7 +236,7 @@ const HomePage = () => {
                     {/* --- Metrics Grid --- */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-left">
                         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-center justify-between transition-all hover:shadow-md">
-                            <div>
+                            <div className="text-left w-full">
                                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Assignments</p>
                                 <span className="text-3xl font-black text-slate-800 mt-2 block tracking-tight">{loading ? '-' : stats.openJobs}</span>
                             </div>
@@ -247,14 +247,14 @@ const HomePage = () => {
                             )}
                         </div>
                         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-start justify-between transition-all hover:shadow-md">
-                            <div>
+                            <div className="text-left">
                                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pipeline Health</p>
                                 <span className="text-2xl font-extrabold text-emerald-600 mt-3 block tracking-tight">Optimal</span>
                             </div>
                             <div className="p-3.5 rounded-2xl bg-emerald-50 text-emerald-600"><ClockIcon className="w-6 h-6" /></div>
                         </div>
                         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-start justify-between transition-all hover:shadow-md">
-                            <div>
+                            <div className="text-left">
                                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Candidates</p>
                                 <span className="text-2xl font-extrabold text-slate-800 mt-3 block tracking-tight">Tracking</span>
                             </div>
@@ -263,15 +263,15 @@ const HomePage = () => {
                     </div>
 
                     {/* --- Team Pipeline (Kanban Grid) --- */}
-                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 text-left">
-                        <div className="px-5 pt-4 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 mb-4">
+                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 text-left w-full">
+                        <div className="px-5 pt-4 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 mb-4 text-left">
                             <h2 className="text-lg font-bold text-slate-800 tracking-tight">Team Workload</h2>
                             <div className="relative w-full md:w-72">
                                 <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                                 <input
                                     type="text" placeholder="Search jobs, IDs, or clients..."
                                     value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 focus:bg-white text-sm font-medium transition-all"
+                                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 focus:bg-white text-sm font-medium transition-all text-left"
                                 />
                             </div>
                         </div>
@@ -284,9 +284,8 @@ const HomePage = () => {
                                 </div>
                             </div>
                         ) : (
-                            <div className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                            <div className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 text-left w-full">
                                 {Object.entries(filteredData).map(([assigneeGroup, jobs]) => {
-                                    // Parse comma separated assignees for the Avatar Stack
                                     const assignees = assigneeGroup.split(',').map(n => n.trim()).filter(Boolean);
                                     
                                     return (
@@ -296,38 +295,42 @@ const HomePage = () => {
                                             onDragOver={e => e.preventDefault()}
                                             onDrop={() => onDrop(assigneeGroup)}
                                         >
-                                            {/* --- UPDATED CRISP COLUMN HEADER --- */}
-                                            <div className="p-4 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 flex items-start gap-3">
+                                            {/* --- FULLY ALIGNED, TEXT-WRAPPING COLUMN HEADER --- */}
+                                            <div className="p-4 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 flex items-center justify-between gap-3 text-left w-full">
                                                 
-                                                {/* Avatar Stack */}
-                                                <div className="flex -space-x-2 shrink-0 pt-0.5">
-                                                    {assignees.map((name, i) => {
-                                                        const avatar = getAvatar(name);
-                                                        return (
-                                                            <div 
-                                                                key={i} 
-                                                                title={name}
-                                                                className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-bold ring-2 ring-white ${avatar.color} shadow-sm`}
-                                                            >
-                                                                {avatar.initials}
-                                                            </div>
-                                                        );
-                                                    })}
+                                                {/* Left Side: Avatars + Name wrapped in a flex container */}
+                                                <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                                                    <div className="flex -space-x-2 shrink-0">
+                                                        {assignees.map((name, i) => {
+                                                            const avatar = getAvatar(name);
+                                                            return (
+                                                                <div 
+                                                                    key={i} 
+                                                                    title={name}
+                                                                    className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-bold ring-2 ring-white ${avatar.color} shadow-sm`}
+                                                                >
+                                                                    {avatar.initials}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    
+                                                    {/* min-w-0 forces the text to wrap instead of overflowing the flex container */}
+                                                    <div className="flex-1 min-w-0 text-left">
+                                                        <h3 className="font-bold text-slate-800 text-sm leading-tight break-words text-left w-full">
+                                                            {assigneeGroup}
+                                                        </h3>
+                                                    </div>
                                                 </div>
-                                                
-                                                {/* Assignee Name(s) - Flex-1 allows taking remaining space and wrapping tightly */}
-                                                <h3 className="font-bold text-slate-800 text-sm leading-tight flex-1 break-words pt-1">
-                                                    {assigneeGroup}
-                                                </h3>
-                                                
-                                                {/* Job Count Pill */}
+
+                                                {/* Right Side: Job Count Pill */}
                                                 <span className="shrink-0 bg-white border border-slate-200 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm">
                                                     {jobs.length}
                                                 </span>
                                             </div>
                                             
-                                            {/* Job Cards */}
-                                            <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar text-left">
+                                            {/* Job Cards Container */}
+                                            <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar text-left w-full">
                                                 {jobs.map(job => {
                                                     const urgency = getUrgency(job.deadline);
                                                     return (
@@ -335,7 +338,7 @@ const HomePage = () => {
                                                             key={job.postingId} 
                                                             draggable={canEditDashboard}
                                                             onDragStart={() => onDragStart(job, assigneeGroup)}
-                                                            className={`relative group bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-200 cursor-grab active:cursor-grabbing text-left ${draggedJob?.postingId === job.postingId ? 'opacity-40 scale-95' : ''}`}
+                                                            className={`relative group bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-200 cursor-grab active:cursor-grabbing text-left block w-full ${draggedJob?.postingId === job.postingId ? 'opacity-40 scale-95' : ''}`}
                                                         >
                                                             <div className="absolute top-3 right-3 text-left z-20" onClick={e => e.stopPropagation()}>
                                                                 <button onClick={() => setOpenMenuId(openMenuId === job.postingId ? null : job.postingId)} className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-md hover:bg-slate-50">
@@ -343,7 +346,7 @@ const HomePage = () => {
                                                                 </button>
                                                                 {openMenuId === job.postingId && (
                                                                     <div className="origin-top-right absolute right-0 mt-1 w-36 rounded-xl shadow-lg border border-slate-200 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none text-left">
-                                                                        <div className="p-1.5">
+                                                                        <div className="p-1.5 text-left">
                                                                             <button onClick={() => setSelectedJob(job)} className="block w-full text-left px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">View Details</button>
                                                                             <button onClick={() => handleArchive(job.postingId)} className="block w-full text-left px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg mt-1">Archive Job</button>
                                                                         </div>
@@ -351,34 +354,34 @@ const HomePage = () => {
                                                                 )}
                                                             </div>
 
-                                                            <div onClick={() => { if(openMenuId !== job.postingId) setSelectedJob(job); }}>
-                                                                <div className="flex justify-between items-center mb-3 pr-8 text-left">
+                                                            <div onClick={() => { if(openMenuId !== job.postingId) setSelectedJob(job); }} className="text-left w-full block">
+                                                                <div className="flex justify-between items-center mb-3 pr-8 text-left w-full">
                                                                     <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 tracking-wide border border-slate-200">{job.postingId}</span>
-                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${urgency.bg} ${urgency.text} flex items-center border border-slate-100`}>
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${urgency.bg} ${urgency.text} flex items-center border border-slate-100 shrink-0`}>
                                                                         <span className={`w-1.5 h-1.5 rounded-full mr-1 ring-2 ${urgency.ring} ${urgency.dot}`}></span>
                                                                         {urgency.label}
                                                                     </span>
                                                                 </div>
                                                                 
-                                                                <h4 className="text-sm font-bold text-slate-900 leading-snug mb-2 break-words text-left">
+                                                                <h4 className="text-sm font-bold text-slate-900 leading-snug mb-2 break-words text-left w-full">
                                                                     {job.jobTitle}
                                                                 </h4>
                                                                 
-                                                                <div className="flex items-center text-xs font-medium text-slate-600 mb-4 bg-slate-50 p-2 rounded-lg border border-slate-100 text-left">
+                                                                <div className="flex items-center text-xs font-medium text-slate-600 mb-4 bg-slate-50 p-2 rounded-lg border border-slate-100 text-left w-full">
                                                                     <BriefcaseIcon className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
-                                                                    <span className="truncate">{job.clientName}</span>
+                                                                    <span className="truncate text-left w-full">{job.clientName}</span>
                                                                 </div>
 
-                                                                <div className="pt-3 border-t border-slate-100 flex justify-between items-center text-left">
-                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Deadline</span>
-                                                                    <span className="text-xs font-bold text-slate-800">{formatDate(job.deadline)}</span>
+                                                                <div className="pt-3 border-t border-slate-100 flex justify-between items-center text-left w-full">
+                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Deadline</span>
+                                                                    <span className="text-xs font-bold text-slate-800 shrink-0">{formatDate(job.deadline)}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     );
                                                 })}
                                                 {jobs.length === 0 && (
-                                                    <div className="h-full flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-200 rounded-xl bg-white/50 text-left">
+                                                    <div className="h-full flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-200 rounded-xl bg-white/50 text-left w-full">
                                                         <BriefcaseIcon className="w-8 h-8 text-slate-300 mb-2" />
                                                         <p className="text-sm font-medium text-slate-500">No active jobs</p>
                                                     </div>
@@ -397,70 +400,70 @@ const HomePage = () => {
             {selectedJob && (
                 <div className="fixed inset-0 z- overflow-hidden text-left">
                     <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity" onClick={() => setSelectedJob(null)}></div>
-                    <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+                    <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10 text-left">
                         <div className="pointer-events-auto w-screen max-w-lg transform transition-transform duration-500 ease-in-out bg-white shadow-2xl flex flex-col border-l border-slate-200 text-left">
                             
-                            <div className="bg-white border-b border-slate-200 px-8 py-8 relative">
-                                <div className="flex items-center justify-between">
-                                    <h2 className="text-xs font-bold tracking-widest uppercase text-slate-500">Job Workspace</h2>
+                            <div className="bg-white border-b border-slate-200 px-8 py-8 relative text-left w-full">
+                                <div className="flex items-center justify-between text-left">
+                                    <h2 className="text-xs font-bold tracking-widest uppercase text-slate-500 text-left">Job Workspace</h2>
                                     <button onClick={() => setSelectedJob(null)} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition-all border border-slate-200">
                                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                 </div>
-                                <div className="mt-6 flex flex-wrap items-center gap-3">
+                                <div className="mt-6 flex flex-wrap items-center gap-3 text-left w-full">
                                     <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-lg text-xs border border-slate-200">{selectedJob.postingId}</span>
                                     <span className="text-slate-600 font-medium text-sm flex items-center gap-1.5"><BriefcaseIcon className="w-4 h-4 text-slate-400"/> {selectedJob.clientName}</span>
                                 </div>
-                                <h3 className="text-2xl font-black text-slate-900 mt-4 leading-tight">{selectedJob.jobTitle}</h3>
+                                <h3 className="text-2xl font-black text-slate-900 mt-4 leading-tight text-left w-full break-words">{selectedJob.jobTitle}</h3>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-8 bg-slate-50 text-left">
-                                <div className="grid grid-cols-2 gap-4 mb-8">
-                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left">
+                            <div className="flex-1 overflow-y-auto p-8 bg-slate-50 text-left w-full">
+                                <div className="grid grid-cols-2 gap-4 mb-8 text-left w-full">
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left w-full">
                                         <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-3">Assignee(s)</p>
-                                        <div className="flex flex-col gap-2 text-left">
+                                        <div className="flex flex-col gap-2 text-left w-full">
                                             {selectedJob.workingBy?.split(',').map(n => n.trim()).filter(Boolean).map((name, i) => (
-                                                <div key={i} className="flex items-center gap-2 text-left">
-                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${getAvatar(name).color}`}>
+                                                <div key={i} className="flex items-center gap-2 text-left w-full">
+                                                    <div className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${getAvatar(name).color}`}>
                                                         {getAvatar(name).initials}
                                                     </div>
-                                                    <p className="font-bold text-slate-900 text-xs truncate">{name}</p>
+                                                    <p className="font-bold text-slate-900 text-xs truncate w-full text-left">{name}</p>
                                                 </div>
                                             ))}
-                                            {!selectedJob.workingBy && <p className="font-bold text-slate-900 text-sm">Unassigned</p>}
+                                            {!selectedJob.workingBy && <p className="font-bold text-slate-900 text-sm text-left">Unassigned</p>}
                                         </div>
                                     </div>
-                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left">
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left w-full">
                                         <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2">Deadline</p>
-                                        <p className="font-bold text-slate-900 text-sm">{formatDate(selectedJob.deadline)}</p>
+                                        <p className="font-bold text-slate-900 text-sm text-left">{formatDate(selectedJob.deadline)}</p>
                                     </div>
                                 </div>
 
-                                <div className="border-t border-slate-200 pt-8 text-left">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h4 className="text-lg font-extrabold text-slate-900">Submitted Candidates</h4>
+                                <div className="border-t border-slate-200 pt-8 text-left w-full">
+                                    <div className="flex items-center justify-between mb-6 text-left w-full">
+                                        <h4 className="text-lg font-extrabold text-slate-900 text-left">Submitted Candidates</h4>
                                         <span className="bg-white border border-slate-200 text-slate-700 font-bold px-3 py-1 rounded-lg text-xs shadow-sm">
                                             {jobCandidates.length}
                                         </span>
                                     </div>
 
                                     {loadingCandidates ? (
-                                        <div className="animate-pulse space-y-4">
+                                        <div className="animate-pulse space-y-4 w-full">
                                             {Array.from({ length: 3 }).map((_, i) => (
-                                                <div key={i} className="h-20 bg-slate-200/50 rounded-2xl"></div>
+                                                <div key={i} className="h-20 bg-slate-200/50 rounded-2xl w-full"></div>
                                             ))}
                                         </div>
                                     ) : jobCandidates.length > 0 ? (
-                                        <div className="space-y-4">
+                                        <div className="space-y-4 w-full text-left">
                                             {jobCandidates.map(candidate => (
-                                                <div key={candidate.email} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow text-left">
+                                                <div key={candidate.email} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow text-left w-full">
                                                     <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 font-black flex-shrink-0 border border-slate-200">
                                                         {candidate.firstName?.charAt(0)}{candidate.lastName?.charAt(0)}
                                                     </div>
-                                                    <div className="text-left">
-                                                        <h5 className="font-bold text-slate-900 text-sm">{candidate.firstName} {candidate.lastName}</h5>
-                                                        <p className="text-xs text-slate-600 font-medium mb-2.5 mt-0.5">{candidate.currentRole || 'Candidate'}</p>
-                                                        <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold">
+                                                    <div className="text-left w-full min-w-0">
+                                                        <h5 className="font-bold text-slate-900 text-sm truncate w-full text-left">{candidate.firstName} {candidate.lastName}</h5>
+                                                        <p className="text-xs text-slate-600 font-medium mb-2.5 mt-0.5 truncate w-full text-left">{candidate.currentRole || 'Candidate'}</p>
+                                                        <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-left w-full">
                                                             <span className="bg-slate-100 px-2 py-1 rounded-md text-slate-700 border border-slate-200">{candidate.currentLocation || 'Location N/A'}</span>
                                                             <span className={`px-2 py-1 rounded-md border ${candidate.remarks === 'Rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
                                                                 {candidate.remarks || 'Under Review'}
@@ -471,7 +474,7 @@ const HomePage = () => {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-300">
+                                        <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-300 w-full">
                                             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
                                                 <UserGroupIcon className="w-8 h-8 text-slate-400" />
                                             </div>
