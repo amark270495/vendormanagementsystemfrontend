@@ -12,67 +12,104 @@ const POSTING_FROM_OPTIONS = [
     'Virtusa', 'Deloitte', 'Other'
 ];
 
-// --- MASTER DICTIONARIES ---
-const MASTER_SKILLS_LIST = [
-    "RDBMS", "SQL", "Agile/Scrum", "Keylight", "Azure DevOps", "TFS", "Web Services", "ADA compliance", 
-    "Regression Testing", ".NET", "HTML", "XML", "SOAP", "REST", "PowerShell", "IaC", "Microsoft Azure", 
-    "Function Apps", "PR", "NexSys Platform", "Grant Management Systems (GMS)", "Federal Policy Analysis", 
-    "As-Is/To-Be Modeling", "SDLC", "Stakeholder Liaison", "Wireframing (Figma)", "SharePoint", 
-    "Requirements Elicitation", "Cross-functional Leadership", "Rhapsody Integration Engine (7.x)", 
-    "Rhapsody Developer Kit (RDK)", "JavaScript", "HL7 (v2.x, v3, FHIR)", "CDA/CCDA Standards", 
-    "Healthcare Vocabularies (LOINC, SNOMED, RxNorm)", "HIE/IHE Technology", "EDI Message Designer", 
-    "API Development", "OAuth", "TLS/Certificate Management", "JSON", "SEM/SUITE Compliance", 
-    "Microsoft SQL", "Windows Server", "Linux/Unix", "Shell Scripting", "Python", "SAS", "Machine Learning", 
-    "AWS", "GCP", "Azure", "Tableau", "Power BI", "Anomaly Detection", "Behavioral Modeling", "Network Analysis", 
-    "DNS", "HTTP", "LDAP", "SMTP", "SNMP", "LVM", "ZFS", "SVM", "Veritas Volume Manager", "HAProxy", 
-    "Linux IPVS", "Iptables", "VPC", "Subnets", "VPN", "VLAN", "IPv4/IPv6", "MyInsight EHR", "Netsmart", 
-    "ICD-10/CPT Coding", "E/M Documentation Standards", "Electronic Health Records (EHR)", 
-    "Health Information Exchange (HIE) platforms", "Clinical Data Systems", "CMS Program Requirements", 
-    "Technical Architectures", "Development Platforms", "Oracle CX Sales Performance Management (SPM)", 
-    "Incentive Compensation (IC) Cloud", "Plan Modeling", "Credit & Rollup Rules", "Commission Calculation", 
-    "Dispute Management", "Territory Management", "Sales Credits", "HCM/ERP Integration", "PingFederate", 
-    "PingAccess", "IAM Engineer", "SAML", "OIDC", "SCIM", "PKI", "SSO", "MFA", "Application Onboarding", 
-    "PingDirectory", "Identity Management", "Office 365", "Microsoft Teams", "Microsoft Exchange", 
-    "Federation", "Active Directory", "Microsoft Entra ID", "Hybrid Exchange Infrastructure", "Cisco IronPort", 
-    "Proofpoint", "Conditional Access Policies", "Data Loss Prevention (DLP)", "Microsoft AD Connect", 
-    "Windows Clustering", "High Availability (HA) Technology", "Systems Monitoring", "Performance Tuning", 
-    "Capacity Planning", "ITIL Methodology", "Project Management", "Core networking", "Arista", "HIPAA", 
-    "Medicaid/Healthcare IT", "SAFe Agile", "Jira", "HP ALM", "Medicaid Management Information Systems (MMIS)", 
-    "SAFe", "Scrum", "Medicaid", "EDI X12", "Rally", "DevOps", "SP.NET", "C#", ".NET Core/Framework", 
-    "RESTful APIs", "CSS", "Angular", "React", "PPM Integration", "Service Fabric", "Micro Focus PPM", "OnBase", 
-    "Medicaid technology trends", "Medicaid Long-Term Care (LTC)", "MMIS Data Analysis", "Web Service Testing", 
-    "Test Suite/Case Creation", "User Story Decomposition", "Regression & UAT Testing", "Gap Analysis", 
-    "Snowflake", "ETL tools", "Cloud Data Services", "Spark BigData", "Geospatial Data", "ESRI", "ArcGIS", 
-    "QGIS", "Spatial and Tabular Data Derivation", "Data Integrity", "ArcGIS Online", "GIS Software and Tools", 
-    "Data Collection/Manipulation/Visualization", "Geospatial Data Management/Interpretation", 
-    "Cartography and Mapping", "Computer Programming", "Database Management", "Spatial Analysis", 
-    "Metadata Management", "BFS-Capital Markets", "Google Workspace (Sheets & Slides)", "Revenue Analysis", 
-    "Bookings & Variance Analysis", "Utilization Management", "CRM Data Tracking", "Stakeholder Management", 
-    "SLA Compliance", "Staffing Strategy", "Resource Acquisition", "GCP Data Plex", "BigQuery", "Apache Iceberg", 
-    "Data Lakehouse Architecture", "Data Governance", "Data Catalog", "Data Lineage", "Data Quality", 
-    "Dataflow (Apache Beam)", "Pub/Sub", "Cloud Composer", "Infrastructure as Code (Terraform)", "CI/CD", 
-    "Adobe Experience Cloud", "Adobe Analytics", "Adobe Target", "Product Management Lifecycle", 
-    "Product Strategy & Vision", "Roadmap Prioritization", "PeopleSoft", "STAT", "Linux/RedHat", "Oracle 19c", 
-    "Visual Basic Script", "UFT", "PL/SQL", "Agile SDLC", "Test Scripts", "IT SDLC", "Lifecycle Management Tools", 
-    "Contact Center Technology", "Application Security", "Microsoft Office", "Outlook", "Microsoft Project", 
-    "Word", "Visio", "Excel", "PowerPoint", "DB2 Databases", "DB2 licensing", "Passport Advantage", "AIX", 
-    "UNIX", "Linux", "Shell programming", "Robotic Process Automation (RPA)", "Blue Prism", 
-    "Microsoft Power Automate", "Power Automate Desktop", "Power Automate Cloud Flows", "Azure Infrastructure", 
-    "Azure AI", "Cognitive Search", "Java", "APIs", "PDF/Document Processing Frameworks", "Document Intelligence", 
-    "Kanban", "CrowdStrike SIEM", "CrowdStrike Services", "SIEM Detection Engineering", "Alert Optimization", 
-    "Log Source Integration", "Data Normalization", "Dashboard Development", "Endpoint Security", "Telemetry", 
-    "Log Ingestion", "Data Parsing", "Data Correlation", "Validatar", "WhereScape RED", "WhereScape 3D", 
-    "Confluence", "BOX", "Amazon Web Services", "Cloud Architecture", "DDM’s", "Natural Structured Mode language model", 
-    "ADABAS Data Access", "JCL Batch Processing", "Online Processing", "Remote Job Entry Processing", 
-    "Mainframe Utilities", "SolarWinds", "NPM", "SAM", "NTA", "DPA", "LogicMonitor", "WMI", "NetFlow", "Orion SDK"
-];
+// --- ULTIMATE DYNAMIC MASTER DICTIONARIES ---
+// Covers LinkedIn, Dice, Monster, State Gov, and Enterprise Integrators
+const MASTER_SKILLS_DICT = {
+    // --- 1. Project, Program & Agile Methodologies ---
+    "Project/Program Management": ["Project Management", "Program Management", "Portfolio Management", "PMO", "PMO Governance", "Waterfall", "Hybrid Delivery", "Project Coordinator"],
+    "Agile/Scrum": ["Agile", "Scrum", "SAFe", "Kanban", "Agile Methodologies", "Sprint Planning", "Scrum Ceremonies"],
+    "Business Analysis": ["Business Analysis", "Requirements Engineering", "Requirements Gathering", "BRD", "FRD", "User Stories", "Use Cases", "Gap Analysis", "Process Mapping", "BPMN", "UML"],
+    "Process Improvement": ["Lean Six Sigma", "Change Management", "Risk Management", "Compliance", "Business Process Reengineering"],
 
-const MASTER_CERTIFICATIONS_LIST = [
-    "CBAP", "ISTQB", "SAFe", "Scrum", "Certified ScrumMaster", "PMI-ACP", "SAFe Agilist", 
-    "Azure Database Administrator Associate", "Microsoft SQL Server", "CSM", "PSM", "Scrum Master", 
-    "BluePrism", "RHCT", "RHCE", "LPIC", "Linux", "Web Design/Graphic Design Certification", "CISSP", "PMP"
-];
+    // --- 2. ITSM, ERP & CRM Systems ---
+    "ITSM & Collaboration": ["ITIL", "ITSM", "ServiceNow", "SNOW", "Remedy", "BMC Helix", "Jira", "Jira Service Management", "Confluence", "SharePoint", "Visio", "Teams", "Slack"],
+    "ERP Systems": ["ERP", "SAP", "SAP HANA", "SAP FICO", "Oracle ERP", "Oracle Fusion", "PeopleSoft", "Workday", "Workday HCM", "Dynamics 365"],
+    "CRM Systems": ["CRM Systems", "Salesforce", "SFDC", "Salesforce Lightning", "Apex", "HubSpot", "Zoho"],
 
+    // --- 3. DevOps, CI/CD & Infrastructure ---
+    "DevOps & CI/CD": ["DevOps", "DevSecOps", "CI/CD", "Azure DevOps", "Azure Pipelines", "Git", "GitHub", "GitLab", "Bitbucket", "Jenkins", "GitHub Actions", "Release Management", "TFS"],
+    "Infrastructure as Code (IaC)": ["Terraform", "Ansible", "Puppet", "Chef", "CloudFormation"],
+    "Containerization": ["Kubernetes", "K8s", "Docker", "Helm", "OpenShift", "GKE", "Microservices", "EKS", "AKS"],
+    "OS & Environments": ["Windows Server", "Linux", "RedHat", "RHEL", "Ubuntu", "CentOS", "Unix", "VMware", "Hyper-V", "Citrix"],
+    "Scripting & Shell": ["Bash", "PowerShell", "Shell Scripting", "Regex", "VBScript"],
+
+    // --- 4. Cloud Platforms ---
+    "AWS Cloud Services": ["AWS", "Amazon Web Services", "S3", "EC2", "Lambda", "CloudFront", "AWS IoT Core", "Route 53", "VPC"],
+    "Azure Cloud Services": ["Azure", "Microsoft Azure", "Azure Functions", "Logic Apps", "App Service", "Storage Accounts", "VNet", "Azure IoT Hub", "Azure Data Factory"],
+    "GCP Cloud Services": ["GCP", "Google Cloud", "BigQuery", "Cloud Run", "Google Workspace"],
+
+    // --- 5. Programming Languages & Web Dev ---
+    "Java Technologies": ["Java", "J2EE", "Core Java", "Spring", "Spring Boot", "Hibernate"],
+    ".NET Technologies": [".NET", ".NET Core", ".NET Framework", "C#", "C-Sharp", "ASP.NET", ".NET 8"],
+    "Python": ["Python", "Pandas", "NumPy", "Django", "Flask"],
+    "C++/System Languages": ["C++", "C", "GoLang", "Go", "Rust", "Scala", "Ruby"],
+    "JavaScript/Node.js": ["JavaScript", "JS", "TypeScript", "TS", "Node.js", "NodeJS", "Express.js"],
+    "Frontend Frameworks": ["Angular", "AngularJS", "React", "ReactJS", "Next.js", "Vue.js", "Vue"],
+    "Web Fundamentals": ["HTML", "CSS", "Bootstrap", "Tailwind", "SASS", "Webpack", "NPM"],
+
+    // --- 6. Integration, APIs & Formats ---
+    "API Development": ["API Development", "REST", "RESTful APIs", "SOAP", "GraphQL", "API Gateway", "Web Services"],
+    "Integration Tools": ["MuleSoft", "Dell Boomi", "Informatica", "SSIS", "Talend", "Postman", "Swagger", "Apigee", "Rhapsody Integration Engine"],
+    "Data Formats": ["JSON", "XML", "YAML", "CSV", "EDI", "EDI X12"],
+
+    // --- 7. Databases & Data Engineering ---
+    "Relational Databases (SQL)": ["SQL", "PL/SQL", "T-SQL", "Oracle Database", "Oracle 19c", "SQL Server", "Microsoft SQL", "PostgreSQL", "MySQL", "MariaDB", "DB2"],
+    "NoSQL Databases": ["MongoDB", "Cassandra", "Redis", "DynamoDB", "Cosmos DB"],
+    "Data Warehousing/Lakes": ["Snowflake", "Redshift", "BigQuery", "Synapse", "Databricks"],
+    "Big Data & Pipelines": ["Hadoop", "Spark", "Apache Spark", "Kafka", "Flink", "Airflow", "NiFi", "ETL", "ETL Pipelines", "Data Engineering", "Data Modeling"],
+
+    // --- 8. Analytics, BI & AI/ML ---
+    "Business Intelligence (BI)": ["Power BI", "Tableau", "Qlik", "Looker", "Excel Advanced", "DAX", "Power Query", "Data Visualization"],
+    "AI & Machine Learning": ["AI", "Artificial Intelligence", "Machine Learning", "ML", "Deep Learning", "NLP", "LLMs", "GenAI", "TensorFlow", "PyTorch", "Scikit-Learn", "Keras"],
+    "Enterprise AI Platforms": ["OpenAI APIs", "Azure OpenAI", "Vertex AI", "SageMaker", "MLOps", "Cognitive Search"],
+    "Data Analysis & Governance": ["Data Analysis", "Data Warehouse Analysis", "Data Governance", "Data Catalog", "Data Lineage", "Data Quality", "Master Data Management"],
+
+    // --- 9. Cybersecurity & Identity ---
+    "Cybersecurity & Compliance": ["Cybersecurity", "NIST", "NIST 800-53", "NIST CSF", "SOC 2", "ISO 27001", "FedRAMP", "HIPAA", "CJIS", "Zero Trust", "FISMA"],
+    "Identity & Access (IAM)": ["IAM", "Active Directory", "Azure AD", "Entra ID", "MFA", "SSO", "OAuth", "SAML", "Okta", "Ping Identity", "SailPoint", "CyberArk", "LDAP"],
+    "Security Operations": ["Firewalls", "Palo Alto", "Fortinet", "Cisco ASA", "CrowdStrike", "SentinelOne", "SIEM", "Microsoft Sentinel", "Splunk", "Splunk Enterprise Security", "DLP", "Endpoint Security"],
+    "Vulnerability & AppSec": ["Vulnerability Management", "Nessus", "Qualys", "Penetration Testing", "Ethical Hacking", "SAST", "DAST", "SonarQube", "Checkmarx", "Veracode", "Application Security"],
+
+    // --- 10. Networking & Infrastructure ---
+    "Networking": ["Network Engineering", "TCP/IP", "DNS", "DHCP", "VPN", "SD-WAN", "Load Balancers", "F5", "VLAN", "Arista"],
+    "Endpoint & Device Mgmt": ["Intune", "JAMF", "SCCM", "Mobile Device Management", "MDM"],
+    "Mainframe & Legacy": ["Mainframe", "COBOL", "CICS", "JCL", "JCL Batch Processing", "ADABAS"],
+
+    // --- 11. State Gov Specific ---
+    "Healthcare/Gov Systems": ["EHR Systems", "Electronic Health Records", "MMIS", "Medicaid MMIS", "Medicaid", "CMS Systems", "State Eligibility Systems", "Unemployment Insurance Systems", "Child Welfare Systems", "Grants Management Systems", "FHIR", "HL7", "HL7 v2", "LOINC", "SNOMED", "ICD-10", "CPT Coding"],
+    "GIS & Mapping": ["GIS", "ESRI ArcGIS", "ArcGIS", "QGIS", "Geospatial Data", "Cartography"],
+    "Procurement": ["Procurement Tools", "eProcurement", "VMS", "Vendor Management Systems"],
+    "Accessibility": ["Accessibility WCAG", "Section 508", "WCAG", "ADA compliance"],
+
+    // --- 12. QA & Testing ---
+    "Test Automation": ["Automation Testing", "QA Automation", "Selenium", "Cypress", "Playwright", "Cucumber", "JUnit"],
+    "Performance/Mobile Testing": ["JMeter", "LoadRunner", "Performance Testing", "Load Testing", "Mobile Testing", "Appium"],
+    "Manual/Core Testing": ["QA Testing", "Manual Testing", "UAT", "Regression Testing", "Test Scripts", "Defect Tracking"],
+
+    // --- 13. Architecture & Advanced Concepts ---
+    "Enterprise Architecture": ["Enterprise Architecture", "Solution Architecture", "Data Architecture", "TOGAF", "Zachman", "Cloud Architecture"],
+    "Robotics & Edge": ["Blockchain", "Web3", "Solidity", "Smart Contracts", "IoT", "Robotics", "Embedded Systems", "Firmware", "MATLAB", "Simulink", "RPA", "UiPath", "Blue Prism"]
+};
+
+const MASTER_CERTIFICATIONS_DICT = {
+    "PMP": ["PMP", "Project Management Professional"],
+    "PMI-ACP": ["PMI-ACP", "Agile Certified Practitioner"],
+    "Scrum Master": ["CSM", "Certified ScrumMaster", "PSM", "Scrum Master", "CSPO", "Certified Scrum Product Owner"],
+    "SAFe": ["SAFe Agilist", "SAFe Practitioner", "SAFe Certification"],
+    "ITIL": ["ITIL Foundation", "ITIL Intermediate", "ITIL", "ITIL v3", "ITIL v4"],
+    "Six Sigma": ["Six Sigma Green Belt", "Six Sigma Black Belt", "Lean Practitioner"],
+    "Business Analysis": ["CBAP", "Certified Business Analysis Professional"],
+    "AWS Certifications": ["AWS Cloud Practitioner", "AWS Solutions Architect", "AWS Developer", "AWS Certified"],
+    "Azure Certifications": ["Azure Fundamentals", "AZ-900", "Azure Administrator", "Azure Architect", "Azure Database Administrator Associate"],
+    "GCP Certifications": ["Google Cloud Associate", "Google Cloud Professional"],
+    "CompTIA": ["Security+", "Network+", "A+"],
+    "Cybersecurity Pro": ["CISSP", "CISM", "CEH", "Certified Ethical Hacker", "CHFI"],
+    "Cisco Networking": ["CCNA", "CCNP", "CCIE"],
+    "Salesforce": ["Salesforce Admin", "Salesforce Administrator", "Salesforce Developer"],
+    "Software Testing": ["ISTQB", "Certified Tester"]
+};
+
+// Helper function to escape special characters like +, *, ., # in skills
 const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const JobPostingFormPage = ({ onFormSubmit }) => {
@@ -83,10 +120,8 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     
-    // Split the success states to prevent blocking the submit button
     const [submitSuccess, setSubmitSuccess] = useState('');
     const [parseSuccess, setParseSuccess] = useState('');
-    
     const [rawText, setRawText] = useState('');
 
     const postingFromOptions = useMemo(() => POSTING_FROM_OPTIONS, []);
@@ -120,7 +155,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
             for (const pattern of patterns) {
                 const match = text.match(pattern);
                 if (match) {
-                    return (match[1] || match[0]).trim();
+                    return (match || match).trim();
                 }
             }
             return '';
@@ -161,15 +196,12 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
 
         const rateMatch = text.match(/(?:C\s*2\s*C|NTE Rate:?)\s*(?:[\r\n]+)?\$?(\d+(\.\d{1,2})?)/i);
         if (rateMatch) {
-            parsedData['Max C2C Rate'] = `$${rateMatch[1]}/hr`;
+            parsedData['Max C2C Rate'] = `$${rateMatch}/hr`;
         }
 
         const dateMatch = text.match(/(?:Last Date For Submission|Dead Line)\s*(?:[\r\n]+)?(\d{2})[-/](\d{2})[-/](\d{4})/i);
         if (dateMatch) {
-            const m = dateMatch[1];
-            const d = dateMatch[2];
-            const y = dateMatch[3];
-            parsedData['Last Submission Date'] = `${y}-${m}-${d}`;
+            parsedData['Last Submission Date'] = `${dateMatch}-${dateMatch}-${dateMatch}`;
         }
 
         if (parsedData['Client Name']) {
@@ -182,23 +214,33 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
             }
         }
         
-        parsedData['Posting Date'] = new Date().toISOString().split('T')[0];
+        parsedData['Posting Date'] = new Date().toISOString().split('T');
 
-        // --- 2. DICTIONARY SKILL EXTRACTION ---
+        // --- 2. DYNAMIC SKILL & CERTIFICATE EXTRACTION ---
         const foundSkills = new Set();
         const foundCerts = new Set();
         
-        MASTER_SKILLS_LIST.forEach(skill => {
-            const regex = new RegExp(`(?:^|\\W)${escapeRegExp(skill)}(?:$|\\W)`, 'i');
-            if (regex.test(text)) {
-                foundSkills.add(skill);
+        // Loop through the mapped Dictionary for Skills
+        Object.entries(MASTER_SKILLS_DICT).forEach(([standardName, aliases]) => {
+            const hasMatch = aliases.some(alias => {
+                const regex = new RegExp(`(?:^|\\W)${escapeRegExp(alias)}(?:$|\\W)`, 'i');
+                return regex.test(text);
+            });
+
+            if (hasMatch) {
+                foundSkills.add(standardName);
             }
         });
 
-        MASTER_CERTIFICATIONS_LIST.forEach(cert => {
-            const regex = new RegExp(`(?:^|\\W)${escapeRegExp(cert)}(?:$|\\W)`, 'i');
-            if (regex.test(text)) {
-                foundCerts.add(cert);
+        // Loop through the mapped Dictionary for Certs
+        Object.entries(MASTER_CERTIFICATIONS_DICT).forEach(([standardName, aliases]) => {
+            const hasMatch = aliases.some(alias => {
+                const regex = new RegExp(`(?:^|\\W)${escapeRegExp(alias)}(?:$|\\W)`, 'i');
+                return regex.test(text);
+            });
+
+            if (hasMatch) {
+                foundCerts.add(standardName);
             }
         });
 
@@ -213,7 +255,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         }
 
         setFormData(prev => ({ ...prev, ...parsedData }));
-        setParseSuccess("Data extracted successfully! Please select your 'Company Name' below and review the fields before submitting.");
+        setParseSuccess("Data extracted successfully! Skills and Certifications have been mapped to standardized categories.");
     };
 
     const handleChange = (e) => {
@@ -222,9 +264,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!canAddPosting) {
-            return setError("You do not have permission to add new job postings.");
-        }
+        if (!canAddPosting) return setError("You do not have permission to add new job postings.");
 
         const payloadToSubmit = { ...formData };
         if (payloadToSubmit['Posting From'] === 'Other') {
@@ -233,8 +273,9 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
 
         setError('');
         setSubmitSuccess('');
-        setParseSuccess(''); // Clear parse message on submit
+        setParseSuccess(''); 
         setLoading(true);
+        
         try {
             const response = await apiService.processJobPosting(payloadToSubmit, user.userIdentifier);
             if (response.data.success) {
@@ -267,7 +308,7 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
                         ⚡ Smart Dictionary Parser
                     </h2>
                     <p className="text-sm text-gray-600">
-                        Paste the full job description. The system will scan the text against your master dictionary of IT skills and certifications to extract all required fields locally.
+                        Paste the full job description. The system maps variations, abbreviations, and full forms from Dice, Monster, LinkedIn, and Government systems into your standardized skill categories.
                     </p>
                     <textarea
                         rows="8"
@@ -301,7 +342,6 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
                     <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border">
                         {error && <div className="bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">{error}</div>}
                         {submitSuccess && <div className="bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6">{submitSuccess}</div>}
-                        {/* Display Parse Success Separately */}
                         {parseSuccess && !submitSuccess && <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-700 px-4 py-3 rounded-lg mb-6">{parseSuccess}</div>}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
