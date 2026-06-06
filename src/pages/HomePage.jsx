@@ -253,7 +253,7 @@ const HomePage = () => {
                         </div>
                     </div>
 
-                    {/* --- Team Pipeline (Kanban) --- */}
+                    {/* --- Team Pipeline (Kanban Grid) --- */}
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                             <h2 className="text-xl font-extrabold text-slate-800">Team Pipeline</h2>
@@ -270,11 +270,11 @@ const HomePage = () => {
                         {loading ? (
                             <div className="h-64 flex items-center justify-center animate-pulse"><div className="text-slate-400 font-medium">Loading Pipeline...</div></div>
                         ) : (
-                            <div className="flex overflow-x-auto pb-4 gap-6 custom-scrollbar snap-x">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-4">
                                 {Object.entries(filteredData).map(([assignee, jobs]) => (
                                     <div 
                                         key={assignee} 
-                                        className="snap-start min-w-[320px] flex-shrink-0 flex flex-col bg-slate-50 rounded-2xl border border-slate-200 h-[600px] shadow-inner"
+                                        className="flex flex-col bg-slate-50 rounded-2xl border border-slate-200 h-[600px] shadow-inner w-full"
                                         onDragOver={onDragOver}
                                         onDrop={() => onDrop(assignee)}
                                     >
@@ -283,7 +283,7 @@ const HomePage = () => {
                                             <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded-md">{jobs.length}</span>
                                         </div>
                                         
-                                        <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                                        <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
                                             {jobs.map(job => {
                                                 const urgency = getUrgency(job.deadline);
                                                 return (
