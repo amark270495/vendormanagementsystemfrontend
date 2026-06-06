@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
-import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
-// Assuming you have these helpers. If not, you can copy the helper logic from the previous reply.
 import { formatDate, getDeadlineClass } from '../utils/helpers'; 
 
 // --- Inline Icons ---
@@ -19,6 +17,9 @@ const ClockIcon = ({ className }) => (
 const RefreshIcon = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
 );
+const SearchIcon = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+);
 
 const HomePage = () => {
     const { user } = useAuth();
@@ -28,6 +29,10 @@ const HomePage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [stats, setStats] = useState({ totalJobs: 0, openJobs: 0, closedJobs: 0 });
+    
+    // New Feature States
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedJob, setSelectedJob] = useState(null);
 
     const fetchData = useCallback(async () => {
         if (!user?.userIdentifier) return;
@@ -69,6 +74,23 @@ const HomePage = () => {
         fetchData();
     }, [fetchData]);
 
+    // --- Search & Filter Logic ---
+    const filteredData = useMemo(() => {
+        if (!searchTerm.trim()) return data;
+        const term = searchTerm.toLowerCase();
+        const result = {};
+        
+        Object.entries(data).forEach(([assignee, jobs]) => {
+            const matchedJobs = jobs.filter(job => 
+                (job.jobTitle && job.jobTitle.toLowerCase().includes(term)) ||
+                (job.clientName && job.clientName.toLowerCase().includes(term)) ||
+                (job.postingId && job.postingId.toLowerCase().includes(term))
+            );
+            if (matchedJobs.length > 0) result[assignee] = matchedJobs;
+        });
+        return result;
+    }, [data, searchTerm]);
+
     // Helpers
     const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const getGreeting = () => {
@@ -78,8 +100,9 @@ const HomePage = () => {
         return 'Good Evening';
     };
 
+    // Components
     const MetricCard = ({ title, value, icon: Icon, color, subText }) => (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-start justify-between transition-transform hover:-translate-y-1 hover:shadow-md">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-start justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
             <div>
                 <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">{title}</p>
                 <div className="mt-2 flex items-baseline">
@@ -93,28 +116,44 @@ const HomePage = () => {
         </div>
     );
 
+    const PipelineSkeleton = () => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-pulse">
+            {[1, 2, 3, 4].map(col => (
+                <div key={col} className="bg-gray-50 rounded-2xl border border-gray-200 h-[500px] p-4 flex flex-col space-y-4">
+                    <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+                    {[1, 2, 3].map(card => (
+                        <div key={card} className="bg-white p-4 rounded-xl border border-gray-100 h-24">
+                            <div className="h-4 bg-gray-200 rounded w-1/3 mb-3"></div>
+                            <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                        </div>
+                    ))}
+                </div>
+            ))}
+        </div>
+    );
+
     return (
-        <div className="space-y-8 pb-12">
+        <div className="space-y-8 pb-12 relative">
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">
-                        {getGreeting()}, <span className="text-indigo-600">{user?.displayName || 'User'}</span>
+                        {getGreeting()}, <span className="text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">{user?.displayName || 'User'}</span>
                     </h1>
                     <p className="text-gray-500 mt-1 text-sm">{currentDate}</p>
                 </div>
                 <button
                     onClick={fetchData}
                     disabled={loading}
-                    className="flex items-center justify-center space-x-2 px-5 py-2.5 bg-indigo-50 text-indigo-600 font-semibold rounded-xl hover:bg-indigo-100 transition-colors disabled:opacity-50"
+                    className="flex items-center justify-center space-x-2 px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 shadow-md shadow-indigo-200"
                 >
                     <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    <span>Refresh Dashboard</span>
+                    <span>Refresh Data</span>
                 </button>
             </div>
 
             {error && (
-                <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow-sm" role="alert">
+                <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow-sm animate-fade-in" role="alert">
                     <p className="font-bold">Error Loading Dashboard</p>
                     <p>{error}</p>
                 </div>
@@ -128,49 +167,63 @@ const HomePage = () => {
                             title="Active Open Jobs" 
                             value={loading ? '-' : stats.openJobs} 
                             icon={BriefcaseIcon}
-                            color="bg-indigo-500"
+                            color="bg-gradient-to-br from-indigo-500 to-purple-600"
                             subText="Jobs currently accepting submissions"
                         />
                         <MetricCard 
                             title="Total Candidates" 
                             value="N/A" 
                             icon={UserGroupIcon}
-                            color="bg-emerald-500"
-                            subText="Data unavailable in preview"
+                            color="bg-gradient-to-br from-emerald-400 to-teal-500"
+                            subText="Data requires candidate endpoint"
                         />
                         <MetricCard 
                             title="Avg Time to Fill" 
                             value="N/A" 
                             icon={ClockIcon}
-                            color="bg-orange-400"
-                            subText="Data unavailable in preview"
+                            color="bg-gradient-to-br from-orange-400 to-red-500"
+                            subText="Data requires report endpoint"
                         />
                     </div>
 
                     {/* Team Pipeline Section */}
-                    <div>
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-bold text-gray-800">Team Job Pipeline</h2>
-                            <span className="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full">
-                                {stats.openJobs} Active Assignments
-                            </span>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                            <div className="flex items-center space-x-3">
+                                <h2 className="text-xl font-extrabold text-gray-800">Team Pipeline</h2>
+                                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full border border-indigo-100">
+                                    {stats.openJobs} Active
+                                </span>
+                            </div>
+                            
+                            {/* Search Bar */}
+                            <div className="relative w-full md:w-72">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <SearchIcon className="h-4 w-4 text-gray-400" />
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Search jobs, clients, or IDs..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
+                                />
+                            </div>
                         </div>
 
                         {loading ? (
-                            <div className="flex justify-center items-center h-64 bg-white rounded-2xl border border-dashed border-gray-300">
-                                <Spinner size="10" />
-                            </div>
-                        ) : Object.keys(data).length > 0 ? (
+                            <PipelineSkeleton />
+                        ) : Object.keys(filteredData).length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {Object.entries(data).map(([assignee, jobs]) => (
-                                    <div key={assignee} className="flex flex-col bg-gray-50 rounded-2xl border border-gray-200 h-[500px] shadow-sm">
+                                {Object.entries(filteredData).map(([assignee, jobs]) => (
+                                    <div key={assignee} className="flex flex-col bg-gray-50/50 rounded-2xl border border-gray-200 h-[500px] shadow-sm overflow-hidden">
                                         {/* Column Header */}
-                                        <div className="p-4 border-b border-gray-200 bg-white rounded-t-2xl sticky top-0 z-10">
+                                        <div className="p-4 border-b border-gray-200 bg-white sticky top-0 z-10 shadow-sm">
                                             <div className="flex items-center justify-between">
                                                 <h3 className="font-bold text-gray-800 truncate" title={assignee}>
                                                     {assignee}
                                                 </h3>
-                                                <span className="bg-gray-100 text-gray-600 text-xs font-bold px-2 py-1 rounded-md">
+                                                <span className="bg-gray-100 text-gray-600 text-xs font-bold px-2.5 py-1 rounded-md">
                                                     {jobs.length}
                                                 </span>
                                             </div>
@@ -181,28 +234,28 @@ const HomePage = () => {
                                             {jobs.map(job => (
                                                 <div 
                                                     key={job.postingId} 
-                                                    className="group bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-default"
+                                                    onClick={() => setSelectedJob(job)}
+                                                    className="group bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer transform hover:-translate-y-0.5"
                                                 >
                                                     <div className="flex justify-between items-start mb-2">
-                                                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500 tracking-wide">
-                                                            ID: {job.postingId}
+                                                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 tracking-wide">
+                                                            {job.postingId}
                                                         </span>
-                                                        {/* Optional status indicator dot based on deadline */}
-                                                        <span className={`w-2 h-2 rounded-full ${getDeadlineClass(job.deadline).includes('text-red') ? 'bg-red-500' : 'bg-green-500'}`}></span>
+                                                        <span className={`w-2.5 h-2.5 rounded-full shadow-sm ${getDeadlineClass(job.deadline).includes('text-red') ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
                                                     </div>
                                                     
-                                                    <h4 className="text-sm font-bold text-gray-800 leading-snug mb-1 group-hover:text-indigo-600 transition-colors">
+                                                    <h4 className="text-sm font-bold text-gray-800 leading-snug mb-2 group-hover:text-indigo-600 transition-colors line-clamp-2">
                                                         {job.jobTitle}
                                                     </h4>
                                                     
                                                     <div className="flex items-center text-xs text-gray-500 mb-3">
-                                                        <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                                                        <span className="truncate">{job.clientName}</span>
+                                                        <BriefcaseIcon className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
+                                                        <span className="truncate font-medium">{job.clientName}</span>
                                                     </div>
 
                                                     <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
-                                                        <span className="text-[10px] font-medium text-gray-400">Deadline</span>
-                                                        <span className={`text-xs font-bold ${getDeadlineClass(job.deadline)}`}>
+                                                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Deadline</span>
+                                                        <span className={`text-xs font-bold bg-gray-50 px-2 py-1 rounded-md ${getDeadlineClass(job.deadline)}`}>
                                                             {formatDate(job.deadline)}
                                                         </span>
                                                     </div>
@@ -213,15 +266,22 @@ const HomePage = () => {
                                 ))}
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-gray-200 text-center">
-                                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                                    <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                            <div className="flex flex-col items-center justify-center py-20 bg-gray-50 rounded-2xl border border-dashed border-gray-300 text-center">
+                                <div className="w-16 h-16 bg-white shadow-sm rounded-full flex items-center justify-center mb-4">
+                                    <SearchIcon className="w-8 h-8 text-gray-300" />
                                 </div>
-                                <h3 className="text-lg font-bold text-gray-900">No Open Jobs</h3>
+                                <h3 className="text-lg font-bold text-gray-900">No Jobs Found</h3>
                                 <p className="text-gray-500 mt-1 max-w-sm">
-                                    There are currently no active job postings assigned to the team. 
-                                    Check back later or verify your filters.
+                                    {searchTerm ? `We couldn't find any jobs matching "${searchTerm}".` : "There are currently no active job postings assigned to the team."}
                                 </p>
+                                {searchTerm && (
+                                    <button 
+                                        onClick={() => setSearchTerm('')} 
+                                        className="mt-4 text-indigo-600 font-semibold hover:text-indigo-800 text-sm"
+                                    >
+                                        Clear Search
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -229,10 +289,55 @@ const HomePage = () => {
             )}
 
             {!loading && !error && !canViewDashboards && (
-                <div className="flex flex-col items-center justify-center h-64 bg-white rounded-2xl border border-gray-200">
+                <div className="flex flex-col items-center justify-center h-64 bg-white rounded-2xl border border-gray-200 shadow-sm">
                     <svg className="w-12 h-12 text-red-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                     <h3 className="text-lg font-bold text-gray-900">Access Restricted</h3>
                     <p className="text-gray-500 mt-1">You do not have permission to view the main dashboard.</p>
+                </div>
+            )}
+
+            {/* Slide-out Modal / Drawer Wrapper (Hidden when selectedJob is null) */}
+            {selectedJob && (
+                <div className="fixed inset-0 z-50 overflow-hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+                    <div className="absolute inset-0 overflow-hidden">
+                        <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setSelectedJob(null)} aria-hidden="true"></div>
+                        <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+                            <div className="pointer-events-auto w-screen max-w-md transform transition-transform duration-500 ease-in-out">
+                                <div className="flex h-full flex-col overflow-y-scroll bg-white shadow-2xl">
+                                    <div className="bg-indigo-600 px-4 py-6 sm:px-6">
+                                        <div className="flex items-center justify-between">
+                                            <h2 className="text-lg font-medium text-white" id="slide-over-title">Job Details</h2>
+                                            <button onClick={() => setSelectedJob(null)} className="rounded-md text-indigo-200 hover:text-white focus:outline-none">
+                                                <span className="sr-only">Close panel</span>
+                                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </div>
+                                        <div className="mt-1">
+                                            <p className="text-sm text-indigo-200">{selectedJob.postingId}</p>
+                                        </div>
+                                    </div>
+                                    <div className="relative flex-1 px-4 py-6 sm:px-6">
+                                        {/* Modal Content Placeholder */}
+                                        <h3 className="text-xl font-bold text-gray-900 mb-4">{selectedJob.jobTitle}</h3>
+                                        <div className="space-y-4">
+                                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                                <p className="text-sm text-gray-500">Client</p>
+                                                <p className="font-semibold text-gray-900">{selectedJob.clientName}</p>
+                                            </div>
+                                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                                <p className="text-sm text-gray-500">Assigned To</p>
+                                                <p className="font-semibold text-gray-900">{selectedJob.workingBy || 'Unassigned'}</p>
+                                            </div>
+                                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                                <p className="text-sm text-gray-500">Deadline</p>
+                                                <p className={`font-semibold ${getDeadlineClass(selectedJob.deadline)}`}>{formatDate(selectedJob.deadline)}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
