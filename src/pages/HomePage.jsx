@@ -25,8 +25,11 @@ const getUrgency = (dateInput) => {
     return { label: 'Healthy', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', ring: 'ring-emerald-200' };
 };
 
-// --- Helper: Generate Avatar from a Single Name ---
-const getAvatar = (name) => {
+// --- CRASH-PROOF HELPER: Generate Avatar from a Single Name ---
+const getAvatar = (rawName) => {
+    // Ensure we are working with a string to prevent .charAt type errors
+    const name = String(rawName || '');
+    
     if (!name || name.trim() === '' || name === 'Unassigned') {
         return {
             initials: '?',
@@ -34,19 +37,15 @@ const getAvatar = (name) => {
         };
     }
 
-    const parts = name
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean);
-
+    const parts = name.trim().split(/\s+/).filter(Boolean);
     let initials = '';
 
     if (parts.length >= 2) {
-        initials =
-            parts.charAt(0) +
-            parts[parts.length - 1].charAt(0);
+        initials = String(parts).charAt(0) + String(parts[parts.length - 1]).charAt(0);
+    } else if (parts.length === 1) {
+        initials = String(parts).substring(0, 2);
     } else {
-        initials = parts.substring(0, 2);
+        initials = '?';
     }
 
     const colors = [
@@ -58,16 +57,19 @@ const getAvatar = (name) => {
         'bg-amber-50 text-amber-700 border border-amber-100'
     ];
 
-    const colorIndex =
-        name
-            .split('')
-            .reduce((acc, char) => acc + char.charCodeAt(0), 0) %
-        colors.length;
+    const colorIndex = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
 
     return {
         initials: initials.toUpperCase(),
         color: colors[colorIndex]
     };
+};
+
+// --- CRASH-PROOF HELPER: Candidate Initials ---
+const getCandidateInitials = (fName, lName) => {
+    const first = fName ? String(fName).charAt(0).toUpperCase() : '';
+    const last = lName ? String(lName).charAt(0).toUpperCase() : '';
+    return (first + last) || '?';
 };
 
 // --- Custom Mini SVG Donut Chart ---
@@ -322,10 +324,10 @@ const HomePage = () => {
                                             onDragOver={e => e.preventDefault()}
                                             onDrop={() => onDrop(assigneeGroup)}
                                         >
-                                            {/* --- UPDATED COLUMN HEADER WITH "+ COUNT" --- */}
-                                            <div className="p-4 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 rounded-t-2xl">
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                                            {/* Column Header */}
+                                            <div className="p-4 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 rounded-t-2xl text-left w-full">
+                                                <div className="flex items-start justify-between gap-3 text-left w-full">
+                                                    <div className="flex items-start gap-3 flex-1 min-w-0 text-left">
                                                         <div className="flex -space-x-2 shrink-0">
                                                             {assignees.map((name, i) => {
                                                                 const avatar = getAvatar(name);
@@ -341,15 +343,14 @@ const HomePage = () => {
                                                             })}
                                                         </div>
 
-                                                        <div className="flex-1 min-w-0">
-                                                            <h3 className="font-bold text-slate-800 text-sm leading-5 break-words">
+                                                        <div className="flex-1 min-w-0 text-left">
+                                                            <h3 className="font-bold text-slate-800 text-sm leading-5 break-words text-left w-full">
                                                                 {assignees.length === 1
                                                                     ? assignees
                                                                     : `${assignees} +${assignees.length - 1}`}
                                                             </h3>
-
                                                             {assignees.length > 1 && (
-                                                                <p className="text-xs text-slate-500 mt-1 truncate" title={assigneeGroup}>
+                                                                <p className="text-xs text-slate-500 mt-1 truncate text-left w-full" title={assigneeGroup}>
                                                                     {assigneeGroup}
                                                                 </p>
                                                             )}
@@ -379,7 +380,7 @@ const HomePage = () => {
                                                                 </button>
                                                                 {openMenuId === job.postingId && (
                                                                     <div className="origin-top-right absolute right-0 mt-1 w-36 rounded-xl shadow-lg border border-slate-200 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none text-left">
-                                                                        <div className="p-1.5 text-left">
+                                                                        <div className="p-1.5 text-left w-full">
                                                                             <button onClick={() => setSelectedJob(job)} className="block w-full text-left px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">View Details</button>
                                                                             <button onClick={() => handleArchive(job.postingId)} className="block w-full text-left px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg mt-1">Archive Job</button>
                                                                         </div>
@@ -388,15 +389,15 @@ const HomePage = () => {
                                                             </div>
 
                                                             <div onClick={() => { if(openMenuId !== job.postingId) setSelectedJob(job); }} className="text-left w-full block">
-                                                                <div className="flex justify-between items-center mb-3 pr-8 text-left w-full">
-                                                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 tracking-wide border border-slate-200">{job.postingId}</span>
+                                                                <div className="flex justify-between items-start mb-3 pr-8 text-left w-full">
+                                                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 tracking-wide border border-slate-200 shrink-0">{job.postingId}</span>
                                                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${urgency.bg} ${urgency.text} flex items-center border border-slate-100 shrink-0 mt-0.5`}>
                                                                         <span className={`w-1.5 h-1.5 rounded-full mr-1 ring-2 ${urgency.ring} ${urgency.dot}`}></span>
                                                                         {urgency.label}
                                                                     </span>
                                                                 </div>
                                                                 
-                                                                <h4 className="text-sm font-bold text-slate-900 leading-snug mb-2 break-words text-left w-full pr-2">
+                                                                <h4 className="text-sm font-bold text-slate-900 leading-snug mb-2 break-words text-left w-full">
                                                                     {job.jobTitle}
                                                                 </h4>
                                                                 
@@ -416,7 +417,7 @@ const HomePage = () => {
                                                 {jobs.length === 0 && (
                                                     <div className="h-full flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-200 rounded-xl bg-white/50 text-left w-full">
                                                         <BriefcaseIcon className="w-8 h-8 text-slate-300 mb-2" />
-                                                        <p className="text-sm font-medium text-slate-500">No active jobs</p>
+                                                        <p className="text-sm font-medium text-slate-500 text-left w-full text-center">No active jobs</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -439,7 +440,7 @@ const HomePage = () => {
                             <div className="bg-white border-b border-slate-200 px-8 py-8 relative text-left w-full">
                                 <div className="flex items-center justify-between text-left">
                                     <h2 className="text-xs font-bold tracking-widest uppercase text-slate-500 text-left">Job Workspace</h2>
-                                    <button onClick={() => setSelectedJob(null)} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition-all border border-slate-200">
+                                    <button onClick={() => setSelectedJob(null)} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition-all border border-slate-200 shrink-0">
                                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                 </div>
@@ -453,7 +454,7 @@ const HomePage = () => {
                             <div className="flex-1 overflow-y-auto p-8 bg-slate-50 text-left w-full">
                                 <div className="grid grid-cols-2 gap-4 mb-8 text-left w-full">
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left w-full">
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-3">Assignee(s)</p>
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-3 text-left">Assignee(s)</p>
                                         <div className="flex flex-col gap-2 text-left w-full">
                                             {selectedJob.workingBy?.split(',').map(n => n.trim()).filter(Boolean).map((name, i) => (
                                                 <div key={i} className="flex items-center gap-2 text-left w-full min-w-0">
@@ -467,7 +468,7 @@ const HomePage = () => {
                                         </div>
                                     </div>
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left w-full">
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2">Deadline</p>
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2 text-left">Deadline</p>
                                         <p className="font-bold text-slate-900 text-sm text-left">{formatDate(selectedJob.deadline)}</p>
                                     </div>
                                 </div>
@@ -475,7 +476,7 @@ const HomePage = () => {
                                 <div className="border-t border-slate-200 pt-8 text-left w-full">
                                     <div className="flex items-center justify-between mb-6 text-left w-full">
                                         <h4 className="text-lg font-extrabold text-slate-900 text-left">Submitted Candidates</h4>
-                                        <span className="bg-white border border-slate-200 text-slate-700 font-bold px-3 py-1 rounded-lg text-xs shadow-sm">
+                                        <span className="bg-white border border-slate-200 text-slate-700 font-bold px-3 py-1 rounded-lg text-xs shadow-sm shrink-0">
                                             {jobCandidates.length}
                                         </span>
                                     </div>
@@ -491,7 +492,7 @@ const HomePage = () => {
                                             {jobCandidates.map(candidate => (
                                                 <div key={candidate.email} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow text-left w-full">
                                                     <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 font-black flex-shrink-0 border border-slate-200">
-                                                        {candidate.firstName?.charAt(0)}{candidate.lastName?.charAt(0)}
+                                                        {getCandidateInitials(candidate.firstName, candidate.lastName)}
                                                     </div>
                                                     <div className="text-left w-full min-w-0">
                                                         <h5 className="font-bold text-slate-900 text-sm truncate w-full text-left">{candidate.firstName} {candidate.lastName}</h5>
