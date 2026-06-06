@@ -27,22 +27,47 @@ const getUrgency = (dateInput) => {
 
 // --- Helper: Generate Avatar from a Single Name ---
 const getAvatar = (name) => {
-    if (!name || name === 'Unassigned') return { initials: '?', color: 'bg-slate-100 text-slate-500 border border-slate-200' };
-    const parts = name.trim().split(' ');
-    
-    // FIXED BUG: Correctly extract the first letter of the first and last name
-    const initials = parts.length > 1 ? (parts + parts) : parts.substring(0, 2);
-    
-    // Light pastel colors for avatars
+    if (!name || name.trim() === '' || name === 'Unassigned') {
+        return {
+            initials: '?',
+            color: 'bg-slate-100 text-slate-500 border border-slate-200'
+        };
+    }
+
+    const parts = name
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+    let initials = '';
+
+    if (parts.length >= 2) {
+        initials =
+            parts.charAt(0) +
+            parts[parts.length - 1].charAt(0);
+    } else {
+        initials = parts.substring(0, 2);
+    }
+
     const colors = [
-        'bg-blue-50 text-blue-700 border border-blue-100', 
-        'bg-indigo-50 text-indigo-700 border border-indigo-100', 
-        'bg-emerald-50 text-emerald-700 border border-emerald-100', 
-        'bg-cyan-50 text-cyan-700 border border-cyan-100'
+        'bg-blue-50 text-blue-700 border border-blue-100',
+        'bg-indigo-50 text-indigo-700 border border-indigo-100',
+        'bg-emerald-50 text-emerald-700 border border-emerald-100',
+        'bg-cyan-50 text-cyan-700 border border-cyan-100',
+        'bg-purple-50 text-purple-700 border border-purple-100',
+        'bg-amber-50 text-amber-700 border border-amber-100'
     ];
-    const colorIndex = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
-    
-    return { initials: initials.toUpperCase(), color: colors[colorIndex] };
+
+    const colorIndex =
+        name
+            .split('')
+            .reduce((acc, char) => acc + char.charCodeAt(0), 0) %
+        colors.length;
+
+    return {
+        initials: initials.toUpperCase(),
+        color: colors[colorIndex]
+    };
 };
 
 // --- Custom Mini SVG Donut Chart ---
@@ -202,13 +227,13 @@ const HomePage = () => {
     }, [data]);
 
     return (
-        <div className="space-y-8 pb-12 relative font-sans text-left" onClick={() => setOpenMenuId(null)}>
+        <div className="space-y-8 pb-12 relative font-sans text-left w-full" onClick={() => setOpenMenuId(null)}>
             
             {/* --- Light Welcome Banner --- */}
-            <div className="relative overflow-hidden bg-gradient-to-r from-blue-50 to-white p-8 rounded-2xl shadow-sm mt-6 border border-blue-100 group text-left">
+            <div className="relative overflow-hidden bg-gradient-to-r from-blue-50 to-white p-8 rounded-2xl shadow-sm mt-6 border border-blue-100 group">
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-blue-100/50 blur-3xl group-hover:scale-105 transition-transform duration-1000"></div>
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 text-left">
-                    <div className="text-left w-full">
+                    <div>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight text-left">
                             {getGreeting()}, <span className="text-blue-600">{user?.displayName || 'User'}</span>
                         </h1>
@@ -297,43 +322,47 @@ const HomePage = () => {
                                             onDragOver={e => e.preventDefault()}
                                             onDrop={() => onDrop(assigneeGroup)}
                                         >
-                                            {/* --- FULLY ALIGNED, TEXT-WRAPPING COLUMN HEADER --- */}
-                                            <div className="p-4 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 flex items-start justify-between gap-3 text-left w-full rounded-t-2xl">
-                                                
-                                                {/* Left Side: Avatars + Name wrapped in a flex container aligned to the top */}
-                                                <div className="flex items-start gap-2.5 flex-1 min-w-0 text-left">
-                                                    
-                                                    {/* Avatar Stack */}
-                                                    <div className="flex -space-x-2 shrink-0 pt-0.5">
-                                                        {assignees.map((name, i) => {
-                                                            const avatar = getAvatar(name);
-                                                            return (
-                                                                <div 
-                                                                    key={i} 
-                                                                    title={name}
-                                                                    className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-bold ring-2 ring-white ${avatar.color}`}
-                                                                >
-                                                                    {avatar.initials}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                    
-                                                    {/* Assignee Name (Flex-1 and min-w-0 forces wrapping) */}
-                                                    <h3 className="font-bold text-slate-800 text-sm leading-snug break-words flex-1 min-w-0 pt-1 text-left w-full">
-                                                        {assigneeGroup}
-                                                    </h3>
-                                                </div>
+                                            {/* --- UPDATED COLUMN HEADER WITH "+ COUNT" --- */}
+                                            <div className="p-4 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 rounded-t-2xl">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                        <div className="flex -space-x-2 shrink-0">
+                                                            {assignees.map((name, i) => {
+                                                                const avatar = getAvatar(name);
+                                                                return (
+                                                                    <div
+                                                                        key={i}
+                                                                        title={name}
+                                                                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white ${avatar.color}`}
+                                                                    >
+                                                                        {avatar.initials}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
 
-                                                {/* Right Side: Job Count Pill aligned to the top */}
-                                                <div className="shrink-0 pt-0.5">
-                                                    <span className="bg-white border border-slate-200 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-md shadow-sm">
+                                                        <div className="flex-1 min-w-0">
+                                                            <h3 className="font-bold text-slate-800 text-sm leading-5 break-words">
+                                                                {assignees.length === 1
+                                                                    ? assignees
+                                                                    : `${assignees} +${assignees.length - 1}`}
+                                                            </h3>
+
+                                                            {assignees.length > 1 && (
+                                                                <p className="text-xs text-slate-500 mt-1 truncate" title={assigneeGroup}>
+                                                                    {assigneeGroup}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <span className="shrink-0 bg-white border border-slate-200 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-md shadow-sm">
                                                         {jobs.length}
                                                     </span>
                                                 </div>
                                             </div>
                                             
-                                            {/* Job Cards */}
+                                            {/* Job Cards Container */}
                                             <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar text-left w-full">
                                                 {jobs.map(job => {
                                                     const urgency = getUrgency(job.deadline);
@@ -350,7 +379,7 @@ const HomePage = () => {
                                                                 </button>
                                                                 {openMenuId === job.postingId && (
                                                                     <div className="origin-top-right absolute right-0 mt-1 w-36 rounded-xl shadow-lg border border-slate-200 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none text-left">
-                                                                        <div className="p-1.5 text-left w-full">
+                                                                        <div className="p-1.5 text-left">
                                                                             <button onClick={() => setSelectedJob(job)} className="block w-full text-left px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">View Details</button>
                                                                             <button onClick={() => handleArchive(job.postingId)} className="block w-full text-left px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg mt-1">Archive Job</button>
                                                                         </div>
@@ -359,15 +388,15 @@ const HomePage = () => {
                                                             </div>
 
                                                             <div onClick={() => { if(openMenuId !== job.postingId) setSelectedJob(job); }} className="text-left w-full block">
-                                                                <div className="flex justify-between items-start mb-3 pr-8 text-left w-full">
-                                                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 tracking-wide border border-slate-200 shrink-0">{job.postingId}</span>
+                                                                <div className="flex justify-between items-center mb-3 pr-8 text-left w-full">
+                                                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 tracking-wide border border-slate-200">{job.postingId}</span>
                                                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${urgency.bg} ${urgency.text} flex items-center border border-slate-100 shrink-0 mt-0.5`}>
                                                                         <span className={`w-1.5 h-1.5 rounded-full mr-1 ring-2 ${urgency.ring} ${urgency.dot}`}></span>
                                                                         {urgency.label}
                                                                     </span>
                                                                 </div>
                                                                 
-                                                                <h4 className="text-sm font-bold text-slate-900 leading-snug mb-2 break-words text-left w-full">
+                                                                <h4 className="text-sm font-bold text-slate-900 leading-snug mb-2 break-words text-left w-full pr-2">
                                                                     {job.jobTitle}
                                                                 </h4>
                                                                 
@@ -387,7 +416,7 @@ const HomePage = () => {
                                                 {jobs.length === 0 && (
                                                     <div className="h-full flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-200 rounded-xl bg-white/50 text-left w-full">
                                                         <BriefcaseIcon className="w-8 h-8 text-slate-300 mb-2" />
-                                                        <p className="text-sm font-medium text-slate-500 text-left w-full text-center">No active jobs</p>
+                                                        <p className="text-sm font-medium text-slate-500">No active jobs</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -410,7 +439,7 @@ const HomePage = () => {
                             <div className="bg-white border-b border-slate-200 px-8 py-8 relative text-left w-full">
                                 <div className="flex items-center justify-between text-left">
                                     <h2 className="text-xs font-bold tracking-widest uppercase text-slate-500 text-left">Job Workspace</h2>
-                                    <button onClick={() => setSelectedJob(null)} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition-all border border-slate-200 shrink-0">
+                                    <button onClick={() => setSelectedJob(null)} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition-all border border-slate-200">
                                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                 </div>
@@ -424,21 +453,21 @@ const HomePage = () => {
                             <div className="flex-1 overflow-y-auto p-8 bg-slate-50 text-left w-full">
                                 <div className="grid grid-cols-2 gap-4 mb-8 text-left w-full">
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left w-full">
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-3 text-left">Assignee(s)</p>
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-3">Assignee(s)</p>
                                         <div className="flex flex-col gap-2 text-left w-full">
                                             {selectedJob.workingBy?.split(',').map(n => n.trim()).filter(Boolean).map((name, i) => (
                                                 <div key={i} className="flex items-center gap-2 text-left w-full min-w-0">
-                                                    <div className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${getAvatar(name).color}`}>
+                                                    <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${getAvatar(name).color}`}>
                                                         {getAvatar(name).initials}
                                                     </div>
-                                                    <p className="font-bold text-slate-900 text-xs truncate text-left w-full">{name}</p>
+                                                    <p className="font-bold text-slate-900 text-xs truncate w-full text-left">{name}</p>
                                                 </div>
                                             ))}
                                             {!selectedJob.workingBy && <p className="font-bold text-slate-900 text-sm text-left w-full">Unassigned</p>}
                                         </div>
                                     </div>
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left w-full">
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2 text-left">Deadline</p>
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2">Deadline</p>
                                         <p className="font-bold text-slate-900 text-sm text-left">{formatDate(selectedJob.deadline)}</p>
                                     </div>
                                 </div>
@@ -446,7 +475,7 @@ const HomePage = () => {
                                 <div className="border-t border-slate-200 pt-8 text-left w-full">
                                     <div className="flex items-center justify-between mb-6 text-left w-full">
                                         <h4 className="text-lg font-extrabold text-slate-900 text-left">Submitted Candidates</h4>
-                                        <span className="bg-white border border-slate-200 text-slate-700 font-bold px-3 py-1 rounded-lg text-xs shadow-sm shrink-0">
+                                        <span className="bg-white border border-slate-200 text-slate-700 font-bold px-3 py-1 rounded-lg text-xs shadow-sm">
                                             {jobCandidates.length}
                                         </span>
                                     </div>
