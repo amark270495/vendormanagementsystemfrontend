@@ -432,7 +432,10 @@ const HomePage = () => {
 
                                     {loadingCandidates ? (
                                         <div className="animate-pulse space-y-4">
-                                            {.map(i => <div key={i} className="h-20 bg-slate-200/50 rounded-2xl"></div>)}
+                                            {/* --- UPDATED Array.from SKELETON LOADER --- */}
+                                            {Array.from({ length: 3 }).map((_, i) => (
+                                                <div key={i} className="h-20 bg-slate-200/50 rounded-2xl"></div>
+                                            ))}
                                         </div>
                                     ) : jobCandidates.length > 0 ? (
                                         <div className="space-y-4">
