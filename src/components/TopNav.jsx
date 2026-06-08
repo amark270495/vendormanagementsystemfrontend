@@ -363,7 +363,7 @@ const TopNav = () => {
                                             <DropdownItem icon={Icons.Store} label="Create Vendor" target="create-msa-wo-vendor-company" onClick={handleNav} />
                                             <DropdownItem icon={Icons.Store} label="Manage Vendors" target="manage-msa-wo-vendor-companies" onClick={handleNav} />
                                             <DropdownItem icon={Icons.FileSignature} label="Create MSA/WO" target="create-msa-wo" onClick={handleNav} />
-                                            <DropdownItem icon={Icons.FileText} label="MSA & WODashboard" target="msa-wo-dashboard" onClick={handleNav} />
+                                            <DropdownItem icon={Icons.FileText} label="MSA & WO Dashboard" target="msa-wo-dashboard" onClick={handleNav} />
                                         </div>
                                     )}
                                     
