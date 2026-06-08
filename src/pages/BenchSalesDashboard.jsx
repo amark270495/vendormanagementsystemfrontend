@@ -328,7 +328,7 @@ const BenchSalesDashboard = () => {
                                 <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-auto">
                                     <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700">
                                         <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                        {c.submissions?.length || 0} Apps
+                                        {c.submissions?.length || 0} Applications
                                     </div>
                                     <div className="text-xs font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
                                         {c.assignedTo?.split(' ') || 'Unassigned'}
