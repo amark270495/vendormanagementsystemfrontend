@@ -269,121 +269,135 @@ const TopNav = () => {
                     <nav className="hidden xl:flex items-center gap-1.5 py-1">
                         <NavButton label="Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
                         
-                        {/* --- Merged Recruitment Hub --- */}
+                        {/* --- ENTERPRISE RECRUITMENT HUB MEGA DROPDOWN (Dual Column Layout) --- */}
                         {(showRecruitment || permissions.canViewDashboards || permissions.canViewReports) && (
                             <Dropdown align="left" trigger={
                                 <button className={triggerClass(['new-posting', 'candidate-details', 'bench-sales', 'dashboard', 'reports'])}>
                                     Recruitment Hub <Icons.ChevronDown className="text-slate-400" />
                                 </button>
                             }>
-                                <div className="w-64 py-1.5 bg-white rounded-xl border border-slate-200 shadow-xl text-left max-h-[80vh] overflow-y-auto custom-scrollbar">
+                                <div className="w-[620px] p-4 bg-white rounded-2xl border border-slate-200 shadow-2xl flex gap-6 text-left max-h-[85vh] overflow-y-auto custom-scrollbar">
                                     
-                                    {/* 1. Core Actions */}
-                                    {showRecruitment && (
-                                        <>
-                                            <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</div>
-                                            {permissions.canAddPosting && <DropdownItem icon={Icons.PlusCircle} label="New Posting" target="new-posting" onClick={handleNav} />}
-                                            {permissions.canViewCandidates && <DropdownItem icon={Icons.Users} label="Candidates" target="candidate-details" onClick={handleNav} />}
-                                            {permissions.canManageBenchSales && <DropdownItem icon={Icons.TrendingUp} label="Bench Sales" target="bench-sales" onClick={handleNav} />}
-                                        </>
-                                    )}
+                                    {/* Left Column: Actions & Analytics */}
+                                    <div className="w-52 shrink-0 flex flex-col gap-4">
+                                        {showRecruitment && (
+                                            <div className="flex flex-col gap-0.5">
+                                                <div className="px-3.5 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</div>
+                                                {permissions.canAddPosting && <DropdownItem icon={Icons.PlusCircle} label="New Posting" target="new-posting" onClick={handleNav} />}
+                                                {permissions.canViewCandidates && <DropdownItem icon={Icons.Users} label="Candidates" target="candidate-details" onClick={handleNav} />}
+                                                {permissions.canManageBenchSales && <DropdownItem icon={Icons.TrendingUp} label="Bench Sales" target="bench-sales" onClick={handleNav} />}
+                                            </div>
+                                        )}
+                                        
+                                        {permissions.canViewReports && (
+                                            <div className="flex flex-col gap-0.5 mt-auto">
+                                                <div className="px-3.5 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Analytics</div>
+                                                <DropdownItem icon={Icons.PieChart} label="Master Reports" target="reports" onClick={handleNav} />
+                                            </div>
+                                        )}
+                                    </div>
 
-                                    {/* 2. Dashboard Boards */}
+                                    {/* Vertical Divider Line */}
+                                    <div className="w-px bg-slate-100 self-stretch" />
+
+                                    {/* Right Column: VMS Boards Grid Layout */}
                                     {permissions.canViewDashboards && (
-                                        <>
-                                            {showRecruitment && <div className="border-t border-slate-100 my-1.5"></div>}
-                                            <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Boards</div>
-                                            {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
-                                                <DropdownItem key={key} icon={Icons.Layout} label={config.title} target={`dashboard?key=${key}`} onClick={handleNav} />
-                                            ))}
-                                        </>
-                                    )}
-
-                                    {/* 3. Master Reports */}
-                                    {permissions.canViewReports && (
-                                        <>
-                                            {(showRecruitment || permissions.canViewDashboards) && <div className="border-t border-slate-100 my-1.5"></div>}
-                                            <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Analytics</div>
-                                            <DropdownItem icon={Icons.PieChart} label="Master Reports" target="reports" onClick={handleNav} />
-                                        </>
+                                        <div className="flex-1">
+                                            <div className="px-3.5 py-1 mb-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Boards</div>
+                                            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                                                {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
+                                                    <DropdownItem key={key} icon={Icons.Layout} label={config.title} target={`dashboard?key=${key}`} onClick={handleNav} />
+                                                ))}
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                             </Dropdown>
                         )}
 
+                        {/* --- ENTERPRISE OPERATIONS DROPDOWN (Dual Column Layout) --- */}
                         {showOperations && (
                             <Dropdown align="left" trigger={
                                 <button className={triggerClass(['create-timesheet-company', 'manage-companies', 'create-timesheet-employee', 'manage-timesheet-employees', 'log-hours', 'timesheets-dashboard', 'create-asset', 'asset-dashboard'])}>
                                     Operations <Icons.ChevronDown className="text-slate-400" />
                                 </button>
                             }>
-                                <div className="w-56 py-1.5 bg-white rounded-xl border border-slate-200 shadow-xl text-left max-h-[80vh] overflow-y-auto custom-scrollbar">
+                                <div className="w-[500px] p-4 bg-white rounded-2xl border border-slate-200 shadow-2xl flex gap-6 text-left max-h-[85vh] overflow-y-auto custom-scrollbar">
                                     {permissions.canManageTimesheets && (
-                                        <>
-                                            <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Timesheets</div>
+                                        <div className="flex-1 flex flex-col gap-0.5">
+                                            <div className="px-3.5 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Timesheets</div>
                                             <DropdownItem icon={Icons.Building} label="Create Company" target="create-timesheet-company" onClick={handleNav} />
                                             <DropdownItem icon={Icons.Building} label="Manage Companies" target="manage-companies" onClick={handleNav} />
                                             <DropdownItem icon={Icons.UserPlus} label="Create Employee" target="create-timesheet-employee" onClick={handleNav} />
                                             <DropdownItem icon={Icons.Users} label="Manage Employees" target="manage-timesheet-employees" onClick={handleNav} />
                                             <DropdownItem icon={Icons.Clock} label="Log Hours" target="log-hours" onClick={handleNav} />
                                             <DropdownItem icon={Icons.Layout} label="Dashboard" target="timesheets-dashboard" onClick={handleNav} />
-                                        </>
+                                        </div>
                                     )}
+                                    
                                     {canSeeAssets && (
                                         <>
-                                            {permissions.canManageTimesheets && <div className="border-t border-slate-100 my-1"></div>}
-                                            <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Assets</div>
-                                            {permissions.canManageAssets && <DropdownItem icon={Icons.PlusCircle} label="Create Asset" target="create-asset" onClick={handleNav} />}
-                                            <DropdownItem icon={Icons.Laptop} label="Asset Dashboard" target="asset-dashboard" onClick={handleNav} />
+                                            {permissions.canManageTimesheets && <div className="w-px bg-slate-100 self-stretch" />}
+                                            <div className="w-48 shrink-0 flex flex-col gap-0.5">
+                                                <div className="px-3.5 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Assets</div>
+                                                {permissions.canManageAssets && <DropdownItem icon={Icons.PlusCircle} label="Create Asset" target="create-asset" onClick={handleNav} />}
+                                                <DropdownItem icon={Icons.Laptop} label="Asset Dashboard" target="asset-dashboard" onClick={handleNav} />
+                                            </div>
                                         </>
                                     )}
                                 </div>
                             </Dropdown>
                         )}
 
+                        {/* --- ENTERPRISE DOCS & REPORTS DROPDOWN (Dual Column Layout) --- */}
                         {showDocsReports && canSeeDocs && (
                             <Dropdown align="left" trigger={
                                 <button className={triggerClass(['msa-wo-dashboard', 'offer-letter-dashboard', 'create-msa-wo-vendor-company', 'manage-msa-wo-vendor-companies', 'create-msa-wo', 'create-offer-letter'])}>
                                     Docs & Reports <Icons.ChevronDown className="text-slate-400" />
                                 </button>
                             }>
-                                <div className="w-56 py-1.5 bg-white rounded-xl border border-slate-200 shadow-xl text-left max-h-[80vh] overflow-y-auto custom-scrollbar">
+                                <div className="w-[460px] p-4 bg-white rounded-2xl border border-slate-200 shadow-2xl flex gap-6 text-left max-h-[85vh] overflow-y-auto custom-scrollbar">
                                     {permissions.canManageMSAWO && (
-                                        <>
-                                            <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">MSA & WO</div>
+                                        <div className="flex-1 flex flex-col gap-0.5">
+                                            <div className="px-3.5 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">MSA & WO</div>
                                             <DropdownItem icon={Icons.Store} label="Create Vendor" target="create-msa-wo-vendor-company" onClick={handleNav} />
                                             <DropdownItem icon={Icons.Store} label="Manage Vendors" target="manage-msa-wo-vendor-companies" onClick={handleNav} />
                                             <DropdownItem icon={Icons.FileSignature} label="Create MSA/WO" target="create-msa-wo" onClick={handleNav} />
                                             <DropdownItem icon={Icons.FileText} label="Dashboard" target="msa-wo-dashboard" onClick={handleNav} />
-                                        </>
+                                        </div>
                                     )}
+                                    
                                     {permissions.canManageOfferLetters && (
                                         <>
-                                            {permissions.canManageMSAWO && <div className="border-t border-slate-100 my-1.5"></div>}
-                                            <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Offer Letter</div>
-                                            <DropdownItem icon={Icons.FileSignature} label="Create Letter" target="create-offer-letter" onClick={handleNav} />
-                                            <DropdownItem icon={Icons.FileText} label="Dashboard" target="offer-letter-dashboard" onClick={handleNav} />
+                                            {permissions.canManageMSAWO && <div className="w-px bg-slate-100 self-stretch" />}
+                                            <div className="w-44 shrink-0 flex flex-col gap-0.5">
+                                                <div className="px-3.5 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Offer Letter</div>
+                                                <DropdownItem icon={Icons.FileSignature} label="Create Letter" target="create-offer-letter" onClick={handleNav} />
+                                                <DropdownItem icon={Icons.FileText} label="Dashboard" target="offer-letter-dashboard" onClick={handleNav} />
+                                            </div>
                                         </>
                                     )}
                                 </div>
                             </Dropdown>
                         )}
 
+                        {/* --- ENTERPRISE ADMINISTRATION DROPDOWN (Grid Layout Structure) --- */}
                         {canSeeAdmin && (
                             <Dropdown align="left" trigger={
                                 <button className={triggerClass(['admin', 'manage-holidays', 'leave-config', 'approve-leave', 'approve-attendance', 'monthly-attendance-report'])}>
                                     Admin <Icons.ChevronDown className="text-slate-400" />
                                 </button>
                             }>
-                                <div className="w-56 py-1.5 bg-white rounded-xl border border-slate-200 shadow-xl text-left max-h-[80vh] overflow-y-auto custom-scrollbar">
-                                    <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Administration</div>
-                                    {permissions.canEditUsers && <DropdownItem icon={Icons.Users} label="User Management" target="admin" onClick={handleNav} />}
-                                    {permissions.canEditUsers && <div className="border-t border-slate-100 my-1" />}
-                                    {permissions.canManageHolidays && <DropdownItem icon={Icons.Calendar} label="Manage Holidays" target="manage-holidays" onClick={handleNav} />}
-                                    {permissions.canManageLeaveConfig && <DropdownItem icon={Icons.Settings} label="Leave Config" target="leave-config" onClick={handleNav} />}
-                                    {permissions.canApproveLeave && <DropdownItem icon={Icons.CheckSquare} label="Approve Leave" target="approve-leave" onClick={handleNav} />}
-                                    {permissions.canApproveAttendance && <DropdownItem icon={Icons.CheckSquare} label="Approve Attendance" target="approve-attendance" onClick={handleNav} />}
-                                    {permissions.canSendMonthlyReport && <DropdownItem icon={Icons.PieChart} label="Monthly Reports" target="monthly-attendance-report" onClick={handleNav} />}
+                                <div className="w-[460px] p-4 bg-white rounded-2xl border border-slate-200 shadow-2xl text-left max-h-[85vh] overflow-y-auto custom-scrollbar">
+                                    <div className="px-3.5 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-50 pb-1">Administration Panel</div>
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                                        {permissions.canEditUsers && <DropdownItem icon={Icons.Users} label="User Management" target="admin" onClick={handleNav} />}
+                                        {permissions.canManageHolidays && <DropdownItem icon={Icons.Calendar} label="Manage Holidays" target="manage-holidays" onClick={handleNav} />}
+                                        {permissions.canManageLeaveConfig && <DropdownItem icon={Icons.Settings} label="Leave Config" target="leave-config" onClick={handleNav} />}
+                                        {permissions.canApproveLeave && <DropdownItem icon={Icons.CheckSquare} label="Approve Leave" target="approve-leave" onClick={handleNav} />}
+                                        {permissions.canApproveAttendance && <DropdownItem icon={Icons.CheckSquare} label="Approve Attendance" target="approve-attendance" onClick={handleNav} />}
+                                        {permissions.canSendMonthlyReport && <DropdownItem icon={Icons.PieChart} label="Monthly Reports" target="monthly-attendance-report" onClick={handleNav} />}
+                                    </div>
                                 </div>
                             </Dropdown>
                         )}
