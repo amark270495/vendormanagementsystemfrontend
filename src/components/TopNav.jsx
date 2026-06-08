@@ -119,7 +119,7 @@ const TopNav = () => {
 
     useEffect(() => {
         audioRef.current = {
-            notification: new Audio('/sounds/notification.mp3'),
+            notification: new Audio('/sounds/message.mp3'),
             message: new Audio('/sounds/message.mp3')
         };
         

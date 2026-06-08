@@ -285,7 +285,7 @@ const BenchSalesDashboard = () => {
                                                 <td className="whitespace-nowrap px-4 py-4">
                                                     <div className="flex items-center">
                                                         <span className="text-sm font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-                                                            {c.submissions?.length || 0} Apps
+                                                            {c.submissions?.length || 0} Applications
                                                         </span>
                                                     </div>
                                                 </td>
