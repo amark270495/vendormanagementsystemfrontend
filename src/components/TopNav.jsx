@@ -331,7 +331,7 @@ const TopNav = () => {
                                             <DropdownItem icon={Icons.UserPlus} label="Create Employee" target="create-timesheet-employee" onClick={handleNav} />
                                             <DropdownItem icon={Icons.Users} label="Manage Employees" target="manage-timesheet-employees" onClick={handleNav} />
                                             <DropdownItem icon={Icons.Clock} label="Log Hours" target="log-hours" onClick={handleNav} />
-                                            <DropdownItem icon={Icons.Layout} label="Dashboard" target="timesheets-dashboard" onClick={handleNav} />
+                                            <DropdownItem icon={Icons.Layout} label="Timesheets Dashboard" target="timesheets-dashboard" onClick={handleNav} />
                                         </div>
                                     )}
                                     
