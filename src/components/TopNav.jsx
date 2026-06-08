@@ -396,7 +396,7 @@ const TopNav = () => {
                                         {permissions.canManageLeaveConfig && <DropdownItem icon={Icons.Settings} label="Leave Config" target="leave-config" onClick={handleNav} />}
                                         {permissions.canApproveLeave && <DropdownItem icon={Icons.CheckSquare} label="Approve Leave" target="approve-leave" onClick={handleNav} />}
                                         {permissions.canApproveAttendance && <DropdownItem icon={Icons.CheckSquare} label="Approve Attendance" target="approve-attendance" onClick={handleNav} />}
-                                        {permissions.canSendMonthlyReport && <DropdownItem icon={Icons.PieChart} label="Monthly Reports" target="monthly-attendance-report" onClick={handleNav} />}
+                                        {permissions.canSendMonthlyReport && <DropdownItem icon={Icons.PieChart} label="Monthly Attendance Reports" target="monthly-attendance-report" onClick={handleNav} />}
                                     </div>
                                 </div>
                             </Dropdown>
