@@ -254,7 +254,7 @@ const TopNav = () => {
     }, [searchQuery, searchableRoutes]);
 
     return (
-        <header className="sticky top-0 z- w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-2xl shadow-sm text-left">
+        <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-2xl shadow-sm text-left">
             <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-[72px] gap-6">
                     
@@ -269,31 +269,44 @@ const TopNav = () => {
                     <nav className="hidden xl:flex items-center gap-1.5 py-1">
                         <NavButton label="Home" target="home" isActive={isPageActive('home')} onClick={handleNav} />
                         
-                        {permissions.canViewDashboards && (
+                        {/* --- Merged Recruitment Hub --- */}
+                        {(showRecruitment || permissions.canViewDashboards || permissions.canViewReports) && (
                             <Dropdown align="left" trigger={
-                                <button className={triggerClass('dashboard')}>
-                                    Dashboards <Icons.ChevronDown className="text-slate-400" />
+                                <button className={triggerClass(['new-posting', 'candidate-details', 'bench-sales', 'dashboard', 'reports'])}>
+                                    Recruitment Hub <Icons.ChevronDown className="text-slate-400" />
                                 </button>
                             }>
-                                <div className="w-56 py-1.5 bg-white rounded-xl border border-slate-200 shadow-xl text-left max-h-[80vh] overflow-y-auto custom-scrollbar">
-                                    <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Boards</div>
-                                    {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
-                                        <DropdownItem key={key} icon={Icons.Layout} label={config.title} target={`dashboard?key=${key}`} onClick={handleNav} />
-                                    ))}
-                                </div>
-                            </Dropdown>
-                        )}
+                                <div className="w-64 py-1.5 bg-white rounded-xl border border-slate-200 shadow-xl text-left max-h-[80vh] overflow-y-auto custom-scrollbar">
+                                    
+                                    {/* 1. Core Actions */}
+                                    {showRecruitment && (
+                                        <>
+                                            <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</div>
+                                            {permissions.canAddPosting && <DropdownItem icon={Icons.PlusCircle} label="New Posting" target="new-posting" onClick={handleNav} />}
+                                            {permissions.canViewCandidates && <DropdownItem icon={Icons.Users} label="Candidates" target="candidate-details" onClick={handleNav} />}
+                                            {permissions.canManageBenchSales && <DropdownItem icon={Icons.TrendingUp} label="Bench Sales" target="bench-sales" onClick={handleNav} />}
+                                        </>
+                                    )}
 
-                        {showRecruitment && (
-                            <Dropdown align="left" trigger={
-                                <button className={triggerClass(['new-posting', 'candidate-details', 'bench-sales'])}>
-                                    Recruitment <Icons.ChevronDown className="text-slate-400" />
-                                </button>
-                            }>
-                                <div className="w-56 py-1.5 bg-white rounded-xl border border-slate-200 shadow-xl text-left max-h-[80vh] overflow-y-auto custom-scrollbar">
-                                    {permissions.canAddPosting && <DropdownItem icon={Icons.PlusCircle} label="New Posting" target="new-posting" onClick={handleNav} />}
-                                    {permissions.canViewCandidates && <DropdownItem icon={Icons.Users} label="Candidates" target="candidate-details" onClick={handleNav} />}
-                                    {permissions.canManageBenchSales && <DropdownItem icon={Icons.TrendingUp} label="Bench Sales" target="bench-sales" onClick={handleNav} />}
+                                    {/* 2. Dashboard Boards */}
+                                    {permissions.canViewDashboards && (
+                                        <>
+                                            {showRecruitment && <div className="border-t border-slate-100 my-1.5"></div>}
+                                            <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Boards</div>
+                                            {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
+                                                <DropdownItem key={key} icon={Icons.Layout} label={config.title} target={`dashboard?key=${key}`} onClick={handleNav} />
+                                            ))}
+                                        </>
+                                    )}
+
+                                    {/* 3. Master Reports */}
+                                    {permissions.canViewReports && (
+                                        <>
+                                            {(showRecruitment || permissions.canViewDashboards) && <div className="border-t border-slate-100 my-1.5"></div>}
+                                            <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Analytics</div>
+                                            <DropdownItem icon={Icons.PieChart} label="Master Reports" target="reports" onClick={handleNav} />
+                                        </>
+                                    )}
                                 </div>
                             </Dropdown>
                         )}
@@ -328,39 +341,28 @@ const TopNav = () => {
                             </Dropdown>
                         )}
 
-                        {showDocsReports && (
+                        {showDocsReports && canSeeDocs && (
                             <Dropdown align="left" trigger={
-                                <button className={triggerClass(['msa-wo-dashboard', 'offer-letter-dashboard', 'reports', 'create-msa-wo-vendor-company', 'manage-msa-wo-vendor-companies', 'create-msa-wo', 'create-offer-letter'])}>
+                                <button className={triggerClass(['msa-wo-dashboard', 'offer-letter-dashboard', 'create-msa-wo-vendor-company', 'manage-msa-wo-vendor-companies', 'create-msa-wo', 'create-offer-letter'])}>
                                     Docs & Reports <Icons.ChevronDown className="text-slate-400" />
                                 </button>
                             }>
                                 <div className="w-56 py-1.5 bg-white rounded-xl border border-slate-200 shadow-xl text-left max-h-[80vh] overflow-y-auto custom-scrollbar">
-                                    {canSeeDocs && (
+                                    {permissions.canManageMSAWO && (
                                         <>
-                                            {permissions.canManageMSAWO && (
-                                                <>
-                                                    <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">MSA & WO</div>
-                                                    <DropdownItem icon={Icons.Store} label="Create Vendor" target="create-msa-wo-vendor-company" onClick={handleNav} />
-                                                    <DropdownItem icon={Icons.Store} label="Manage Vendors" target="manage-msa-wo-vendor-companies" onClick={handleNav} />
-                                                    <DropdownItem icon={Icons.FileSignature} label="Create MSA/WO" target="create-msa-wo" onClick={handleNav} />
-                                                    <DropdownItem icon={Icons.FileText} label="Dashboard" target="msa-wo-dashboard" onClick={handleNav} />
-                                                </>
-                                            )}
-                                            {permissions.canManageOfferLetters && (
-                                                <>
-                                                    {permissions.canManageMSAWO && <div className="border-t border-slate-100 my-1.5"></div>}
-                                                    <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Offer Letter</div>
-                                                    <DropdownItem icon={Icons.FileSignature} label="Create Letter" target="create-offer-letter" onClick={handleNav} />
-                                                    <DropdownItem icon={Icons.FileText} label="Dashboard" target="offer-letter-dashboard" onClick={handleNav} />
-                                                </>
-                                            )}
+                                            <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">MSA & WO</div>
+                                            <DropdownItem icon={Icons.Store} label="Create Vendor" target="create-msa-wo-vendor-company" onClick={handleNav} />
+                                            <DropdownItem icon={Icons.Store} label="Manage Vendors" target="manage-msa-wo-vendor-companies" onClick={handleNav} />
+                                            <DropdownItem icon={Icons.FileSignature} label="Create MSA/WO" target="create-msa-wo" onClick={handleNav} />
+                                            <DropdownItem icon={Icons.FileText} label="Dashboard" target="msa-wo-dashboard" onClick={handleNav} />
                                         </>
                                     )}
-                                    {permissions.canViewReports && (
+                                    {permissions.canManageOfferLetters && (
                                         <>
-                                            {canSeeDocs && <div className="border-t border-slate-100 my-1"></div>}
-                                            <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Analytics</div>
-                                            <DropdownItem icon={Icons.PieChart} label="Master Reports" target="reports" onClick={handleNav} />
+                                            {permissions.canManageMSAWO && <div className="border-t border-slate-100 my-1.5"></div>}
+                                            <div className="px-4 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Offer Letter</div>
+                                            <DropdownItem icon={Icons.FileSignature} label="Create Letter" target="create-offer-letter" onClick={handleNav} />
+                                            <DropdownItem icon={Icons.FileText} label="Dashboard" target="offer-letter-dashboard" onClick={handleNav} />
                                         </>
                                     )}
                                 </div>
@@ -406,7 +408,7 @@ const TopNav = () => {
 
                         {/* Search Results Dropdown */}
                         {isSearchFocused && searchQuery.trim() !== '' && (
-                            <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden text-left animate-dropdown z-">
+                            <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden text-left animate-dropdown z-50">
                                 <div className="max-h-[300px] overflow-y-auto py-1 custom-scrollbar">
                                     {filteredSearchResults.length > 0 ? (
                                         filteredSearchResults.map((route, idx) => (
@@ -515,7 +517,7 @@ const TopNav = () => {
 
             {/* --- 5. Mobile Full-Screen Grouped Menu --- */}
             {isMobileMenuOpen && (
-                <div className="xl:hidden absolute top-[72px] left-0 w-full bg-white shadow-2xl border-t border-slate-100 z- max-h-[calc(100vh-72px)] overflow-y-auto">
+                <div className="xl:hidden absolute top-[72px] left-0 w-full bg-white shadow-2xl border-t border-slate-100 z-50 max-h-[calc(100vh-72px)] overflow-y-auto">
                     <div className="px-4 py-4 space-y-1 text-left">
                         
                         {/* Mobile Search */}
@@ -545,25 +547,38 @@ const TopNav = () => {
 
                         <button onClick={() => handleNav('home')} className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold ${isPageActive('home') ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'}`}>Home Dashboard</button>
                         
-                        {permissions.canViewDashboards && (
+                        {/* Merged Mobile Recruitment Hub */}
+                        {(showRecruitment || permissions.canViewDashboards || permissions.canViewReports) && (
                             <div className="mt-4 mb-2">
-                                <div className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-t border-slate-100">Board Views</div>
-                                <div className="grid grid-cols-2 gap-2 mt-2 px-2">
-                                    {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
-                                        <button key={key} onClick={() => handleNav(`dashboard?key=${key}`)} className="flex flex-col text-left px-4 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-100 transition-colors">
-                                            <span className="text-[13px] font-bold text-slate-800">{config.title}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                                <div className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-t border-slate-100">Recruitment Hub</div>
+                                
+                                {showRecruitment && (
+                                    <div className="space-y-1 mb-2">
+                                        {permissions.canAddPosting && <button onClick={() => handleNav('new-posting')} className={`w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold flex items-center gap-2 ${isPageActive('new-posting') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}><Icons.PlusCircle className="w-4 h-4"/> New Posting</button>}
+                                        {permissions.canViewCandidates && <button onClick={() => handleNav('candidate-details')} className={`w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold flex items-center gap-2 ${isPageActive('candidate-details') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}><Icons.Users className="w-4 h-4"/> Candidates</button>}
+                                        {permissions.canManageBenchSales && <button onClick={() => handleNav('bench-sales')} className={`w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold flex items-center gap-2 ${isPageActive('bench-sales') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}><Icons.TrendingUp className="w-4 h-4"/> Bench Sales</button>}
+                                    </div>
+                                )}
 
-                        {showRecruitment && (
-                            <div className="mt-4 mb-2">
-                                <div className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-t border-slate-100">Recruitment</div>
-                                {permissions.canAddPosting && <button onClick={() => handleNav('new-posting')} className={`w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold flex items-center gap-2 ${isPageActive('new-posting') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}><Icons.PlusCircle className="w-4 h-4"/> New Posting</button>}
-                                {permissions.canViewCandidates && <button onClick={() => handleNav('candidate-details')} className={`w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold flex items-center gap-2 ${isPageActive('candidate-details') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}><Icons.Users className="w-4 h-4"/> Candidates</button>}
-                                {permissions.canManageBenchSales && <button onClick={() => handleNav('bench-sales')} className={`w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold flex items-center gap-2 ${isPageActive('bench-sales') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}><Icons.TrendingUp className="w-4 h-4"/> Bench Sales</button>}
+                                {permissions.canViewDashboards && (
+                                    <div className="mb-2">
+                                        <div className="px-4 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Active Boards</div>
+                                        <div className="grid grid-cols-2 gap-2 mt-1 px-2">
+                                            {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
+                                                <button key={key} onClick={() => handleNav(`dashboard?key=${key}`)} className="flex flex-col text-left px-4 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-100 transition-colors">
+                                                    <span className="text-[13px] font-bold text-slate-800">{config.title}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {permissions.canViewReports && (
+                                    <div>
+                                        <div className="px-4 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Analytics</div>
+                                        <button onClick={() => handleNav('reports')} className="w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2"><Icons.PieChart className="w-4 h-4"/> Master Reports</button>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -575,11 +590,10 @@ const TopNav = () => {
                             </div>
                         )}
 
-                        {showDocsReports && (
+                        {showDocsReports && canSeeDocs && (
                             <div className="mt-4 mb-2">
                                 <div className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-t border-slate-100">Docs & Reports</div>
-                                {canSeeDocs && <button onClick={() => handleNav('msa-wo-dashboard')} className="w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2"><Icons.FileSignature className="w-4 h-4"/> Documents (MSA/Offers)</button>}
-                                {permissions.canViewReports && <button onClick={() => handleNav('reports')} className="w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2"><Icons.PieChart className="w-4 h-4"/> Master Reports</button>}
+                                <button onClick={() => handleNav('msa-wo-dashboard')} className="w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2"><Icons.FileSignature className="w-4 h-4"/> Documents (MSA/Offers)</button>
                             </div>
                         )}
 
