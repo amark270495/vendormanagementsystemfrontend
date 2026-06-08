@@ -14,7 +14,15 @@ const LeaveHistory = ({ leaveHistory }) => {
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
         try {
-            return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            // Using UTC to prevent timezone shifts for saved dates
+            const date = new Date(dateString + 'T00:00:00Z');
+            if (isNaN(date.getTime())) return dateString;
+            return date.toLocaleDateString('en-US', { 
+                timeZone: 'UTC',
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+            });
         } catch (e) {
             return dateString; // Fallback if date is invalid
         }
@@ -24,26 +32,44 @@ const LeaveHistory = ({ leaveHistory }) => {
         <div className="bg-white p-4 rounded-lg border shadow-sm">
             <h3 className="font-semibold text-lg text-gray-800 mb-3 border-b pb-2">Leave History</h3>
             {leaveHistory && leaveHistory.length > 0 ? (
-                <ul className="space-y-3 max-h-60 overflow-y-auto pr-2"> {/* Increased max height */}
+                <ul className="space-y-3 max-h-60 overflow-y-auto pr-2">
                     {leaveHistory.map(req => (
-                        <li key={req.requestId} className="text-sm p-3 bg-slate-50 rounded-md border border-slate-200 shadow-xs">
-                            <div className="flex justify-between items-start mb-1">
+                        <li key={req.requestId || req.id} className="text-sm p-3 bg-slate-50 rounded-md border border-slate-200 shadow-xs">
+                            <div className="flex justify-between items-start mb-1.5">
                                 <span className="font-medium text-slate-700">{req.leaveType}</span>
                                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${getStatusBadgeClass(req.status)}`}>
                                     {req.status}
                                 </span>
                             </div>
-                            <p className="text-xs text-slate-500 mb-2">
-                                {formatDate(req.startDate)} - {formatDate(req.endDate)}
-                            </p>
+                            
+                            {/* ENHANCED: Smart Dates and Duration Badges */}
+                            <div className="flex items-center gap-2 mb-2.5">
+                                <p className="text-xs text-slate-600 font-medium">
+                                    {req.startDate === req.endDate 
+                                        ? formatDate(req.startDate) 
+                                        : `${formatDate(req.startDate)} - ${formatDate(req.endDate)}`}
+                                </p>
+                                
+                                {req.isHalfDay ? (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                                        Half Day (0.5)
+                                    </span>
+                                ) : req.totalDays ? (
+                                    <span className="text-[10px] text-slate-500 font-medium bg-slate-200 px-1.5 py-0.5 rounded border border-slate-300">
+                                        {req.totalDays} Day{req.totalDays !== 1 ? 's' : ''}
+                                    </span>
+                                ) : null}
+                            </div>
+
                             <p className="text-xs text-slate-600 bg-slate-100 p-1.5 rounded border border-slate-200">
                                 <span className="font-medium">Reason:</span> {req.reason || 'No reason provided'}
                             </p>
-                             {req.approverComments && (
-                                <p className="mt-1 text-xs text-slate-600 bg-blue-50 p-1.5 rounded border border-blue-200">
+                            
+                            {req.approverComments && (
+                                <p className="mt-1.5 text-xs text-slate-600 bg-blue-50 p-1.5 rounded border border-blue-200">
                                     <span className="font-medium">Approver Note:</span> {req.approverComments}
                                 </p>
-                             )}
+                            )}
                         </li>
                     ))}
                 </ul>

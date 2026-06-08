@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
-import ApprovalCommentModal from '../components/leave/ApprovalCommentModal'; // Ensure this path is correct
+import ApprovalCommentModal from '../components/leave/ApprovalCommentModal'; 
 
 const LeaveApprovalPage = () => {
     const { user } = useAuth();
@@ -14,14 +14,12 @@ const LeaveApprovalPage = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    const [statusFilter, setStatusFilter] = useState('Pending'); // Default to Pending
+    const [statusFilter, setStatusFilter] = useState('Pending'); 
     const [searchTerm, setSearchTerm] = useState('');
 
-    // State for the modal
     const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
-    // *** REVERTED: Store the full request object again ***
     const [currentRequest, setCurrentRequest] = useState(null);
-    const [currentAction, setCurrentAction] = useState(null); // 'Approved' or 'Rejected'
+    const [currentAction, setCurrentAction] = useState(null); 
     const [actionLoading, setActionLoading] = useState(false);
 
     const loadRequests = useCallback(async () => {
@@ -38,10 +36,7 @@ const LeaveApprovalPage = () => {
                 statusFilter: statusFilter
             });
             if (result.data.success) {
-                // *** SIMPLIFIED: Trust API mapping (id should come from RowKey) ***
                 const requestsFromApi = result.data.requests || [];
-                // Log to verify 'id' is present
-                console.log("Fetched requests from API:", requestsFromApi);
                 setLeaveRequests(requestsFromApi);
             } else {
                 setError(result.data.message);
@@ -57,49 +52,34 @@ const LeaveApprovalPage = () => {
 
     useEffect(() => {
         loadRequests();
-    }, [loadRequests]); // Reloads when statusFilter changes
+    }, [loadRequests]); 
 
-    // Filter based on search term (client-side)
     const filteredRequests = useMemo(() => {
         if (!searchTerm) return leaveRequests;
         const lowerSearch = searchTerm.toLowerCase();
         return leaveRequests.filter(req =>
             req.username.toLowerCase().includes(lowerSearch) ||
             req.leaveType.toLowerCase().includes(lowerSearch) ||
-            (req.reason && req.reason.toLowerCase().includes(lowerSearch)) // Added null check for reason
+            (req.reason && req.reason.toLowerCase().includes(lowerSearch)) 
         );
     }, [leaveRequests, searchTerm]);
 
-    // --- Action Handlers ---
 
-    // *** REVERTED: Pass the full request object ***
     const handleActionClick = (request, action) => {
-        console.log("Setting currentRequest in handleActionClick:", request); // Log when setting
         setCurrentRequest(request);
         setCurrentAction(action);
         setIsCommentModalOpen(true);
     };
 
-    // *** REVERTED: Use currentRequest state object ***
     const handleConfirmAction = async (comments) => {
         setActionLoading(true);
         setError('');
         setSuccess('');
 
-        // Use the state variable directly
         const req = currentRequest;
 
-        console.log("handleConfirmAction triggered. Current State:", {
-            currentRequest: req, // Log the object being used
-            currentAction,
-            comments
-        });
-
         try {
-            // Reinstate original check
             if (!req || !req.id || !req.username) {
-                console.error("Critical Error: currentRequest is missing 'id' or 'username'.", req);
-                console.log("Properties present:", req ? Object.keys(req) : 'null');
                 throw new Error("Internal Error: Essential request data (ID or Username) is missing. Please try again.");
             }
 
@@ -110,15 +90,14 @@ const LeaveApprovalPage = () => {
                 approverComments: comments,
                 authenticatedUsername: user.userIdentifier
             };
-            console.log("Sending payload to API:", payload);
 
             const response = await apiService.approveLeave(payload);
 
             if (response.data.success) {
                 setSuccess(response.data.message);
                 setIsCommentModalOpen(false);
-                setCurrentRequest(null); // Clear state after success
-                loadRequests(); // Refresh the list
+                setCurrentRequest(null); 
+                loadRequests(); 
                 setTimeout(() => setSuccess(''), 3000);
             } else {
                 throw new Error(response.data.message);
@@ -126,17 +105,14 @@ const LeaveApprovalPage = () => {
         } catch (err) {
             console.error("Failed to approve leave in handleConfirmAction:", err);
             setError(err.message || "An unknown error occurred during approval.");
-            // Rethrow the error so the modal can potentially display it
             throw err;
         } finally {
             setActionLoading(false);
         }
     };
 
-    // Helper to format dates
     const formatDate = (dateString) => {
          if (!dateString) return 'N/A';
-        // Use UTC date parts to avoid timezone issues when displaying
         const date = new Date(dateString + 'T00:00:00Z');
         if (isNaN(date.getTime())) return 'Invalid Date';
         return date.toLocaleDateString('en-US', {
@@ -147,13 +123,10 @@ const LeaveApprovalPage = () => {
         });
     };
 
-    // --- Render ---
-
-    if (loading && !actionLoading) { // Don't show main loader during modal action
+    if (loading && !actionLoading) { 
         return <div className="flex justify-center items-center h-64"><Spinner size="12" /></div>;
     }
 
-    // Show access denied only if loading is finished and permission is false
     if (!loading && !canApproveLeave) {
         return (
             <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
@@ -163,7 +136,6 @@ const LeaveApprovalPage = () => {
         );
     }
 
-
     return (
         <>
             <div className="space-y-6">
@@ -172,11 +144,9 @@ const LeaveApprovalPage = () => {
                     <p className="mt-1 text-gray-600">Review and respond to employee leave requests.</p>
                 </div>
 
-                {/* Display general errors here, modal errors are handled inside the modal */}
                 {error && !isCommentModalOpen && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded animate-shake">{error}</div>}
                 {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded animate-fadeIn">{success}</div>}
 
-                {/* Filter and Search Bar */}
                 <div className="bg-white p-4 rounded-xl shadow border border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div className="flex items-center space-x-2">
                         <label htmlFor="statusFilter" className="text-sm font-medium text-gray-700">Filter by Status:</label>
@@ -201,7 +171,6 @@ const LeaveApprovalPage = () => {
                     />
                 </div>
 
-                {/* Requests List */}
                 <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
                     <div className="overflow-x-auto">
                         {filteredRequests.length > 0 ? (
@@ -210,14 +179,13 @@ const LeaveApprovalPage = () => {
                                     <tr>
                                         <th scope="col" className="px-5 py-3">Employee</th>
                                         <th scope="col" className="px-5 py-3">Leave Type</th>
-                                        <th scope="col" className="px-5 py-3">Dates</th>
+                                        <th scope="col" className="px-5 py-3">Dates & Duration</th>
                                         <th scope="col" className="px-5 py-3">Reason</th>
                                         <th scope="col" className="px-5 py-3">Status</th>
                                         <th scope="col" className="px-5 py-3 text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {/* *** Use stable req.id as key *** */}
                                     {filteredRequests.map(req => (
                                         <tr key={req.id} className="hover:bg-gray-50">
                                             <td className="px-5 py-4 font-medium text-gray-900">
@@ -225,7 +193,27 @@ const LeaveApprovalPage = () => {
                                                 <p className="text-xs text-gray-500 font-normal">Req. {formatDate(req.requestDate)}</p>
                                             </td>
                                             <td className="px-5 py-4">{req.leaveType}</td>
-                                            <td className="px-5 py-4">{formatDate(req.startDate)} - {formatDate(req.endDate)}</td>
+                                            
+                                            {/* ENHANCED: Render Duration and Half-Day Badges */}
+                                            <td className="px-5 py-4">
+                                                <div className="whitespace-nowrap text-gray-900">
+                                                    {req.startDate === req.endDate 
+                                                        ? formatDate(req.startDate) 
+                                                        : `${formatDate(req.startDate)} - ${formatDate(req.endDate)}`}
+                                                </div>
+                                                <div className="mt-1">
+                                                    {req.isHalfDay ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                                                            Half Day (0.5)
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs text-gray-500 font-medium">
+                                                            {req.totalDays} Day{req.totalDays !== 1 ? 's' : ''}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+
                                             <td className="px-5 py-4 max-w-xs truncate" title={req.reason}>{req.reason}</td>
                                             <td className="px-5 py-4">
                                                 <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
@@ -242,17 +230,16 @@ const LeaveApprovalPage = () => {
                                             <td className="px-5 py-4 text-center">
                                                 {req.status === 'Pending' ? (
                                                     <div className="flex justify-center space-x-2">
-                                                        {/* *** REVERTED: Pass full req object *** */}
                                                         <button
                                                             onClick={() => handleActionClick(req, 'Approved')}
-                                                            disabled={actionLoading} // Disable buttons during any action
+                                                            disabled={actionLoading} 
                                                             className="px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-md hover:bg-green-600 transition disabled:opacity-50"
                                                         >
                                                             Approve
                                                         </button>
                                                         <button
                                                             onClick={() => handleActionClick(req, 'Rejected')}
-                                                            disabled={actionLoading} // Disable buttons during any action
+                                                            disabled={actionLoading} 
                                                             className="px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded-md hover:bg-red-600 transition disabled:opacity-50"
                                                         >
                                                             Reject
@@ -278,18 +265,16 @@ const LeaveApprovalPage = () => {
                 </div>
             </div>
 
-            {/* Modal for adding comments */}
             <ApprovalCommentModal
                 isOpen={isCommentModalOpen}
                 onClose={() => {
                     setIsCommentModalOpen(false);
-                    // Clear state when modal closes
                     setCurrentRequest(null);
                 }}
-                onConfirm={handleConfirmAction} // This now receives comments
-                request={currentRequest} // Pass the full object
+                onConfirm={handleConfirmAction} 
+                request={currentRequest} 
                 action={currentAction}
-                loading={actionLoading} // Pass action loading state to modal
+                loading={actionLoading} 
             />
         </>
     );
