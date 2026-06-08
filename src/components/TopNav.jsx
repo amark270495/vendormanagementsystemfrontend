@@ -261,7 +261,7 @@ const TopNav = () => {
                     {/* --- 1. Old School Brand Logo --- */}
                     <div className="flex flex-col items-center cursor-pointer group shrink-0" onClick={() => handleNav('home')}>
                         <img src={LOGO_URL} alt="Taproot Logo" className="h-10 w-auto object-contain mb-0.5" />
-                        <h1 className="text-[9px] font-black tracking-[0.15em] text-slate-900 uppercase leading-none">Vendor Management System</h1>
+                        <h1 className="text-[9px] font-black tracking-[0.15em] text-slate-900 uppercase leading-none">Vendor Management Portal</h1>
                         <div className="w-6 h-[2px] bg-blue-600 mt-1 rounded-full group-hover:w-full transition-all duration-300" />
                     </div>
 
