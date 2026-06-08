@@ -303,7 +303,7 @@ const TopNav = () => {
                                     {/* Right Column: VMS Boards Grid Layout */}
                                     {permissions.canViewDashboards && (
                                         <div className="flex-1">
-                                            <div className="px-3.5 py-1 mb-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Boards</div>
+                                            <div className="px-3.5 py-1 mb-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Openings Dashboard</div>
                                             <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
                                                 {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
                                                     <DropdownItem key={key} icon={Icons.Layout} label={config.title} target={`dashboard?key=${key}`} onClick={handleNav} />
@@ -363,7 +363,7 @@ const TopNav = () => {
                                             <DropdownItem icon={Icons.Store} label="Create Vendor" target="create-msa-wo-vendor-company" onClick={handleNav} />
                                             <DropdownItem icon={Icons.Store} label="Manage Vendors" target="manage-msa-wo-vendor-companies" onClick={handleNav} />
                                             <DropdownItem icon={Icons.FileSignature} label="Create MSA/WO" target="create-msa-wo" onClick={handleNav} />
-                                            <DropdownItem icon={Icons.FileText} label="Dashboard" target="msa-wo-dashboard" onClick={handleNav} />
+                                            <DropdownItem icon={Icons.FileText} label="MSA & WODashboard" target="msa-wo-dashboard" onClick={handleNav} />
                                         </div>
                                     )}
                                     
@@ -373,7 +373,7 @@ const TopNav = () => {
                                             <div className="w-44 shrink-0 flex flex-col gap-0.5">
                                                 <div className="px-3.5 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Offer Letter</div>
                                                 <DropdownItem icon={Icons.FileSignature} label="Create Letter" target="create-offer-letter" onClick={handleNav} />
-                                                <DropdownItem icon={Icons.FileText} label="Dashboard" target="offer-letter-dashboard" onClick={handleNav} />
+                                                <DropdownItem icon={Icons.FileText} label="Offer Letters Dashboard" target="offer-letter-dashboard" onClick={handleNav} />
                                             </div>
                                         </>
                                     )}
