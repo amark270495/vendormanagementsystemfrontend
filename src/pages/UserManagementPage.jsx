@@ -170,7 +170,7 @@ const UserManagementPage = () => {
                         className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl flex items-center justify-center transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-0.5"
                     >
                         <Icons.UserPlus className="w-5 h-5 mr-2" />
-                        Provision New User
+                        Create New User
                     </button>
                 )}
             </div>
