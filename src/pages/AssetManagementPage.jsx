@@ -151,7 +151,7 @@ const AssetManagementPage = () => {
         const apps = new Set();
         assetSessions.forEach(session => {
             if (String(session.actionType).toLowerCase() === 'activeapp' && session.workDoneNotes) {
-                apps.add(session.workDoneNotes.split(' - ')); // Parse raw window title if needed
+                apps.add(session.workDoneNotes.split(' - ')); 
             }
         });
         return Array.from(apps);
@@ -206,12 +206,10 @@ const AssetManagementPage = () => {
         if (selectedAssetIds.size === 0) return;
         if (action === 'delete') {
             if (window.confirm(`Are you sure you want to permanently delete ${selectedAssetIds.size} assets?`)) {
-                // Implement bulk delete API call here
                 alert(`Bulk delete triggered for ${selectedAssetIds.size} assets.`);
                 setSelectedAssetIds(new Set());
             }
         } else {
-            // Repurpose assigning modal for bulk (Mock implementation)
             setModalData({ isBulk: true, assetIds: Array.from(selectedAssetIds) });
             setActiveModal(action);
         }
@@ -269,12 +267,6 @@ const AssetManagementPage = () => {
         if (selectedAsset) viewAssetData(selectedAsset, newDate);
     };
 
-    const triggerRemoteMDMCommand = (command) => {
-        if (!window.confirm(`Are you sure you want to send the [${command}] command to ${selectedAsset.rowKey}?`)) return;
-        // Mock MDM push notification API
-        alert(`MDM Command '${command}' queued for delivery to ${selectedAsset.rowKey}.`);
-    };
-
     // --- Action Handlers ---
     const handleActionSubmit = async (e) => {
         e.preventDefault();
@@ -324,7 +316,6 @@ const AssetManagementPage = () => {
     };
 
     const exportToCSV = () => {
-        // If items are selected, only export those. Otherwise export all filtered.
         const targetAssets = selectedAssetIds.size > 0 
             ? filteredAssets.filter(a => selectedAssetIds.has(a.rowKey))
             : filteredAssets;
@@ -410,7 +401,7 @@ const AssetManagementPage = () => {
             <div className="px-6 py-5 border-b border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center bg-white gap-4">
                 <div>
                     <h2 className="text-xl font-black text-slate-800 flex items-center tracking-tight"><LaptopIcon /> Enterprise Asset Management</h2>
-                    <p className="text-sm text-slate-500 mt-1 font-medium">MDM telemetry, remote execution, and hardware lifecycle tracking.</p>
+                    <p className="text-sm text-slate-500 mt-1 font-medium">Telemetry monitoring, application auditing, and hardware lifecycle tracking.</p>
                 </div>
                 <div className="flex items-center gap-2 w-full md:w-auto">
                     <button onClick={exportToCSV} className="inline-flex items-center justify-center w-full md:w-auto px-4 py-2 border border-slate-200 shadow-sm text-sm font-bold rounded-lg text-slate-600 bg-white hover:bg-slate-50 transition-colors">
@@ -654,22 +645,16 @@ const AssetManagementPage = () => {
                         {activeModal === 'viewer' ? (
                             <div className="flex flex-col h-full overflow-hidden">
                                 
-                                {/* Header & MDM Commands */}
+                                {/* Header */}
                                 <div className="px-6 py-4 border-b border-slate-200 bg-white flex justify-between items-center z-10 shadow-sm">
                                     <div className="flex items-center gap-4">
                                         <h3 className="text-xl font-black text-slate-800 flex items-center tracking-tight"><LaptopIcon /> {selectedAsset.rowKey} </h3>
                                         <span className="font-bold text-[10px] uppercase tracking-wider text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">{selectedAsset.AssetAssignedTo || 'Unassigned'}</span>
-                                        {/* Mock Lifecycle Indicators */}
+                                        {/* Lifecycle Indicator */}
                                         {selectedAsset.UptimeHours > 168 && <span className="font-bold text-[10px] uppercase tracking-wider text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded">Reboot Needed</span>}
                                     </div>
                                     
                                     <div className="flex items-center gap-3">
-                                        <select onChange={(e) => { if(e.target.value) { triggerRemoteMDMCommand(e.target.value); e.target.value=""; } }} className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 focus:outline-none">
-                                            <option value="">Remote Actions...</option>
-                                            <option value="Force Sync Telemetry">Force Sync Telemetry</option>
-                                            <option value="Restart Agent Service">Restart Tracking Agent</option>
-                                            <option value="Lock Workstation">Lock Workstation</option>
-                                        </select>
                                         <button onClick={closeModal} className="text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 rounded-full p-1 border border-slate-200 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                     </div>
                                 </div>
@@ -794,7 +779,7 @@ const AssetManagementPage = () => {
                                         </div>
                                     )}
 
-                                    {/* NEW TAB 3: SOFTWARE AUDIT */}
+                                    {/* TAB 3: SOFTWARE AUDIT */}
                                     {modalTab === 'software' && (
                                         <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm h-full flex flex-col">
                                             <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Active Software Auditing</h4>
