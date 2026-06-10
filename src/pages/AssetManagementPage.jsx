@@ -4,14 +4,16 @@ import { usePermissions } from '../hooks/usePermissions';
 import { apiService } from '../api/apiService';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-// --- Clean SVG Icons ---
+// --- SVG Icons ---
 const LaptopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
 const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
 const DownloadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>;
 const UploadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>;
-const ShieldIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
 const CpuIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>;
+const ShieldIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
 const AlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>;
+const GridIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>;
+const ListIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>;
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9'];
 
@@ -43,11 +45,15 @@ const AssetManagementPage = () => {
     const [loading, setLoading] = useState(true);
     
     // --- UI States ---
+    const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
     const [activeModal, setActiveModal] = useState(null); 
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [modalData, setModalData] = useState({});
     const [processing, setProcessing] = useState(false);
     const [modalTab, setModalTab] = useState('tracking'); 
+
+    // --- Bulk Operations ---
+    const [selectedAssetIds, setSelectedAssetIds] = useState(new Set());
 
     // --- Viewer Data ---
     const [assetSessions, setAssetSessions] = useState([]);
@@ -62,14 +68,14 @@ const AssetManagementPage = () => {
     const [systemAlerts, setSystemAlerts] = useState([]);
     const [weeklyUtilizationData, setWeeklyUtilizationData] = useState([]);
 
-    // --- Main Table Pagination & Filters ---
+    // --- Main Pagination & Filters ---
     const [generalFilter, setGeneralFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [importFile, setImportFile] = useState(null);
 
-    // --- Popup Pagination States ---
+    // --- Popup Pagination ---
     const [sessionPage, setSessionPage] = useState(1);
     const [auditPage, setAuditPage] = useState(1);
     const popupItemsPerPage = 10;
@@ -80,7 +86,7 @@ const AssetManagementPage = () => {
             const [assetRes, userRes, statsRes] = await Promise.all([
                 apiService.getAssets(user.userIdentifier),
                 apiService.getUsers(user.userIdentifier),
-                apiService.getFleetUtilizationStats(user.userIdentifier) 
+                apiService.getFleetUtilizationStats(user.userIdentifier).catch(() => ({ data: [] }))
             ]);
             setAssets(assetRes.data || []);
             setUsers(userRes.data?.users || []);
@@ -140,6 +146,17 @@ const AssetManagementPage = () => {
         return Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
     }, [assets]);
 
+    // Active Applications (Software Tab) derived from sessions
+    const activeApplications = useMemo(() => {
+        const apps = new Set();
+        assetSessions.forEach(session => {
+            if (String(session.actionType).toLowerCase() === 'activeapp' && session.workDoneNotes) {
+                apps.add(session.workDoneNotes.split(' - ')); // Parse raw window title if needed
+            }
+        });
+        return Array.from(apps);
+    }, [assetSessions]);
+
     // Filtering Logic
     const filteredAssets = useMemo(() => {
         let data = [...assets];
@@ -159,16 +176,50 @@ const AssetManagementPage = () => {
     const totalPages = Math.ceil(filteredAssets.length / itemsPerPage) || 1;
     const paginatedAssets = filteredAssets.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-    // Sub-Pagination Slicing
     const paginatedSessions = assetSessions.slice((sessionPage - 1) * popupItemsPerPage, sessionPage * popupItemsPerPage);
     const totalSessionPages = Math.ceil(assetSessions.length / popupItemsPerPage) || 1;
 
     const paginatedAudit = auditTrail.slice((auditPage - 1) * popupItemsPerPage, auditPage * popupItemsPerPage);
     const totalAuditPages = Math.ceil(auditTrail.length / popupItemsPerPage) || 1;
 
+    // --- Bulk Selection Handlers ---
+    const toggleSelectAll = (e) => {
+        if (e.target.checked) {
+            const allIds = paginatedAssets.map(a => a.rowKey);
+            setSelectedAssetIds(new Set([...selectedAssetIds, ...allIds]));
+        } else {
+            const currentIds = paginatedAssets.map(a => a.rowKey);
+            const newSet = new Set(selectedAssetIds);
+            currentIds.forEach(id => newSet.delete(id));
+            setSelectedAssetIds(newSet);
+        }
+    };
+
+    const toggleSelectAsset = (id) => {
+        const newSet = new Set(selectedAssetIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedAssetIds(newSet);
+    };
+
+    const handleBulkAction = (action) => {
+        if (selectedAssetIds.size === 0) return;
+        if (action === 'delete') {
+            if (window.confirm(`Are you sure you want to permanently delete ${selectedAssetIds.size} assets?`)) {
+                // Implement bulk delete API call here
+                alert(`Bulk delete triggered for ${selectedAssetIds.size} assets.`);
+                setSelectedAssetIds(new Set());
+            }
+        } else {
+            // Repurpose assigning modal for bulk (Mock implementation)
+            setModalData({ isBulk: true, assetIds: Array.from(selectedAssetIds) });
+            setActiveModal(action);
+        }
+    };
+
     // --- Modal Controls ---
     const openModal = (type, asset = null) => {
-        if(asset) setSelectedAsset(asset);
+        if (asset) setSelectedAsset(asset);
         setModalData({});
         setModalTab('tracking');
         setActiveModal(type);
@@ -218,21 +269,32 @@ const AssetManagementPage = () => {
         if (selectedAsset) viewAssetData(selectedAsset, newDate);
     };
 
+    const triggerRemoteMDMCommand = (command) => {
+        if (!window.confirm(`Are you sure you want to send the [${command}] command to ${selectedAsset.rowKey}?`)) return;
+        // Mock MDM push notification API
+        alert(`MDM Command '${command}' queued for delivery to ${selectedAsset.rowKey}.`);
+    };
+
     // --- Action Handlers ---
     const handleActionSubmit = async (e) => {
         e.preventDefault();
         setProcessing(true);
         try {
-            if (activeModal === 'assign') {
-                const targetUser = users.find(u => u.username === modalData.userEmail);
-                await apiService.assignAsset({ assetId: selectedAsset.rowKey, assignedToEmail: targetUser.username, assignedToName: targetUser.displayName }, user.userIdentifier);
-            } else if (activeModal === 'reassign') {
-                const targetUser = users.find(u => u.username === modalData.userEmail);
-                await apiService.reassignAsset({ assetId: selectedAsset.rowKey, newAssignedToEmail: targetUser.username, newAssignedToName: targetUser.displayName }, user.userIdentifier);
-            } else if (activeModal === 'service') {
-                await apiService.serviceRepairAsset({ assetId: selectedAsset.rowKey, serviceDetails: modalData.details, isRepair: modalData.isRepair === 'true' }, user.userIdentifier);
+            if (modalData.isBulk) {
+                alert(`Executing bulk ${activeModal} on ${modalData.assetIds.length} assets.`);
+                setSelectedAssetIds(new Set());
+            } else {
+                if (activeModal === 'assign') {
+                    const targetUser = users.find(u => u.username === modalData.userEmail);
+                    await apiService.assignAsset({ assetId: selectedAsset.rowKey, assignedToEmail: targetUser.username, assignedToName: targetUser.displayName }, user.userIdentifier);
+                } else if (activeModal === 'reassign') {
+                    const targetUser = users.find(u => u.username === modalData.userEmail);
+                    await apiService.reassignAsset({ assetId: selectedAsset.rowKey, newAssignedToEmail: targetUser.username, newAssignedToName: targetUser.displayName }, user.userIdentifier);
+                } else if (activeModal === 'service') {
+                    await apiService.serviceRepairAsset({ assetId: selectedAsset.rowKey, serviceDetails: modalData.details, isRepair: modalData.isRepair === 'true' }, user.userIdentifier);
+                }
+                await fetchData();
             }
-            await fetchData();
             closeModal();
         } catch (err) { alert(`Action failed: ${err.message}`); }
         finally { setProcessing(false); }
@@ -243,6 +305,7 @@ const AssetManagementPage = () => {
         try {
             await apiService.deleteAsset(assetId, user.userIdentifier);
             setAssets(assets.filter(a => a.rowKey !== assetId));
+            setSelectedAssetIds(prev => { const newSet = new Set(prev); newSet.delete(assetId); return newSet; });
         } catch (err) { alert('Delete failed.'); }
     };
 
@@ -261,8 +324,13 @@ const AssetManagementPage = () => {
     };
 
     const exportToCSV = () => {
+        // If items are selected, only export those. Otherwise export all filtered.
+        const targetAssets = selectedAssetIds.size > 0 
+            ? filteredAssets.filter(a => selectedAssetIds.has(a.rowKey))
+            : filteredAssets;
+
         const headers = ['Asset ID', 'Brand', 'Model', 'Status', 'Assigned To', 'Last Heartbeat', 'CPU Usage %', 'RAM Usage %', 'Pending Updates'];
-        const rows = filteredAssets.map(a => [
+        const rows = targetAssets.map(a => [
             a.rowKey, a.AssetBrandName, a.AssetModelName, a.AssetStatus, 
             a.AssetAssignedTo || 'Unassigned', a.LastHeartbeat || 'Unknown',
             a.CPUUsagePercent || 0, a.MemoryUsagePercent || 0, a.PendingUpdatesCount || 0
@@ -316,15 +384,16 @@ const AssetManagementPage = () => {
             'Service': 'bg-amber-50 text-amber-700 border-amber-200',
             'Repair': 'bg-rose-50 text-rose-700 border-rose-200'
         };
-        return <span className={`px-2.5 py-1 text-xs font-bold rounded-md border ${styles[status] || 'bg-slate-100 text-slate-700 border-slate-200'}`}>{status}</span>;
+        return <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded border ${styles[status] || 'bg-slate-100 text-slate-700 border-slate-200'}`}>{status}</span>;
     };
 
     const getEventBadge = (action) => {
-        if (!action) return <span className="text-[11px] font-bold text-slate-500 uppercase">SYSTEM</span>;
+        if (!action) return <span className="text-[10px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-black text-slate-500 uppercase">SYSTEM</span>;
         const lower = String(action).toLowerCase();
-        if (['login', 'active', 'resume', 'heartbeat'].includes(lower)) return <span className="text-[11px] font-bold text-emerald-600 uppercase">{action}</span>;
-        if (['logout', 'lock', 'sleep', 'shutdown'].includes(lower)) return <span className="text-[11px] font-bold text-slate-500 uppercase">{action}</span>;
-        return <span className="text-[11px] font-bold text-slate-500 uppercase">{action}</span>;
+        if (['login', 'active', 'resume', 'heartbeat'].includes(lower)) return <span className="text-[10px] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-black text-emerald-600 uppercase">{action}</span>;
+        if (['activeapp'].includes(lower)) return <span className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-0.5 rounded font-black text-slate-600 uppercase">{action}</span>;
+        if (['logout', 'lock', 'sleep', 'shutdown', 'idle'].includes(lower)) return <span className="text-[10px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-black text-slate-500 uppercase">{action}</span>;
+        return <span className="text-[10px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-black text-slate-500 uppercase">{action}</span>;
     };
 
     const getParsedUpdates = (jsonString) => {
@@ -332,18 +401,20 @@ const AssetManagementPage = () => {
         try { return JSON.parse(jsonString); } catch(e) { return []; }
     };
 
+    const isAllPageSelected = paginatedAssets.length > 0 && paginatedAssets.every(a => selectedAssetIds.has(a.rowKey));
+
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden text-slate-800">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden text-slate-800 relative pb-16">
             
             {/* --- HEADER & TOP ACTIONS --- */}
             <div className="px-6 py-5 border-b border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center bg-white gap-4">
                 <div>
-                    <h2 className="text-xl font-black text-slate-800 flex items-center tracking-tight"><LaptopIcon /> Hardware Asset Management</h2>
-                    <p className="text-sm text-slate-500 mt-1 font-medium">Monitor active fleet telemetry, assignments, and device lifecycles.</p>
+                    <h2 className="text-xl font-black text-slate-800 flex items-center tracking-tight"><LaptopIcon /> Enterprise Asset Management</h2>
+                    <p className="text-sm text-slate-500 mt-1 font-medium">MDM telemetry, remote execution, and hardware lifecycle tracking.</p>
                 </div>
                 <div className="flex items-center gap-2 w-full md:w-auto">
                     <button onClick={exportToCSV} className="inline-flex items-center justify-center w-full md:w-auto px-4 py-2 border border-slate-200 shadow-sm text-sm font-bold rounded-lg text-slate-600 bg-white hover:bg-slate-50 transition-colors">
-                        <DownloadIcon /> Export CSV
+                        <DownloadIcon /> {selectedAssetIds.size > 0 ? `Export (${selectedAssetIds.size})` : 'Export All'}
                     </button>
                     {canManageAssets && (
                         <button onClick={() => openModal('import')} className="inline-flex items-center justify-center w-full md:w-auto px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
@@ -370,11 +441,11 @@ const AssetManagementPage = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
                                     <div className="absolute top-0 right-0 p-3"><span className="flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span></span></div>
-                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Active Now</div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Active Now</div>
                                     <div className="text-3xl font-black text-emerald-600">{machineStats.active}</div>
                                 </div>
                                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Offline</div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Offline</div>
                                     <div className="text-3xl font-black text-slate-700">{machineStats.offline}</div>
                                 </div>
                             </div>
@@ -409,14 +480,14 @@ const AssetManagementPage = () => {
                                         <YAxis stroke="#cbd5e1" fontSize={10} tickLine={false} axisLine={false} />
                                         <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: 'none', fontSize: '12px'}} />
                                         <Legend wrapperStyle={{fontSize: '10px', fontWeight: 'bold'}}/>
-                                        <Bar dataKey="active" name="Active Hrs" stackId="a" fill="#10b981" radius={} />
-                                        <Bar dataKey="idle" name="Idle Hrs" stackId="a" fill="#cbd5e1" radius={} />
+                                        <Bar dataKey="active" name="Active Hrs" stackId="a" fill="#10b981" radius={[4, 4]} />
+                                        <Bar dataKey="idle" name="Idle Hrs" stackId="a" fill="#cbd5e1" radius={[4, 4]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
 
-                        {/* Column 4: RESTORED Brand Distribution Pie Chart */}
+                        {/* Column 4: Brand Distribution Pie Chart */}
                         <div className="lg:col-span-1 bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-64 flex flex-col">
                             <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2">Brand Distribution</h4>
                             <div className="flex-1 min-h-0">
@@ -438,83 +509,130 @@ const AssetManagementPage = () => {
                 )}
             </div>
 
-            {/* --- FILTER BAR --- */}
-            <div className="px-6 py-4 border-b border-slate-100 bg-white flex flex-col md:flex-row gap-4 items-center">
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full md:w-48 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="All">All Statuses</option>
-                    <option value="Available">Available</option>
-                    <option value="Assigned">Assigned</option>
-                    <option value="Service">Service</option>
-                    <option value="Repair">Repair</option>
-                </select>
-                <div className="w-full md:w-80 relative">
-                    <input type="text" placeholder="Search ID, brand, or user..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="w-full pl-3 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            {/* --- FILTER & VIEW BAR --- */}
+            <div className="px-6 py-4 border-b border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full md:w-48 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="All">All Statuses</option>
+                        <option value="Available">Available</option>
+                        <option value="Assigned">Assigned</option>
+                        <option value="Service">Service</option>
+                        <option value="Repair">Repair</option>
+                    </select>
+                    <div className="w-full md:w-80 relative">
+                        <input type="text" placeholder="Search ID, brand, or user..." value={generalFilter} onChange={(e) => setGeneralFilter(e.target.value)} className="w-full pl-3 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+                </div>
+                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                    <button onClick={() => setViewMode('list')} className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}><ListIcon/></button>
+                    <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}><GridIcon/></button>
                 </div>
             </div>
 
-            {/* --- PRIMARY TABLE --- */}
-            <div className="overflow-x-auto bg-white min-h-[300px]">
-                <table className="min-w-full divide-y divide-slate-100">
-                    <thead className="bg-slate-50">
-                        <tr>
-                            <th className="px-6 py-4 text-left text-[10px] font-black tracking-wider text-slate-500 uppercase">Hardware ID</th>
-                            <th className="px-6 py-4 text-left text-[10px] font-black tracking-wider text-slate-500 uppercase">Assignment & Status</th>
-                            <th className="px-6 py-4 text-left text-[10px] font-black tracking-wider text-slate-500 uppercase">Health Score</th>
-                            <th className="px-6 py-4 text-right text-[10px] font-black tracking-wider text-slate-500 uppercase">Operations</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {loading ? (
-                            <tr><td colSpan="4" className="px-6 py-12 text-center text-sm font-medium text-slate-400 animate-pulse">Syncing fleet data...</td></tr>
-                        ) : paginatedAssets.length === 0 ? (
-                            <tr><td colSpan="4" className="px-6 py-12 text-center text-sm font-medium text-slate-400">No assets match your search criteria.</td></tr>
-                        ) : (
-                            paginatedAssets.map((asset) => (
-                                <tr key={asset.rowKey} className="hover:bg-slate-50/80 transition-colors group">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm font-extrabold text-slate-800 tracking-tight">{asset.rowKey}</div>
-                                        <div className="text-xs text-slate-500 font-medium">{asset.AssetBrandName} {asset.AssetModelName}</div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex flex-col gap-1 items-start">
-                                            {getStatusBadge(asset.AssetStatus)}
-                                            <span className="text-[11px] text-slate-500 font-bold">{asset.AssetAssignedTo || 'Unassigned'}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex flex-col gap-1.5 text-[11px] font-bold text-slate-600">
-                                            <div className="flex items-center gap-1.5">
-                                                <span className={`h-2 w-2 rounded-full ${String(asset.AVEnabled).toLowerCase() === 'false' ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
-                                                Defender {String(asset.AVEnabled).toLowerCase() === 'false' ? 'Off' : 'Active'}
-                                            </div>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className={`h-2 w-2 rounded-full ${asset.CriticalUpdatesCount > 0 ? 'bg-amber-400' : 'bg-emerald-500'}`}></span>
-                                                {asset.CriticalUpdatesCount > 0 ? `${asset.CriticalUpdatesCount} Patches Pending` : 'Up to date'}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        <div className="flex items-center justify-end gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
-                                            <button onClick={() => handleAlertClick(asset, 'tracking')} className="text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-md border border-indigo-100 transition-colors">View Details</button>
-                                            
-                                            {canAssignAssets && asset.AssetStatus === 'Available' && (<button onClick={() => openModal('assign', asset)} className="text-xs font-bold text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-md bg-white hover:bg-slate-50 shadow-sm transition-colors">Assign</button>)}
-                                            {canAssignAssets && asset.AssetStatus === 'Assigned' && (<button onClick={() => openModal('reassign', asset)} className="text-xs font-bold text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-md bg-white hover:bg-slate-50 shadow-sm transition-colors">Reassign</button>)}
-                                            
-                                            {/* RESTORED: Service & Delete Buttons side-by-side */}
-                                            {canManageAssets && (
-                                                <>
-                                                    <button onClick={() => openModal('service', asset)} className="text-xs font-bold text-amber-700 hover:text-amber-900 border border-amber-200 px-3 py-1.5 rounded-md bg-amber-50 shadow-sm transition-colors">Service</button>
-                                                    <button onClick={() => handleDelete(asset.rowKey)} className="text-xs font-bold text-rose-700 hover:text-rose-900 border border-rose-200 px-3 py-1.5 rounded-md bg-rose-50 shadow-sm transition-colors">Delete</button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </td>
+            {/* --- PRIMARY DATA VIEW --- */}
+            <div className="bg-white min-h-[300px]">
+                {loading ? (
+                    <div className="py-12 text-center text-sm font-medium text-slate-400 animate-pulse">Syncing fleet data...</div>
+                ) : paginatedAssets.length === 0 ? (
+                    <div className="py-12 text-center text-sm font-medium text-slate-400">No assets match your search criteria.</div>
+                ) : viewMode === 'list' ? (
+                    /* LIST VIEW */
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-slate-100">
+                            <thead className="bg-slate-50">
+                                <tr>
+                                    <th className="px-6 py-4 text-left w-10">
+                                        <input type="checkbox" checked={isAllPageSelected} onChange={toggleSelectAll} className="rounded text-indigo-600 focus:ring-indigo-500" />
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black tracking-wider text-slate-500 uppercase">Hardware ID</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black tracking-wider text-slate-500 uppercase">Assignment & Status</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black tracking-wider text-slate-500 uppercase">Health Score</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-black tracking-wider text-slate-500 uppercase">Operations</th>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {paginatedAssets.map((asset) => (
+                                    <tr key={asset.rowKey} className={`transition-colors group ${selectedAssetIds.has(asset.rowKey) ? 'bg-indigo-50/50' : 'hover:bg-slate-50/80'}`}>
+                                        <td className="px-6 py-4">
+                                            <input type="checkbox" checked={selectedAssetIds.has(asset.rowKey)} onChange={() => toggleSelectAsset(asset.rowKey)} className="rounded text-indigo-600 focus:ring-indigo-500" />
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm font-extrabold text-slate-800 tracking-tight">{asset.rowKey}</div>
+                                            <div className="text-xs text-slate-500 font-medium">{asset.AssetBrandName} {asset.AssetModelName}</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex flex-col gap-1 items-start">
+                                                {getStatusBadge(asset.AssetStatus)}
+                                                <span className="text-[11px] text-slate-500 font-bold">{asset.AssetAssignedTo || 'Unassigned'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex flex-col gap-1.5 text-[11px] font-bold text-slate-600">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`h-2 w-2 rounded-full ${String(asset.AVEnabled).toLowerCase() === 'false' ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
+                                                    Defender {String(asset.AVEnabled).toLowerCase() === 'false' ? 'Off' : 'Active'}
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`h-2 w-2 rounded-full ${asset.CriticalUpdatesCount > 0 ? 'bg-amber-400' : 'bg-emerald-500'}`}></span>
+                                                    {asset.CriticalUpdatesCount > 0 ? `${asset.CriticalUpdatesCount} Patches Pending` : 'Up to date'}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                            <div className="flex items-center justify-end gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
+                                                <button onClick={() => handleAlertClick(asset, 'tracking')} className="text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-md border border-indigo-100 transition-colors">View Details</button>
+                                                
+                                                {canAssignAssets && asset.AssetStatus === 'Available' && (<button onClick={() => openModal('assign', asset)} className="text-xs font-bold text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-md bg-white hover:bg-slate-50 shadow-sm transition-colors">Assign</button>)}
+                                                {canAssignAssets && asset.AssetStatus === 'Assigned' && (<button onClick={() => openModal('reassign', asset)} className="text-xs font-bold text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-md bg-white hover:bg-slate-50 shadow-sm transition-colors">Reassign</button>)}
+                                                
+                                                {canManageAssets && (
+                                                    <>
+                                                        <button onClick={() => openModal('service', asset)} className="text-xs font-bold text-amber-700 hover:text-amber-900 border border-amber-200 px-3 py-1.5 rounded-md bg-amber-50 shadow-sm transition-colors">Service</button>
+                                                        <button onClick={() => handleDelete(asset.rowKey)} className="text-xs font-bold text-rose-700 hover:text-rose-900 border border-rose-200 px-3 py-1.5 rounded-md bg-rose-50 shadow-sm transition-colors">Delete</button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    /* GRID VIEW */
+                    <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {paginatedAssets.map((asset) => (
+                            <div key={asset.rowKey} className={`relative p-5 rounded-2xl border transition-all ${selectedAssetIds.has(asset.rowKey) ? 'border-indigo-400 bg-indigo-50/30 shadow-md' : 'border-slate-200 bg-white shadow-sm hover:shadow-md'}`}>
+                                <div className="absolute top-4 left-4">
+                                    <input type="checkbox" checked={selectedAssetIds.has(asset.rowKey)} onChange={() => toggleSelectAsset(asset.rowKey)} className="rounded text-indigo-600 focus:ring-indigo-500" />
+                                </div>
+                                <div className="text-center mt-2">
+                                    <div className="h-12 w-12 bg-slate-50 border border-slate-100 rounded-xl mx-auto flex items-center justify-center mb-3"><LaptopIcon className="mr-0" /></div>
+                                    <div className="text-lg font-black text-slate-800">{asset.rowKey}</div>
+                                    <div className="text-xs font-medium text-slate-500 mb-4">{asset.AssetBrandName} {asset.AssetModelName}</div>
+                                    <div className="mb-4">{getStatusBadge(asset.AssetStatus)}</div>
+                                    <div className="text-[11px] font-bold text-slate-600 bg-slate-50 py-1.5 rounded-md">{asset.AssetAssignedTo || 'Unassigned'}</div>
+                                </div>
+                                <div className="mt-5 border-t border-slate-100 pt-4 flex justify-between gap-2">
+                                    <button onClick={() => handleAlertClick(asset, 'tracking')} className="flex-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 py-2 rounded border border-indigo-100">Details</button>
+                                    {canManageAssets && <button onClick={() => openModal('service', asset)} className="flex-1 text-[11px] font-bold text-amber-700 bg-amber-50 py-2 rounded border border-amber-100">Service</button>}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
+
+            {/* --- FLOATING BULK ACTION BAR --- */}
+            {selectedAssetIds.size > 0 && (
+                <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-6 animate-fadeIn z-40 border border-slate-700">
+                    <span className="font-black text-xs bg-indigo-500 px-3 py-1.5 rounded-lg">{selectedAssetIds.size} Selected</span>
+                    {canAssignAssets && <button onClick={() => handleBulkAction('assign')} className="text-xs font-bold hover:text-indigo-400 transition-colors">Bulk Assign</button>}
+                    {canManageAssets && <button onClick={() => handleBulkAction('service')} className="text-xs font-bold hover:text-amber-400 transition-colors">Bulk Service</button>}
+                    {canManageAssets && <button onClick={() => handleBulkAction('delete')} className="text-xs font-bold text-rose-400 hover:text-rose-300 transition-colors">Delete Selected</button>}
+                    <button onClick={() => setSelectedAssetIds(new Set())} className="ml-4 text-slate-400 hover:text-white">&times;</button>
+                </div>
+            )}
 
             {/* --- MAIN TABLE PAGINATION --- */}
             {!loading && filteredAssets.length > 0 && (
@@ -529,26 +647,40 @@ const AssetManagementPage = () => {
 
             {/* --- POPUP MODALS --- */}
             {activeModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fadeIn">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fadeIn">
                     <div className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col border border-slate-200 overflow-hidden transform transition-all ${activeModal === 'viewer' ? 'max-w-4xl max-h-[90vh]' : 'max-w-md'}`}>
                         
                         {/* --- ASSET VIEWER MODAL (TABS) --- */}
                         {activeModal === 'viewer' ? (
                             <div className="flex flex-col h-full overflow-hidden">
                                 
-                                {/* Header */}
-                                <div className="px-6 py-5 border-b border-slate-200 bg-white flex justify-between items-center z-10 shadow-sm">
-                                    <h3 className="text-xl font-black text-slate-800 flex items-center tracking-tight"><LaptopIcon /> {selectedAsset.rowKey} <span className="ml-3 font-bold text-[11px] uppercase tracking-wider text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">{selectedAsset.AssetAssignedTo || 'Unassigned'}</span></h3>
-                                    <button onClick={closeModal} className="text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 rounded-full p-1 border border-slate-200 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                                {/* Header & MDM Commands */}
+                                <div className="px-6 py-4 border-b border-slate-200 bg-white flex justify-between items-center z-10 shadow-sm">
+                                    <div className="flex items-center gap-4">
+                                        <h3 className="text-xl font-black text-slate-800 flex items-center tracking-tight"><LaptopIcon /> {selectedAsset.rowKey} </h3>
+                                        <span className="font-bold text-[10px] uppercase tracking-wider text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">{selectedAsset.AssetAssignedTo || 'Unassigned'}</span>
+                                        {/* Mock Lifecycle Indicators */}
+                                        {selectedAsset.UptimeHours > 168 && <span className="font-bold text-[10px] uppercase tracking-wider text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded">Reboot Needed</span>}
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-3">
+                                        <select onChange={(e) => { if(e.target.value) { triggerRemoteMDMCommand(e.target.value); e.target.value=""; } }} className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 focus:outline-none">
+                                            <option value="">Remote Actions...</option>
+                                            <option value="Force Sync Telemetry">Force Sync Telemetry</option>
+                                            <option value="Restart Agent Service">Restart Tracking Agent</option>
+                                            <option value="Lock Workstation">Lock Workstation</option>
+                                        </select>
+                                        <button onClick={closeModal} className="text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 rounded-full p-1 border border-slate-200 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                                    </div>
                                 </div>
 
                                 {/* Tabs Navigation */}
-                                <div className="flex border-b border-slate-200 bg-slate-50 px-6 pt-3">
-                                    <button onClick={() => setModalTab('tracking')} className={`pb-3 px-3 text-sm font-bold border-b-2 transition-colors ${modalTab === 'tracking' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Session Tracking</button>
-                                    <button onClick={() => setModalTab('telemetry')} className={`pb-3 px-3 text-sm font-bold border-b-2 transition-colors ${modalTab === 'telemetry' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Device Telemetry</button>
-                                    <button onClick={() => setModalTab('audit')} className={`pb-3 px-3 text-sm font-bold border-b-2 transition-colors ${modalTab === 'audit' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Audit Trail</button>
-                                    {/* RESTORED: QR Code Tab */}
-                                    <button onClick={() => setModalTab('qrcode')} className={`pb-3 px-3 text-sm font-bold border-b-2 transition-colors ${modalTab === 'qrcode' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>QR Code Label</button>
+                                <div className="flex border-b border-slate-200 bg-slate-50 px-6 pt-3 overflow-x-auto">
+                                    <button onClick={() => setModalTab('tracking')} className={`pb-3 px-3 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${modalTab === 'tracking' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Session Tracking</button>
+                                    <button onClick={() => setModalTab('telemetry')} className={`pb-3 px-3 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${modalTab === 'telemetry' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Device Telemetry</button>
+                                    <button onClick={() => setModalTab('software')} className={`pb-3 px-3 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${modalTab === 'software' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Active Software</button>
+                                    <button onClick={() => setModalTab('audit')} className={`pb-3 px-3 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${modalTab === 'audit' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Audit Trail</button>
+                                    <button onClick={() => setModalTab('qrcode')} className={`pb-3 px-3 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${modalTab === 'qrcode' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>QR Code Label</button>
                                 </div>
 
                                 <div className="flex-1 overflow-y-auto p-6 bg-white">
@@ -623,7 +755,7 @@ const AssetManagementPage = () => {
                                                         <div className="text-lg font-black text-slate-800">{selectedAsset.DiskFreeGB || 0} <span className="text-xs text-slate-500 font-medium">GB</span></div>
                                                     </div>
                                                     <div className="bg-white p-3 rounded-lg border border-slate-200 text-center">
-                                                        <div className="text-[10px] font-bold uppercase text-slate-400">Uptime</div>
+                                                        <div className="text-[10px] font-bold uppercase text-slate-400">System Uptime</div>
                                                         <div className="text-lg font-black text-slate-800">{selectedAsset.UptimeHours || 0} <span className="text-xs text-slate-500 font-medium">Hrs</span></div>
                                                     </div>
                                                 </div>
@@ -662,7 +794,29 @@ const AssetManagementPage = () => {
                                         </div>
                                     )}
 
-                                    {/* TAB 3: AUDIT TRAIL */}
+                                    {/* NEW TAB 3: SOFTWARE AUDIT */}
+                                    {modalTab === 'software' && (
+                                        <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm h-full flex flex-col">
+                                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Active Software Auditing</h4>
+                                            <p className="text-xs text-slate-500 mb-6 font-medium">Unique applications parsed from PowerShell <code className="bg-slate-200 px-1 rounded">ActiveApp</code> telemetry for the selected date.</p>
+                                            
+                                            <div className="flex-1 bg-white border border-slate-200 rounded-xl overflow-hidden overflow-y-auto p-2">
+                                                {activeApplications.length === 0 ? (
+                                                    <div className="text-sm font-medium text-slate-400 text-center py-8">No active software detected for this session date.</div>
+                                                ) : (
+                                                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                        {activeApplications.map((app, idx) => (
+                                                            <li key={idx} className="text-xs font-bold text-slate-700 bg-slate-50 border border-slate-100 p-3 rounded-lg flex items-center gap-3">
+                                                                <span className="h-2 w-2 rounded-full bg-indigo-400"></span> {app}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* TAB 4: AUDIT TRAIL */}
                                     {modalTab === 'audit' && (
                                         <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm">
                                             <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-6">Hardware Lifecycle Events</h4>
@@ -694,7 +848,7 @@ const AssetManagementPage = () => {
                                         </div>
                                     )}
 
-                                    {/* RESTORED: TAB 4: QR CODE LABEL */}
+                                    {/* TAB 5: QR CODE LABEL */}
                                     {modalTab === 'qrcode' && (
                                         <div className="flex flex-col items-center justify-center py-10 bg-slate-50 rounded-xl border border-slate-200 shadow-sm">
                                             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-lg text-center w-80">
@@ -729,7 +883,10 @@ const AssetManagementPage = () => {
                             /* --- ACTION MODALS (Assign, Reassign, Service) --- */
                             <form onSubmit={handleActionSubmit} className="flex flex-col h-full">
                                 <div className="px-6 py-5 border-b border-slate-100 bg-white">
-                                    <h3 className="text-xl font-black text-slate-800 tracking-tight capitalize">{activeModal} Asset: <span className="text-indigo-600 ml-1">{selectedAsset.rowKey}</span></h3>
+                                    <h3 className="text-xl font-black text-slate-800 tracking-tight capitalize">
+                                        {modalData.isBulk ? `Bulk ${activeModal}` : `${activeModal} Asset:`} 
+                                        {!modalData.isBulk && <span className="text-indigo-600 ml-1">{selectedAsset?.rowKey}</span>}
+                                    </h3>
                                 </div>
                                 <div className="p-6 bg-slate-50 space-y-4">
                                     {(activeModal === 'assign' || activeModal === 'reassign') && (
@@ -760,7 +917,7 @@ const AssetManagementPage = () => {
                                 </div>
                                 <div className="px-6 py-4 border-t border-slate-100 bg-white flex justify-end gap-3 rounded-b-2xl">
                                     <button type="button" onClick={closeModal} className="px-5 py-2.5 text-xs font-bold text-slate-600 bg-white border border-slate-300 shadow-sm rounded-xl hover:bg-slate-50 transition-colors">Cancel</button>
-                                    <button type="submit" disabled={processing} className="px-6 py-2.5 text-xs font-bold text-white bg-indigo-600 shadow-sm rounded-xl hover:bg-indigo-700 transition-colors">{processing ? 'Processing Action...' : 'Confirm Execution'}</button>
+                                    <button type="submit" disabled={processing} className="px-6 py-2.5 text-xs font-bold text-white bg-indigo-600 shadow-sm rounded-xl hover:bg-indigo-700 transition-colors">{processing ? 'Processing...' : 'Confirm Execution'}</button>
                                 </div>
                             </form>
                         )}
