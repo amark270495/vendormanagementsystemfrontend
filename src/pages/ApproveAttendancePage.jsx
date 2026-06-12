@@ -7,14 +7,6 @@ import AttendanceApprovalModal from '../components/admin/AttendanceApprovalModal
 
 const PAGE_SIZE = 25; 
 
-// --- UTILITY: Local Date Formatter (FIXES TIMEZONE SHIFT) ---
-const getLocalDateString = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`; // Always returns exactly what is on the user's local clock
-};
-
 // --- UTILITY: CSV Export ---
 const exportToCSV = (data, filename) => {
     if (!data || !data.length) return;
@@ -33,21 +25,34 @@ const exportToCSV = (data, filename) => {
     document.body.removeChild(link);
 };
 
-// --- UTILITY: Week Date Generator ---
+// --- UTILITY: Universal Week Date Generator (Timezone Bulletproof) ---
 const getWeekBounds = (baseDate = new Date()) => {
     const d = new Date(baseDate);
+    // Force the time to NOON local time. This prevents .toISOString() or local
+    // string extractions from shifting to the previous/next day across timezones.
+    d.setHours(12, 0, 0, 0); 
+    
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     
-    const monday = new Date(d.setDate(diff));
-    const sunday = new Date(monday.valueOf()); 
+    const monday = new Date(d);
+    monday.setDate(diff); // Automatically handles month boundaries natively
+    
+    const sunday = new Date(monday); 
     sunday.setDate(sunday.getDate() + 6);
     
-    // Uses the strict local string, ignoring UTC conversion
+    // Safe manual YYYY-MM-DD string construction ignoring UTC
+    const toDateString = (dateObj) => {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
+    };
+
     return { 
-        start: getLocalDateString(monday), 
-        end: getLocalDateString(sunday), 
-        monday 
+        start: toDateString(monday), 
+        end: toDateString(sunday), 
+        monday: monday 
     };
 };
 
@@ -190,8 +195,11 @@ const ApproveAttendancePage = () => {
             const currentToken = weeklyTokens[currentWeeklyPage];
             const res = await apiService.getAttendance({
                 authenticatedUsername: user.userIdentifier,
-                startDate: currentWeek.start, endDate: currentWeek.end,
-                pageSize: 175, continuationToken: currentToken, searchEmail: debouncedSearch
+                startDate: currentWeek.start, 
+                endDate: currentWeek.end,
+                pageSize: 175, 
+                continuationToken: currentToken, 
+                searchEmail: debouncedSearch
             });
             if (res.data && res.data.success) {
                 const grouped = {};
@@ -328,7 +336,6 @@ const ApproveAttendancePage = () => {
         finally { setProcessingBulk(false); setTimeout(() => setSuccess(''), 3000); }
     };
 
-    // --- CHECKBOX & EXPORT HELPERS ---
     const toggleSelection = (id, type) => {
         const isStandard = type === 'standard';
         const currentSet = isStandard ? selectedStandardRows : selectedWeekendRows;
@@ -372,7 +379,7 @@ const ApproveAttendancePage = () => {
                 <td key={dateStr} 
                     className="px-3 py-3 border-r border-gray-200 bg-gray-50/30 hover:bg-gray-100 cursor-pointer transition-colors"
                     onClick={() => { setSelectedUsername(emp.username); setIsCalendarModalOpen(true); }}
-                    title="No attendance record for this date"
+                    title={`No attendance record for ${dateStr}`}
                 >
                     <div className="flex flex-col items-center justify-center h-full opacity-40">
                         <span className="text-xs font-semibold text-gray-400">-</span>
@@ -529,8 +536,13 @@ const ApproveAttendancePage = () => {
                                                                 <div className="text-xs text-gray-500">{emp.username}</div>
                                                             </td>
                                                             {Array.from({length: 7}).map((_, i) => {
-                                                                const dObj = new Date(currentWeek.monday); dObj.setDate(dObj.getDate() + i);
-                                                                return renderGridCell(emp, getLocalDateString(dObj)); // FIXED: Uses strict local date string
+                                                                // Re-calculate pure string matching keys using the Noon safe Date
+                                                                const dObj = new Date(currentWeek.monday); 
+                                                                dObj.setDate(dObj.getDate() + i);
+                                                                const y = dObj.getFullYear();
+                                                                const m = String(dObj.getMonth() + 1).padStart(2, '0');
+                                                                const dd = String(dObj.getDate()).padStart(2, '0');
+                                                                return renderGridCell(emp, `${y}-${m}-${dd}`);
                                                             })}
                                                             <td className="px-6 py-4 text-right bg-white">
                                                                 <button onClick={() => handleApproveWeek(emp)} disabled={processingBulk} className="px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 text-xs font-semibold rounded transition-colors shadow-sm disabled:opacity-50">Approve Week</button>
