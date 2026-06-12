@@ -7,6 +7,14 @@ import AttendanceApprovalModal from '../components/admin/AttendanceApprovalModal
 
 const PAGE_SIZE = 25; 
 
+// --- UTILITY: Local Date Formatter (FIXES TIMEZONE SHIFT) ---
+const getLocalDateString = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`; // Always returns exactly what is on the user's local clock
+};
+
 // --- UTILITY: CSV Export ---
 const exportToCSV = (data, filename) => {
     if (!data || !data.length) return;
@@ -25,21 +33,20 @@ const exportToCSV = (data, filename) => {
     document.body.removeChild(link);
 };
 
-// --- UTILITY: Week Date Generator (FIXED FOR AXIOS) ---
+// --- UTILITY: Week Date Generator ---
 const getWeekBounds = (baseDate = new Date()) => {
     const d = new Date(baseDate);
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     
     const monday = new Date(d.setDate(diff));
-    const sunday = new Date(monday.valueOf()); // Safe copy
+    const sunday = new Date(monday.valueOf()); 
     sunday.setDate(sunday.getDate() + 6);
     
-    // Explicitly grab ONLY the first 10 characters (YYYY-MM-DD)
-    // Prevents array splitting artifacts in state
+    // Uses the strict local string, ignoring UTC conversion
     return { 
-        start: monday.toISOString().substring(0, 10), 
-        end: sunday.toISOString().substring(0, 10), 
+        start: getLocalDateString(monday), 
+        end: getLocalDateString(sunday), 
         monday 
     };
 };
@@ -183,11 +190,8 @@ const ApproveAttendancePage = () => {
             const currentToken = weeklyTokens[currentWeeklyPage];
             const res = await apiService.getAttendance({
                 authenticatedUsername: user.userIdentifier,
-                startDate: currentWeek.start, 
-                endDate: currentWeek.end,
-                pageSize: 175, // Cap at 25 employees * 7 days
-                continuationToken: currentToken, 
-                searchEmail: debouncedSearch
+                startDate: currentWeek.start, endDate: currentWeek.end,
+                pageSize: 175, continuationToken: currentToken, searchEmail: debouncedSearch
             });
             if (res.data && res.data.success) {
                 const grouped = {};
@@ -363,7 +367,6 @@ const ApproveAttendancePage = () => {
     const renderGridCell = (emp, dateStr) => {
         const dayRecord = emp.days[dateStr];
 
-        // 1. Handle Empty Cells (No Data)
         if (!dayRecord) {
             return (
                 <td key={dateStr} 
@@ -378,7 +381,6 @@ const ApproveAttendancePage = () => {
             );
         }
 
-        // 2. Handle Populated Cells
         const isAnomaly = dayRecord.status === 'Pending' || (dayRecord.extraTimeMs > 2 * 60 * 60 * 1000);
         const totalMs = (dayRecord.standardTimeMs || 0) + (dayRecord.extraTimeMs || 0);
         
@@ -432,7 +434,6 @@ const ApproveAttendancePage = () => {
         <div className="w-full bg-gray-50 min-h-screen pb-12 font-sans">
             <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 
-                {/* Header & Global Actions */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight text-gray-900">Attendance Center</h1>
@@ -446,14 +447,11 @@ const ApproveAttendancePage = () => {
                     </div>
                 </div>
 
-                {/* Alerts */}
                 {error && <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-md shadow-sm"><p className="text-sm text-red-700 font-medium">{error}</p></div>}
                 {success && <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-md shadow-sm"><p className="text-sm text-green-700 font-medium">{success}</p></div>}
 
-                {/* Main Workspace Card */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-[600px]">
                     
-                    {/* Clean Underline Navigation Tabs */}
                     <div className="border-b border-gray-200 bg-gray-50/50 px-6 flex overflow-x-auto custom-scrollbar">
                         <nav className="-mb-px flex space-x-8 min-w-max">
                             {[
@@ -474,7 +472,6 @@ const ApproveAttendancePage = () => {
                         </nav>
                     </div>
 
-                    {/* Toolbar (Search & Bulk Actions) */}
                     <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white">
                         <div className="relative w-full sm:max-w-md">
                             <input type="text" placeholder="Search by exact email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
@@ -499,7 +496,6 @@ const ApproveAttendancePage = () => {
                         )}
                     </div>
 
-                    {/* Content Area */}
                     <div className="flex-1 bg-white flex flex-col">
                         {loading ? ( <div className="flex justify-center items-center h-64"><Spinner size="10" /></div> ) : (
                             <>
@@ -534,7 +530,7 @@ const ApproveAttendancePage = () => {
                                                             </td>
                                                             {Array.from({length: 7}).map((_, i) => {
                                                                 const dObj = new Date(currentWeek.monday); dObj.setDate(dObj.getDate() + i);
-                                                                return renderGridCell(emp, dObj.toISOString().split('T'));
+                                                                return renderGridCell(emp, getLocalDateString(dObj)); // FIXED: Uses strict local date string
                                                             })}
                                                             <td className="px-6 py-4 text-right bg-white">
                                                                 <button onClick={() => handleApproveWeek(emp)} disabled={processingBulk} className="px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 text-xs font-semibold rounded transition-colors shadow-sm disabled:opacity-50">Approve Week</button>
