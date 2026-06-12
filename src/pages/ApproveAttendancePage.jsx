@@ -25,15 +25,23 @@ const exportToCSV = (data, filename) => {
     document.body.removeChild(link);
 };
 
-// --- UTILITY: Week Date Generator ---
+// --- UTILITY: Week Date Generator (FIXED FOR AXIOS) ---
 const getWeekBounds = (baseDate = new Date()) => {
     const d = new Date(baseDate);
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    
     const monday = new Date(d.setDate(diff));
-    const sunday = new Date(monday);
+    const sunday = new Date(monday.valueOf()); // Safe copy
     sunday.setDate(sunday.getDate() + 6);
-    return { start: monday.toISOString().split('T'), end: sunday.toISOString().split('T'), monday };
+    
+    // Explicitly grab ONLY the first 10 characters (YYYY-MM-DD)
+    // Prevents array splitting artifacts in state
+    return { 
+        start: monday.toISOString().substring(0, 10), 
+        end: sunday.toISOString().substring(0, 10), 
+        monday 
+    };
 };
 
 const formatMsToTime = (ms) => {
@@ -175,8 +183,11 @@ const ApproveAttendancePage = () => {
             const currentToken = weeklyTokens[currentWeeklyPage];
             const res = await apiService.getAttendance({
                 authenticatedUsername: user.userIdentifier,
-                startDate: currentWeek.start, endDate: currentWeek.end,
-                pageSize: PAGE_SIZE * 7, continuationToken: currentToken, searchEmail: debouncedSearch
+                startDate: currentWeek.start, 
+                endDate: currentWeek.end,
+                pageSize: 175, // Cap at 25 employees * 7 days
+                continuationToken: currentToken, 
+                searchEmail: debouncedSearch
             });
             if (res.data && res.data.success) {
                 const grouped = {};
@@ -199,7 +210,7 @@ const ApproveAttendancePage = () => {
         try {
             setLoading(true);
             const currentToken = exceptionsTokens[currentExceptionsPage];
-            const currentMonth = new Date().toISOString().substring(0, 7);
+            const currentMonth = currentWeek.start.substring(0, 7);
             const res = await apiService.getAttendance({
                 authenticatedUsername: user.userIdentifier,
                 month: currentMonth, exceptionsOnly: true,
@@ -215,7 +226,7 @@ const ApproveAttendancePage = () => {
                 }
             }
         } catch (err) { setError("Failed to fetch exceptions."); } finally { setLoading(false); }
-    }, [user?.userIdentifier, currentExceptionsPage, exceptionsTokens, debouncedSearch]);
+    }, [user?.userIdentifier, currentWeek, currentExceptionsPage, exceptionsTokens, debouncedSearch]);
 
     // Router Effect
     useEffect(() => {
@@ -349,19 +360,44 @@ const ApproveAttendancePage = () => {
     };
 
     // --- COMPONENT HELPERS ---
-    const renderGridCell = (dayRecord, dateStr) => {
-        if (!dayRecord) return <td key={dateStr} className="px-3 py-4 bg-white border-r border-gray-200"></td>;
+    const renderGridCell = (emp, dateStr) => {
+        const dayRecord = emp.days[dateStr];
+
+        // 1. Handle Empty Cells (No Data)
+        if (!dayRecord) {
+            return (
+                <td key={dateStr} 
+                    className="px-3 py-3 border-r border-gray-200 bg-gray-50/30 hover:bg-gray-100 cursor-pointer transition-colors"
+                    onClick={() => { setSelectedUsername(emp.username); setIsCalendarModalOpen(true); }}
+                    title="No attendance record for this date"
+                >
+                    <div className="flex flex-col items-center justify-center h-full opacity-40">
+                        <span className="text-xs font-semibold text-gray-400">-</span>
+                    </div>
+                </td>
+            );
+        }
+
+        // 2. Handle Populated Cells
         const isAnomaly = dayRecord.status === 'Pending' || (dayRecord.extraTimeMs > 2 * 60 * 60 * 1000);
         const totalMs = (dayRecord.standardTimeMs || 0) + (dayRecord.extraTimeMs || 0);
+        
         return (
-            <td key={dateStr} className={`px-3 py-3 border-r border-gray-200 relative group cursor-pointer ${isAnomaly ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-gray-50'}`}
-                onClick={() => { setSelectedUsername(dayRecord.username); setIsCalendarModalOpen(true); }}
+            <td key={dateStr} 
+                className={`px-3 py-3 border-r border-gray-200 relative group cursor-pointer transition-colors ${isAnomaly ? 'bg-amber-50 hover:bg-amber-100' : 'bg-white hover:bg-gray-50'}`}
+                onClick={() => { setSelectedUsername(emp.username); setIsCalendarModalOpen(true); }}
             >
                 <div className="flex flex-col items-center justify-center">
-                    <span className={`text-xs font-semibold ${isAnomaly ? 'text-amber-700' : 'text-gray-700'}`}>{formatMsToTime(totalMs)}</span>
+                    <span className={`text-xs font-semibold ${isAnomaly ? 'text-amber-700' : 'text-gray-700'}`}>
+                        {formatMsToTime(totalMs)}
+                    </span>
                     <span className={`text-[10px] uppercase tracking-wider font-semibold mt-1 px-1.5 py-0.5 rounded ${
-                        dayRecord.status === 'Pending' ? 'bg-amber-200 text-amber-800' : dayRecord.status === 'Present' ? 'bg-emerald-100 text-emerald-800' : dayRecord.status === 'Absent' ? 'bg-rose-100 text-rose-800' : 'bg-gray-200 text-gray-700'
-                    }`}>{dayRecord.status === 'Present' ? 'OK' : dayRecord.status.substring(0, 4)}</span>
+                        dayRecord.status === 'Pending' ? 'bg-amber-200 text-amber-800' : 
+                        dayRecord.status === 'Present' ? 'bg-emerald-100 text-emerald-800' : 
+                        dayRecord.status === 'Absent' ? 'bg-red-100 text-red-800' : 'bg-gray-200 text-gray-700'
+                    }`}>
+                        {dayRecord.status === 'Present' ? 'OK' : dayRecord.status.substring(0, 4)}
+                    </span>
                 </div>
             </td>
         );
@@ -498,7 +534,7 @@ const ApproveAttendancePage = () => {
                                                             </td>
                                                             {Array.from({length: 7}).map((_, i) => {
                                                                 const dObj = new Date(currentWeek.monday); dObj.setDate(dObj.getDate() + i);
-                                                                return renderGridCell(emp.days[dObj.toISOString().split('T')], dObj.toISOString().split('T'));
+                                                                return renderGridCell(emp, dObj.toISOString().split('T'));
                                                             })}
                                                             <td className="px-6 py-4 text-right bg-white">
                                                                 <button onClick={() => handleApproveWeek(emp)} disabled={processingBulk} className="px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 text-xs font-semibold rounded transition-colors shadow-sm disabled:opacity-50">Approve Week</button>
