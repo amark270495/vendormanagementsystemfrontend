@@ -7,6 +7,14 @@ import AttendanceApprovalModal from '../components/admin/AttendanceApprovalModal
 
 const PAGE_SIZE = 25; 
 
+// --- UTILITY: Strict Local Date Formatter ---
+const getLocalDateString = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`; 
+};
+
 // --- UTILITY: CSV Export ---
 const exportToCSV = (data, filename) => {
     if (!data || !data.length) return;
@@ -25,34 +33,24 @@ const exportToCSV = (data, filename) => {
     document.body.removeChild(link);
 };
 
-// --- UTILITY: Universal Week Date Generator (Timezone Bulletproof) ---
+// --- UTILITY: Week Date Generator (Timezone Bulletproof) ---
 const getWeekBounds = (baseDate = new Date()) => {
     const d = new Date(baseDate);
-    // Force the time to NOON local time. This prevents .toISOString() or local
-    // string extractions from shifting to the previous/next day across timezones.
-    d.setHours(12, 0, 0, 0); 
+    d.setHours(12, 0, 0, 0); // Force Noon to prevent UTC midnight shifts
     
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     
     const monday = new Date(d);
-    monday.setDate(diff); // Automatically handles month boundaries natively
+    monday.setDate(diff); 
     
-    const sunday = new Date(monday); 
+    const sunday = new Date(monday.valueOf()); 
     sunday.setDate(sunday.getDate() + 6);
     
-    // Safe manual YYYY-MM-DD string construction ignoring UTC
-    const toDateString = (dateObj) => {
-        const y = dateObj.getFullYear();
-        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const dd = String(dateObj.getDate()).padStart(2, '0');
-        return `${y}-${m}-${dd}`;
-    };
-
     return { 
-        start: toDateString(monday), 
-        end: toDateString(sunday), 
-        monday: monday 
+        start: getLocalDateString(monday), 
+        end: getLocalDateString(sunday), 
+        monday 
     };
 };
 
@@ -195,11 +193,8 @@ const ApproveAttendancePage = () => {
             const currentToken = weeklyTokens[currentWeeklyPage];
             const res = await apiService.getAttendance({
                 authenticatedUsername: user.userIdentifier,
-                startDate: currentWeek.start, 
-                endDate: currentWeek.end,
-                pageSize: 175, 
-                continuationToken: currentToken, 
-                searchEmail: debouncedSearch
+                startDate: currentWeek.start, endDate: currentWeek.end,
+                pageSize: 175, continuationToken: currentToken, searchEmail: debouncedSearch
             });
             if (res.data && res.data.success) {
                 const grouped = {};
@@ -536,13 +531,10 @@ const ApproveAttendancePage = () => {
                                                                 <div className="text-xs text-gray-500">{emp.username}</div>
                                                             </td>
                                                             {Array.from({length: 7}).map((_, i) => {
-                                                                // Re-calculate pure string matching keys using the Noon safe Date
                                                                 const dObj = new Date(currentWeek.monday); 
                                                                 dObj.setDate(dObj.getDate() + i);
-                                                                const y = dObj.getFullYear();
-                                                                const m = String(dObj.getMonth() + 1).padStart(2, '0');
-                                                                const dd = String(dObj.getDate()).padStart(2, '0');
-                                                                return renderGridCell(emp, `${y}-${m}-${dd}`);
+                                                                const safeDateStr = getLocalDateString(dObj);
+                                                                return renderGridCell(emp, safeDateStr);
                                                             })}
                                                             <td className="px-6 py-4 text-right bg-white">
                                                                 <button onClick={() => handleApproveWeek(emp)} disabled={processingBulk} className="px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 text-xs font-semibold rounded transition-colors shadow-sm disabled:opacity-50">Approve Week</button>
