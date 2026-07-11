@@ -88,7 +88,16 @@ const AssetManagementPage = () => {
                 apiService.getUsers(user.userIdentifier),
                 apiService.getFleetUtilizationStats(user.userIdentifier).catch(() => ({ data: [] }))
             ]);
-            setAssets(assetRes.data || []);
+            
+            // --- Normalizing SDK differences (RowKey vs rowKey) ---
+            const rawAssets = assetRes.data || [];
+            const normalizedAssets = rawAssets.map(asset => ({
+                ...asset,
+                rowKey: asset.rowKey || asset.RowKey, 
+                partitionKey: asset.partitionKey || asset.PartitionKey
+            }));
+            
+            setAssets(normalizedAssets);
             setUsers(userRes.data?.users || []);
             setWeeklyUtilizationData(statsRes.data || []); 
         } catch (err) {
@@ -240,7 +249,9 @@ const AssetManagementPage = () => {
     };
 
     const viewAssetData = async (asset, selectedDate = sessionDate) => {
-        const latestAssetData = assets.find(a => a.rowKey === asset.rowKey) || asset;
+        const targetRowKey = asset.rowKey || asset.RowKey;
+        const latestAssetData = assets.find(a => a.rowKey === targetRowKey) || asset;
+        
         setSelectedAsset(latestAssetData);
         setActiveModal('viewer');
         setLoadingSessions(true);
@@ -248,12 +259,12 @@ const AssetManagementPage = () => {
         setAuditPage(1);
 
         try {
-            const response = await apiService.getAssetSessions(latestAssetData.rowKey, selectedDate, user.userIdentifier);
+            const response = await apiService.getAssetSessions(targetRowKey, selectedDate, user.userIdentifier);
             if (response.data && response.data.success) {
                 setAssetSessions(response.data.sessions || []);
                 setWorkingTime(response.data.formattedWorkingTime || '0h 0m');
             }
-            const auditResponse = await apiService.getAssetAuditTrail(latestAssetData.rowKey, user.userIdentifier);
+            const auditResponse = await apiService.getAssetAuditTrail(targetRowKey, user.userIdentifier);
             if(auditResponse.data && auditResponse.data.success) {
                 setAuditTrail(auditResponse.data.data || []);
             }
@@ -307,7 +318,7 @@ const AssetManagementPage = () => {
         setProcessing(true);
         try {
             const formData = new FormData();
-            formData.append('file', importFile); 
+            formData.append('file', importFile[0]); // Fix: ensure we only append the first file 
             await apiService.bulkImportAssets(formData, user.userIdentifier);
             await fetchData();
             closeModal();
