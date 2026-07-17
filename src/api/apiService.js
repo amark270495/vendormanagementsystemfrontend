@@ -63,10 +63,19 @@ export const apiService = {
   // --- Job & Dashboard Functions ---
   getDashboardData: (sheetKey, authenticatedUsername) =>
     apiClient.get('/getDashboardData', { params: { sheetKey, authenticatedUsername } }),
+  
   updateJobPosting: (updates, authenticatedUsername) =>
     apiClient.post('/updateJobPosting', { updates, authenticatedUsername }),
-  updateJobStatus: (postingIds, newStatus, authenticatedUsername) =>
-    apiClient.post('/updateJobStatus', { postingIds, newStatus, authenticatedUsername }),
+  
+  // FIXED: Routes to the existing /updateJobPosting endpoint and maps to the lowercase 'status' field
+  updateJobStatus: (postingIds, newStatus, authenticatedUsername) => {
+    const updates = postingIds.map(id => ({
+        rowKey: id,
+        changes: { status: newStatus }
+    }));
+    return apiClient.post('/updateJobPosting', { updates, authenticatedUsername });
+  },
+  
   archiveOrDeleteJob: (postingIds, actionType, authenticatedUsername) =>
     apiClient.post('/archiveOrDeleteJob', { postingIds, actionType, authenticatedUsername }),
   saveUserDashboardPreferences: (authenticatedUsername, preferences) =>
@@ -188,7 +197,6 @@ export const apiService = {
     apiClient.post('/resendMSAWOEmail', { partitionKey, rowKey, authenticatedUsername }),
 
   // --- Offer Letter Functions ---
-  // FIXED: Added isPreview parameter and passed it at the root of the JSON body
   createOfferLetter: (payload) =>
     apiClient.post('/createOfferLetter', payload),
     
@@ -280,7 +288,7 @@ export const apiService = {
   // --- NEW: Advanced Enterprise Telemetry & Bulk Tools ---
   
   bulkImportAssets: (formData, authenticatedUsername) =>
-    apiClient.post('/bulkImportAssets', formData), // Axios automatically sets multipart/form-data when passing FormData
+    apiClient.post('/bulkImportAssets', formData),
 
   getAssetAuditTrail: (assetId, authenticatedUsername) =>
     apiClient.get('/getAssetAuditTrail', { params: { assetId, authenticatedUsername } }),
