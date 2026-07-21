@@ -261,7 +261,8 @@ const AssetManagementPage = () => {
         try {
             const response = await apiService.getAssetSessions(targetRowKey, selectedDate, user.userIdentifier);
             if (response.data && response.data.success) {
-                setAssetSessions(response.data.sessions || []);
+                // FIXED: Now reads from 'data' or 'logs' instead of 'sessions'
+                setAssetSessions(response.data.data || response.data.logs || []);
                 setWorkingTime(response.data.formattedWorkingTime || '0h 0m');
             }
             const auditResponse = await apiService.getAssetAuditTrail(targetRowKey, user.userIdentifier);
