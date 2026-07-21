@@ -336,7 +336,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             setTimeCalculations({
                 standard: formatMsToTime(request.standardTimeMs),
                 extra: request.extraTimeMs > 60000 ? formatMsToTime(request.extraTimeMs) : null,
-                activeStr: ''
+                activeStr: ""
             });
 
             setLogsLoading(true);
@@ -344,7 +344,8 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                 // Fetch purely to display the UI tracking log table
                 const res = await apiService.getUserTrackingLogs(request.username, request.date, user.userIdentifier);
                 if (res.data && res.data.success) {
-                    setTrackingLogs(res.data.logs);
+                    // FIXED: Changed res.data.logs to res.data.data
+                    setTrackingLogs(res.data.data || []);
                 } else {
                     setTrackingLogs([]);
                 }
