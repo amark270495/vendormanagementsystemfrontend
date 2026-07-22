@@ -53,52 +53,51 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, ap
         const date = new Date(Date.UTC(year, month, day));
 
         if (date.getUTCMonth() !== month) return { status: 'Empty' };
+        
         const dateKey = date.toISOString().split('T')[0];
         const dayOfWeek = date.getUTCDay();
         const currentShiftDateStr = getISTShiftDateString();
         const baseClasses = "relative transition-all duration-300 ease-out border flex flex-col justify-between p-1.5 overflow-hidden shadow-sm";
         const attendanceRecord = attendanceData[dateKey];
-
         const recordDetails = attendanceRecord ? { record: attendanceRecord, isClickable: true, request: attendanceRecord } : {};
 
-        if (attendanceRecord && attendanceRecord.status === 'Pending') {
-            return {
-                ...recordDetails,
-                status: 'Pending', label: attendanceRecord.requestedStatus === 'Present' ? 'Present?' : 'Absent?',
-                color: `${baseClasses} bg-amber-50 border-2 border-dashed border-amber-400 text-amber-900 cursor-pointer hover:bg-amber-100 hover:border-amber-500 hover:shadow-md transform hover:-translate-y-0.5`,
-                badgeColor: "bg-amber-400 text-amber-900 font-extrabold shadow-sm",
-                description: `Pending Approval: ${attendanceRecord.requestedStatus}`
-            };
+        // ==============================================================
+        // PRIORITY 1: Existing Attendance Records
+        // ==============================================================
+        if (attendanceRecord) {
+            if (attendanceRecord.status === 'Pending') {
+                return {
+                    ...recordDetails,
+                    status: 'Pending', label: attendanceRecord.requestedStatus === 'Present' ? 'Present?' : 'Absent?',
+                    color: `${baseClasses} bg-amber-50 border-2 border-dashed border-amber-400 text-amber-900 cursor-pointer hover:bg-amber-100 hover:border-amber-500 hover:shadow-md transform hover:-translate-y-0.5`,
+                    badgeColor: "bg-amber-400 text-amber-900 font-extrabold shadow-sm",
+                    description: `Pending Approval: ${attendanceRecord.requestedStatus}`
+                };
+            }
+            if (attendanceRecord.status === 'Present') return { ...recordDetails, status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-50 border-emerald-200 text-emerald-800 cursor-pointer hover:bg-emerald-100 hover:shadow-md transform hover:-translate-y-0.5`, badgeColor: "bg-emerald-200 text-emerald-900" };
+            if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') return { ...recordDetails, status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-800 cursor-pointer hover:bg-rose-100 hover:shadow-md transform hover:-translate-y-0.5`, badgeColor: "bg-rose-200 text-rose-900" };
         }
 
+        // ==============================================================
+        // PRIORITY 2: Leaves
+        // ==============================================================
         const leaveStatus = leaveDaysMap[dateKey];
         if (leaveStatus === 'Approved') {
-            return { 
-                ...recordDetails, status: 'On Leave', label: 'Leave', 
-                color: `${baseClasses} bg-violet-50 border-violet-200 text-violet-700 ${attendanceRecord ? 'cursor-pointer hover:bg-violet-100 hover:shadow-md transform hover:-translate-y-0.5' : ''}`, 
-                badgeColor: "bg-violet-200 text-violet-800", description: "Approved Leave"
-            };
+            return { ...recordDetails, status: 'On Leave', label: 'Leave', color: `${baseClasses} bg-violet-50 border-violet-200 text-violet-700`, badgeColor: "bg-violet-200 text-violet-800", description: "Approved Leave" };
         } else if (leaveStatus === 'Pending') {
-            return { 
-                ...recordDetails, status: 'Leave Requested', label: 'Pending Leave', 
-                color: `${baseClasses} bg-fuchsia-50 border-2 border-dashed border-fuchsia-300 text-fuchsia-800 ${attendanceRecord ? 'cursor-pointer hover:bg-fuchsia-100 hover:shadow-md transform hover:-translate-y-0.5' : ''}`, 
-                badgeColor: "bg-fuchsia-200 text-fuchsia-900", description: "Leave Request Pending Approval"
-            };
+            return { ...recordDetails, status: 'Leave Requested', label: 'Pending Leave', color: `${baseClasses} bg-fuchsia-50 border-2 border-dashed border-fuchsia-300 text-fuchsia-800`, badgeColor: "bg-fuchsia-200 text-fuchsia-900", description: "Leave Request Pending Approval" };
         }
         
+        // ==============================================================
+        // PRIORITY 3: Holidays
+        // ==============================================================
         if (holidays[dateKey]) {
-            return { 
-                ...recordDetails, status: 'Holiday', label: 'Holiday', 
-                color: `${baseClasses} bg-orange-50 border-orange-200 text-orange-800 ${attendanceRecord ? 'cursor-pointer hover:bg-orange-100 hover:shadow-md transform hover:-translate-y-0.5' : ''}`, 
-                badgeColor: "bg-orange-200 text-orange-800", description: holidays[dateKey] 
-            };
-        }
-        
-        if (attendanceRecord) {
-             if (attendanceRecord.status === 'Present') return { ...recordDetails, status: 'Present', label: 'Present', color: `${baseClasses} bg-emerald-50 border-emerald-200 text-emerald-800 cursor-pointer hover:bg-emerald-100 hover:shadow-md transform hover:-translate-y-0.5`, badgeColor: "bg-emerald-200 text-emerald-900" };
-             if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') return { ...recordDetails, status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-800 cursor-pointer hover:bg-rose-100 hover:shadow-md transform hover:-translate-y-0.5`, badgeColor: "bg-rose-200 text-rose-900" };
+            return { ...recordDetails, status: 'Holiday', label: 'Holiday', color: `${baseClasses} bg-orange-50 border-orange-200 text-orange-800`, badgeColor: "bg-orange-200 text-orange-800", description: holidays[dateKey] };
         }
 
+        // ==============================================================
+        // PRIORITY 4: Weekends
+        // ==============================================================
         if (dayOfWeek === 0 || dayOfWeek === 6) {
             if (approvedWeekends.has(dateKey)) {
                 if (dateKey < currentShiftDateStr) {
@@ -109,6 +108,9 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, ap
             return { status: 'Weekend', label: 'WKND', color: `${baseClasses} bg-slate-50 border-slate-200 text-slate-400`, badgeColor: "hidden" };
         }
 
+        // ==============================================================
+        // PRIORITY 5: Future & Past
+        // ==============================================================
         if (dateKey < currentShiftDateStr) {
             return { status: 'Absent (Unmarked)', label: 'N/A', color: `${baseClasses} bg-slate-100/50 border-slate-200 text-slate-500 italic`, badgeColor: "bg-slate-200 text-slate-600" };
         } else if (dateKey === currentShiftDateStr) {
@@ -201,7 +203,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     const [logsLoading, setLogsLoading] = useState(false);
     const [timeCalculations, setTimeCalculations] = useState({ standard: "0h 0m", extra: null, activeStr: "" });
 
-    // --- MONTHLY STATISTICS CALCULATOR ---
     const monthStats = useMemo(() => {
         let totalMs = 0;
         let daysPresent = 0;
@@ -277,7 +278,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                         const start = new Date(req.startDate + 'T00:00:00Z');
                         const end = new Date(req.endDate + 'T00:00:00Z');
                         for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
-                            // SKIP WEEKENDS (0 = Sunday, 6 = Saturday)
                             const dayOfWeek = d.getUTCDay();
                             if (dayOfWeek !== 0 && dayOfWeek !== 6) {
                                 if (d.getUTCFullYear() === year && d.getUTCMonth() === monthDate.getUTCMonth()) {
@@ -332,7 +332,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         if (request && request.username && request.date) {
             setReviewingRequest(request);
             
-            // Instantly pull pre-calculated totals from the backend record
             setTimeCalculations({
                 standard: formatMsToTime(request.standardTimeMs),
                 extra: request.extraTimeMs > 60000 ? formatMsToTime(request.extraTimeMs) : null,
@@ -341,10 +340,8 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
 
             setLogsLoading(true);
             try {
-                // Fetch purely to display the UI tracking log table
                 const res = await apiService.getUserTrackingLogs(request.username, request.date, user.userIdentifier);
                 if (res.data && res.data.success) {
-                    // FIXED: Changed res.data.logs to res.data.data
                     setTrackingLogs(res.data.data || []);
                 } else {
                     setTrackingLogs([]);
@@ -568,7 +565,6 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                         <button onClick={() => changeMonth(1)} className="p-3 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-indigo-600 transition-colors disabled:opacity-30" disabled={loading || actionLoading}><ChevronRightIcon /></button>
                     </div>
 
-                    {/* --- MONTHLY STATISTICS DASHBOARD --- */}
                     {!loading && (
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-6">
                             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">

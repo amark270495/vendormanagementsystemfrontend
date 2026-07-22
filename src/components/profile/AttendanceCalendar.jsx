@@ -44,7 +44,7 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
     const [holidays, setHolidays] = useState({});
     const [leaveDaysMap, setLeaveDaysMap] = useState({});
     const [approvedWeekends, setApprovedWeekends] = useState(new Set());
-    const [weekendWorkRequests, setWeekendWorkRequests] = useState({}); // Detailed map for statuses
+    const [weekendWorkRequests, setWeekendWorkRequests] = useState({});
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     
@@ -158,17 +158,26 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
         const month = currentMonthDate.getUTCMonth();
         const date = new Date(Date.UTC(year, month, day));
         if (date.getUTCMonth() !== month) return { status: 'Empty' };
+        
         const dateKey = date.toISOString().split('T')[0];
         const dayOfWeek = date.getUTCDay();
-        const today = new Date(); today.setUTCHours(0,0,0,0);
+        const today = new Date(); 
+        today.setUTCHours(0,0,0,0);
+
+        // ==============================================================
+        // PRIORITY FIX: Actual Records OVERRIDE default holidays/leaves
+        // ==============================================================
+        if (attendanceData[dateKey]) {
+            return { status: attendanceData[dateKey].status, record: attendanceData[dateKey] };
+        }
 
         if (leaveDaysMap[dateKey]) return { status: 'On Leave' };
         if (holidays[dateKey]) return { status: 'Holiday' };
-        if (attendanceData[dateKey]) return { status: attendanceData[dateKey].status, record: attendanceData[dateKey] };
 
         if (dayOfWeek === 0 || dayOfWeek === 6) {
             return approvedWeekends.has(dateKey) ? { status: 'ApprovedWeekend' } : { status: 'Weekend' };
         }
+        
         return (date < today) ? { status: 'Absent' } : { status: 'Future' };
     }, [currentMonthDate, attendanceData, holidays, leaveDaysMap, approvedWeekends]);
 
@@ -203,7 +212,6 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
 
     return (
         <div className="flex flex-col gap-6">
-            {/* 1. THE ACTION TOOLBAR */}
             <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 flex flex-col gap-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -217,18 +225,15 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
                     <div className="h-8 w-px bg-slate-200 hidden lg:block"></div>
 
                     <div className="flex flex-1 flex-wrap items-center gap-4 justify-center lg:justify-start">
-                        {/* Date Picker */}
                         <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
                             <CalendarDays size={16} className="text-indigo-500"/>
                             <input type="date" value={selectedMarkerDate} max={todayStr} onChange={(e) => { onDayClick(e.target.value); setShowWeekendInput(false); }} className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer" />
                         </div>
                         
-                        {/* Date/Day Label */}
                         <div className="text-sm font-black text-indigo-600 bg-indigo-50/50 px-4 py-2 rounded-2xl border border-indigo-100">
                             {displaySelectedDay}
                         </div>
 
-                        {/* Marking Actions */}
                         {canMark ? (
                             <div className="flex gap-2 animate-fadeIn">
                                 <button onClick={() => handleQuickMark('Present')} disabled={actionLoading} className="px-5 py-2 bg-emerald-600 text-white text-[11px] font-black rounded-xl hover:bg-emerald-500 transition-all flex items-center gap-2">
@@ -258,7 +263,6 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
                     </div>
                 </div>
 
-                {/* --- WEEKEND JUSTIFICATION INPUT --- */}
                 {showWeekendInput && needsWeekendApproval && (
                     <div className="flex flex-col md:flex-row gap-3 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 animate-slideDown">
                         <input 
@@ -278,7 +282,6 @@ const AttendanceCalendar = ({ initialMonthString, onMonthChange, onDayClick, sel
                 )}
             </div>
 
-            {/* 2. CALENDAR GRID */}
             <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
                 <div className="grid grid-cols-7 gap-2 mb-4">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
