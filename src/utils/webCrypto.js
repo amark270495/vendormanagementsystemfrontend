@@ -73,16 +73,26 @@ export async function encrypt(publicKey, plaintext) {
     return btoa(String.fromCharCode(...new Uint8Array(encrypted)));
 }
 
-// Decrypt a message using a private key
+// Decrypt a message using a private key (Safely handled to prevent UI crashes)
 export async function decrypt(privateKey, ciphertext) {
-    const binaryDerString = atob(ciphertext);
-    const encrypted = new Uint8Array(
-        [...binaryDerString].map(ch => ch.charCodeAt(0))
-    );
-    const decrypted = await window.crypto.subtle.decrypt(
-        { name: "RSA-OAEP" },
-        privateKey,
-        encrypted
-    );
-    return new TextDecoder().decode(decrypted);
+    try {
+        if (!ciphertext) return "";
+
+        const binaryDerString = atob(ciphertext);
+        const encrypted = new Uint8Array(
+            [...binaryDerString].map(ch => ch.charCodeAt(0))
+        );
+        const decrypted = await window.crypto.subtle.decrypt(
+            { name: "RSA-OAEP" },
+            privateKey,
+            encrypted
+        );
+        return new TextDecoder().decode(decrypted);
+
+    } catch (error) {
+        console.error("Failed to decrypt message:", error);
+        
+        // Graceful fallback so React doesn't throw a DOMException and crash
+        return "⚠️ [Message unreadable or unencrypted]";
+    }
 }
