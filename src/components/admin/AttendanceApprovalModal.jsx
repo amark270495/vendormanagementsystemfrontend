@@ -61,9 +61,7 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, ap
         const attendanceRecord = attendanceData[dateKey];
         const recordDetails = attendanceRecord ? { record: attendanceRecord, isClickable: true, request: attendanceRecord } : {};
 
-        // ==============================================================
         // PRIORITY 1: Existing Attendance Records
-        // ==============================================================
         if (attendanceRecord) {
             if (attendanceRecord.status === 'Pending') {
                 return {
@@ -78,9 +76,7 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, ap
             if (attendanceRecord.status === 'Absent' || attendanceRecord.status === 'Rejected') return { ...recordDetails, status: attendanceRecord.status, label: 'Absent', color: `${baseClasses} bg-rose-50 border-rose-200 text-rose-800 cursor-pointer hover:bg-rose-100 hover:shadow-md transform hover:-translate-y-0.5`, badgeColor: "bg-rose-200 text-rose-900" };
         }
 
-        // ==============================================================
         // PRIORITY 2: Leaves
-        // ==============================================================
         const leaveStatus = leaveDaysMap[dateKey];
         if (leaveStatus === 'Approved') {
             return { ...recordDetails, status: 'On Leave', label: 'Leave', color: `${baseClasses} bg-violet-50 border-violet-200 text-violet-700`, badgeColor: "bg-violet-200 text-violet-800", description: "Approved Leave" };
@@ -88,16 +84,12 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, ap
             return { ...recordDetails, status: 'Leave Requested', label: 'Pending Leave', color: `${baseClasses} bg-fuchsia-50 border-2 border-dashed border-fuchsia-300 text-fuchsia-800`, badgeColor: "bg-fuchsia-200 text-fuchsia-900", description: "Leave Request Pending Approval" };
         }
         
-        // ==============================================================
         // PRIORITY 3: Holidays
-        // ==============================================================
         if (holidays[dateKey]) {
             return { ...recordDetails, status: 'Holiday', label: 'Holiday', color: `${baseClasses} bg-orange-50 border-orange-200 text-orange-800`, badgeColor: "bg-orange-200 text-orange-800", description: holidays[dateKey] };
         }
 
-        // ==============================================================
         // PRIORITY 4: Weekends
-        // ==============================================================
         if (dayOfWeek === 0 || dayOfWeek === 6) {
             if (approvedWeekends.has(dateKey)) {
                 if (dateKey < currentShiftDateStr) {
@@ -108,9 +100,7 @@ const CalendarDisplay = ({ monthDate, attendanceData, holidays, leaveDaysMap, ap
             return { status: 'Weekend', label: 'WKND', color: `${baseClasses} bg-slate-50 border-slate-200 text-slate-400`, badgeColor: "hidden" };
         }
 
-        // ==============================================================
         // PRIORITY 5: Future & Past
-        // ==============================================================
         if (dateKey < currentShiftDateStr) {
             return { status: 'Absent (Unmarked)', label: 'N/A', color: `${baseClasses} bg-slate-100/50 border-slate-200 text-slate-500 italic`, badgeColor: "bg-slate-200 text-slate-600" };
         } else if (dateKey === currentShiftDateStr) {
@@ -332,6 +322,7 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
         if (request && request.username && request.date) {
             setReviewingRequest(request);
             
+            // 1. Set optimistic time calculations from the cached calendar record
             setTimeCalculations({
                 standard: formatMsToTime(request.standardTimeMs),
                 extra: request.extraTimeMs > 60000 ? formatMsToTime(request.extraTimeMs) : null,
@@ -342,7 +333,19 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
             try {
                 const res = await apiService.getUserTrackingLogs(request.username, request.date, user.userIdentifier);
                 if (res.data && res.data.success) {
-                    setTrackingLogs(res.data.data || []);
+                    
+                    // 2. FIX: Safely extract the array. The API sends it under multiple keys for backward compatibility
+                    const logsArray = res.data.trackingLogs || res.data.logs || res.data.data || [];
+                    setTrackingLogs(logsArray);
+                    
+                    // 3. FIX: Actively override the UI's calculation with the fresh, live calculation returned by the API
+                    if (res.data.formattedWorkingTime || res.data.totalWorkingMinutes !== undefined) {
+                        setTimeCalculations(prev => ({
+                            ...prev,
+                            // Fallback to formatting totalWorkingMinutes if formattedWorkingTime string is missing
+                            standard: res.data.formattedWorkingTime || formatMsToTime(res.data.totalWorkingMinutes * 60000)
+                        }));
+                    }
                 } else {
                     setTrackingLogs([]);
                 }
@@ -381,7 +384,8 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
     };
 
     const getEventBadge = (actionType, notes) => {
-        const action = actionType.toLowerCase();
+        // FIX: Added safe-guards. If actionType is null/undefined in one of the 1159 logs, this prevents a fatal React crash.
+        const action = (actionType || 'Unknown').toLowerCase();
         const noteLower = (notes || '').toLowerCase();
 
         if (noteLower.includes('previous shutdown detected')) return <span className="px-2.5 py-1 text-[11px] font-bold uppercase rounded-md bg-rose-100 text-rose-800 border border-rose-200">Offline Shutdwn</span>;
@@ -508,8 +512,9 @@ const AttendanceApprovalModal = ({ isOpen, onClose, selectedUsername, onApproval
                                                     </td>
                                                 </tr>
                                             ) : (
-                                                trackingLogs.map(log => (
-                                                    <tr key={log.id} className="hover:bg-indigo-50/30 transition-colors">
+                                                trackingLogs.map((log, index) => (
+                                                    // FIX: Ensure a unique key is always provided, even if 'id' is missing in the massive payload
+                                                    <tr key={log.id || `log-${index}`} className="hover:bg-indigo-50/30 transition-colors">
                                                         <td className="px-6 py-3">
                                                           {getEventBadge(log.actionType, log.workDoneNotes)}
                                                         </td>
