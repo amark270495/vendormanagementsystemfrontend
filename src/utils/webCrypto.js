@@ -6,6 +6,22 @@ const STORAGE_KEY_PUBLIC = "vms_chat_pub_key";
 const STORAGE_KEY_PRIVATE = "vms_chat_priv_key";
 
 /**
+ * Generates a fresh RSA-OAEP key pair.
+ */
+export async function generateKeyPair() {
+    return await window.crypto.subtle.generateKey(
+        {
+            name: "RSA-OAEP",
+            modulusLength: 2048,
+            publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+            hash: "SHA-256",
+        },
+        true, // extractable
+        ["encrypt", "decrypt"]
+    );
+}
+
+/**
  * Generates or retrieves a persistent RSA-OAEP key pair for the user session.
  * Prevents key loss and decryption lockouts on browser refresh.
  */
@@ -23,16 +39,7 @@ export async function getOrCreateKeyPair() {
         console.warn("Stored keys corrupted or missing. Generating new key pair...", e);
     }
 
-    const keyPair = await window.crypto.subtle.generateKey(
-        {
-            name: "RSA-OAEP",
-            modulusLength: 2048,
-            publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-            hash: "SHA-256",
-        },
-        true,
-        ["encrypt", "decrypt"]
-    );
+    const keyPair = await generateKeyPair();
 
     const pubString = await exportPublicKey(keyPair.publicKey);
     const privString = await exportPrivateKey(keyPair.privateKey);
@@ -126,7 +133,6 @@ export async function decrypt(privateKey, ciphertext) {
         return new TextDecoder().decode(decrypted);
     } catch (error) {
         console.warn("Skipping unreadable or mismatched encrypted message:", error.message);
-        // Fallback: Return raw string rather than crashing the chat component
         return ciphertext;
     }
 }
