@@ -5,7 +5,7 @@ import Spinner from '../components/Spinner';
 import AttendanceCalendar from '../components/profile/AttendanceCalendar';
 import LeaveRequestForm from '../components/profile/LeaveRequestForm';
 import LeaveHistory from '../components/profile/LeaveHistory';
-import DownloadAgentButton from '../components/DownloadAgentButton'; // <-- NEW IMPORT
+import DownloadAgentButton from '../components/DownloadAgentButton';
 
 // --- Elegant Enterprise Icons (Light/Medium Stroke) ---
 const CalendarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
@@ -24,6 +24,7 @@ const LinkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-
 const CakeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 15.25v-4.25a2 2 0 00-2-2H5a2 2 0 00-2 2v4.25a2 2 0 002 2h14a2 2 0 002-2zM6 18v-3M9 18v-3M12 18v-3m3 0v3m3 0v-3m-15-4.5a.75.75 0 100-1.5.75.75 0 000 1.5zM18 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM9 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM15 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM12 10.5a.75.75 0 100-1.5.75.75 0 000 1.5zM6 9V6a3 3 0 013-3h6a3 3 0 013 3v3" /></svg>;
 const LaptopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
 const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" /></svg>;
+const InfoIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 
 // --- Helper Functions ---
 const getISTShiftDateString = () => {
@@ -601,6 +602,22 @@ const ProfilePage = () => {
                                         </div>
                                     </div>
                                 </div>
+                                
+                                {/* --- NEW: INSTALLATION GUIDE --- */}
+                                {myAsset?.rowKey && (
+                                    <div className="lg:col-span-3 mt-2 bg-blue-50/50 border border-blue-100 rounded-xl p-5 shadow-sm">
+                                        <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                                            <InfoIcon />
+                                            Installation Instructions
+                                        </h4>
+                                        <ol className="list-decimal list-inside text-sm text-slate-700 space-y-2 ml-1">
+                                            <li>Click <strong>Download Tracking Agent</strong> to get your personalized setup package.</li>
+                                            <li><strong>Extract</strong> (unzip) the downloaded file to your Desktop or Downloads folder.</li>
+                                            <li>Right-click the <code className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-pink-600 font-mono text-xs">Setup.bat</code> file and select <strong>"Run as Administrator"</strong>.</li>
+                                            <li>Wait for the confirmation screen. The tracker will install to <code className="bg-white border border-slate-200 px-1.5 py-0.5 rounded font-mono text-xs">C:\Tracking</code> and start automatically.</li>
+                                        </ol>
+                                    </div>
+                                )}
                             </div>
                         </section>
 
