@@ -5,6 +5,7 @@ import Spinner from '../components/Spinner';
 import AttendanceCalendar from '../components/profile/AttendanceCalendar';
 import LeaveRequestForm from '../components/profile/LeaveRequestForm';
 import LeaveHistory from '../components/profile/LeaveHistory';
+import DownloadAgentButton from '../components/DownloadAgentButton'; // <-- NEW IMPORT
 
 // --- Elegant Enterprise Icons (Light/Medium Stroke) ---
 const CalendarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
@@ -89,7 +90,7 @@ const DetailItem = ({ label, value, icon, isEditing = false, children }) => (
     </div>
 );
 
-// --- RESTORED: Attendance Marker Widget (Styled for new theme, available for use if needed) ---
+// --- RESTORED: Attendance Marker Widget ---
 const AttendanceMarker = ({ selectedDate, onDateChange, onMarkAttendance, authUser }) => {
     const [statusInfo, setStatusInfo] = useState({ 
         status: null, requestedStatus: null, isHoliday: false, isOnLeave: false, isWeekend: false, isApprovedWeekend: false, weekendWorkStatus: null, isLoading: true, holidayDescription: '' 
@@ -573,12 +574,24 @@ const ProfilePage = () => {
                                 
                                 {/* Asset Card - Elevated Design */}
                                 <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div className="bg-gradient-to-br from-blue-50/50 to-white p-5 rounded-xl border border-blue-100 flex items-start gap-4 shadow-sm">
-                                        <div className="bg-white p-2.5 rounded-lg border border-blue-100 text-blue-500 shadow-sm"><LaptopIcon /></div>
-                                        <div>
-                                            <p className="text-[11px] font-semibold text-blue-600/70 uppercase tracking-wider">Allocated Asset Tag</p>
-                                            <p className="text-sm font-semibold text-slate-900 mt-1">{myAsset?.rowKey || 'Not Assigned'}</p>
+                                    <div className="bg-gradient-to-br from-blue-50/50 to-white p-5 rounded-xl border border-blue-100 flex flex-col justify-between shadow-sm">
+                                        <div className="flex items-start gap-4">
+                                            <div className="bg-white p-2.5 rounded-lg border border-blue-100 text-blue-500 shadow-sm"><LaptopIcon /></div>
+                                            <div>
+                                                <p className="text-[11px] font-semibold text-blue-600/70 uppercase tracking-wider">Allocated Asset Tag</p>
+                                                <p className="text-sm font-semibold text-slate-900 mt-1">{myAsset?.rowKey || 'Not Assigned'}</p>
+                                            </div>
                                         </div>
+                                        
+                                        {/* --- INTEGRATED DOWNLOAD BUTTON --- */}
+                                        {myAsset?.rowKey && (
+                                            <div className="mt-4 w-full">
+                                                <DownloadAgentButton 
+                                                    userEmail={user?.userIdentifier} 
+                                                    assetId={myAsset?.rowKey} 
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="bg-white p-5 rounded-xl border border-slate-200 flex items-start gap-4 shadow-sm hover:border-blue-100 transition-colors">
                                         <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-400"><LaptopIcon /></div>
