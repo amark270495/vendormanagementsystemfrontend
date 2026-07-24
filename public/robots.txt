@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /$
+Allow: /login
+Disallow: /api/
+Disallow: /offer-letter/
+Disallow: /msa-sign/
+Disallow: /*?token=*
+
+Sitemap: https://vms-dashboard.in/sitemap.xml
