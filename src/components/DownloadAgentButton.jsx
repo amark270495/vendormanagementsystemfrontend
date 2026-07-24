@@ -12,12 +12,16 @@ const DownloadAgentButton = ({ userEmail, assetId }) => {
         try {
             const zip = new JSZip();
 
+            // SECURE: Pulls the API key from your secure build environment, not the source code
+            const apiKey = import.meta.env.VITE_VMS_API_KEY || "";
+
             // 1. Generate the personalized .env file dynamically
             const envContent = `VMS_AGENT_VERSION=5.1.3
 VMS_ASSET_ID=${assetId}
 VMS_USER_EMAIL=${userEmail}
 VMS_API_URL=https://vms-dashboard.in/api/logAssetSession
-VMS_API_KEY=lNR68xdwGVY9O8SqQrjVRpCYvqd8w1uK2QuwMkU4YWQeAzFu0JonZg==`;
+VMS_API_KEY=${apiKey}`;
+            
             zip.file(".env", envContent);
 
             // 2. Generate an idiot-proof double-clickable Setup.bat file

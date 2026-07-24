@@ -338,11 +338,15 @@ const ProfilePage = () => {
             await fetchLeaveHistory();
             
             try {
-                // FIX: Fetch all assets and filter by assigned email
+                // BULLETPROOF ASSET LOOKUP (Handles direct arrays or wrapped object responses)
                 const assetRes = await apiService.getAssets();
-                if (assetRes.data && Array.isArray(assetRes.data)) {
+                const assetsList = Array.isArray(assetRes?.data) 
+                    ? assetRes.data 
+                    : (Array.isArray(assetRes?.data?.data) ? assetRes.data.data : (Array.isArray(assetRes?.data?.assets) ? assetRes.data.assets : []));
+
+                if (assetsList.length > 0) {
                     const userEmailLower = user.userIdentifier.toLowerCase();
-                    const assignedAsset = assetRes.data.find(a => {
+                    const assignedAsset = assetsList.find(a => {
                         const assignedTo = (a.AssetAssignedTo || a.AssetAssignedToEmail || a.assignedToEmail || '').toLowerCase();
                         return assignedTo === userEmailLower || (a.AssetAssignedTo === user.displayName);
                     });
@@ -587,7 +591,7 @@ const ProfilePage = () => {
                                             <div className="bg-white p-2.5 rounded-lg border border-blue-100 text-blue-500 shadow-sm"><LaptopIcon /></div>
                                             <div>
                                                 <p className="text-[11px] font-semibold text-blue-600/70 uppercase tracking-wider">Allocated Asset Tag</p>
-                                                {/* FIX: Use RowKey (Capital R) to match Azure Table Storage */}
+                                                {/* FIX: Use RowKey or rowKey (Capital R) to match Azure Table Storage */}
                                                 <p className="text-sm font-semibold text-slate-900 mt-1">{myAsset?.RowKey || myAsset?.rowKey || 'Not Assigned'}</p>
                                             </div>
                                         </div>
