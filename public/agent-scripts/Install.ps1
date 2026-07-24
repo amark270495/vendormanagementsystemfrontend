@@ -1,6 +1,6 @@
 # =========================================================
 # ENTERPRISE VMS AGENT INSTALLER
-# VERSION 5.1.3
+# VERSION 5.1.3 (FULLY PATCHED)
 # =========================================================
 
 # 1. Require Administrator Privileges
@@ -36,13 +36,16 @@ Copy-Item -Path "$sourceDir\.env" -Destination $baseDir -Force
 Copy-Item -Path "$sourceDir\*.xml" -Destination $baseDir -Force
 Write-Host "Files successfully copied to C:\Tracking" -ForegroundColor Green
 
-# 4. Import the Scheduled Tasks from the XML files
+# 4. Import the Scheduled Tasks with current user context
+$currentUser = "$env:USERDOMAIN\$env:USERNAME"
 $xmlFiles = Get-ChildItem -Path $baseDir -Filter "*.xml"
+
 foreach ($xml in $xmlFiles) {
     $taskName = $xml.BaseName
-    Write-Host "Registering Scheduled Task: $taskName..." -ForegroundColor Cyan
-    # Suppress output, force overwrite if it exists
-    schtasks.exe /create /tn $taskName /xml $xml.FullName /f | Out-Null
+    Write-Host "Registering Scheduled Task: $taskName for user $currentUser..." -ForegroundColor Cyan
+    
+    # Register task running under the currently logged-in user context
+    schtasks.exe /create /tn $taskName /xml $xml.FullName /ru $currentUser /f | Out-Null
 }
 
 Write-Host "All Scheduled Tasks registered successfully!" -ForegroundColor Green
