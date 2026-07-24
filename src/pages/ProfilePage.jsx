@@ -338,12 +338,19 @@ const ProfilePage = () => {
             await fetchLeaveHistory();
             
             try {
-                const assetRes = await apiService.getAssets(user.userIdentifier);
+                // FIX: Fetch all assets and filter by assigned email
+                const assetRes = await apiService.getAssets();
                 if (assetRes.data && Array.isArray(assetRes.data)) {
-                    const assignedAsset = assetRes.data.find(a => a.assignedToEmail === user.userIdentifier || a.AssetAssignedToEmail === user.userIdentifier || a.AssetAssignedTo === user.displayName || a.AssetAssignedTo === user.userName || a.AssetAssignedTo === user.userIdentifier);
+                    const userEmailLower = user.userIdentifier.toLowerCase();
+                    const assignedAsset = assetRes.data.find(a => {
+                        const assignedTo = (a.AssetAssignedTo || a.AssetAssignedToEmail || a.assignedToEmail || '').toLowerCase();
+                        return assignedTo === userEmailLower || (a.AssetAssignedTo === user.displayName);
+                    });
                     setMyAsset(assignedAsset || null);
                 }
-            } catch (assetErr) {}
+            } catch (assetErr) {
+                console.warn("Could not load assets:", assetErr);
+            }
         } catch (err) {
             setError(`Could not load profile data.`); setLeaveQuota(null); setLeaveHistory([]);
         } finally { setLoading(false); }
@@ -580,16 +587,17 @@ const ProfilePage = () => {
                                             <div className="bg-white p-2.5 rounded-lg border border-blue-100 text-blue-500 shadow-sm"><LaptopIcon /></div>
                                             <div>
                                                 <p className="text-[11px] font-semibold text-blue-600/70 uppercase tracking-wider">Allocated Asset Tag</p>
-                                                <p className="text-sm font-semibold text-slate-900 mt-1">{myAsset?.rowKey || 'Not Assigned'}</p>
+                                                {/* FIX: Use RowKey (Capital R) to match Azure Table Storage */}
+                                                <p className="text-sm font-semibold text-slate-900 mt-1">{myAsset?.RowKey || myAsset?.rowKey || 'Not Assigned'}</p>
                                             </div>
                                         </div>
                                         
                                         {/* --- INTEGRATED DOWNLOAD BUTTON --- */}
-                                        {myAsset?.rowKey && (
+                                        {(myAsset?.RowKey || myAsset?.rowKey) && (
                                             <div className="mt-4 w-full">
                                                 <DownloadAgentButton 
                                                     userEmail={user?.userIdentifier} 
-                                                    assetId={myAsset?.rowKey} 
+                                                    assetId={myAsset?.RowKey || myAsset?.rowKey} 
                                                 />
                                             </div>
                                         )}
@@ -604,7 +612,7 @@ const ProfilePage = () => {
                                 </div>
                                 
                                 {/* --- NEW: INSTALLATION GUIDE --- */}
-                                {myAsset?.rowKey && (
+                                {(myAsset?.RowKey || myAsset?.rowKey) && (
                                     <div className="lg:col-span-3 mt-2 bg-blue-50/50 border border-blue-100 rounded-xl p-5 shadow-sm">
                                         <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
                                             <InfoIcon />
