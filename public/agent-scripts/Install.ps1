@@ -1,6 +1,6 @@
 # =========================================================
 # ENTERPRISE VMS AGENT INSTALLER
-# VERSION 5.1.3 (FULLY PATCHED)
+# VERSION 5.1.3 (NO-HANG FIX)
 # =========================================================
 
 # 1. Require Administrator Privileges
@@ -36,16 +36,43 @@ Copy-Item -Path "$sourceDir\.env" -Destination $baseDir -Force
 Copy-Item -Path "$sourceDir\*.xml" -Destination $baseDir -Force
 Write-Host "Files successfully copied to C:\Tracking" -ForegroundColor Green
 
-# 4. Import the Scheduled Tasks with current user context
-$currentUser = "$env:USERDOMAIN\$env:USERNAME"
+# 4. Dynamically configure and import XML files (Bypasses Password Prompts!)
 $xmlFiles = Get-ChildItem -Path $baseDir -Filter "*.xml"
 
 foreach ($xml in $xmlFiles) {
     $taskName = $xml.BaseName
-    Write-Host "Registering Scheduled Task: $taskName for user $currentUser..." -ForegroundColor Cyan
+    Write-Host "Configuring and Registering Task: $taskName..." -ForegroundColor Cyan
     
-    # Register task running under the currently logged-in user context
-    schtasks.exe /create /tn $taskName /xml $xml.FullName /ru $currentUser /f | Out-Null
+    # Read the XML content
+    $content = Get-Content $xml.FullName -Raw
+
+    # Strip out any old, broken, or hardcoded Principals blocks
+    $content = $content -replace '(?s)<Principals>.*?</Principals>', ''
+
+    # Assign correct system privileges based on the task type
+    $runLevel = if ($taskName -match "Tracker") { "HighestAvailable" } else { "LeastPrivilege" }
+    
+    # Inject the Universal "Interactive User" block. 
+    # S-1-5-32-545 is the built-in Windows 'Users' group.
+    $principalsBlock = @"
+  <Principals>
+    <Principal id="EnterpriseUser">
+      <GroupId>S-1-5-32-545</GroupId>
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>$runLevel</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+"@
+    
+    # Place the block precisely where Windows expects it
+    $content = $content -replace '<Settings>', $principalsBlock
+
+    # Save the cleaned, fully configured XML back to disk
+    Set-Content -Path $xml.FullName -Value $content -Encoding UTF8
+
+    # Import the task (Notice the /ru parameter is GONE, so it will never hang!)
+    schtasks.exe /create /tn $taskName /xml $xml.FullName /f | Out-Null
 }
 
 Write-Host "All Scheduled Tasks registered successfully!" -ForegroundColor Green
