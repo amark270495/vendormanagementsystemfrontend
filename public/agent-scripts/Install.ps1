@@ -1,6 +1,6 @@
 # =========================================================
-# ENTERPRISE VMS AGENT INSTALLER - V7.0.0
-# (PERFECT NATIVE .NET XML GENERATION)
+# ENTERPRISE VMS AGENT INSTALLER - V8.0.0
+# (DIAGNOSTIC & SID BINDING EDITION)
 # =========================================================
 
 # 1. Require Administrator Privileges
@@ -36,12 +36,16 @@ Copy-Item -Path "$sourceDir\.env" -Destination $baseDir -Force
 Write-Host "Scripts successfully copied to C:\Tracking" -ForegroundColor Green
 Write-Host "-------------------------------------------------------"
 
-# 4. FLAWLESS NATIVE XML GENERATION
-# Gets the exact DOMAIN\Username of whoever runs the installer
-$currentUser = "$env:USERDOMAIN\$env:USERNAME"
+# 4. FLAWLESS NATIVE XML GENERATION WITH SID BINDING
+
+# Get the exact SID of the installing user (Bulletproof for Local, Domain, AzureAD, and MSA)
+$currentSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+
+# Dynamic StartBoundary to prevent Windows from rejecting old 2024 dates
+$startDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
 
 function Register-VMSTask {
-    param($TaskName, $TriggersXml, $ScriptFile, $ArgsStr)
+    param($TaskName, $TriggersXml, $ScriptFile, $ArgsStr, $RunLevel = "LeastPrivilege")
     
     # Generate the XML blueprint. 
     $xmlString = @"
@@ -56,9 +60,9 @@ function Register-VMSTask {
   </Triggers>
   <Principals>
     <Principal id="Author">
-      <UserId>$currentUser</UserId>
+      <UserId>$currentSid</UserId>
       <LogonType>InteractiveToken</LogonType>
-      <RunLevel>HighestAvailable</RunLevel>
+      <RunLevel>$RunLevel</RunLevel>
     </Principal>
   </Principals>
   <Settings>
@@ -93,43 +97,61 @@ function Register-VMSTask {
     $cleanXml = $xmlString.Trim() -replace "`r`n", "`n" -replace "`n", "`r`n"
     $tempPath = "$baseDir\Temp\$TaskName.xml"
 
-    # CRITICAL: Force .NET Framework to write pristine UTF-16LE with BOM
+    # Force .NET Framework to write pristine UTF-16LE with BOM
     [System.IO.File]::WriteAllText($tempPath, $cleanXml, [System.Text.Encoding]::Unicode)
+
+    # 1st Defense: Verify XML Validity before attempting import
+    try {
+        [xml]$testXml = Get-Content $tempPath -ErrorAction Stop
+    } catch {
+        Write-Host " -> FAILED: $TaskName (XML INVALID)" -ForegroundColor Red
+        Write-Host "    $($_.Exception.Message)" -ForegroundColor Yellow
+        return
+    }
 
     # Delete existing task if user is reinstalling
     schtasks.exe /delete /tn $TaskName /f 2>$null
 
-    # Import the new flawless task
-    schtasks.exe /create /tn $TaskName /xml $tempPath /f | Out-Null
-    
-    if ($?) {
-        Write-Host " -> $TaskName registered successfully." -ForegroundColor Cyan
+    # 2nd Defense: Import the task and CAPTURE the exact error output
+    $output = schtasks.exe /create /tn $TaskName /xml $tempPath /f 2>&1
+    $exitCode = $LASTEXITCODE
+
+    if ($exitCode -eq 0) {
+        Write-Host " -> SUCCESS: $TaskName registered." -ForegroundColor Cyan
     } else {
-        Write-Host " -> FAILED to register $TaskName." -ForegroundColor Red
+        Write-Host " -> FAILED: $TaskName" -ForegroundColor Red
+        Write-Host "    ERROR DETAIL: $output" -ForegroundColor Yellow
     }
 }
 
 # ---------------------------------------------------------
 # Define Triggers and Register All 7 Tasks
 # ---------------------------------------------------------
+
+# Note: Using LeastPrivilege for user-space tracking to avoid Access Denied errors.
 Register-VMSTask "VMS_Tracker_Login" "<LogonTrigger><Enabled>true</Enabled></LogonTrigger>" "VMS_Tracker.ps1" "-ActionType `"Login`""
+
 Register-VMSTask "VMS_Tracker_Unlock" "<SessionStateChangeTrigger><Enabled>true</Enabled><StateChange>SessionUnlock</StateChange></SessionStateChangeTrigger>" "VMS_Tracker.ps1" "-ActionType `"Unlock`""
+
 Register-VMSTask "VMS_Tracker_Lock" "<SessionStateChangeTrigger><Enabled>true</Enabled><StateChange>SessionLock</StateChange></SessionStateChangeTrigger>" "VMS_Tracker.ps1" "-ActionType `"Lock`""
+
+# If RemoteDisconnect fails on some Windows editions, it will print the error safely and continue the installation
 Register-VMSTask "VMS_Tracker_Logout" "<SessionStateChangeTrigger><Enabled>true</Enabled><StateChange>RemoteDisconnect</StateChange></SessionStateChangeTrigger>" "VMS_Tracker.ps1" "-ActionType `"Logout`""
-Register-VMSTask "VMS_Recovery" "<BootTrigger><Enabled>true</Enabled></BootTrigger><LogonTrigger><Enabled>true</Enabled></LogonTrigger>" "VMS_Recovery.ps1" ""
+
+Register-VMSTask "VMS_Recovery" "<BootTrigger><Enabled>true</Enabled></BootTrigger><LogonTrigger><Enabled>true</Enabled></LogonTrigger>" "VMS_Recovery.ps1" "" "HighestAvailable"
 
 $intervalTrigger = @"
 <CalendarTrigger>
   <Repetition><Interval>PT30M</Interval><Duration>P1D</Duration><StopAtDurationEnd>false</StopAtDurationEnd></Repetition>
-  <StartBoundary>2024-01-01T00:00:00</StartBoundary>
+  <StartBoundary>$startDate</StartBoundary>
   <Enabled>true</Enabled>
   <ScheduleByDay><DaysInterval>1</DaysInterval></ScheduleByDay>
 </CalendarTrigger>
 "@
-Register-VMSTask "VMS_Telemetry" $intervalTrigger "VMS_Telemetry.ps1" ""
+Register-VMSTask "VMS_Telemetry" $intervalTrigger "VMS_Telemetry.ps1" "" "HighestAvailable"
 
 $watchdogTrigger = $intervalTrigger -replace "PT30M", "PT5M"
-Register-VMSTask "VMS_Watchdog" $watchdogTrigger "VMS_Watchdog.ps1" ""
+Register-VMSTask "VMS_Watchdog" $watchdogTrigger "VMS_Watchdog.ps1" "" "HighestAvailable"
 
 # Clean up temporary XML files
 Remove-Item -Path "$baseDir\Temp\*.xml" -Force -ErrorAction SilentlyContinue
@@ -148,4 +170,6 @@ Start-Process powershell.exe -ArgumentList @(
 Write-Host "=========================================================" -ForegroundColor Green
 Write-Host "Enterprise VMS Agent Installed & Started Successfully" -ForegroundColor Green
 Write-Host "=========================================================" -ForegroundColor Green
-Start-Sleep -Seconds 15
+Write-Host ""
+Write-Host "Press any key to close this window..."
+$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
