@@ -1,6 +1,6 @@
 # =========================================================
 # ENTERPRISE VMS AGENT INSTALLER
-# VERSION 5.1.3 (NO-HANG FIX)
+# VERSION 5.1.4 (ENCODING & SID FIX)
 # =========================================================
 
 # 1. Require Administrator Privileges
@@ -35,29 +35,33 @@ Copy-Item -Path "$sourceDir\*.psm1" -Destination $baseDir -Force
 Copy-Item -Path "$sourceDir\.env" -Destination $baseDir -Force
 Copy-Item -Path "$sourceDir\*.xml" -Destination $baseDir -Force
 Write-Host "Files successfully copied to C:\Tracking" -ForegroundColor Green
+Write-Host "-------------------------------------------------------"
 
-# 4. Dynamically configure and import XML files (Bypasses Password Prompts!)
+# 4. Dynamically configure and import XML files (Fixes UTF-8/UTF-16 errors)
 $xmlFiles = Get-ChildItem -Path $baseDir -Filter "*.xml"
+$currentUser = "$env:USERDOMAIN\$env:USERNAME"
 
 foreach ($xml in $xmlFiles) {
     $taskName = $xml.BaseName
-    Write-Host "Configuring and Registering Task: $taskName..." -ForegroundColor Cyan
+    Write-Host "Configuring Task: $taskName..." -ForegroundColor Cyan
     
-    # Read the XML content
+    # Read the raw UTF-8 text exported by the React JSZip generator
     $content = Get-Content $xml.FullName -Raw
 
-    # Strip out any old, broken, or hardcoded Principals blocks
-    $content = $content -replace '(?s)<Principals>.*?</Principals>', ''
+    # Force the XML header to UTF-16
+    $content = $content -replace '<\?xml.*?\?>', '<?xml version="1.0" encoding="UTF-16"?>'
 
-    # Assign correct system privileges based on the task type
+    # Remove any existing, broken, or hardcoded Principals block
+    $content = $content -replace '(?s)\s*<Principals>.*?</Principals>', ''
+
+    # Determine required privileges
     $runLevel = if ($taskName -match "Tracker") { "HighestAvailable" } else { "LeastPrivilege" }
     
-    # Inject the Universal "Interactive User" block. 
-    # S-1-5-32-545 is the built-in Windows 'Users' group.
+    # Inject the flawless Principals block using the employee's exact Windows Username
     $principalsBlock = @"
   <Principals>
-    <Principal id="EnterpriseUser">
-      <GroupId>S-1-5-32-545</GroupId>
+    <Principal id="Author">
+      <UserId>$currentUser</UserId>
       <LogonType>InteractiveToken</LogonType>
       <RunLevel>$runLevel</RunLevel>
     </Principal>
@@ -65,17 +69,24 @@ foreach ($xml in $xmlFiles) {
   <Settings>
 "@
     
-    # Place the block precisely where Windows expects it
+    # Insert it perfectly before Settings
     $content = $content -replace '<Settings>', $principalsBlock
 
-    # Save the cleaned, fully configured XML back to disk
-    Set-Content -Path $xml.FullName -Value $content -Encoding UTF8
+    # CRITICAL: Save explicitly as Unicode (UTF-16LE) which Windows natively requires
+    Set-Content -Path $xml.FullName -Value $content -Encoding Unicode
 
-    # Import the task (Notice the /ru parameter is GONE, so it will never hang!)
+    # Import the task (No /ru flag required, preventing password hangs)
     schtasks.exe /create /tn $taskName /xml $xml.FullName /f | Out-Null
+    
+    if ($?) {
+        Write-Host " -> $taskName registered successfully." -ForegroundColor Green
+    } else {
+        Write-Host " -> FAILED to register $taskName." -ForegroundColor Red
+    }
 }
 
-Write-Host "All Scheduled Tasks registered successfully!" -ForegroundColor Green
+Write-Host "-------------------------------------------------------"
+Write-Host "All Scheduled Tasks processed!" -ForegroundColor Green
 
 # 5. Start the initial tracking process
 Start-Process powershell.exe -ArgumentList @(
@@ -86,6 +97,6 @@ Start-Process powershell.exe -ArgumentList @(
 )
 
 Write-Host "=========================================================" -ForegroundColor Green
-Write-Host "Enterprise VMS Agent 5.1.3 Installed & Started Successfully" -ForegroundColor Green
+Write-Host "Enterprise VMS Agent Installed & Started Successfully" -ForegroundColor Green
 Write-Host "=========================================================" -ForegroundColor Green
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 15
