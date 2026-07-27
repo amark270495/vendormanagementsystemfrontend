@@ -11,20 +11,17 @@ const DownloadAgentButton = ({ userEmail, assetId }) => {
         setIsDownloading(true);
         try {
             const zip = new JSZip();
-
-            // SECURE: Pulls the API key from your secure build environment, not the source code
             const apiKey = import.meta.env.VITE_VMS_API_KEY || "";
 
             // 1. Generate the personalized .env file dynamically
-            const envContent = `VMS_AGENT_VERSION=5.1.3
+            const envContent = `VMS_AGENT_VERSION=7.0.0
 VMS_ASSET_ID=${assetId}
 VMS_USER_EMAIL=${userEmail}
 VMS_API_URL=https://vms-dashboard.in/api/logAssetSession
 VMS_API_KEY=${apiKey}`;
-            
             zip.file(".env", envContent);
 
-            // 2. Generate an idiot-proof double-clickable Setup.bat file
+            // 2. Generate an idiot-proof Setup.bat
             const batContent = `@echo off
 echo =======================================================
 echo Taproot Solutions - VMS Tracker Setup
@@ -44,7 +41,7 @@ if %errorLevel% == 0 (
 `;
             zip.file("Setup.bat", batContent);
 
-            // 3. Generate a quick Instructions README
+            // 3. Generate Instructions
             const readmeContent = `TAPROOT SOLUTIONS - VMS TRACKER INSTALLATION
 =============================================
 Asset ID: ${assetId}
@@ -58,21 +55,14 @@ INSTRUCTIONS:
 5. You are done! The system will track in the background.`;
             zip.file("README_INSTRUCTIONS.txt", readmeContent);
 
-            // 4. Fetch all 13 Scripts and XML Files
+            // 4. Fetch ONLY the core PowerShell scripts (No XMLs needed!)
             const filesToFetch = [
                 "Install.ps1",
                 "VMS_Common.psm1",
                 "VMS_Recovery.ps1",
                 "VMS_Telemetry.ps1",
                 "VMS_Tracker.ps1",
-                "VMS_Watchdog.ps1",
-                "VMS_Recovery.xml",
-                "VMS_Telemetry.xml",
-                "VMS_Tracker_Lock.xml",
-                "VMS_Tracker_Login.xml",
-                "VMS_Tracker_Logout.xml",
-                "VMS_Tracker_Unlock.xml",
-                "VMS_Watchdog.xml"
+                "VMS_Watchdog.ps1"
             ];
 
             for (const fileName of filesToFetch) {

@@ -1,6 +1,6 @@
 # =========================================================
-# ENTERPRISE VMS AGENT INSTALLER
-# VERSION 6.0.0 (NATIVE TASK GENERATION)
+# ENTERPRISE VMS AGENT INSTALLER - V7.0.0
+# (PERFECT NATIVE .NET XML GENERATION)
 # =========================================================
 
 # 1. Require Administrator Privileges
@@ -36,13 +36,15 @@ Copy-Item -Path "$sourceDir\.env" -Destination $baseDir -Force
 Write-Host "Scripts successfully copied to C:\Tracking" -ForegroundColor Green
 Write-Host "-------------------------------------------------------"
 
-# 4. NATIVE XML GENERATION (Bypasses all encoding bugs)
+# 4. FLAWLESS NATIVE XML GENERATION
+# Gets the exact DOMAIN\Username of whoever runs the installer
 $currentUser = "$env:USERDOMAIN\$env:USERNAME"
 
 function Register-VMSTask {
     param($TaskName, $TriggersXml, $ScriptFile, $ArgsStr)
     
-    $xml = @"
+    # Generate the XML blueprint. 
+    $xmlString = @"
 <?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
@@ -87,10 +89,17 @@ function Register-VMSTask {
 </Task>
 "@
 
-    # Save exactly as Windows Native Unicode (UTF-16LE with CRLF)
+    # Remove all dangerous whitespaces, newlines, and carriage returns that break schtasks
+    $cleanXml = $xmlString.Trim() -replace "`r`n", "`n" -replace "`n", "`r`n"
     $tempPath = "$baseDir\Temp\$TaskName.xml"
-    $xml -replace "`n", "`r`n" -replace "`r`r", "`r" | Out-File -FilePath $tempPath -Encoding Unicode -Force
 
+    # CRITICAL: Force .NET Framework to write pristine UTF-16LE with BOM
+    [System.IO.File]::WriteAllText($tempPath, $cleanXml, [System.Text.Encoding]::Unicode)
+
+    # Delete existing task if user is reinstalling
+    schtasks.exe /delete /tn $TaskName /f 2>$null
+
+    # Import the new flawless task
     schtasks.exe /create /tn $TaskName /xml $tempPath /f | Out-Null
     
     if ($?) {
@@ -100,7 +109,9 @@ function Register-VMSTask {
     }
 }
 
-# Generate and Register All 7 Tasks
+# ---------------------------------------------------------
+# Define Triggers and Register All 7 Tasks
+# ---------------------------------------------------------
 Register-VMSTask "VMS_Tracker_Login" "<LogonTrigger><Enabled>true</Enabled></LogonTrigger>" "VMS_Tracker.ps1" "-ActionType `"Login`""
 Register-VMSTask "VMS_Tracker_Unlock" "<SessionStateChangeTrigger><Enabled>true</Enabled><StateChange>SessionUnlock</StateChange></SessionStateChangeTrigger>" "VMS_Tracker.ps1" "-ActionType `"Unlock`""
 Register-VMSTask "VMS_Tracker_Lock" "<SessionStateChangeTrigger><Enabled>true</Enabled><StateChange>SessionLock</StateChange></SessionStateChangeTrigger>" "VMS_Tracker.ps1" "-ActionType `"Lock`""
