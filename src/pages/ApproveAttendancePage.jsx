@@ -18,7 +18,7 @@ const getLocalDateString = (date) => {
 // --- UTILITY: CSV Export ---
 const exportToCSV = (data, filename) => {
     if (!data || !data.length) return;
-    const headers = Object.keys(data || {}).join(',');
+    const headers = Object.keys(data[0] || {}).join(',');
     const rows = data.map(row => 
         Object.values(row).map(val => `"${String(val).replace(/"/g, '""')}"`).join(',')
     ).join('\n');
@@ -33,10 +33,10 @@ const exportToCSV = (data, filename) => {
     document.body.removeChild(link);
 };
 
-// --- UTILITY: Week Date Generator (Timezone Bulletproof) ---
+// --- UTILITY: Week Date Generator ---
 const getWeekBounds = (baseDate = new Date()) => {
     const d = new Date(baseDate);
-    d.setHours(12, 0, 0, 0); // Force Noon to prevent UTC midnight shifts
+    d.setHours(12, 0, 0, 0); 
     
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
@@ -65,18 +65,15 @@ const ApproveAttendancePage = () => {
     const { user } = useAuth();
     const { canApproveAttendance } = usePermissions();
 
-    // UI State
     const [activeTab, setActiveTab] = useState('weekly'); 
     const [loading, setLoading] = useState(false);
     const [processingBulk, setProcessingBulk] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    // Enterprise Search State
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
 
-    // --- DATA & AZURE PAGINATION STATES ---
     const [pendingRequests, setPendingRequests] = useState([]);
     const [attendanceTokens, setAttendanceTokens] = useState([null]);
     const [currentAttendancePage, setCurrentAttendancePage] = useState(0);
@@ -106,7 +103,6 @@ const ApproveAttendancePage = () => {
     const [selectedStandardRows, setSelectedStandardRows] = useState(new Set());
     const [selectedWeekendRows, setSelectedWeekendRows] = useState(new Set());
 
-    // Modal State
     const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
     const [selectedUsername, setSelectedUsername] = useState(null);
 
@@ -134,7 +130,7 @@ const ApproveAttendancePage = () => {
                 year: currentYear, statusFilter: 'Pending', pageSize: PAGE_SIZE,
                 continuationToken: currentToken, searchEmail: debouncedSearch
             });
-            if (result.data.success) {
+            if (result.data && result.data.success) {
                 setPendingRequests(result.data.attendanceRecords || []);
                 setHasMoreAttendance(!!result.data.continuationToken);
                 if (result.data.continuationToken && !attendanceTokens[currentAttendancePage + 1]) {
@@ -235,7 +231,7 @@ const ApproveAttendancePage = () => {
         } catch (err) { setError("Failed to fetch exceptions."); } finally { setLoading(false); }
     }, [user?.userIdentifier, currentWeek, currentExceptionsPage, exceptionsTokens, debouncedSearch]);
 
-    // Router Effect
+    // --- CRITICAL FIX: Safe Route Trigger without Infinite React Loops ---
     useEffect(() => {
         if (!user?.userIdentifier || !canApproveAttendance) return;
         if (activeTab === 'pending_standard') fetchPendingStandard();
@@ -243,7 +239,8 @@ const ApproveAttendancePage = () => {
         else if (activeTab === 'directory') fetchUsersList();
         else if (activeTab === 'weekly') fetchWeeklyMatrix();
         else if (activeTab === 'exceptions') fetchExceptions();
-    }, [activeTab, fetchPendingStandard, fetchPendingWeekend, fetchUsersList, fetchWeeklyMatrix, fetchExceptions, user?.userIdentifier, canApproveAttendance]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab, debouncedSearch, currentAttendancePage, currentWeekendPage, currentUsersPage, currentWeeklyPage, currentExceptionsPage, currentWeek]);
 
     // --- ACTIONS ---
     const handleSingleStandardApproval = async (request, statusAction) => {
@@ -527,7 +524,7 @@ const ApproveAttendancePage = () => {
                                                     {weeklyData.map(emp => (
                                                         <tr key={emp.username} className="hover:bg-gray-50 transition-colors">
                                                             <td className="px-6 py-4 border-r border-gray-200 bg-white">
-                                                                <div className="font-semibold text-gray-900 text-sm">{emp.username.split('@')}</div>
+                                                                <div className="font-semibold text-gray-900 text-sm">{emp.username.split('@')[0]}</div>
                                                                 <div className="text-xs text-gray-500">{emp.username}</div>
                                                             </td>
                                                             {Array.from({length: 7}).map((_, i) => {
@@ -569,7 +566,7 @@ const ApproveAttendancePage = () => {
                                                             <td className="px-6 py-4"><input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" checked={selectedStandardRows.has(req.rowKey)} onChange={() => toggleSelection(req.rowKey, 'standard')} /></td>
                                                             <td className="px-6 py-4 text-sm font-medium text-gray-900">{req.username}</td>
                                                             <td className="px-6 py-4 text-sm text-gray-500">{req.date}</td>
-                                                            <td className="px-6 py-4"><span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">Pending ({req.requestedStatus})</span></td>
+                                                            <td className="px-6 py-4"><span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">Pending ({req.requestedStatus || 'System'})</span></td>
                                                             <td className="px-6 py-4 text-right flex justify-end gap-2 items-center">
                                                                 <button onClick={() => handleSingleStandardApproval(req, 'Approved')} disabled={processingBulk} className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded text-sm transition-colors hover:bg-green-100">Approve</button>
                                                                 <button onClick={() => handleSingleStandardApproval(req, 'Rejected')} disabled={processingBulk} className="px-3 py-1.5 bg-white text-gray-700 border border-gray-300 rounded text-sm transition-colors hover:bg-red-50 hover:text-red-700">Reject</button>
@@ -681,7 +678,7 @@ const ApproveAttendancePage = () => {
                                                             <td className="px-6 py-4 whitespace-nowrap">
                                                                 <div className="flex items-center">
                                                                     <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">{u.displayName?.charAt(0) || 'U'}</div>
-                                                                    <div className="ml-4 font-medium text-gray-900">{u.displayName || u.username.split('@')}</div>
+                                                                    <div className="ml-4 font-medium text-gray-900">{u.displayName || u.username.split('@')[0]}</div>
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4"><span className="px-2.5 py-0.5 bg-gray-100 text-gray-800 text-xs font-medium rounded-full border border-gray-200">{u.role || u.userRole || 'Employee'}</span></td>
@@ -704,9 +701,9 @@ const ApproveAttendancePage = () => {
             {selectedUsername && (
                 <AttendanceApprovalModal 
                     isOpen={isCalendarModalOpen} 
-                    onClose={() => { setIsCalendarModalOpen(false); setSelectedUsername(null); fetchData(); }} 
+                    onClose={() => { setIsCalendarModalOpen(false); setSelectedUsername(null); }} 
                     selectedUsername={selectedUsername} 
-                    onApprovalComplete={() => { setIsCalendarModalOpen(false); setSelectedUsername(null); setSuccess('Processed successfully.'); fetchData(); setTimeout(() => setSuccess(''), 3000); }} 
+                    onApprovalComplete={() => { setIsCalendarModalOpen(false); setSelectedUsername(null); setSuccess('Processed successfully.'); setTimeout(() => setSuccess(''), 3000); }} 
                 />
             )}
         </div>
