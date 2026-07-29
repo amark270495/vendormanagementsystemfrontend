@@ -19,7 +19,7 @@ apiClient.interceptors.request.use((config) => {
         if (savedUser) {
             const userData = JSON.parse(savedUser);
             
-            // Map data to headers expected by backend verifyAccess (tableUtils.js)
+            // Map data to headers expected by backend verifyAccess
             config.headers['x-user-email'] = userData.userIdentifier;
             config.headers['x-user-role'] = userData.userRole;
             
@@ -50,7 +50,12 @@ export const apiService = {
     if (typeof args === 'string') {
       return apiClient.get('/getUsers', { params: { authenticatedUsername: args } });
     }
-    return apiClient.get('/getUsers', { params: args });
+    const safeParams = { ...args };
+    // CRITICAL FIX: Prevent Axios from turning Azure Tokens into [object Object]
+    if (safeParams.continuationToken && typeof safeParams.continuationToken === 'object') {
+        safeParams.continuationToken = JSON.stringify(safeParams.continuationToken);
+    }
+    return apiClient.get('/getUsers', { params: safeParams });
   },
   
   addUser: (userData, authenticatedUsername) =>
@@ -67,7 +72,6 @@ export const apiService = {
   updateJobPosting: (updates, authenticatedUsername) =>
     apiClient.post('/updateJobPosting', { updates, authenticatedUsername }),
   
-  // FIXED: Routes to the existing /updateJobPosting endpoint and maps to the lowercase 'status' field
   updateJobStatus: (postingIds, newStatus, authenticatedUsername) => {
     const updates = postingIds.map(id => ({
         rowKey: id,
@@ -224,14 +228,30 @@ export const apiService = {
     apiClient.post('/markAttendance', attendanceData),
   approveAttendance: (payload) => 
     apiClient.post('/approveAttendance', payload),
-  getAttendance: (params) => 
-    apiClient.get('/getAttendance', { params }),
+    
+  getAttendance: (params) => {
+    const safeParams = { ...params };
+    // CRITICAL FIX: Prevent Axios from turning Azure Tokens into [object Object]
+    if (safeParams.continuationToken && typeof safeParams.continuationToken === 'object') {
+        safeParams.continuationToken = JSON.stringify(safeParams.continuationToken);
+    }
+    return apiClient.get('/getAttendance', { params: safeParams });
+  },
+  
   requestWeekendWork: (requestData) => 
     apiClient.post('/requestWeekendWork', requestData),
   approveWeekendWork: (approvalData) => 
     apiClient.post('/approveWeekendWork', approvalData),
-  getWeekendWorkRequests: (params) => 
-    apiClient.get('/getWeekendWorkRequests', { params }),
+    
+  getWeekendWorkRequests: (params) => {
+    const safeParams = { ...params };
+    // CRITICAL FIX: Prevent Axios from turning Azure Tokens into [object Object]
+    if (safeParams.continuationToken && typeof safeParams.continuationToken === 'object') {
+        safeParams.continuationToken = JSON.stringify(safeParams.continuationToken);
+    }
+    return apiClient.get('/getWeekendWorkRequests', { params: safeParams });
+  },
+  
   getHolidays: (params) => 
     apiClient.get('/getHolidays', { params }),
   manageHoliday: (holidayData, method = 'POST', authenticatedUsername) => { 
@@ -286,7 +306,6 @@ export const apiService = {
     apiClient.post('/logAssetSession', { ...sessionData, authenticatedUsername }),
 
   // --- NEW: Advanced Enterprise Telemetry & Bulk Tools ---
-  
   bulkImportAssets: (formData, authenticatedUsername) =>
     apiClient.post('/bulkImportAssets', formData),
 
