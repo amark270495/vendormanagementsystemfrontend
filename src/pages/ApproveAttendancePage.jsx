@@ -160,7 +160,7 @@ const ApproveAttendancePage = () => {
                     setWeekendTokens(newTokens);
                 }
             }
-        } catch (err) { setError("Failed to fetch weekend requests."); } finally { setLoading(false); }
+        } catch (err) { setError("Failed to fetch exception requests."); } finally { setLoading(false); }
     }, [user?.userIdentifier, currentWeekendPage, weekendTokens, debouncedSearch]);
 
     const fetchUsersList = useCallback(async () => {
@@ -268,7 +268,7 @@ const ApproveAttendancePage = () => {
                 status: statusAction, managerNotes: ""
             });
             if (res.data.success) {
-                setSuccess(`Weekend request ${statusAction.toLowerCase()} successfully!`);
+                setSuccess(`Exception request ${statusAction.toLowerCase()} successfully!`);
                 await fetchPendingWeekend();
             } else { setError(res.data.message || "Failed to process approval."); }
         } catch (err) { setError(err.message || "An error occurred."); } 
@@ -303,11 +303,11 @@ const ApproveAttendancePage = () => {
         try {
             const res = await apiService.approveWeekendWork({ requests: requestsToProcess, status: statusAction, managerNotes: "Bulk Processed" });
             if (res.data.success) {
-                setSuccess(`Successfully processed ${requestsToProcess.length} weekend requests.`);
+                setSuccess(`Successfully processed ${requestsToProcess.length} exception requests.`);
                 setSelectedWeekendRows(new Set());
                 await fetchPendingWeekend();
             } else { setError("Partial failure during bulk update."); }
-        } catch (e) { setError("Failed to execute bulk weekend approval."); } 
+        } catch (e) { setError("Failed to execute bulk exception approval."); } 
         finally { setProcessingBulk(false); setTimeout(() => setSuccess(''), 4000); }
     };
 
@@ -348,7 +348,7 @@ const ApproveAttendancePage = () => {
 
     const handleExport = () => {
         if (activeTab === 'pending_standard') exportToCSV(pendingRequests, 'Pending_Shifts_Export');
-        else if (activeTab === 'pending_weekend') exportToCSV(weekendRequests, 'Weekend_Requests_Export');
+        else if (activeTab === 'pending_weekend') exportToCSV(weekendRequests, 'Exception_Requests_Export');
         else if (activeTab === 'exceptions') exportToCSV(exceptionsData, 'Exceptions_Queue_Export');
         else if (activeTab === 'directory') exportToCSV(usersList, 'Employee_Directory_Export');
         else if (activeTab === 'weekly') exportToCSV(weeklyData.map(w => ({ employee: w.username, ...w.days })), 'Weekly_Matrix_Export');
@@ -380,7 +380,8 @@ const ApproveAttendancePage = () => {
             );
         }
 
-        const isAnomaly = dayRecord.status === 'Pending' || (dayRecord.extraTimeMs > 2 * 60 * 60 * 1000);
+        // NEW: Unapproved Exception logic integrated for Quarantine styling
+        const isAnomaly = dayRecord.status === 'Pending' || dayRecord.status === 'Unapproved Exception' || (dayRecord.extraTimeMs > 2 * 60 * 60 * 1000);
         const totalMs = (dayRecord.standardTimeMs || 0) + (dayRecord.extraTimeMs || 0);
         
         return (
@@ -394,10 +395,14 @@ const ApproveAttendancePage = () => {
                     </span>
                     <span className={`text-[10px] uppercase tracking-wider font-semibold mt-1 px-1.5 py-0.5 rounded ${
                         dayRecord.status === 'Pending' ? 'bg-amber-200 text-amber-800' : 
+                        dayRecord.status === 'Unapproved Exception' ? 'bg-red-200 text-red-900' : 
                         dayRecord.status === 'Present' ? 'bg-emerald-100 text-emerald-800' : 
-                        dayRecord.status === 'Absent' ? 'bg-red-100 text-red-800' : 'bg-gray-200 text-gray-700'
+                        dayRecord.status === 'Absent' ? 'bg-red-100 text-red-800' : 
+                        'bg-gray-200 text-gray-700'
                     }`}>
-                        {dayRecord.status === 'Present' ? 'OK' : dayRecord.status.substring(0, 4)}
+                        {dayRecord.status === 'Present' ? 'OK' : 
+                         dayRecord.status === 'Unapproved Exception' ? 'LOCKED' : 
+                         dayRecord.status.substring(0, 4)}
                     </span>
                 </div>
             </td>
@@ -456,7 +461,7 @@ const ApproveAttendancePage = () => {
                             {[
                                 { id: 'weekly', label: 'Weekly Matrix' },
                                 { id: 'pending_standard', label: 'Pending Standard' },
-                                { id: 'pending_weekend', label: 'Pending Weekend' },
+                                { id: 'pending_weekend', label: 'Pending Exceptions (W/H)' }, // UPDATED LABEL
                                 { id: 'exceptions', label: 'Exceptions Queue' },
                                 { id: 'directory', label: 'Directory' }
                             ].map(tab => (
@@ -583,7 +588,7 @@ const ApproveAttendancePage = () => {
                                     </div>
                                 )}
 
-                                {/* TAB: PENDING WEEKEND */}
+                                {/* TAB: PENDING WEEKEND / EXCEPTIONS */}
                                 {activeTab === 'pending_weekend' && (
                                     <div className="flex-1 flex flex-col">
                                         <div className="overflow-x-auto p-6">
@@ -593,6 +598,7 @@ const ApproveAttendancePage = () => {
                                                         <th className="px-6 py-3 text-left"><input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" onChange={(e) => handleSelectAll(e, 'weekend')} checked={weekendRequests.length > 0 && selectedWeekendRows.size === weekendRequests.length} /></th>
                                                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
                                                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
                                                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Reason</th>
                                                         <th className="px-6 py-3 text-right">Actions</th>
                                                     </tr>
@@ -603,6 +609,13 @@ const ApproveAttendancePage = () => {
                                                             <td className="px-6 py-4"><input type="checkbox" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" checked={selectedWeekendRows.has(req.rowKey)} onChange={() => toggleSelection(req.rowKey, 'weekend')} /></td>
                                                             <td className="px-6 py-4 text-sm font-medium text-gray-900">{req.partitionKey}</td>
                                                             <td className="px-6 py-4 text-sm text-gray-500">{new Date(req.date + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                                                            {/* UPDATED: Dynamic Tags for Weekend vs Holiday */}
+                                                            <td className="px-6 py-4">
+                                                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${req.requestType === 'Holiday' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                                                                    {req.requestType || 'Weekend'}
+                                                                </span>
+                                                                {req.holidayName && <div className="text-[11px] text-gray-400 mt-1">{req.holidayName}</div>}
+                                                            </td>
                                                             <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={req.reason}>{req.reason}</td>
                                                             <td className="px-6 py-4 text-right flex justify-end gap-2">
                                                                 <button onClick={() => handleSingleWeekendApproval(req, 'Approved')} disabled={processingBulk} className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded text-sm transition-colors hover:bg-green-100">Approve</button>
@@ -610,7 +623,7 @@ const ApproveAttendancePage = () => {
                                                             </td>
                                                         </tr>
                                                     ))}
-                                                    {weekendRequests.length === 0 && <tr><td colSpan="5" className="px-6 py-12 text-center text-gray-500">No pending weekend requests.</td></tr>}
+                                                    {weekendRequests.length === 0 && <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-500">No pending exception requests.</td></tr>}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -635,9 +648,17 @@ const ApproveAttendancePage = () => {
                                                     {exceptionsData.map(req => {
                                                         const stdHours = (req.standardTimeMs || 0) / (1000 * 60 * 60);
                                                         const extHours = (req.extraTimeMs || 0) / (1000 * 60 * 60);
-                                                        let flagMsg = "Pending Approval"; let flagColor = "text-amber-700 bg-amber-50 border-amber-200";
-                                                        if (stdHours > 0 && stdHours < 4) { flagMsg = "Shift < 4 Hours"; flagColor = "text-red-700 bg-red-50 border-red-200"; }
+                                                        let flagMsg = "Pending Approval"; 
+                                                        let flagColor = "text-amber-700 bg-amber-50 border-amber-200";
+                                                        
+                                                        // NEW: QUARANTINE WARNING FLAG
+                                                        if (req.status === 'Unapproved Exception') {
+                                                            flagMsg = "Quarantined (Unapproved Shift)";
+                                                            flagColor = "text-red-800 bg-red-100 border-red-300 font-bold";
+                                                        }
+                                                        else if (stdHours > 0 && stdHours < 4) { flagMsg = "Shift < 4 Hours"; flagColor = "text-red-700 bg-red-50 border-red-200"; }
                                                         else if (extHours > 2) { flagMsg = "Excessive Overtime (>2h)"; flagColor = "text-purple-700 bg-purple-50 border-purple-200"; }
+                                                        
                                                         return (
                                                             <tr key={req.rowKey} className="hover:bg-gray-50 transition-colors">
                                                                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{req.date}</td>
