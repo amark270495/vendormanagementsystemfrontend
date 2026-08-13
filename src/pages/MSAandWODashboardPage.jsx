@@ -114,7 +114,7 @@ const MSAandWODashboardPage = () => {
         const total = documents.length;
         const fullySigned = documents.filter(d => d.status === 'Fully Signed').length;
         const vendorSigned = documents.filter(d => d.status === 'Vendor Signed').length;
-        const pendingVendor = documents.filter(d => d.status === 'Document Ready' || !d.status).length;
+        const pendingVendor = documents.filter(d => d.status === 'Document Ready' || !d.status || d.status === 'Pending').length;
         
         return { total, fullySigned, vendorSigned, pendingVendor };
     }, [documents]);
@@ -125,7 +125,7 @@ const MSAandWODashboardPage = () => {
         // 1. Status Filter
         if (statusFilter !== 'All') {
             data = data.filter(item => {
-                if (statusFilter === 'Pending') return item.status === 'Document Ready' || !item.status;
+                if (statusFilter === 'Pending') return item.status === 'Document Ready' || !item.status || item.status === 'Pending';
                 return item.status === statusFilter;
             });
         }
@@ -180,24 +180,43 @@ const MSAandWODashboardPage = () => {
     const handleDelete = (doc) => setModalState({ type: 'delete', data: doc });
     const handleResend = (doc) => setModalState({ type: 'resend', data: doc });
     
-    const handleDirectorSignClick = (doc) => {
-        setSignerConfig({
-            signerType: 'taproot',
-            requiresPassword: true,
-            signerInfo: { name: user?.userName, title: 'Director' },
-            document: doc,
-            pdfUrl: doc.pdfUrl
-        });
-        setIsSigningModalOpen(true);
+    // --- CRITICAL FIX: LAZY LOAD SECURE PDF URL ON CLICK ---
+    const handleDirectorSignClick = async (doc) => {
+        setLoading(true);
+        try {
+            const response = await apiService.getMSADocumentUrl(doc.partitionKey, doc.rowKey, user.userIdentifier);
+            const securePdfUrl = response.data.documentUrl;
+
+            setSignerConfig({
+                signerType: 'taproot',
+                requiresPassword: true,
+                signerInfo: { name: user?.userName, title: 'Director' },
+                document: doc,
+                pdfUrl: securePdfUrl
+            });
+            setIsSigningModalOpen(true);
+        } catch (err) {
+            setError('Failed to securely load the document preview.');
+            setTimeout(() => setError(''), 3000);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handlePreview = (doc) => {
-        if (doc.pdfUrl) {
-            setDocumentToPreview(doc);
+    // --- CRITICAL FIX: LAZY LOAD SECURE PDF URL ON PREVIEW ---
+    const handlePreview = async (doc) => {
+        setLoading(true);
+        try {
+            const response = await apiService.getMSADocumentUrl(doc.partitionKey, doc.rowKey, user.userIdentifier);
+            const secureDoc = { ...doc, pdfUrl: response.data.documentUrl };
+            
+            setDocumentToPreview(secureDoc);
             setIsPreviewModalOpen(true);
-        } else {
+        } catch (err) {
             setError('No PDF is available for preview for this document.');
             setTimeout(() => setError(''), 3000);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -252,7 +271,7 @@ const MSAandWODashboardPage = () => {
         const docToSign = signerConfig.document;
 
         try {
-            const response = await apiService.updateSigningStatus(docToSign.rowKey, signerData, signerType, user.userIdentifier, docToSign);
+            const response = await apiService.updateSigningStatus(docToSign.rowKey, null, signerData, signerType, user.userIdentifier);
             if (response.data.success) {
                 setSuccess('Document successfully signed and finalized!');
                 setIsSigningModalOpen(false);
@@ -279,7 +298,6 @@ const MSAandWODashboardPage = () => {
                         </p>
                     </div>
                     
-                    {/* ENHANCED CONTROLS: Search, Filter, and Refresh */}
                     <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3">
                         <select
                             value={statusFilter}
@@ -529,7 +547,7 @@ const MSAandWODashboardPage = () => {
                 {loading && (
                     <div className="flex flex-col justify-center items-center h-[400px] bg-white border border-gray-200 rounded-xl shadow-sm">
                         <Spinner />
-                        <p className="mt-4 text-sm text-gray-500 font-medium tracking-wide">Syncing documents...</p>
+                        <p className="mt-4 text-sm text-gray-500 font-medium tracking-wide">Securely loading documents...</p>
                     </div>
                 )}
             </div>
