@@ -185,6 +185,11 @@ export const apiService = {
     apiClient.post('/createMSAandWO', { formData, authenticatedUsername }),
   getMSAandWODashboardData: (authenticatedUsername) =>
     apiClient.get('/getMSAandWODashboardData', { params: { authenticatedUsername } }),
+  
+  // NEW LAZY LOAD API ENDPOINT ADDED HERE
+  getMSADocumentUrl: (partitionKey, rowKey, authenticatedUsername) => 
+    apiClient.get('/getMSADocumentUrl', { params: { partitionKey, rowKey, authenticatedUsername } }),
+    
   accessMSAandWO: (token, tempPassword) =>
     apiClient.post('/accessMSAandWO', { token, tempPassword }),
   getMSAandWODetailForSigning: (token, authenticatedUsername) =>
