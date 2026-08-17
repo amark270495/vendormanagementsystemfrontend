@@ -112,6 +112,14 @@ export const apiService = {
     apiClient.get('/getHomePageData', { params: { authenticatedUsername } }),
   getReportData: (params) =>
     apiClient.get('/getReportData', { params }),
+    
+  // =========================================================================
+  // NEW: ADVANCED BI ENGINE ENDPOINT ADDED HERE
+  // =========================================================================
+  getPowerBIData: (params) =>
+    apiClient.get('/getPowerBIData', { params }),
+  // =========================================================================
+
   generateAndSendJobReport: (sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername) =>
     apiClient.post('/generateAndSendJobReport', { sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername }),
   getNotifications: (authenticatedUsername) =>
@@ -186,7 +194,6 @@ export const apiService = {
   getMSAandWODashboardData: (authenticatedUsername) =>
     apiClient.get('/getMSAandWODashboardData', { params: { authenticatedUsername } }),
   
-  // NEW LAZY LOAD API ENDPOINT ADDED HERE
   getMSADocumentUrl: (partitionKey, rowKey, authenticatedUsername) => 
     apiClient.get('/getMSADocumentUrl', { params: { partitionKey, rowKey, authenticatedUsername } }),
     
@@ -236,7 +243,6 @@ export const apiService = {
     
   getAttendance: (params) => {
     const safeParams = { ...params };
-    // CRITICAL FIX: Prevent Axios from turning Azure Tokens into [object Object]
     if (safeParams.continuationToken && typeof safeParams.continuationToken === 'object') {
         safeParams.continuationToken = JSON.stringify(safeParams.continuationToken);
     }
@@ -250,7 +256,6 @@ export const apiService = {
     
   getWeekendWorkRequests: (params) => {
     const safeParams = { ...params };
-    // CRITICAL FIX: Prevent Axios from turning Azure Tokens into [object Object]
     if (safeParams.continuationToken && typeof safeParams.continuationToken === 'object') {
         safeParams.continuationToken = JSON.stringify(safeParams.continuationToken);
     }
