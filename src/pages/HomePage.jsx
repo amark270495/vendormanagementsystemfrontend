@@ -27,7 +27,6 @@ const getUrgency = (dateInput) => {
 
 // --- CRASH-PROOF HELPER: Generate Avatar from a Single Name ---
 const getAvatar = (rawName) => {
-    // Ensure we are working with a string to prevent .charAt type errors
     const name = String(rawName || '');
     
     if (!name || name.trim() === '' || name === 'Unassigned') {
@@ -108,7 +107,14 @@ const HomePage = () => {
     const [data, setData] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [stats, setStats] = useState({ totalJobs: 0, openJobs: 0 });
+    
+    // NEW: Star Schema integrated stats
+    const [stats, setStats] = useState({ 
+        totalJobs: 0, 
+        openJobs: 0, 
+        totalResumesSubmitted: 0, 
+        pipelineConversionRate: '0.0%' 
+    });
 
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedJob, setSelectedJob] = useState(null);
@@ -130,13 +136,44 @@ const HomePage = () => {
         }
 
         try {
-            const response = await apiService.getHomePageData(user.userIdentifier);
-            if (response.data.success) {
-                setData(response.data.data);
-                const openCount = Object.values(response.data.data).reduce((acc, jobs) => acc + jobs.length, 0);
-                setStats({ totalJobs: openCount, openJobs: openCount });
+            // NEW: Fetching both operational Kanban data and Star Schema BI metrics in parallel
+            const [homeResponse, biResponse] = await Promise.all([
+                apiService.getHomePageData(user.userIdentifier).catch(e => e.response),
+                apiService.getPowerBIData({ authenticatedUsername: user.userIdentifier }).catch(e => e.response)
+            ]);
+
+            if (homeResponse?.data?.success) {
+                setData(homeResponse.data.data);
+                const openCount = Object.values(homeResponse.data.data).reduce((acc, jobs) => acc + jobs.length, 0);
+                
+                setStats(prev => ({ 
+                    ...prev, 
+                    totalJobs: openCount, 
+                    openJobs: openCount 
+                }));
             } else {
-                setError(response.data.message);
+                setError(homeResponse?.data?.message || "Failed to fetch dashboard data.");
+            }
+
+            // NEW: Process semantic BI metrics for header cards
+            if (biResponse?.data?.success) {
+                const biData = biResponse.data;
+                const totalResumes = biData.Fact_JobPostings.reduce((sum, job) => sum + (job.ResumesSubmitted || 0), 0);
+                
+                const totalCandidates = biData.Fact_Candidates.length;
+                const hiredCandidates = biData.Fact_Candidates.filter(cand => 
+                    cand.CandidateStatus.toLowerCase().includes('hire')
+                ).length;
+                
+                const conversionRate = totalCandidates > 0 
+                    ? ((hiredCandidates / totalCandidates) * 100).toFixed(1) + '%'
+                    : 'N/A';
+
+                setStats(prev => ({
+                    ...prev,
+                    totalResumesSubmitted: totalResumes,
+                    pipelineConversionRate: conversionRate
+                }));
             }
         } catch (err) {
             setError(err.response?.data?.message || "Failed to fetch dashboard data.");
@@ -262,7 +299,7 @@ const HomePage = () => {
 
             {canViewDashboards && !error && (
                 <>
-                    {/* --- Metrics Grid --- */}
+                    {/* --- Metrics Grid (NEW BI KPIs) --- */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-left w-full">
                         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-center justify-between transition-all hover:shadow-md text-left w-full">
                             <div className="text-left w-full">
@@ -277,15 +314,15 @@ const HomePage = () => {
                         </div>
                         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-start justify-between transition-all hover:shadow-md text-left w-full">
                             <div className="text-left w-full">
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Pipeline Health</p>
-                                <span className="text-2xl font-extrabold text-emerald-600 mt-3 block tracking-tight text-left">Optimal</span>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Pipeline Conversion</p>
+                                <span className="text-2xl font-extrabold text-emerald-600 mt-3 block tracking-tight text-left">{loading ? '-' : stats.pipelineConversionRate}</span>
                             </div>
                             <div className="p-3.5 rounded-2xl bg-emerald-50 text-emerald-600 shrink-0"><ClockIcon className="w-6 h-6" /></div>
                         </div>
                         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-start justify-between transition-all hover:shadow-md text-left w-full">
                             <div className="text-left w-full">
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Total Candidates</p>
-                                <span className="text-2xl font-extrabold text-slate-800 mt-3 block tracking-tight text-left">Tracking</span>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Resumes Submitted</p>
+                                <span className="text-2xl font-extrabold text-slate-800 mt-3 block tracking-tight text-left">{loading ? '-' : stats.totalResumesSubmitted}</span>
                             </div>
                             <div className="p-3.5 rounded-2xl bg-indigo-50 text-indigo-600 shrink-0"><UserGroupIcon className="w-6 h-6" /></div>
                         </div>
@@ -432,7 +469,7 @@ const HomePage = () => {
 
             {/* --- Light Theme Drawer --- */}
             {selectedJob && (
-                <div className="fixed inset-0 z- overflow-hidden text-left">
+                <div className="fixed inset-0 z-50 overflow-hidden text-left">
                     <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity" onClick={() => setSelectedJob(null)}></div>
                     <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10 text-left">
                         <div className="pointer-events-auto w-screen max-w-lg transform transition-transform duration-500 ease-in-out bg-white shadow-2xl flex flex-col border-l border-slate-200 text-left">
