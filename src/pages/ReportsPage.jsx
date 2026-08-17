@@ -222,7 +222,9 @@ const ReportsPage = () => {
 
     useEffect(() => { generateReport(); }, [generateReport]);
 
+    // THE FIX: Define missing handler functions for the form elements
     const handleFilterChange = (e) => setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const handleReportTypeChange = (e) => setReportType(e.target.value);
 
     // --- Dynamic Core KPI Engine ---
     const biMetrics = useMemo(() => {
