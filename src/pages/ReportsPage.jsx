@@ -156,9 +156,6 @@ const ReportsPage = () => {
             let response;
             const params = { authenticatedUsername: user.userIdentifier, startDate: filters.startDate, endDate: filters.endDate };
 
-            // =========================================================================
-            // CRASH FAILSAFES: Bypasses apiService if definitions are missing
-            // =========================================================================
             if (reportType === 'jobPostings') {
                 params.sheetKey = filters.sheetKey;
                 if (typeof apiService.getReportData === 'function') {
@@ -190,7 +187,6 @@ const ReportsPage = () => {
             console.error("API call failed:", err);
             setError("Failed to fetch report data. Displaying sample data for preview.");
             
-            // Mock Data Fallbacks matching exactly what the UI needs to render
             if (reportType === 'jobPostings') {
                 setReportData({
                     totalJobs: 120, openJobs: 75, closedJobs: 45, totalResumesSubmitted: 350, totalMaxSubmissions: 500,
@@ -222,7 +218,6 @@ const ReportsPage = () => {
 
     useEffect(() => { generateReport(); }, [generateReport]);
 
-    // THE FIX: Define missing handler functions for the form elements
     const handleFilterChange = (e) => setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
     const handleReportTypeChange = (e) => setReportType(e.target.value);
 
@@ -238,26 +233,26 @@ const ReportsPage = () => {
         let funnelData = [0,0,0,0], clientVolumes = {}, recMatrix = {}, geoMap = {}, trendMap = {};
 
         if (reportType === 'jobPostings') {
-            const submitted = reportData.totalResumesSubmitted || 0;
-            const maxSub = reportData.totalMaxSubmissions || 1;
+            const submitted = reportData?.totalResumesSubmitted || 0;
+            const maxSub = reportData?.totalMaxSubmissions || 1;
             kpiMap.slotCapacity = `${((submitted / maxSub) * 100).toFixed(1)}%`;
-            kpiMap.coverageRatio = (submitted / (reportData.openJobs || 1)).toFixed(1);
-            kpiMap.fillRatio = `${((reportData.closedJobs / (reportData.totalJobs || 1)) * 100).toFixed(1)}%`;
-            clientVolumes = reportData.clientJobCounts || {};
+            kpiMap.coverageRatio = (submitted / (reportData?.openJobs || 1)).toFixed(1);
+            kpiMap.fillRatio = `${(((reportData?.closedJobs || 0) / (reportData?.totalJobs || 1)) * 100).toFixed(1)}%`;
+            clientVolumes = reportData?.clientJobCounts || {};
         } 
         else if (reportType === 'candidates') {
-            const total = reportData.totalCandidates || 1;
-            const hired = reportData.remarksCount?.['Hired'] || 0;
-            const inProcess = (reportData.remarksCount?.['Interviewing'] || 0) + (reportData.remarksCount?.['Under Review'] || 0);
+            const total = reportData?.totalCandidates || 1;
+            const hired = reportData?.remarksCount?.['Hired'] || 0;
+            const inProcess = (reportData?.remarksCount?.['Interviewing'] || 0) + (reportData?.remarksCount?.['Under Review'] || 0);
             
             kpiMap.conversionRate = `${((hired / total) * 100).toFixed(1)}%`;
             kpiMap.pipelineVelocity = `${((inProcess / total) * 100).toFixed(1)}%`;
         } 
         else if (reportType === 'advancedBI') {
-            const jobs = reportData.Fact_JobPostings || [];
-            const cands = reportData.Fact_Candidates || [];
-            const clients = reportData.Dim_Client || [];
-            const recruiters = reportData.Dim_Recruiter || [];
+            const jobs = reportData?.Fact_JobPostings || [];
+            const cands = reportData?.Fact_Candidates || [];
+            const clients = reportData?.Dim_Client || [];
+            const recruiters = reportData?.Dim_Recruiter || [];
 
             const totalJobs = jobs.length || 1;
             const openJobs = jobs.filter(j => j.Status === 'Open').length || 1;
@@ -330,6 +325,15 @@ const ReportsPage = () => {
         return { labels: fLabels, values: fValues };
     };
 
+    // --- Rendering Guard ---
+    const shouldRenderReport = () => {
+        if (!reportData || !canViewReports || loading) return false;
+        if (reportType === 'jobPostings' && reportData.totalJobs !== undefined) return true;
+        if (reportType === 'candidates' && reportData.totalCandidates !== undefined) return true;
+        if (reportType === 'advancedBI' && reportData.Fact_JobPostings !== undefined) return true; 
+        return false;
+    };
+
     // --- Enterprise KPI Ribbon Component ---
     const CustomizableKPIRibbon = () => (
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 mb-8 animate-fade-in">
@@ -374,9 +378,9 @@ const ReportsPage = () => {
 
     // --- Render Job Postings View ---
     const renderJobReport = () => {
-        const clientData = filteredChartData(Object.keys(reportData.clientJobCounts || {}), Object.values(reportData.clientJobCounts || {}));
-        const positionData = filteredChartData(Object.keys(reportData.positionTypeCounts || {}), Object.values(reportData.positionTypeCounts || {}));
-        const assigneeData = filteredChartData(Object.keys(reportData.workingByCounts || {}), Object.values(reportData.workingByCounts || {}));
+        const clientData = filteredChartData(Object.keys(reportData?.clientJobCounts || {}), Object.values(reportData?.clientJobCounts || {}));
+        const positionData = filteredChartData(Object.keys(reportData?.positionTypeCounts || {}), Object.values(reportData?.positionTypeCounts || {}));
+        const assigneeData = filteredChartData(Object.keys(reportData?.workingByCounts || {}), Object.values(reportData?.workingByCounts || {}));
 
         return (
             <div className="space-y-6 animate-fade-in-up">
@@ -384,11 +388,11 @@ const ReportsPage = () => {
                 
                 {/* Job Summary Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col justify-center items-center text-center"><p className="text-4xl font-black text-slate-800">{reportData.totalJobs}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Total Jobs</p></div>
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-emerald-100 flex flex-col justify-center items-center text-center bg-gradient-to-b from-white to-emerald-50/30"><p className="text-4xl font-black text-emerald-600">{reportData.openJobs}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Open</p></div>
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col justify-center items-center text-center"><p className="text-4xl font-black text-slate-400">{reportData.closedJobs}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Closed</p></div>
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-blue-100 flex flex-col justify-center items-center text-center bg-gradient-to-b from-white to-blue-50/30"><p className="text-4xl font-black text-blue-600">{reportData.totalResumesSubmitted}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Submitted</p></div>
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col justify-center items-center text-center"><p className="text-4xl font-black text-slate-800">{reportData.totalMaxSubmissions}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Max Capacity</p></div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col justify-center items-center text-center"><p className="text-4xl font-black text-slate-800">{reportData?.totalJobs || 0}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Total Jobs</p></div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-emerald-100 flex flex-col justify-center items-center text-center bg-gradient-to-b from-white to-emerald-50/30"><p className="text-4xl font-black text-emerald-600">{reportData?.openJobs || 0}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Open</p></div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col justify-center items-center text-center"><p className="text-4xl font-black text-slate-400">{reportData?.closedJobs || 0}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Closed</p></div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-blue-100 flex flex-col justify-center items-center text-center bg-gradient-to-b from-white to-blue-50/30"><p className="text-4xl font-black text-blue-600">{reportData?.totalResumesSubmitted || 0}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Submitted</p></div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col justify-center items-center text-center"><p className="text-4xl font-black text-slate-800">{reportData?.totalMaxSubmissions || 0}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Max Capacity</p></div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -402,16 +406,16 @@ const ReportsPage = () => {
 
     // --- Render Candidates View ---
     const renderCandidateReport = () => {
-        const remarksData = filteredChartData(Object.keys(reportData.remarksCount || {}), Object.values(reportData.remarksCount || {}));
-        const hiredCount = reportData.remarksCount?.['Hired'] || 0;
-        const inProcessCount = (reportData.remarksCount?.['Interviewing'] || 0) + (reportData.remarksCount?.['Under Review'] || 0);
+        const remarksData = filteredChartData(Object.keys(reportData?.remarksCount || {}), Object.values(reportData?.remarksCount || {}));
+        const hiredCount = reportData?.remarksCount?.['Hired'] || 0;
+        const inProcessCount = (reportData?.remarksCount?.['Interviewing'] || 0) + (reportData?.remarksCount?.['Under Review'] || 0);
 
         return (
              <div className="space-y-6 animate-fade-in-up">
                 <CustomizableKPIRibbon />
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-                     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200/60"><p className="text-5xl font-black text-slate-800">{reportData.totalCandidates}</p><p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-3">Total Candidates</p></div>
+                     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200/60"><p className="text-5xl font-black text-slate-800">{reportData?.totalCandidates || 0}</p><p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-3">Total Candidates</p></div>
                      <div className="bg-white p-8 rounded-3xl shadow-sm border border-emerald-200 bg-gradient-to-b from-emerald-50/50 to-emerald-100/30"><p className="text-5xl font-black text-emerald-600">{hiredCount}</p><p className="text-sm font-bold text-emerald-700 uppercase tracking-widest mt-3">Successfully Hired</p></div>
                      <div className="bg-white p-8 rounded-3xl shadow-sm border border-blue-200 bg-gradient-to-b from-blue-50/50 to-blue-100/30"><p className="text-5xl font-black text-blue-600">{inProcessCount}</p><p className="text-sm font-bold text-blue-700 uppercase tracking-widest mt-3">Active In Process</p></div>
                 </div>
@@ -443,7 +447,7 @@ const ReportsPage = () => {
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path fillRule="evenodd" d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" clipRule="evenodd" /></svg>
                             Power BI Semantic Model Active
                         </h2>
-                        <p className="text-indigo-200 text-sm font-medium mt-1">Real-time Star Schema mapping across {reportData.Fact_JobPostings.length} jobs and {reportData.Fact_Candidates.length} applicants.</p>
+                        <p className="text-indigo-200 text-sm font-medium mt-1">Real-time Star Schema mapping across {reportData?.Fact_JobPostings?.length || 0} jobs and {reportData?.Fact_Candidates?.length || 0} applicants.</p>
                     </div>
                     <button 
                         onClick={() => {
@@ -613,6 +617,14 @@ const ReportsPage = () => {
                     </div>
                 )}
                 
+                {!loading && !error && !shouldRenderReport() && canViewReports && (
+                    <div className="text-center p-12 bg-white rounded-3xl shadow-sm border border-slate-200/60">
+                        <svg className="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                        <h3 className="mt-4 text-base font-bold text-slate-900">No Report Data</h3>
+                        <p className="mt-1 text-sm font-medium text-slate-500">Select a report type and click generate.</p>
+                    </div>
+                )}
+
                 {!loading && !error && !canViewReports && (
                     <div className="text-center p-12 bg-white rounded-3xl shadow-sm border border-slate-200/60">
                         <svg className="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
@@ -621,7 +633,7 @@ const ReportsPage = () => {
                     </div>
                 )}
                 
-                {reportData && canViewReports && !loading && (
+                {shouldRenderReport() && (
                     reportType === 'jobPostings' ? renderJobReport() : 
                     reportType === 'candidates' ? renderCandidateReport() : 
                     renderAdvancedBIReport()
