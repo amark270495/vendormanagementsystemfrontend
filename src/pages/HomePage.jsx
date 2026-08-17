@@ -2,527 +2,324 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import { usePermissions } from '../hooks/usePermissions';
-import { formatDate } from '../utils/helpers'; 
 
-// --- Inline Icons ---
-const BriefcaseIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.03 23.03 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
-const UserGroupIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>;
-const ClockIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-const RefreshIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>;
-const SearchIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
-const DotsVertical = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v.01M12 12v.01M12 18v.01" /></svg>;
+// --- Safe Date Formatter (Fallback if helper is missing) ---
+const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === 'N/A') return 'N/A';
+    try { return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+    catch { return dateStr; }
+};
 
-// --- Helper: Urgency Calculator ---
+// --- Crisp SVG Icons ---
+const BriefcaseIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>;
+const MapPinIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>;
+const ClockIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>;
+const RefreshIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>;
+const DotsHorizontal = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" /></svg>;
+
+// --- Styling Helpers ---
 const getUrgency = (dateInput) => {
-    if (!dateInput) return { label: 'No Deadline', bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400', ring: 'ring-slate-200' };
-    const deadline = new Date(dateInput);
-    const today = new Date();
-    const diffTime = deadline - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays <= 1) return { label: 'Critical', bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500', ring: 'ring-red-200' };
-    if (diffDays <= 5) return { label: 'Warning', bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500', ring: 'ring-orange-200' };
-    return { label: 'Healthy', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', ring: 'ring-emerald-200' };
+    if (!dateInput || dateInput === 'N/A') return { label: 'Ongoing Tracking', text: 'text-slate-500', bar: 'bg-slate-300' };
+    const diffDays = Math.ceil((new Date(dateInput) - new Date()) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 1) return { label: 'Critical Due', text: 'text-rose-600', bar: 'bg-rose-500' };
+    if (diffDays <= 5) return { label: 'Approaching SLA', text: 'text-amber-600', bar: 'bg-amber-400' };
+    return { label: 'Healthy Baseline', text: 'text-emerald-600', bar: 'bg-emerald-400' };
 };
 
-// --- CRASH-PROOF HELPER: Generate Avatar from a Single Name ---
-const getAvatar = (rawName) => {
-    // Ensure we are working with a string to prevent .charAt type errors
-    const name = String(rawName || '');
+const getAvatar = (nameStr) => {
+    const name = String(nameStr || '').trim() || '?';
+    const parts = name.split(/\s+/).filter(Boolean);
+    let initials = parts.length > 1 ? parts[0].charAt(0) + parts[parts.length - 1].charAt(0) : parts[0].substring(0, 2);
     
-    if (!name || name.trim() === '' || name === 'Unassigned') {
-        return {
-            initials: '?',
-            color: 'bg-slate-100 text-slate-500 border border-slate-200'
-        };
-    }
-
-    const parts = name.trim().split(/\s+/).filter(Boolean);
-    let initials = '';
-
-    if (parts.length >= 2) {
-        initials = String(parts).charAt(0) + String(parts[parts.length - 1]).charAt(0);
-    } else if (parts.length === 1) {
-        initials = String(parts).substring(0, 2);
-    } else {
-        initials = '?';
-    }
-
-    const colors = [
-        'bg-blue-50 text-blue-700 border border-blue-100',
-        'bg-indigo-50 text-indigo-700 border border-indigo-100',
-        'bg-emerald-50 text-emerald-700 border border-emerald-100',
-        'bg-cyan-50 text-cyan-700 border border-cyan-100',
-        'bg-purple-50 text-purple-700 border border-purple-100',
-        'bg-amber-50 text-amber-700 border border-amber-100'
-    ];
-
-    const colorIndex = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
-
-    return {
-        initials: initials.toUpperCase(),
-        color: colors[colorIndex]
-    };
+    const colors = [ 'bg-[#eff6ff] text-[#2563eb]', 'bg-[#f5f3ff] text-[#7c3aed]', 'bg-[#ecfdf5] text-[#0d9488]', 'bg-[#fef2f2] text-[#e11d48]', 'bg-[#fffbeb] text-[#d97706]', 'bg-[#f0fdf4] text-[#0f766e]'];
+    const colIdx = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % colors.length;
+    
+    return { initials: initials.toUpperCase(), color: colors[colIdx] };
 };
 
-// --- CRASH-PROOF HELPER: Candidate Initials ---
-const getCandidateInitials = (fName, lName) => {
-    const first = fName ? String(fName).charAt(0).toUpperCase() : '';
-    const last = lName ? String(lName).charAt(0).toUpperCase() : '';
-    return (first + last) || '?';
-};
-
-// --- Custom Mini SVG Donut Chart ---
-const DonutChart = ({ data }) => {
-    const total = data.reduce((sum, item) => sum + item.value, 0);
-    if (total === 0) return null;
-    let currentAngle = 0;
-
-    return (
-        <div className="relative flex items-center justify-center group">
-            <svg viewBox="0 0 36 36" className="w-16 h-16 transform -rotate-90 transition-transform duration-500 group-hover:scale-105">
-                {data.map((item, index) => {
-                    const percentage = item.value / total;
-                    const strokeDasharray = `${percentage * 100} 100`;
-                    const strokeDashoffset = -currentAngle;
-                    currentAngle += percentage * 100;
-                    return (
-                        <circle key={index} cx="18" cy="18" r="15.915" fill="transparent"
-                            stroke={item.color} strokeWidth="4.5" strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset}
-                            className="transition-all duration-1000 ease-out"
-                        />
-                    );
-                })}
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xs font-bold text-slate-600">{total}</span>
-            </div>
-        </div>
-    );
-};
-
-const HomePage = () => {
+export default function HomePage() {
     const { user } = useAuth();
     const { canViewDashboards, canEditDashboard } = usePermissions();
-    
     const [data, setData] = useState({});
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [stats, setStats] = useState({ totalJobs: 0, openJobs: 0 });
-
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedJob, setSelectedJob] = useState(null);
+    const [drawerJob, setDrawerJob] = useState(null);
     const [jobCandidates, setJobCandidates] = useState([]);
-    const [loadingCandidates, setLoadingCandidates] = useState(false);
     
-    const [openMenuId, setOpenMenuId] = useState(null);
-    const [draggedJob, setDraggedJob] = useState(null);
-    const [draggedFromColumn, setDraggedFromColumn] = useState(null);
+    const stats = useMemo(() => {
+        let total = 0, urgent = 0;
+        Object.values(data).flat().forEach(j => {
+            total++;
+            if (getUrgency(j.deadline).label === 'Critical Due') urgent++;
+        });
+        return { total, urgent };
+    }, [data]);
 
     const fetchData = useCallback(async () => {
-        if (!user?.userIdentifier) return;
-        setLoading(true); setError('');
-        
-        if (!canViewDashboards) {
-            setLoading(false);
-            setError("You do not have permission to view the home page dashboard.");
-            return;
-        }
-
+        if (!user?.userIdentifier || !canViewDashboards) { setLoading(false); return; }
+        setLoading(true);
         try {
-            const response = await apiService.getHomePageData(user.userIdentifier);
-            if (response.data.success) {
-                setData(response.data.data);
-                const openCount = Object.values(response.data.data).reduce((acc, jobs) => acc + jobs.length, 0);
-                setStats({ totalJobs: openCount, openJobs: openCount });
-            } else {
-                setError(response.data.message);
-            }
-        } catch (err) {
-            setError(err.response?.data?.message || "Failed to fetch dashboard data.");
-        } finally {
-            setLoading(false);
+            const res = await apiService.getHomePageData(user.userIdentifier);
+            if (res.data?.success) setData(res.data.data);
+        } catch (e) {
+            console.error("Dashboard Load Exception: ", e);
+        } finally { 
+            setLoading(false); 
         }
-    }, [user?.userIdentifier, canViewDashboards]);
+    }, [user, canViewDashboards]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
     useEffect(() => {
-        if (selectedJob) {
-            setLoadingCandidates(true);
-            apiService.getCandidateDetailsPageData(user.userIdentifier)
-                .then(res => {
-                    if (res.data.success) {
-                        const related = res.data.candidates.filter(c => c.postingId === selectedJob.postingId);
-                        setJobCandidates(related);
-                    }
-                })
-                .catch(err => console.error("Failed to load candidates", err))
-                .finally(() => setLoadingCandidates(false));
+        if (drawerJob) {
+            apiService.getCandidateDetailsPageData(user.userIdentifier).then(res => {
+                if (res.data?.success) setJobCandidates(res.data.candidates.filter(c => c.postingId === drawerJob.postingId));
+            }).catch(() => setJobCandidates([]));
         } else {
             setJobCandidates([]);
         }
-    }, [selectedJob, user?.userIdentifier]);
+    }, [drawerJob, user]);
 
-    const filteredData = useMemo(() => {
+    // Live Grid Indexer filtering algorithm
+    const workspaceMatrix = useMemo(() => {
         if (!searchTerm.trim()) return data;
-        const term = searchTerm.toLowerCase();
-        const result = {};
-        Object.entries(data).forEach(([assignee, jobs]) => {
-            const matched = jobs.filter(job => 
-                (job.jobTitle && job.jobTitle.toLowerCase().includes(term)) ||
-                (job.clientName && job.clientName.toLowerCase().includes(term)) ||
-                (job.postingId && job.postingId.toLowerCase().includes(term))
+        const q = searchTerm.toLowerCase();
+        let matrix = {};
+        Object.entries(data).forEach(([group, jobs]) => {
+            const filtered = jobs.filter(j => 
+                 j.jobTitle?.toLowerCase().includes(q) || 
+                 j.clientName?.toLowerCase().includes(q) || 
+                 j.postingId?.toLowerCase().includes(q)
             );
-            if (matched.length > 0) result[assignee] = matched;
+            if (filtered.length > 0) matrix[group] = filtered;
         });
-        return result;
+        return matrix;
     }, [data, searchTerm]);
 
-    const onDragStart = (job, fromColumn) => {
-        if (!canEditDashboard) return;
-        setDraggedJob(job);
-        setDraggedFromColumn(fromColumn);
-    };
-
-    const onDrop = async (toColumn) => {
-        if (!draggedJob || draggedFromColumn === toColumn) return;
-        const newData = { ...data };
-        newData[draggedFromColumn] = newData[draggedFromColumn].filter(j => j.postingId !== draggedJob.postingId);
-        if (!newData[toColumn]) newData[toColumn] = [];
-        newData[toColumn].push({ ...draggedJob, workingBy: toColumn });
-        setData(newData);
-
-        try {
-            const updates = [{ rowKey: draggedJob.postingId, changes: { workingBy: toColumn } }];
-            await apiService.updateJobPosting(updates, user.userIdentifier);
-        } catch (err) {
-            console.error("Failed to update job assignee", err);
-            fetchData();
+    const handleArchive = async (e, id) => {
+        e.stopPropagation();
+        if (canEditDashboard && window.confirm(`Archive Requirement Tracker '${id}'?`)) {
+            try {
+                await apiService.archiveOrDeleteJob({ postingIds: [id], actionType: 'archive', authenticatedUsername: user.userIdentifier });
+                fetchData();
+                if(drawerJob?.postingId === id) setDrawerJob(null);
+            } catch (err) { alert("Archive Failed: " + err?.message); }
         }
-        setDraggedJob(null);
-        setDraggedFromColumn(null);
-    };
+    }
 
-    const handleArchive = async (postingId) => {
-        if (!window.confirm("Are you sure you want to archive this job?")) return;
-        try {
-            await apiService.archiveOrDeleteJob([postingId], 'archive', user.userIdentifier);
-            fetchData();
-        } catch (err) {
-            alert("Failed to archive job.");
-        }
-    };
-
-    const getGreeting = () => {
-        const hour = new Date().getHours();
-        return hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
-    };
-
-    const chartData = useMemo(() => {
-        const colors = ['#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#38bdf8'];
-        return Object.entries(data).map(([assignee, jobs], idx) => ({
-            name: assignee,
-            value: jobs.length,
-            color: colors[idx % colors.length]
-        })).filter(d => d.value > 0);
-    }, [data]);
+    if (!canViewDashboards) return (
+        <div className="flex h-screen items-center justify-center bg-slate-50">
+             <div className="p-8 text-center border-l-4 border-rose-500 bg-white rounded-lg shadow-xl text-slate-700 font-semibold tracking-wide">
+                 System Policy Enforcement. Missing DB View Authorizations.
+             </div>
+        </div>
+    );
 
     return (
-        <div className="space-y-8 pb-12 relative font-sans text-left w-full" onClick={() => setOpenMenuId(null)}>
+        <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-slate-100 font-sans text-left text-sm relative selection:bg-indigo-500 selection:text-white">
             
-            {/* --- Light Welcome Banner --- */}
-            <div className="relative overflow-hidden bg-gradient-to-r from-blue-50 to-white p-8 rounded-2xl shadow-sm mt-6 border border-blue-100 group">
-                <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-blue-100/50 blur-3xl group-hover:scale-105 transition-transform duration-1000"></div>
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 text-left">
-                    <div>
-                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight text-left">
-                            {getGreeting()}, <span className="text-blue-600">{user?.displayName || 'User'}</span>
-                        </h1>
-                        <p className="text-slate-600 mt-2 font-medium text-left">
-                            You have <strong className="text-blue-800 bg-blue-100 px-2 py-0.5 rounded-md mx-1">{stats.openJobs} active jobs</strong> in the pipeline today.
-                        </p>
+            {/* PBI DARK METRICS SLICER PANEL (LEFT NAVIGATION) */}
+            <div className="w-[300px] shrink-0 bg-[#0F172A] flex flex-col p-6 shadow-2xl relative z-20 hidden lg:flex overflow-y-auto">
+                 <h2 className="text-xl font-black tracking-tight text-white mb-2 leading-snug">Global Work Tracker</h2>
+                 <p className="text-slate-400 font-semibold mb-10 text-[11px] uppercase tracking-widest border-b border-slate-700/50 pb-5">Orchestrator Scope</p>
+
+                 <div className="mb-8 p-5 bg-[#1E293B] border border-slate-700 rounded-xl relative overflow-hidden">
+                     <div className="absolute top-0 right-0 w-2 h-full bg-[#38BDF8]" />
+                     <p className="text-[#38BDF8] text-[10px] font-black uppercase tracking-widest mb-3">Live Active Flow</p>
+                     <div className="flex space-x-3 text-white mb-2">
+                          <span className="font-extrabold text-5xl tracking-tighter">{stats.total}</span>
+                          <div className="flex flex-col justify-center text-slate-400 leading-tight">
+                               <span className="font-bold text-xs text-white">Target Reqs</span>
+                               <span className="text-[10px] uppercase font-semibold">Active Cycle</span>
+                          </div>
+                     </div>
+                 </div>
+
+                 <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl mb-6 relative overflow-hidden">
+                      <div className="absolute -right-6 -bottom-6 opacity-10">
+                          <ClockIcon className="w-24 h-24 text-rose-500" />
+                      </div>
+                      <p className="text-rose-400 text-xs font-black uppercase tracking-widest mb-1 relative z-10">SLA Burn Rate</p>
+                      <p className="text-rose-100 font-semibold text-[13px] leading-tight mt-3 relative z-10">
+                         {stats.urgent} Reqs hitting submission lock within <strong className="text-white bg-rose-600 px-1 rounded mx-0.5">24h</strong>.
+                      </p>
+                 </div>
+
+                 <div className="mt-auto pb-4">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2 block">Quick Visual Index Search</label>
+                    <input
+                        type="text" placeholder="Trace ID, Title, Client..."
+                        value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-[#0b101d] border border-slate-700 text-white rounded-lg text-sm font-semibold focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:outline-none placeholder-slate-500 shadow-inner transition"
+                    />
+                 </div>
+            </div>
+
+            {/* HORIZONTAL TEAM KANBAN BOARDS (MIDDLE AREA) */}
+            <div className="flex-1 flex flex-col relative overflow-hidden bg-slate-50/50">
+                <div className="px-6 py-4 border-b border-slate-200 bg-white flex justify-between items-center shrink-0 shadow-sm z-10">
+                     <h2 className="text-slate-800 font-extrabold text-base tracking-tight hidden md:block">Requirement Distribution Grid</h2>
+                     <button onClick={fetchData} className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg shadow-sm font-bold transition flex items-center space-x-2 text-[13px] border border-indigo-200/50">
+                         <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}/> <span>Reload Stream</span>
+                     </button>
+                </div>
+
+                <div className="flex-1 overflow-x-auto overflow-y-hidden pt-4 pb-2 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-blend-soft-light">
+                    <div className="flex items-start px-6 space-x-5 h-full">
+                        {loading ? (
+                            <div className="mx-auto mt-40 flex flex-col items-center">
+                                 <Spinner size="8"/>
+                                 <span className="mt-4 font-bold text-indigo-700 tracking-wider text-xs">HYDRATING GRIDS...</span>
+                            </div>
+                        ) : Object.keys(workspaceMatrix).length === 0 ? (
+                            <div className="m-auto font-medium text-slate-400">No parameters matching structural search constraint.</div>
+                        ) : Object.entries(workspaceMatrix).map(([team, jobs]) => (
+                            <div key={team} className="w-[320px] shrink-0 bg-[#F1F5F9]/80 backdrop-blur-md rounded-2xl flex flex-col h-[calc(100vh-140px)] shadow-sm border border-slate-200 overflow-hidden">
+                                 
+                                 {/* Column Board Header */}
+                                 <div className="p-4 border-b border-slate-200/60 bg-white/60 flex items-center justify-between sticky top-0 shrink-0 backdrop-blur-lg">
+                                      <div className="flex items-center space-x-2.5 w-3/4">
+                                          <div className={`w-8 h-8 rounded-lg ${getAvatar(team).color} font-black text-xs flex items-center justify-center border border-white shadow-sm shrink-0`}>
+                                              {getAvatar(team).initials}
+                                          </div>
+                                          <h3 className="font-extrabold text-slate-800 text-[13px] leading-tight truncate pr-1" title={team}>
+                                               {team}
+                                          </h3>
+                                      </div>
+                                      <span className="font-black text-slate-500 bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100 text-[10px]">{jobs.length} items</span>
+                                 </div>
+
+                                 {/* Nested Scroll Space */}
+                                 <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 scroll-smooth relative" style={{scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 transparent'}}>
+                                      {jobs.map(job => {
+                                          const urgency = getUrgency(job.deadline);
+                                          return (
+                                              <div key={job.postingId} onClick={() => setDrawerJob(job)} 
+                                                   className={`bg-white p-3.5 rounded-xl border border-slate-200 shadow-[0_2px_4px_rgba(0,0,0,0.02)] cursor-pointer group flex flex-col relative transition hover:border-indigo-300 hover:shadow-md ${drawerJob?.postingId === job.postingId ? 'ring-2 ring-indigo-500' : ''}`}>
+                                                   
+                                                   <div className={`absolute top-0 left-0 h-full w-1 rounded-l-xl ${urgency.bar}`} />
+                                                   
+                                                   <div className="flex justify-between items-start mb-2.5 pl-2.5">
+                                                       <p className="font-extrabold text-[10px] bg-slate-50 border border-slate-200 text-slate-700 px-1.5 py-0.5 rounded tracking-wider shadow-sm inline-flex items-center font-mono">
+                                                           #{job.postingId}
+                                                       </p>
+                                                       <button onClick={(e) => handleArchive(e, job.postingId)} className="opacity-0 group-hover:opacity-100 p-1 -mt-1 -mr-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded transition"><DotsHorizontal className="w-5 h-5"/></button>
+                                                   </div>
+                                                   
+                                                   <h4 className="font-extrabold text-slate-900 text-sm pl-2 mb-3 leading-snug line-clamp-2">{job.jobTitle}</h4>
+                                                   
+                                                   <div className="space-y-2 pl-2">
+                                                       <div className="flex items-center text-xs font-semibold text-slate-600 truncate bg-slate-50 rounded border border-slate-100 p-1.5">
+                                                           <BriefcaseIcon className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0"/>
+                                                           <span className="truncate">{job.clientName}</span>
+                                                       </div>
+                                                       <div className="flex justify-between items-end border-t border-slate-100 pt-2">
+                                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${urgency.text}`}>{urgency.label}</p>
+                                                            <p className={`text-xs font-extrabold ${urgency.text}`}>{formatDate(job.deadline)}</p>
+                                                       </div>
+                                                   </div>
+                                              </div>
+                                          )
+                                      })}
+                                 </div>
+                            </div>
+                        ))}
                     </div>
-                    <button 
-                        onClick={fetchData} 
-                        disabled={loading} 
-                        className="shrink-0 flex items-center justify-center space-x-2 px-6 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl border border-slate-200 transition-all disabled:opacity-50 shadow-sm"
-                    >
-                        <RefreshIcon className={`w-4 h-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
-                        <span>Refresh Pipeline</span>
-                    </button>
                 </div>
             </div>
 
-            {error && (
-                <div className="bg-red-50 border border-red-100 text-red-700 p-4 rounded-xl shadow-sm text-left" role="alert">
-                    <p className="font-bold">Error Loading Dashboard</p><p>{error}</p>
-                </div>
-            )}
-
-            {canViewDashboards && !error && (
+            {/* Powerful Details Data-Slide Tracker Matrix Overlay Engine Window */}
+            {drawerJob && (
                 <>
-                    {/* --- Metrics Grid --- */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-left w-full">
-                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-center justify-between transition-all hover:shadow-md text-left w-full">
-                            <div className="text-left w-full">
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Active Assignments</p>
-                                <span className="text-3xl font-black text-slate-800 mt-2 block tracking-tight text-left">{loading ? '-' : stats.openJobs}</span>
-                            </div>
-                            {chartData.length > 0 ? (
-                                <DonutChart data={chartData} />
-                            ) : (
-                                <div className="p-4 rounded-2xl bg-blue-50 text-blue-500 shrink-0"><BriefcaseIcon className="w-8 h-8" /></div>
-                            )}
-                        </div>
-                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-start justify-between transition-all hover:shadow-md text-left w-full">
-                            <div className="text-left w-full">
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Pipeline Health</p>
-                                <span className="text-2xl font-extrabold text-emerald-600 mt-3 block tracking-tight text-left">Optimal</span>
-                            </div>
-                            <div className="p-3.5 rounded-2xl bg-emerald-50 text-emerald-600 shrink-0"><ClockIcon className="w-6 h-6" /></div>
-                        </div>
-                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-start justify-between transition-all hover:shadow-md text-left w-full">
-                            <div className="text-left w-full">
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Total Candidates</p>
-                                <span className="text-2xl font-extrabold text-slate-800 mt-3 block tracking-tight text-left">Tracking</span>
-                            </div>
-                            <div className="p-3.5 rounded-2xl bg-indigo-50 text-indigo-600 shrink-0"><UserGroupIcon className="w-6 h-6" /></div>
-                        </div>
-                    </div>
+                <div className="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-sm lg:hidden transition-opacity" onClick={() => setDrawerJob(null)} />
+                <div className="fixed lg:static top-0 right-0 h-full w-[450px] bg-white shadow-[-10px_0_40px_rgba(0,0,0,0.08)] z-50 flex flex-col transform border-l border-slate-200">
+                     
+                     <div className="px-8 py-8 bg-slate-900 shrink-0 text-white relative border-b-4 border-indigo-600">
+                          <button onClick={()=>setDrawerJob(null)} className="absolute top-5 right-5 hover:bg-slate-700/50 rounded-lg p-2 transition border border-slate-600">
+                               <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
+                          
+                          <div className="mb-4">
+                              <span className="font-mono text-[10px] tracking-[0.2em] font-bold bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 px-2 py-1 rounded shadow-inner uppercase">Inspection Node</span>
+                          </div>
+                          
+                          <h2 className="text-xl font-black leading-tight text-white mb-3 pr-8">{drawerJob.jobTitle}</h2>
+                          
+                          <div className="flex flex-wrap items-center text-[13px] font-bold text-slate-300 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 w-max shadow-sm">
+                               <BriefcaseIcon className="w-4 h-4 mr-2 text-indigo-400 shrink-0"/> {drawerJob.clientName}
+                          </div>
+                     </div>
+                     
+                     <div className="flex-1 overflow-y-auto bg-slate-50 p-6 pb-20 custom-scrollbar text-sm space-y-6">
+                          
+                          {/* Assignment Headers */}
+                          <div className="grid grid-cols-2 gap-4">
+                              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                                  <p className="text-[9px] font-black tracking-widest text-slate-400 uppercase mb-2">Responsible Layer</p>
+                                  <div className="font-extrabold text-indigo-700 text-sm">{drawerJob.workingBy}</div>
+                              </div>
+                              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 relative overflow-hidden">
+                                  <div className={`absolute top-0 right-0 w-1.5 h-full ${getUrgency(drawerJob.deadline).bar}`}></div>
+                                  <p className="text-[9px] font-black tracking-widest text-slate-400 uppercase mb-2">Closure Bound Limit</p>
+                                  <div className={`font-extrabold text-sm ${getUrgency(drawerJob.deadline).text}`}>{formatDate(drawerJob.deadline)}</div>
+                              </div>
+                          </div>
+                          
+                          {/* Submitted Targets */}
+                          <div>
+                               <div className="flex justify-between items-center mb-5 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                                   <h3 className="font-black text-slate-800 tracking-tight text-[13px] uppercase">Candidate Pipeline Trace</h3>
+                                   <span className="font-black bg-slate-100 text-slate-600 text-[10px] px-2.5 py-1 rounded ring-1 ring-slate-200 shadow-inner">Vol: {jobCandidates.length} Active Profiles</span>
+                               </div>
+                               
+                               <div className="space-y-3">
+                                  {jobCandidates.length === 0 ? (
+                                      <div className="text-center py-10 bg-white border border-dashed border-slate-300 rounded-xl">
+                                           <div className="w-10 h-10 mx-auto bg-slate-50 flex items-center justify-center rounded-full text-slate-300 mb-2 border border-slate-100"><BriefcaseIcon className="w-5 h-5"/></div>
+                                           <span className="font-semibold text-xs text-slate-500">Pipeline Empty. Request Input Vectors.</span>
+                                      </div>
+                                  ) : (
+                                      jobCandidates.map((c, idx) => {
+                                        const rName = c.remarks || 'Standard Processing Stage';
+                                        const isRejected = rName.toLowerCase().includes('reject');
+                                        const isGood = rName.toLowerCase().includes('hired') || rName.toLowerCase().includes('interview');
+                                        
+                                        const badgeStyle = isRejected ? 'bg-rose-50 border-rose-200 text-rose-700' : (isGood ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-amber-50 border-amber-200 text-amber-700');
 
-                    {/* --- Team Pipeline (Kanban Grid) --- */}
-                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 text-left w-full">
-                        <div className="px-5 pt-4 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 mb-4 text-left w-full">
-                            <h2 className="text-lg font-bold text-slate-800 tracking-tight text-left w-full md:w-auto">Team Workload</h2>
-                            <div className="relative w-full md:w-72 shrink-0">
-                                <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                                <input
-                                    type="text" placeholder="Search jobs, IDs, or clients..."
-                                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 focus:bg-white text-sm font-medium transition-all text-left"
-                                />
-                            </div>
-                        </div>
+                                        return (
+                                          <div key={idx} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow relative overflow-hidden group">
+                                              
+                                              <div className="flex items-center mb-3">
+                                                   <div className="w-10 h-10 bg-[#1E293B] rounded text-white flex items-center justify-center font-extrabold text-[15px] border-b-2 border-indigo-500 shadow-inner shrink-0 mr-4">
+                                                       {c.firstName?.[0]}{c.lastName?.[0]}
+                                                   </div>
+                                                   <div>
+                                                       <h4 className="font-black text-slate-900 tracking-tight">{c.firstName} {c.lastName}</h4>
+                                                       <p className="text-slate-500 text-xs font-semibold max-w-[240px] truncate leading-tight mt-0.5">{c.currentRole}</p>
+                                                   </div>
+                                              </div>
+                                              
+                                              <div className="bg-slate-50 rounded border border-slate-100 p-2.5 mb-2 mt-2">
+                                                   <span className="text-[10px] font-extrabold text-slate-400 uppercase block mb-1">Locator Beacon Matrix</span>
+                                                   <div className="flex text-xs font-semibold text-slate-700"><MapPinIcon className="w-4 h-4 text-slate-400 mr-1 shrink-0"/> <span className="truncate">{c.currentLocation}</span></div>
+                                              </div>
 
-                        {loading ? (
-                            <div className="h-64 flex items-center justify-center">
-                                <div className="flex flex-col items-center">
-                                    <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-500 rounded-full animate-spin mb-3"></div>
-                                    <span className="text-slate-500 font-medium text-sm">Syncing Pipeline...</span>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 text-left w-full">
-                                {Object.entries(filteredData).map(([assigneeGroup, jobs]) => {
-                                    const assignees = assigneeGroup.split(',').map(n => n.trim()).filter(Boolean);
-                                    
-                                    return (
-                                        <div 
-                                            key={assigneeGroup} 
-                                            className="flex flex-col bg-slate-50/80 rounded-2xl border border-slate-200 h-[650px] w-full overflow-hidden text-left"
-                                            onDragOver={e => e.preventDefault()}
-                                            onDrop={() => onDrop(assigneeGroup)}
-                                        >
-                                            {/* Column Header */}
-                                            <div className="p-4 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 rounded-t-2xl text-left w-full">
-                                                <div className="flex items-start justify-between gap-3 text-left w-full">
-                                                    <div className="flex items-start gap-3 flex-1 min-w-0 text-left">
-                                                        <div className="flex -space-x-2 shrink-0">
-                                                            {assignees.map((name, i) => {
-                                                                const avatar = getAvatar(name);
-                                                                return (
-                                                                    <div
-                                                                        key={i}
-                                                                        title={name}
-                                                                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white ${avatar.color}`}
-                                                                    >
-                                                                        {avatar.initials}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-
-                                                        <div className="flex-1 min-w-0 text-left">
-                                                            <h3 className="font-bold text-slate-800 text-sm leading-5 break-words text-left w-full">
-                                                                {assignees.length === 1
-                                                                    ? assignees
-                                                                    : `${assignees} +${assignees.length - 1}`}
-                                                            </h3>
-                                                            {assignees.length > 1 && (
-                                                                <p className="text-xs text-slate-500 mt-1 truncate text-left w-full" title={assigneeGroup}>
-                                                                    {assigneeGroup}
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    <span className="shrink-0 bg-white border border-slate-200 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-md shadow-sm">
-                                                        {jobs.length}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            
-                                            {/* Job Cards Container */}
-                                            <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar text-left w-full">
-                                                {jobs.map(job => {
-                                                    const urgency = getUrgency(job.deadline);
-                                                    return (
-                                                        <div 
-                                                            key={job.postingId} 
-                                                            draggable={canEditDashboard}
-                                                            onDragStart={() => onDragStart(job, assigneeGroup)}
-                                                            className={`relative group bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-200 cursor-grab active:cursor-grabbing text-left block w-full ${draggedJob?.postingId === job.postingId ? 'opacity-40 scale-95' : ''}`}
-                                                        >
-                                                            <div className="absolute top-3 right-3 text-left z-20" onClick={e => e.stopPropagation()}>
-                                                                <button onClick={() => setOpenMenuId(openMenuId === job.postingId ? null : job.postingId)} className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-md hover:bg-slate-50">
-                                                                    <DotsVertical className="w-5 h-5" />
-                                                                </button>
-                                                                {openMenuId === job.postingId && (
-                                                                    <div className="origin-top-right absolute right-0 mt-1 w-36 rounded-xl shadow-lg border border-slate-200 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none text-left">
-                                                                        <div className="p-1.5 text-left w-full">
-                                                                            <button onClick={() => setSelectedJob(job)} className="block w-full text-left px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">View Details</button>
-                                                                            <button onClick={() => handleArchive(job.postingId)} className="block w-full text-left px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg mt-1">Archive Job</button>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            <div onClick={() => { if(openMenuId !== job.postingId) setSelectedJob(job); }} className="text-left w-full block">
-                                                                <div className="flex justify-between items-start mb-3 pr-8 text-left w-full">
-                                                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 tracking-wide border border-slate-200 shrink-0">{job.postingId}</span>
-                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${urgency.bg} ${urgency.text} flex items-center border border-slate-100 shrink-0 mt-0.5`}>
-                                                                        <span className={`w-1.5 h-1.5 rounded-full mr-1 ring-2 ${urgency.ring} ${urgency.dot}`}></span>
-                                                                        {urgency.label}
-                                                                    </span>
-                                                                </div>
-                                                                
-                                                                <h4 className="text-sm font-bold text-slate-900 leading-snug mb-2 break-words text-left w-full">
-                                                                    {job.jobTitle}
-                                                                </h4>
-                                                                
-                                                                <div className="flex items-center text-xs font-medium text-slate-600 mb-4 bg-slate-50 p-2 rounded-lg border border-slate-100 text-left w-full">
-                                                                    <BriefcaseIcon className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
-                                                                    <span className="truncate text-left w-full">{job.clientName}</span>
-                                                                </div>
-
-                                                                <div className="pt-3 border-t border-slate-100 flex justify-between items-center text-left w-full">
-                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Deadline</span>
-                                                                    <span className="text-xs font-bold text-slate-800 shrink-0">{formatDate(job.deadline)}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                                {jobs.length === 0 && (
-                                                    <div className="h-full flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-200 rounded-xl bg-white/50 text-left w-full">
-                                                        <BriefcaseIcon className="w-8 h-8 text-slate-300 mb-2" />
-                                                        <p className="text-sm font-medium text-slate-500 text-left w-full text-center">No active jobs</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
+                                              <div className="flex items-end justify-between mt-3 pt-2 border-t border-slate-100">
+                                                   <div className="flex flex-col space-y-1">
+                                                       <span className="text-[9px] uppercase tracking-widest font-black text-slate-400">Analytic Vector Assessment</span>
+                                                       <span className={`text-[10px] font-bold border px-2 py-0.5 rounded shadow-sm w-max uppercase ${badgeStyle}`}>{rName}</span>
+                                                   </div>
+                                              </div>
+                                          </div>
+                                        );
+                                      })
+                                  )}
+                               </div>
+                          </div>
+                     </div>
+                </div>
                 </>
             )}
-
-            {/* --- Light Theme Drawer --- */}
-            {selectedJob && (
-                <div className="fixed inset-0 z- overflow-hidden text-left">
-                    <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity" onClick={() => setSelectedJob(null)}></div>
-                    <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10 text-left">
-                        <div className="pointer-events-auto w-screen max-w-lg transform transition-transform duration-500 ease-in-out bg-white shadow-2xl flex flex-col border-l border-slate-200 text-left">
-                            
-                            <div className="bg-white border-b border-slate-200 px-8 py-8 relative text-left w-full">
-                                <div className="flex items-center justify-between text-left">
-                                    <h2 className="text-xs font-bold tracking-widest uppercase text-slate-500 text-left">Job Workspace</h2>
-                                    <button onClick={() => setSelectedJob(null)} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition-all border border-slate-200 shrink-0">
-                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                                    </button>
-                                </div>
-                                <div className="mt-6 flex flex-wrap items-center gap-3 text-left w-full">
-                                    <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-lg text-xs border border-slate-200">{selectedJob.postingId}</span>
-                                    <span className="text-slate-600 font-medium text-sm flex items-center gap-1.5"><BriefcaseIcon className="w-4 h-4 text-slate-400"/> {selectedJob.clientName}</span>
-                                </div>
-                                <h3 className="text-2xl font-black text-slate-900 mt-4 leading-tight text-left w-full break-words">{selectedJob.jobTitle}</h3>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto p-8 bg-slate-50 text-left w-full">
-                                <div className="grid grid-cols-2 gap-4 mb-8 text-left w-full">
-                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left w-full">
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-3 text-left">Assignee(s)</p>
-                                        <div className="flex flex-col gap-2 text-left w-full">
-                                            {selectedJob.workingBy?.split(',').map(n => n.trim()).filter(Boolean).map((name, i) => (
-                                                <div key={i} className="flex items-center gap-2 text-left w-full min-w-0">
-                                                    <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${getAvatar(name).color}`}>
-                                                        {getAvatar(name).initials}
-                                                    </div>
-                                                    <p className="font-bold text-slate-900 text-xs truncate w-full text-left">{name}</p>
-                                                </div>
-                                            ))}
-                                            {!selectedJob.workingBy && <p className="font-bold text-slate-900 text-sm text-left w-full">Unassigned</p>}
-                                        </div>
-                                    </div>
-                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left w-full">
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2 text-left">Deadline</p>
-                                        <p className="font-bold text-slate-900 text-sm text-left">{formatDate(selectedJob.deadline)}</p>
-                                    </div>
-                                </div>
-
-                                <div className="border-t border-slate-200 pt-8 text-left w-full">
-                                    <div className="flex items-center justify-between mb-6 text-left w-full">
-                                        <h4 className="text-lg font-extrabold text-slate-900 text-left">Submitted Candidates</h4>
-                                        <span className="bg-white border border-slate-200 text-slate-700 font-bold px-3 py-1 rounded-lg text-xs shadow-sm shrink-0">
-                                            {jobCandidates.length}
-                                        </span>
-                                    </div>
-
-                                    {loadingCandidates ? (
-                                        <div className="animate-pulse space-y-4 w-full">
-                                            {Array.from({ length: 3 }).map((_, i) => (
-                                                <div key={i} className="h-20 bg-slate-200/50 rounded-2xl w-full"></div>
-                                            ))}
-                                        </div>
-                                    ) : jobCandidates.length > 0 ? (
-                                        <div className="space-y-4 w-full text-left">
-                                            {jobCandidates.map(candidate => (
-                                                <div key={candidate.email} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow text-left w-full">
-                                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 font-black flex-shrink-0 border border-slate-200">
-                                                        {getCandidateInitials(candidate.firstName, candidate.lastName)}
-                                                    </div>
-                                                    <div className="text-left w-full min-w-0">
-                                                        <h5 className="font-bold text-slate-900 text-sm truncate w-full text-left">{candidate.firstName} {candidate.lastName}</h5>
-                                                        <p className="text-xs text-slate-600 font-medium mb-2.5 mt-0.5 truncate w-full text-left">{candidate.currentRole || 'Candidate'}</p>
-                                                        <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-left w-full">
-                                                            <span className="bg-slate-100 px-2 py-1 rounded-md text-slate-700 border border-slate-200 shrink-0">{candidate.currentLocation || 'Location N/A'}</span>
-                                                            <span className={`px-2 py-1 rounded-md border shrink-0 ${candidate.remarks === 'Rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
-                                                                {candidate.remarks || 'Under Review'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-300 w-full">
-                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                                                <UserGroupIcon className="w-8 h-8 text-slate-400" />
-                                            </div>
-                                            <p className="text-slate-600 font-medium text-sm text-center w-full">No candidates submitted yet.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
-    );
-};
-
-export default HomePage;
+    )
+}
