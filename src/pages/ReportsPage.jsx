@@ -1,13 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Bar, Pie, Doughnut } from 'react-chartjs-2';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import { usePermissions } from '../hooks/usePermissions';
+import axios from 'axios';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
-// --- Standalone Component Definitions ---
+// --- Icons ---
+const AdjustmentsIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>;
+const CheckIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>;
 
 const Spinner = ({ size = '8' }) => (
     <div className="flex justify-center items-center">
@@ -25,7 +28,7 @@ const ChartComponent = ({ type, options, data }) => {
 };
 
 /**
- * EmailReportModal Component: A modal dialog for emailing reports.
+ * EmailReportModal Component
  */
 const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) => {
     const [toEmails, setToEmails] = useState('');
@@ -69,11 +72,9 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
             const response = await apiService.generateAndSendJobReport(sheetKey, statusFilter, toEmailArray, ccEmailArray, authenticatedUsername);
             if (response.data.success) {
                 setSuccessMessage(response.data.message || 'Report has been sent successfully!');
-                setTimeout(() => {
-                    onClose();
-                }, 2000);
+                setTimeout(() => onClose(), 2000);
             } else {
-                 setError(response.data.message || 'An unknown error occurred while sending the report.');
+                setError(response.data.message || 'An unknown error occurred while sending the report.');
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to send the report.');
@@ -95,46 +96,35 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
                 {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
                 {successMessage && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">{successMessage}</div>}
 
-                {!canEmailReports ? (
-                    <div className="text-center text-gray-500 p-4">
-                        <h3 className="text-lg font-medium">Access Denied</h3>
-                        <p className="text-sm">You do not have the necessary permissions to send email reports.</p>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">To (comma-separated)</label>
+                        <input type="text" value={toEmails} onChange={e => setToEmails(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required />
                     </div>
-                ) : (
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">To (comma-separated)</label>
-                            <input type="text" value={toEmails} onChange={e => setToEmails(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">CC (comma-separated)</label>
-                            <input type="text" value={ccEmails} onChange={e => setCcEmails(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Job Status to Include</label>
-                            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="all">All</option>
-                                <option value="Open">Open</option>
-                                <option value="Closed">Closed</option>
-                            </select>
-                        </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">CC (comma-separated)</label>
+                        <input type="text" value={ccEmails} onChange={e => setCcEmails(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
                     </div>
-                )}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Job Status to Include</label>
+                        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="all">All</option>
+                            <option value="Open">Open</option>
+                            <option value="Closed">Closed</option>
+                        </select>
+                    </div>
+                </div>
 
                 <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
                     <button onClick={onClose} disabled={isSending} className="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50">Cancel</button>
-                    {canEmailReports && (
-                        <button onClick={handleSendEmail} disabled={isSending} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 w-32 flex justify-center items-center">
-                            {isSending ? <Spinner size="5" /> : 'Send Email'}
-                        </button>
-                    )}
+                    <button onClick={handleSendEmail} disabled={isSending} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 w-32 flex justify-center items-center">
+                        {isSending ? <Spinner size="5" /> : 'Send Email'}
+                    </button>
                 </div>
             </div>
         </div>
     );
 };
-
-// --- Main Reports Page Component ---
 
 const DASHBOARD_CONFIGS = {
     'ecaltVMSDisplay': { title: 'Eclat VMS' },
@@ -145,6 +135,14 @@ const DASHBOARD_CONFIGS = {
     'VirtusaDisplay': { title: 'Virtusa Taproot' },
     'DeloitteDisplay': { title: 'Deloitte Taproot' }
 };
+
+const DEFAULT_KPIS = [
+    { id: 'conversionRate', label: 'Placement Conversion Rate', enabled: true, benchmark: 20 },
+    { id: 'slotCapacity', label: 'Slot Capacity Utilization', enabled: true, benchmark: 75 },
+    { id: 'pipelineVelocity', label: 'Active Pipeline Ratio', enabled: true, benchmark: 50 },
+    { id: 'coverageRatio', label: 'Job Coverage Ratio', enabled: true, benchmark: 3.0 },
+    { id: 'topClientShare', label: 'Top Client Concentration', enabled: true, benchmark: 40 }
+];
 
 const ReportsPage = () => {
     const { user } = useAuth();
@@ -157,6 +155,14 @@ const ReportsPage = () => {
     const [filters, setFilters] = useState({ sheetKey: 'taprootVMSDisplay', startDate: '', endDate: '' });
     const [isEmailModalOpen, setEmailModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // --- Custom KPI Config State ---
+    const [kpiConfigs, setKpiConfigs] = useState(DEFAULT_KPIS);
+    const [showKpiSettings, setShowKpiSettings] = useState(false);
+
+    const toggleKpi = (id) => {
+        setKpiConfigs(prev => prev.map(k => k.id === id ? { ...k, enabled: !k.enabled } : k));
+    };
 
     const generateReport = useCallback(async () => {
         if (!user?.userIdentifier) return;
@@ -175,10 +181,12 @@ const ReportsPage = () => {
                 response = await apiService.getReportData(params);
             } else if (reportType === 'candidates') {
                 response = await apiService.getCandidateReportData(params);
-            } else if (reportType === 'advancedBI' && typeof apiService.getPowerBIData === 'function') {
-                response = await apiService.getPowerBIData({ authenticatedUsername: user.userIdentifier });
             } else if (reportType === 'advancedBI') {
-                throw new Error("BI Engine is not fully wired yet.");
+                if (typeof apiService.getPowerBIData === 'function') {
+                    response = await apiService.getPowerBIData({ authenticatedUsername: user.userIdentifier });
+                } else {
+                    response = await axios.get('/api/getPowerBIData', { params: { authenticatedUsername: user.userIdentifier } });
+                }
             }
 
             if (response.data.success) {
@@ -190,32 +198,29 @@ const ReportsPage = () => {
             console.error("API call failed:", err);
             setError("Failed to fetch report data. Displaying sample data for preview.");
             
-            // Mock Data Fallbacks
+            // Mock fallbacks
             if (reportType === 'jobPostings') {
                 setReportData({
-                    totalJobs: 120, openJobs: 75, closedJobs: 45, totalResumesSubmitted: 350, totalMaxSubmissions: 600,
-                    clientJobCounts: { 'Client A': 30, 'Client B': 50, 'Client C': 40 },
+                    totalJobs: 120, openJobs: 75, closedJobs: 45, totalResumesSubmitted: 350, totalMaxSubmissions: 500,
+                    clientJobCounts: { 'State of VA': 50, 'Deloitte': 40, 'Morgan Stanley': 30 },
                     positionTypeCounts: { 'Full-Time': 80, 'Contract': 40 },
-                    workingByCounts: { 'Alice': 50, 'Bob': 40, 'Charlie': 30 }
+                    workingByCounts: { 'Kolla Bala Teja': 50, 'Saidulu Bonthala': 40, 'Mounika Turakapudi': 30 }
                 });
             } else if (reportType === 'candidates') {
                 setReportData({
                     totalCandidates: 250,
-                    remarksCount: { 'Hired': 25, 'Interview Scheduled': 50, 'Offer Extended': 20, 'Rejected': 40, 'Screening': 85, 'No Update': 30 }
+                    remarksCount: { 'Hired': 35, 'Interviewing': 60, 'Under Review': 85, 'Rejected': 70 }
                 });
             } else if (reportType === 'advancedBI') {
                 setReportData({
-                    Dim_Client: [{ ClientKey: 'c1', ClientName: 'State Of Michigan' }, { ClientKey: 'c2', ClientName: 'Deloitte' }],
-                    Dim_Recruiter: [{ RecruiterKey: 'r1', RecruiterName: 'Alice' }, { RecruiterKey: 'r2', RecruiterName: 'Bob' }],
-                    Dim_Job: [{ JobKey: 'j1', JobTitle: 'Data Engineer' }, { JobKey: 'j2', JobTitle: 'React Developer' }],
-                    Fact_JobPostings: [
-                        { JobKey: 'j1', ClientKey: 'c1', RecruiterKey: 'r1', Status: 'Open' },
-                        { JobKey: 'j2', ClientKey: 'c2', RecruiterKey: 'r2', Status: 'Closed' }
-                    ],
+                    Dim_Client: [{ ClientKey: 'c1', ClientName: 'State of VA' }, { ClientKey: 'c2', ClientName: 'Deloitte' }],
+                    Dim_Recruiter: [{ RecruiterKey: 'r1', RecruiterName: 'Kolla Bala Teja' }],
+                    Dim_Job: [{ JobKey: 'j1', JobTitle: 'Developer' }],
+                    Fact_JobPostings: [{ JobKey: 'j1', ClientKey: 'c1', RecruiterKey: 'r1', Status: 'Open', ResumesSubmitted: 10, MaxSubmissions: 15 }],
                     Fact_Candidates: [
                         { CandidateKey: 'cand1', JobKey: 'j1', CandidateStatus: 'Hired' },
                         { CandidateKey: 'cand2', JobKey: 'j1', CandidateStatus: 'Interviewing' },
-                        { CandidateKey: 'cand3', JobKey: 'j2', CandidateStatus: 'Rejected' }
+                        { CandidateKey: 'cand3', JobKey: 'j1', CandidateStatus: 'Under Review' }
                     ]
                 });
             }
@@ -228,7 +233,58 @@ const ReportsPage = () => {
 
     const handleFilterChange = (e) => setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
     const handleReportTypeChange = (e) => setReportType(e.target.value);
-    
+
+    // --- Dynamic KPI Calculation Engine ---
+    const computedKPIs = useMemo(() => {
+        if (!reportData) return {};
+
+        let conversionRate = '0.0%';
+        let slotCapacity = '0.0%';
+        let pipelineVelocity = '0.0%';
+        let coverageRatio = '0.0';
+        let topClientShare = '0.0%';
+
+        if (reportType === 'jobPostings') {
+            const submitted = reportData.totalResumesSubmitted || 0;
+            const maxSub = reportData.totalMaxSubmissions || 1;
+            const open = reportData.openJobs || 1;
+            const total = reportData.totalJobs || 1;
+
+            slotCapacity = `${((submitted / maxSub) * 100).toFixed(1)}%`;
+            coverageRatio = (submitted / open).toFixed(1);
+
+            if (reportData.clientJobCounts) {
+                const clientVolumes = Object.values(reportData.clientJobCounts);
+                const maxClient = clientVolumes.length > 0 ? Math.max(...clientVolumes) : 0;
+                topClientShare = `${((maxClient / total) * 100).toFixed(1)}%`;
+            }
+        } else if (reportType === 'candidates') {
+            const total = reportData.totalCandidates || 1;
+            const hired = reportData.remarksCount?.['Hired'] || 0;
+            const inProcess = (reportData.remarksCount?.['Interviewing'] || 0) + (reportData.remarksCount?.['Under Review'] || 0);
+
+            conversionRate = `${((hired / total) * 100).toFixed(1)}%`;
+            pipelineVelocity = `${((inProcess / total) * 100).toFixed(1)}%`;
+        } else if (reportType === 'advancedBI') {
+            const totalCand = reportData.Fact_Candidates?.length || 1;
+            const hired = reportData.Fact_Candidates?.filter(c => c.CandidateStatus?.toLowerCase().includes('hire')).length || 0;
+            const inProcess = reportData.Fact_Candidates?.filter(c => 
+                c.CandidateStatus?.toLowerCase().includes('interview') || c.CandidateStatus?.toLowerCase().includes('review')
+            ).length || 0;
+
+            const submitted = reportData.Fact_JobPostings?.reduce((acc, j) => acc + (j.ResumesSubmitted || 0), 0) || 0;
+            const maxSub = reportData.Fact_JobPostings?.reduce((acc, j) => acc + (j.MaxSubmissions || 0), 0) || 1;
+            const openJobs = reportData.Fact_JobPostings?.filter(j => j.Status === 'Open').length || 1;
+
+            conversionRate = `${((hired / totalCand) * 100).toFixed(1)}%`;
+            pipelineVelocity = `${((inProcess / totalCand) * 100).toFixed(1)}%`;
+            slotCapacity = `${((submitted / maxSub) * 100).toFixed(1)}%`;
+            coverageRatio = (submitted / openJobs).toFixed(1);
+        }
+
+        return { conversionRate, slotCapacity, pipelineVelocity, coverageRatio, topClientShare };
+    }, [reportData, reportType]);
+
     const chartOptions = { plugins: { legend: { position: 'top' } } };
     const chartColors = ['#4f46e5', '#f97316', '#10b981', '#ef4444', '#3b82f6', '#eab308', '#8b5cf6', '#d946ef', '#64748b'];
     
@@ -246,21 +302,102 @@ const ReportsPage = () => {
         return { labels: fLabels, values: fValues };
     };
 
-    // --- Report Renderers ---
+    // --- KPI Ribbon Component ---
+    const CustomizableKPIRibbon = () => (
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wider">Executive KPI Summary</h3>
+                <button 
+                    onClick={() => setShowKpiSettings(!showKpiSettings)} 
+                    className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-200 transition"
+                >
+                    <AdjustmentsIcon className="w-4 h-4" />
+                    <span>Customize KPIs</span>
+                </button>
+            </div>
+
+            {/* Config Settings Dropdown */}
+            {showKpiSettings && (
+                <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {kpiConfigs.map(k => (
+                        <label key={k.id} className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                checked={k.enabled} 
+                                onChange={() => toggleKpi(k.id)} 
+                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" 
+                            />
+                            {k.label}
+                        </label>
+                    ))}
+                </div>
+            )}
+
+            {/* KPI Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {kpiConfigs.find(k => k.id === 'conversionRate')?.enabled && (
+                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Placement Rate</span>
+                        <div className="flex items-baseline justify-between mt-2">
+                            <span className="text-2xl font-black text-emerald-600">{computedKPIs.conversionRate}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">Target &gt;20%</span>
+                        </div>
+                    </div>
+                )}
+                {kpiConfigs.find(k => k.id === 'slotCapacity')?.enabled && (
+                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Slot Utilization</span>
+                        <div className="flex items-baseline justify-between mt-2">
+                            <span className="text-2xl font-black text-indigo-600">{computedKPIs.slotCapacity}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">Target &gt;75%</span>
+                        </div>
+                    </div>
+                )}
+                {kpiConfigs.find(k => k.id === 'pipelineVelocity')?.enabled && (
+                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Pipeline</span>
+                        <div className="flex items-baseline justify-between mt-2">
+                            <span className="text-2xl font-black text-blue-600">{computedKPIs.pipelineVelocity}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">Healthy &gt;50%</span>
+                        </div>
+                    </div>
+                )}
+                {kpiConfigs.find(k => k.id === 'coverageRatio')?.enabled && (
+                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Job Coverage</span>
+                        <div className="flex items-baseline justify-between mt-2">
+                            <span className="text-2xl font-black text-purple-600">{computedKPIs.coverageRatio}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700">Profiles/Job</span>
+                        </div>
+                    </div>
+                )}
+                {kpiConfigs.find(k => k.id === 'topClientShare')?.enabled && (
+                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Client Concentration</span>
+                        <div className="flex items-baseline justify-between mt-2">
+                            <span className="text-2xl font-black text-amber-600">{computedKPIs.topClientShare}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700">Top Account</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 
     const renderJobReport = () => {
-        const clientData = filteredChartData(Object.keys(reportData.clientJobCounts), Object.values(reportData.clientJobCounts));
-        const positionData = filteredChartData(Object.keys(reportData.positionTypeCounts), Object.values(reportData.positionTypeCounts));
-        const assigneeData = filteredChartData(Object.keys(reportData.workingByCounts), Object.values(reportData.workingByCounts));
+        const clientData = filteredChartData(Object.keys(reportData.clientJobCounts || {}), Object.values(reportData.clientJobCounts || {}));
+        const positionData = filteredChartData(Object.keys(reportData.positionTypeCounts || {}), Object.values(reportData.positionTypeCounts || {}));
+        const assigneeData = filteredChartData(Object.keys(reportData.workingByCounts || {}), Object.values(reportData.workingByCounts || {}));
 
         return (
             <div className="space-y-8">
+                <CustomizableKPIRibbon />
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 text-center">
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-gray-800">{reportData.totalJobs}</p><p className="text-sm text-gray-500 mt-1">Total Jobs</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-green-600">{reportData.openJobs}</p><p className="text-sm text-gray-500 mt-1">Open</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-red-600">{reportData.closedJobs}</p><p className="text-sm text-gray-500 mt-1">Closed</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-blue-600">{reportData.totalResumesSubmitted}</p><p className="text-sm text-gray-500 mt-1">Submitted</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-gray-800">{reportData.totalMaxSubmissions}</p><p className="text-sm text-gray-500 mt-1">Max Allowed</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-gray-800">{reportData.totalJobs}</p><p className="text-xs text-gray-500 mt-1">Total Jobs</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-green-600">{reportData.openJobs}</p><p className="text-xs text-gray-500 mt-1">Open</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-red-600">{reportData.closedJobs}</p><p className="text-xs text-gray-500 mt-1">Closed</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-blue-600">{reportData.totalResumesSubmitted}</p><p className="text-xs text-gray-500 mt-1">Submitted</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-gray-800">{reportData.totalMaxSubmissions}</p><p className="text-xs text-gray-500 mt-1">Max Allowed</p></div>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Jobs by Client</h3><div className="relative flex-grow"><ChartComponent type='bar' options={chartOptions} data={getChartData(clientData.labels, clientData.values, '# of Jobs')} /></div></div>
@@ -270,18 +407,19 @@ const ReportsPage = () => {
             </div>
         );
     };
-    
+
     const renderCandidateReport = () => {
-        const remarksData = filteredChartData(Object.keys(reportData.remarksCount), Object.values(reportData.remarksCount));
-        const hiredCount = reportData.remarksCount['Hired'] || 0;
-        const inProcessCount = (reportData.remarksCount['Interview Scheduled'] || 0) + (reportData.remarksCount['Offer Extended'] || 0) + (reportData.remarksCount['Screening'] || 0);
+        const remarksData = filteredChartData(Object.keys(reportData.remarksCount || {}), Object.values(reportData.remarksCount || {}));
+        const hiredCount = reportData.remarksCount?.['Hired'] || 0;
+        const inProcessCount = (reportData.remarksCount?.['Interviewing'] || 0) + (reportData.remarksCount?.['Under Review'] || 0);
 
         return (
-             <div className="space-y-8">
+            <div className="space-y-8">
+                <CustomizableKPIRibbon />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-center">
-                     <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-gray-800">{reportData.totalCandidates}</p><p className="text-sm text-gray-500 mt-1">Total Candidates</p></div>
-                     <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-green-600">{hiredCount}</p><p className="text-sm text-gray-500 mt-1">Hired</p></div>
-                     <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-4xl font-extrabold text-blue-600">{inProcessCount}</p><p className="text-sm text-gray-500 mt-1">In Process</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-gray-800">{reportData.totalCandidates}</p><p className="text-xs text-gray-500 mt-1">Total Candidates</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-green-600">{hiredCount}</p><p className="text-xs text-gray-500 mt-1">Hired</p></div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-blue-600">{inProcessCount}</p><p className="text-xs text-gray-500 mt-1">In Process</p></div>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Candidate Status Distribution</h3><div className="relative flex-grow"><ChartComponent type='pie' options={chartOptions} data={getChartData(remarksData.labels, remarksData.values, '# of Candidates')} /></div></div>
@@ -314,7 +452,7 @@ const ReportsPage = () => {
             const recName = recruiterMap[jobToRecruiter[cand.JobKey]] || 'Unassigned';
             if (!recruiterStats[recName]) recruiterStats[recName] = { jobs: 0, candidates: 0, hired: 0 };
             recruiterStats[recName].candidates += 1;
-            if (cand.CandidateStatus.toLowerCase().includes('hire')) recruiterStats[recName].hired += 1;
+            if (cand.CandidateStatus?.toLowerCase().includes('hire')) recruiterStats[recName].hired += 1;
         });
 
         const clientData = filteredChartData(Object.keys(clientCandidateCounts), Object.values(clientCandidateCounts));
@@ -324,10 +462,11 @@ const ReportsPage = () => {
 
         return (
             <div className="space-y-8">
-               <div className="bg-indigo-50 border border-indigo-200 p-5 rounded-xl shadow-sm mb-6 flex justify-between items-center">
+                <CustomizableKPIRibbon />
+                <div className="bg-indigo-50 border border-indigo-200 p-5 rounded-xl shadow-sm mb-6 flex justify-between items-center">
                     <div>
                         <h2 className="text-xl font-bold text-indigo-900">Advanced BI Model Loaded</h2>
-                        <p className="text-indigo-700 text-sm mt-1">Semantic Star Schema extracted. Utilizing in-memory joins across {reportData.Fact_JobPostings.length} jobs and {reportData.Fact_Candidates.length} candidates.</p>
+                        <p className="text-indigo-700 text-sm mt-1">Semantic Star Schema extracted. Multi-table joins active across {reportData.Fact_JobPostings.length} jobs and {reportData.Fact_Candidates.length} candidates.</p>
                     </div>
                     <button 
                         onClick={() => {
@@ -340,30 +479,14 @@ const ReportsPage = () => {
                     >
                         Download JSON Model
                     </button>
-               </div>
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col">
-                        <h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Total Candidate Submissions by Client</h3>
-                        <div className="relative flex-grow">
-                            <ChartComponent type='bar' options={chartOptions} data={getChartData(clientData.labels, clientData.values, '# of Candidates')} />
-                        </div>
-                    </div>
-                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col">
-                        <h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Recruiter Conversion (Hired vs Submitted)</h3>
-                        <div className="relative flex-grow">
-                            <ChartComponent type='bar' options={{...chartOptions, indexAxis: 'y'}} data={{
-                                labels: recLabels,
-                                datasets: [
-                                    { label: 'Hired Candidates', data: recHiredData, backgroundColor: '#10b981' },
-                                    { label: 'Total Submitted', data: recCandData, backgroundColor: '#3b82f6' }
-                                ]
-                            }} />
-                        </div>
-                    </div>
-               </div>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Total Submissions by Client</h3><div className="relative flex-grow"><ChartComponent type='bar' options={chartOptions} data={getChartData(clientData.labels, clientData.values, '# of Candidates')} /></div></div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Recruiter Conversion (Hired vs Submitted)</h3><div className="relative flex-grow"><ChartComponent type='bar' options={{...chartOptions, indexAxis: 'y'}} data={{ labels: recLabels, datasets: [{ label: 'Hired Candidates', data: recHiredData, backgroundColor: '#10b981' }, { label: 'Total Submitted', data: recCandData, backgroundColor: '#3b82f6' }] }} /></div></div>
+                </div>
             </div>
         );
-    }
+    };
 
     const shouldRenderReport = () => {
         if (!reportData || !canViewReports) return false;
@@ -374,74 +497,65 @@ const ReportsPage = () => {
     };
 
     return (
-        <>
-            <div className="p-6 bg-gray-50 min-h-screen">
-                <div className="space-y-6">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Reports Dashboard</h1>
-                        <p className="mt-1 text-gray-600">Generate and visualize data for job postings and candidate pipelines.</p>
-                    </div>
-
-                    <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap items-center justify-between gap-4">
-                        <div className="flex flex-wrap items-center gap-4">
-                            <input type="text" placeholder="Search chart data..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="shadow-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading} />
-                            
-                            <select name="reportType" value={reportType} onChange={handleReportTypeChange} className="shadow-sm border-gray-300 rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading}>
-                                <option value="jobPostings">Job Postings Report</option>
-                                <option value="candidates">Candidate Pipeline Report</option>
-                                <option value="advancedBI">Advanced BI Analytics (Star Schema)</option>
-                            </select>
-                            
-                            {reportType === 'jobPostings' && (
-                                 <select name="sheetKey" value={filters.sheetKey} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading}>
-                                    {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
-                                        <option key={key} value={key}>{config.title}</option>
-                                    ))}
-                                </select>
-                            )}
-
-                            {reportType !== 'advancedBI' && (
-                                <>
-                                    <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading}/>
-                                    <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading}/>
-                                </>
-                            )}
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <button onClick={generateReport} className="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 flex items-center justify-center h-10 w-40 disabled:bg-indigo-400" disabled={loading || !canViewReports}>
-                                {loading ? <Spinner size="5" /> : 'Generate Report'}
-                            </button>
-                             <button onClick={() => setEmailModalOpen(true)} className="px-5 py-2 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 flex items-center h-10 disabled:opacity-50" disabled={!reportData || !canEmailReports || reportType !== 'jobPostings'}>
-                                Email Report
-                            </button>
-                        </div>
-                    </div>
-
-                    {loading && <div className="h-96 flex justify-center items-center"><Spinner /></div>}
-                    {error && <div className="text-red-600 bg-red-50 p-4 rounded-lg border border-red-200">{error}</div>}
-                    
-                    {!loading && !error && !canViewReports && (
-                        <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
-                            <h3 className="text-lg font-medium">Access Denied</h3>
-                            <p className="mt-1 text-sm text-gray-500">You do not have the necessary permissions to view reports.</p>
-                        </div>
-                    )}
-                    
-                    {shouldRenderReport() && (
-                        reportType === 'jobPostings' ? renderJobReport() : 
-                        reportType === 'candidates' ? renderCandidateReport() : 
-                        renderAdvancedBIReport()
-                    )}
-
-                    {!loading && !error && !reportData && canViewReports && (
-                        <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                            <h3 className="mt-2 text-sm font-medium text-gray-900">No Report Data</h3>
-                            <p className="mt-1 text-sm text-gray-500">No data found for the selected filters. Please try a different selection.</p>
-                        </div>
-                    )}
+        <div className="p-6 bg-gray-50 min-h-screen">
+            <div className="space-y-6">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Reports Dashboard</h1>
+                    <p className="mt-1 text-gray-600">Enterprise analytics for job postings and candidate pipelines.</p>
                 </div>
+
+                <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
+                        <input type="text" placeholder="Search chart data..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="shadow-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 text-sm" disabled={!canViewReports || loading} />
+                        
+                        <select name="reportType" value={reportType} onChange={handleReportTypeChange} className="shadow-sm border-gray-300 rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm" disabled={!canViewReports || loading}>
+                            <option value="jobPostings">Job Postings Report</option>
+                            <option value="candidates">Candidate Pipeline Report</option>
+                            <option value="advancedBI">Advanced BI Analytics (Star Schema)</option>
+                        </select>
+                        
+                        {reportType === 'jobPostings' && (
+                            <select name="sheetKey" value={filters.sheetKey} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm" disabled={!canViewReports || loading}>
+                                {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
+                                    <option key={key} value={key}>{config.title}</option>
+                                ))}
+                            </select>
+                        )}
+
+                        {reportType !== 'advancedBI' && (
+                            <>
+                                <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm" disabled={!canViewReports || loading}/>
+                                <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm" disabled={!canViewReports || loading}/>
+                            </>
+                        )}
+                    </div>
+                    <div className="flex items-center space-x-3">
+                        <button onClick={generateReport} className="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 flex items-center justify-center h-10 w-40 disabled:bg-indigo-400" disabled={loading || !canViewReports}>
+                            {loading ? <Spinner size="5" /> : 'Generate Report'}
+                        </button>
+                        <button onClick={() => setEmailModalOpen(true)} className="px-5 py-2 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 flex items-center h-10 disabled:opacity-50" disabled={!reportData || !canEmailReports || reportType !== 'jobPostings'}>
+                            Email Report
+                        </button>
+                    </div>
+                </div>
+
+                {loading && <div className="h-96 flex justify-center items-center"><Spinner /></div>}
+                {error && <div className="text-red-600 bg-red-50 p-4 rounded-lg border border-red-200">{error}</div>}
+                
+                {!loading && !error && !canViewReports && (
+                    <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
+                        <h3 className="text-lg font-medium">Access Denied</h3>
+                        <p className="mt-1 text-sm text-gray-500">You do not have the necessary permissions to view reports.</p>
+                    </div>
+                )}
+                
+                {shouldRenderReport() && (
+                    reportType === 'jobPostings' ? renderJobReport() : 
+                    reportType === 'candidates' ? renderCandidateReport() : 
+                    renderAdvancedBIReport()
+                )}
             </div>
+
             {canEmailReports && (
                 <EmailReportModal 
                     isOpen={isEmailModalOpen} 
@@ -450,7 +564,7 @@ const ReportsPage = () => {
                     authenticatedUsername={user.userIdentifier}
                 />
             )}
-        </>
+        </div>
     );
 };
 
