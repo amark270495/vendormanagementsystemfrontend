@@ -30,10 +30,7 @@ const getAvatar = (rawName) => {
     const name = String(rawName || '');
     
     if (!name || name.trim() === '' || name === 'Unassigned') {
-        return {
-            initials: '?',
-            color: 'bg-slate-100 text-slate-500 border border-slate-200'
-        };
+        return { initials: '?', color: 'bg-slate-100 text-slate-500 border border-slate-200' };
     }
 
     const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -58,10 +55,7 @@ const getAvatar = (rawName) => {
 
     const colorIndex = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
 
-    return {
-        initials: initials.toUpperCase(),
-        color: colors[colorIndex]
-    };
+    return { initials: initials.toUpperCase(), color: colors[colorIndex] };
 };
 
 // --- CRASH-PROOF HELPER: Candidate Initials ---
@@ -108,7 +102,7 @@ const HomePage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     
-    // NEW: Star Schema integrated stats
+    // Star Schema integrated stats
     const [stats, setStats] = useState({ 
         totalJobs: 0, 
         openJobs: 0, 
@@ -136,11 +130,8 @@ const HomePage = () => {
         }
 
         try {
-            // NEW: Fetching both operational Kanban data and Star Schema BI metrics in parallel
-            const [homeResponse, biResponse] = await Promise.all([
-                apiService.getHomePageData(user.userIdentifier).catch(e => e.response),
-                apiService.getPowerBIData({ authenticatedUsername: user.userIdentifier }).catch(e => e.response)
-            ]);
+            // Decoupled API calls to prevent the BI endpoint from crashing the main dashboard
+            const homeResponse = await apiService.getHomePageData(user.userIdentifier).catch(e => e.response);
 
             if (homeResponse?.data?.success) {
                 setData(homeResponse.data.data);
@@ -155,28 +146,31 @@ const HomePage = () => {
                 setError(homeResponse?.data?.message || "Failed to fetch dashboard data.");
             }
 
-            // NEW: Process semantic BI metrics for header cards
-            if (biResponse?.data?.success) {
-                const biData = biResponse.data;
-                const totalResumes = biData.Fact_JobPostings.reduce((sum, job) => sum + (job.ResumesSubmitted || 0), 0);
-                
-                const totalCandidates = biData.Fact_Candidates.length;
-                const hiredCandidates = biData.Fact_Candidates.filter(cand => 
-                    cand.CandidateStatus.toLowerCase().includes('hire')
-                ).length;
-                
-                const conversionRate = totalCandidates > 0 
-                    ? ((hiredCandidates / totalCandidates) * 100).toFixed(1) + '%'
-                    : 'N/A';
+            // Attempt to load BI data only if the endpoint exists in apiService
+            if (typeof apiService.getPowerBIData === 'function') {
+                const biResponse = await apiService.getPowerBIData({ authenticatedUsername: user.userIdentifier }).catch(e => e.response);
+                if (biResponse?.data?.success) {
+                    const biData = biResponse.data;
+                    const totalResumes = biData.Fact_JobPostings?.reduce((sum, job) => sum + (job.ResumesSubmitted || 0), 0) || 0;
+                    
+                    const totalCandidates = biData.Fact_Candidates?.length || 0;
+                    const hiredCandidates = biData.Fact_Candidates?.filter(cand => 
+                        cand.CandidateStatus?.toLowerCase().includes('hire')
+                    ).length || 0;
+                    
+                    const conversionRate = totalCandidates > 0 
+                        ? ((hiredCandidates / totalCandidates) * 100).toFixed(1) + '%'
+                        : 'N/A';
 
-                setStats(prev => ({
-                    ...prev,
-                    totalResumesSubmitted: totalResumes,
-                    pipelineConversionRate: conversionRate
-                }));
+                    setStats(prev => ({
+                        ...prev,
+                        totalResumesSubmitted: totalResumes,
+                        pipelineConversionRate: conversionRate
+                    }));
+                }
             }
         } catch (err) {
-            setError(err.response?.data?.message || "Failed to fetch dashboard data.");
+            setError(err.message || "Failed to fetch dashboard data.");
         } finally {
             setLoading(false);
         }
@@ -185,7 +179,7 @@ const HomePage = () => {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     useEffect(() => {
-        if (selectedJob) {
+        if (selectedJob && typeof apiService.getCandidateDetailsPageData === 'function') {
             setLoadingCandidates(true);
             apiService.getCandidateDetailsPageData(user.userIdentifier)
                 .then(res => {
@@ -361,7 +355,6 @@ const HomePage = () => {
                                             onDragOver={e => e.preventDefault()}
                                             onDrop={() => onDrop(assigneeGroup)}
                                         >
-                                            {/* Column Header */}
                                             <div className="p-4 border-b border-slate-200 bg-slate-100/50 sticky top-0 z-10 rounded-t-2xl text-left w-full">
                                                 <div className="flex items-start justify-between gap-3 text-left w-full">
                                                     <div className="flex items-start gap-3 flex-1 min-w-0 text-left">
@@ -400,7 +393,6 @@ const HomePage = () => {
                                                 </div>
                                             </div>
                                             
-                                            {/* Job Cards Container */}
                                             <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar text-left w-full">
                                                 {jobs.map(job => {
                                                     const urgency = getUrgency(job.deadline);

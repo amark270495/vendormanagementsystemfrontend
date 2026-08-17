@@ -1,8 +1,9 @@
-// src/domains/dashboards/ReportsPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Bar, Pie, Doughnut } from 'react-chartjs-2';
-import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { apiService } from '../api/apiService';
+import { usePermissions } from '../hooks/usePermissions';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -26,7 +27,7 @@ const ChartComponent = ({ type, options, data }) => {
 /**
  * EmailReportModal Component: A modal dialog for emailing reports.
  */
-const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername, usePermissions, apiService }) => {
+const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) => {
     const [toEmails, setToEmails] = useState('');
     const [ccEmails, setCcEmails] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -133,34 +134,6 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername, us
     );
 };
 
-// --- API Service and Authentication Hooks ---
-
-const apiClient = axios.create({
-    baseURL: '/api',
-    headers: { 'Content-Type': 'application/json' },
-});
-
-const apiService = {
-    getReportData: (params) => apiClient.get('/getReportData', { params }),
-    getCandidateReportData: (params) => apiClient.get('/getCandidateReportData', { params }),
-    getPowerBIData: (params) => apiClient.get('/getPowerBIData', { params }), // NEW: Star Schema Endpoint
-    generateAndSendJobReport: (sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername) => 
-        apiClient.post('/generateAndSendJobReport', { sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername }),
-};
-
-const useAuth = () => {
-    const savedUser = sessionStorage.getItem('vms_user');
-    return { user: savedUser ? JSON.parse(savedUser) : { userIdentifier: 'previewUser', permissions: {} } };
-};
-
-const usePermissions = () => {
-    const { user } = useAuth();
-    return {
-        canViewReports: user?.permissions?.canViewReports ?? true,
-        canEmailReports: user?.permissions?.canEmailReports ?? true,
-    };
-};
-
 // --- Main Reports Page Component ---
 
 const DASHBOARD_CONFIGS = {
@@ -177,7 +150,6 @@ const ReportsPage = () => {
     const { user } = useAuth();
     const { canViewReports, canEmailReports } = usePermissions();
     
-    // NEW: Added 'advancedBI' to the default state options
     const [reportType, setReportType] = useState('jobPostings'); 
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -187,6 +159,7 @@ const ReportsPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const generateReport = useCallback(async () => {
+        if (!user?.userIdentifier) return;
         if (!canViewReports) {
             setError("You do not have permission to generate reports.");
             setLoading(false); return;
@@ -197,14 +170,15 @@ const ReportsPage = () => {
             let response;
             const params = { authenticatedUsername: user.userIdentifier, startDate: filters.startDate, endDate: filters.endDate };
 
-            // NEW: Routing API requests based on selected report type
             if (reportType === 'jobPostings') {
                 params.sheetKey = filters.sheetKey;
                 response = await apiService.getReportData(params);
             } else if (reportType === 'candidates') {
                 response = await apiService.getCandidateReportData(params);
-            } else if (reportType === 'advancedBI') {
+            } else if (reportType === 'advancedBI' && typeof apiService.getPowerBIData === 'function') {
                 response = await apiService.getPowerBIData({ authenticatedUsername: user.userIdentifier });
+            } else if (reportType === 'advancedBI') {
+                throw new Error("BI Engine is not fully wired yet.");
             }
 
             if (response.data.success) {
@@ -317,7 +291,6 @@ const ReportsPage = () => {
         );
     };
 
-    // NEW: Client-side mapping and aggregation logic using the Star Schema Fact and Dimension tables
     const renderAdvancedBIReport = () => {
         const clientCandidateCounts = {};
         const recruiterStats = {};
@@ -396,7 +369,6 @@ const ReportsPage = () => {
         if (!reportData || !canViewReports) return false;
         if (reportType === 'jobPostings' && reportData.totalJobs !== undefined) return true;
         if (reportType === 'candidates' && reportData.totalCandidates !== undefined) return true;
-        // NEW: Check for Star Schema Data integrity
         if (reportType === 'advancedBI' && reportData.Fact_JobPostings) return true; 
         return false;
     };
@@ -414,7 +386,6 @@ const ReportsPage = () => {
                         <div className="flex flex-wrap items-center gap-4">
                             <input type="text" placeholder="Search chart data..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="shadow-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading} />
                             
-                            {/* NEW: Added Advanced BI Option to Selector */}
                             <select name="reportType" value={reportType} onChange={handleReportTypeChange} className="shadow-sm border-gray-300 rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500" disabled={!canViewReports || loading}>
                                 <option value="jobPostings">Job Postings Report</option>
                                 <option value="candidates">Candidate Pipeline Report</option>
@@ -456,7 +427,6 @@ const ReportsPage = () => {
                         </div>
                     )}
                     
-                    {/* NEW: Component Routing based on selected reportType */}
                     {shouldRenderReport() && (
                         reportType === 'jobPostings' ? renderJobReport() : 
                         reportType === 'candidates' ? renderCandidateReport() : 
@@ -478,8 +448,6 @@ const ReportsPage = () => {
                     onClose={() => setEmailModalOpen(false)} 
                     sheetKey={filters.sheetKey}
                     authenticatedUsername={user.userIdentifier}
-                    usePermissions={usePermissions}
-                    apiService={apiService}
                 />
             )}
         </>
