@@ -5,7 +5,7 @@ import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
 import { useMediaQuery } from 'react-responsive';
 // --- Sound Import (using original relative path) ---
-import messageSound from '../sounds/message.mp3';
+import messageSound from '../../public/sounds/message.mp3';
 // --- End Sound Import ---
 import {
     generateKeyPair,

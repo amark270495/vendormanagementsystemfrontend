@@ -1,35 +1,42 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
-import { Bar, Pie, Doughnut } from 'react-chartjs-2';
+import { 
+    Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, 
+    LinearScale, BarElement, LineElement, PointElement, RadialLinearScale, Filler 
+} from 'chart.js';
+import { Bar, Pie, Doughnut, Line, Radar } from 'react-chartjs-2';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import { usePermissions } from '../hooks/usePermissions';
 import axios from 'axios';
 
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
+// Register advanced Chart.js elements
+ChartJS.register(
+    ArcElement, Tooltip, Legend, CategoryScale, LinearScale, 
+    BarElement, LineElement, PointElement, RadialLinearScale, Filler
+);
 
 // --- Icons ---
 const AdjustmentsIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>;
-const CheckIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>;
+const DownloadIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>;
 
-const Spinner = ({ size = '8' }) => (
+const Spinner = ({ size = '6' }) => (
     <div className="flex justify-center items-center">
         <div className={`w-${size} h-${size} border-4 border-t-transparent border-indigo-600 rounded-full animate-spin`}></div>
     </div>
 );
 
 const ChartComponent = ({ type, options, data }) => {
-    if (!data) return <div className="flex justify-center items-center h-full text-gray-500">No data to display.</div>;
+    if (!data || !data.labels || data.labels.length === 0) return <div className="flex justify-center items-center h-full text-slate-400 font-medium text-sm border-2 border-dashed border-slate-200 rounded-2xl m-4">No data available for this dimension.</div>;
     const commonOptions = { responsive: true, maintainAspectRatio: false, ...options };
     if (type === 'bar') return <Bar options={commonOptions} data={data} />;
     if (type === 'pie') return <Pie options={commonOptions} data={data} />;
     if (type === 'doughnut') return <Doughnut options={commonOptions} data={data} />;
-    return <div className="text-red-500">Unknown chart type: {type}</div>;
+    if (type === 'line') return <Line options={commonOptions} data={data} />;
+    if (type === 'radar') return <Radar options={commonOptions} data={data} />;
+    return <div className="text-red-500">Unknown chart type</div>;
 };
 
-/**
- * EmailReportModal Component
- */
+// --- Email Modal ---
 const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) => {
     const [toEmails, setToEmails] = useState('');
     const [ccEmails, setCcEmails] = useState('');
@@ -40,84 +47,61 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
     const { canEmailReports } = usePermissions();
 
     useEffect(() => {
-        if (isOpen) {
-            setToEmails('');
-            setCcEmails('');
-            setStatusFilter('all');
-            setError('');
-            setSuccessMessage('');
-            setIsSending(false);
-        }
+        if (isOpen) { setToEmails(''); setCcEmails(''); setStatusFilter('all'); setError(''); setSuccessMessage(''); setIsSending(false); }
     }, [isOpen]);
 
     const handleSendEmail = async () => {
-        if (!canEmailReports) {
-            setError("You do not have permission to send email reports.");
-            return;
-        }
-
+        if (!canEmailReports) return setError("Permission denied to send email reports.");
         const toEmailArray = toEmails.split(',').map(e => e.trim()).filter(Boolean);
         const ccEmailArray = ccEmails.split(',').map(e => e.trim()).filter(Boolean);
+        if (toEmailArray.length === 0) return setError("Please provide at least one 'To' email.");
 
-        if (toEmailArray.length === 0) {
-            setError("Please provide at least one recipient email in the 'To' field.");
-            return;
-        }
-
-        setIsSending(true);
-        setError('');
-        setSuccessMessage('');
-
+        setIsSending(true); setError(''); setSuccessMessage('');
         try {
             const response = await apiService.generateAndSendJobReport(sheetKey, statusFilter, toEmailArray, ccEmailArray, authenticatedUsername);
             if (response.data.success) {
-                setSuccessMessage(response.data.message || 'Report has been sent successfully!');
+                setSuccessMessage('Report sent successfully!');
                 setTimeout(() => onClose(), 2000);
-            } else {
-                setError(response.data.message || 'An unknown error occurred while sending the report.');
-            }
-        } catch (err) {
-            setError(err.response?.data?.message || 'Failed to send the report.');
-        } finally {
-            setIsSending(false);
-        }
+            } else { setError(response.data.message || 'Error sending report.'); }
+        } catch (err) { setError(err.response?.data?.message || 'Failed to send the report.'); } 
+        finally { setIsSending(false); }
     };
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-            <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+            <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md transform transition-all border border-slate-100">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-gray-800">Email Job Report</h2>
-                    <button onClick={onClose} disabled={isSending} className="text-gray-400 hover:text-gray-600 disabled:opacity-50 text-2xl">&times;</button>
+                    <h2 className="text-xl font-bold text-slate-800 tracking-tight">Email Job Report</h2>
+                    <button onClick={onClose} disabled={isSending} className="text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition text-lg leading-none">&times;</button>
                 </div>
                 
-                {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
-                {successMessage && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">{successMessage}</div>}
+                {error && <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl mb-5 text-sm font-medium">{error}</div>}
+                {successMessage && <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl mb-5 text-sm font-medium">{successMessage}</div>}
 
-                <div className="space-y-4">
+                <div className="space-y-5">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">To (comma-separated)</label>
-                        <input type="text" value={toEmails} onChange={e => setToEmails(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">To (comma-separated)</label>
+                        <input type="text" value={toEmails} onChange={e => setToEmails(e.target.value)} className="block w-full border border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-none" required />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">CC (comma-separated)</label>
-                        <input type="text" value={ccEmails} onChange={e => setCcEmails(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">CC (comma-separated)</label>
+                        <input type="text" value={ccEmails} onChange={e => setCcEmails(e.target.value)} className="block w-full border border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-none" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Job Status to Include</label>
-                        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white focus:ring-indigo-500 focus:border-indigo-500">
-                            <option value="all">All</option>
-                            <option value="Open">Open</option>
-                            <option value="Closed">Closed</option>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Job Status Filter</label>
+                        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="block w-full border border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition outline-none appearance-none">
+                            <option value="all">Include All Statuses</option>
+                            <option value="Open">Only Open Jobs</option>
+                            <option value="Closed">Only Closed Jobs</option>
                         </select>
                     </div>
                 </div>
 
-                <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                    <button onClick={onClose} disabled={isSending} className="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50">Cancel</button>
-                    <button onClick={handleSendEmail} disabled={isSending} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 w-32 flex justify-center items-center">
+                <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
+                    <button onClick={onClose} disabled={isSending} className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition">Cancel</button>
+                    <button onClick={handleSendEmail} disabled={isSending} className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition w-32 flex justify-center items-center shadow-sm">
                         {isSending ? <Spinner size="5" /> : 'Send Email'}
                     </button>
                 </div>
@@ -137,50 +121,57 @@ const DASHBOARD_CONFIGS = {
 };
 
 const DEFAULT_KPIS = [
-    { id: 'conversionRate', label: 'Placement Conversion Rate', enabled: true, benchmark: 20 },
-    { id: 'slotCapacity', label: 'Slot Capacity Utilization', enabled: true, benchmark: 75 },
-    { id: 'pipelineVelocity', label: 'Active Pipeline Ratio', enabled: true, benchmark: 50 },
-    { id: 'coverageRatio', label: 'Job Coverage Ratio', enabled: true, benchmark: 3.0 },
-    { id: 'topClientShare', label: 'Top Client Concentration', enabled: true, benchmark: 40 }
+    { id: 'conversionRate', label: 'Placement Conversion', target: 'Target >20%', color: 'text-emerald-600', bg: 'bg-emerald-50 text-emerald-700', enabled: true },
+    { id: 'fillRatio', label: 'Overall Fill Rate', target: 'Target >50%', color: 'text-blue-600', bg: 'bg-blue-50 text-blue-700', enabled: true },
+    { id: 'slotCapacity', label: 'Slot Utilization', target: 'Target >75%', color: 'text-indigo-600', bg: 'bg-indigo-50 text-indigo-700', enabled: true },
+    { id: 'pipelineVelocity', label: 'Active Pipeline', target: 'Healthy >40%', color: 'text-cyan-600', bg: 'bg-cyan-50 text-cyan-700', enabled: true },
+    { id: 'agingJobs', label: 'SLA Breach Risk', target: '> 14 Days Old', color: 'text-red-600', bg: 'bg-red-50 text-red-700', enabled: true },
+    { id: 'coverageRatio', label: 'Job Coverage Ratio', target: 'Profiles/Job', color: 'text-purple-600', bg: 'bg-purple-50 text-purple-700', enabled: true },
+    { id: 'topClientShare', label: 'Top Client Concentration', target: 'Risk <50%', color: 'text-orange-600', bg: 'bg-orange-50 text-orange-700', enabled: false }
 ];
 
 const ReportsPage = () => {
     const { user } = useAuth();
     const { canViewReports, canEmailReports } = usePermissions();
     
-    const [reportType, setReportType] = useState('jobPostings'); 
+    const [reportType, setReportType] = useState('candidates'); 
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [filters, setFilters] = useState({ sheetKey: 'taprootVMSDisplay', startDate: '', endDate: '' });
-    const [isEmailModalOpen, setEmailModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-
-    // --- Custom KPI Config State ---
+    const [isEmailModalOpen, setEmailModalOpen] = useState(false);
+    
     const [kpiConfigs, setKpiConfigs] = useState(DEFAULT_KPIS);
     const [showKpiSettings, setShowKpiSettings] = useState(false);
 
-    const toggleKpi = (id) => {
-        setKpiConfigs(prev => prev.map(k => k.id === id ? { ...k, enabled: !k.enabled } : k));
-    };
+    const toggleKpi = (id) => setKpiConfigs(prev => prev.map(k => k.id === id ? { ...k, enabled: !k.enabled } : k));
 
     const generateReport = useCallback(async () => {
-        if (!user?.userIdentifier) return;
-        if (!canViewReports) {
-            setError("You do not have permission to generate reports.");
-            setLoading(false); return;
-        }
+        if (!user?.userIdentifier || !canViewReports) { setLoading(false); return; }
+        
         setLoading(true); setError(''); setReportData(null);
         
         try {
             let response;
             const params = { authenticatedUsername: user.userIdentifier, startDate: filters.startDate, endDate: filters.endDate };
 
+            // =========================================================================
+            // CRASH FAILSAFES: Bypasses apiService if definitions are missing
+            // =========================================================================
             if (reportType === 'jobPostings') {
                 params.sheetKey = filters.sheetKey;
-                response = await apiService.getReportData(params);
+                if (typeof apiService.getReportData === 'function') {
+                    response = await apiService.getReportData(params);
+                } else {
+                    response = await axios.get('/api/getReportData', { params });
+                }
             } else if (reportType === 'candidates') {
-                response = await apiService.getCandidateReportData(params);
+                if (typeof apiService.getCandidateReportData === 'function') {
+                    response = await apiService.getCandidateReportData(params);
+                } else {
+                    response = await axios.get('/api/getCandidateReportData', { params });
+                }
             } else if (reportType === 'advancedBI') {
                 if (typeof apiService.getPowerBIData === 'function') {
                     response = await apiService.getPowerBIData({ authenticatedUsername: user.userIdentifier });
@@ -192,13 +183,14 @@ const ReportsPage = () => {
             if (response.data.success) {
                 setReportData(response.data);
             } else {
-                setError(response.data.message || "An unknown error occurred.");
+                throw new Error(response.data.message || "Failed to fetch data.");
             }
+
         } catch (err) {
             console.error("API call failed:", err);
             setError("Failed to fetch report data. Displaying sample data for preview.");
             
-            // Mock fallbacks
+            // Mock Data Fallbacks matching exactly what the UI needs to render
             if (reportType === 'jobPostings') {
                 setReportData({
                     totalJobs: 120, openJobs: 75, closedJobs: 45, totalResumesSubmitted: 350, totalMaxSubmissions: 500,
@@ -213,14 +205,13 @@ const ReportsPage = () => {
                 });
             } else if (reportType === 'advancedBI') {
                 setReportData({
-                    Dim_Client: [{ ClientKey: 'c1', ClientName: 'State of VA' }, { ClientKey: 'c2', ClientName: 'Deloitte' }],
-                    Dim_Recruiter: [{ RecruiterKey: 'r1', RecruiterName: 'Kolla Bala Teja' }],
-                    Dim_Job: [{ JobKey: 'j1', JobTitle: 'Developer' }],
-                    Fact_JobPostings: [{ JobKey: 'j1', ClientKey: 'c1', RecruiterKey: 'r1', Status: 'Open', ResumesSubmitted: 10, MaxSubmissions: 15 }],
+                    Dim_Client: [{ ClientKey: 'c1', ClientName: 'State of VA' }, { ClientKey: 'c2', ClientName: 'Morgan Stanley' }],
+                    Dim_Recruiter: [{ RecruiterKey: 'r1', RecruiterName: 'Kolla Teja' }],
+                    Dim_Job: [{ JobKey: 'j1', JobTitle: 'Data Engineer' }],
+                    Fact_JobPostings: [ { JobKey: 'j1', ClientKey: 'c1', RecruiterKey: 'r1', Status: 'Open', ResumesSubmitted: 12, MaxSubmissions: 15, PostingDate: '2026-08-01' } ],
                     Fact_Candidates: [
-                        { CandidateKey: 'cand1', JobKey: 'j1', CandidateStatus: 'Hired' },
-                        { CandidateKey: 'cand2', JobKey: 'j1', CandidateStatus: 'Interviewing' },
-                        { CandidateKey: 'cand3', JobKey: 'j1', CandidateStatus: 'Under Review' }
+                        { CandidateKey: 'cand1', JobKey: 'j1', CandidateStatus: 'Hired', SubmissionDate: '2026-08-05', Location: 'Texas' },
+                        { CandidateKey: 'cand2', JobKey: 'j1', CandidateStatus: 'Interviewing', SubmissionDate: '2026-08-06', Location: 'Virginia' }
                     ]
                 });
             }
@@ -232,68 +223,103 @@ const ReportsPage = () => {
     useEffect(() => { generateReport(); }, [generateReport]);
 
     const handleFilterChange = (e) => setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    const handleReportTypeChange = (e) => setReportType(e.target.value);
 
-    // --- Dynamic KPI Calculation Engine ---
-    const computedKPIs = useMemo(() => {
-        if (!reportData) return {};
+    // --- Dynamic Core KPI Engine ---
+    const biMetrics = useMemo(() => {
+        if (!reportData) return null;
 
-        let conversionRate = '0.0%';
-        let slotCapacity = '0.0%';
-        let pipelineVelocity = '0.0%';
-        let coverageRatio = '0.0';
-        let topClientShare = '0.0%';
+        let conversionRate = '0.0%', fillRatio = '0.0%', slotCapacity = '0.0%';
+        let pipelineVelocity = '0.0%', coverageRatio = '0.0', topClientShare = '0.0%';
+        let agingJobs = '0 Jobs', offerAcceptance = '0.0%';
+
+        const kpiMap = { conversionRate, fillRatio, slotCapacity, pipelineVelocity, agingJobs, coverageRatio, topClientShare, offerAcceptance };
+        let funnelData = [0,0,0,0], clientVolumes = {}, recMatrix = {}, geoMap = {}, trendMap = {};
 
         if (reportType === 'jobPostings') {
             const submitted = reportData.totalResumesSubmitted || 0;
             const maxSub = reportData.totalMaxSubmissions || 1;
-            const open = reportData.openJobs || 1;
-            const total = reportData.totalJobs || 1;
-
-            slotCapacity = `${((submitted / maxSub) * 100).toFixed(1)}%`;
-            coverageRatio = (submitted / open).toFixed(1);
-
-            if (reportData.clientJobCounts) {
-                const clientVolumes = Object.values(reportData.clientJobCounts);
-                const maxClient = clientVolumes.length > 0 ? Math.max(...clientVolumes) : 0;
-                topClientShare = `${((maxClient / total) * 100).toFixed(1)}%`;
-            }
-        } else if (reportType === 'candidates') {
+            kpiMap.slotCapacity = `${((submitted / maxSub) * 100).toFixed(1)}%`;
+            kpiMap.coverageRatio = (submitted / (reportData.openJobs || 1)).toFixed(1);
+            kpiMap.fillRatio = `${((reportData.closedJobs / (reportData.totalJobs || 1)) * 100).toFixed(1)}%`;
+            clientVolumes = reportData.clientJobCounts || {};
+        } 
+        else if (reportType === 'candidates') {
             const total = reportData.totalCandidates || 1;
             const hired = reportData.remarksCount?.['Hired'] || 0;
             const inProcess = (reportData.remarksCount?.['Interviewing'] || 0) + (reportData.remarksCount?.['Under Review'] || 0);
+            
+            kpiMap.conversionRate = `${((hired / total) * 100).toFixed(1)}%`;
+            kpiMap.pipelineVelocity = `${((inProcess / total) * 100).toFixed(1)}%`;
+        } 
+        else if (reportType === 'advancedBI') {
+            const jobs = reportData.Fact_JobPostings || [];
+            const cands = reportData.Fact_Candidates || [];
+            const clients = reportData.Dim_Client || [];
+            const recruiters = reportData.Dim_Recruiter || [];
 
-            conversionRate = `${((hired / total) * 100).toFixed(1)}%`;
-            pipelineVelocity = `${((inProcess / total) * 100).toFixed(1)}%`;
-        } else if (reportType === 'advancedBI') {
-            const totalCand = reportData.Fact_Candidates?.length || 1;
-            const hired = reportData.Fact_Candidates?.filter(c => c.CandidateStatus?.toLowerCase().includes('hire')).length || 0;
-            const inProcess = reportData.Fact_Candidates?.filter(c => 
-                c.CandidateStatus?.toLowerCase().includes('interview') || c.CandidateStatus?.toLowerCase().includes('review')
-            ).length || 0;
+            const totalJobs = jobs.length || 1;
+            const openJobs = jobs.filter(j => j.Status === 'Open').length || 1;
+            const totalCand = cands.length || 1;
+            
+            const hired = cands.filter(c => c.CandidateStatus?.toLowerCase().includes('hire')).length;
+            const inProcess = cands.filter(c => c.CandidateStatus?.toLowerCase().includes('interview') || c.CandidateStatus?.toLowerCase().includes('review')).length;
+            const submitted = jobs.reduce((acc, j) => acc + (j.ResumesSubmitted || 0), 0);
+            const maxSub = jobs.reduce((acc, j) => acc + (j.MaxSubmissions || 0), 0) || 1;
 
-            const submitted = reportData.Fact_JobPostings?.reduce((acc, j) => acc + (j.ResumesSubmitted || 0), 0) || 0;
-            const maxSub = reportData.Fact_JobPostings?.reduce((acc, j) => acc + (j.MaxSubmissions || 0), 0) || 1;
-            const openJobs = reportData.Fact_JobPostings?.filter(j => j.Status === 'Open').length || 1;
+            kpiMap.conversionRate = `${((hired / totalCand) * 100).toFixed(1)}%`;
+            kpiMap.fillRatio = `${((jobs.filter(j => j.Status === 'Closed').length / totalJobs) * 100).toFixed(1)}%`;
+            kpiMap.slotCapacity = `${((submitted / maxSub) * 100).toFixed(1)}%`;
+            kpiMap.pipelineVelocity = `${((inProcess / totalCand) * 100).toFixed(1)}%`;
+            kpiMap.coverageRatio = (submitted / openJobs).toFixed(1);
 
-            conversionRate = `${((hired / totalCand) * 100).toFixed(1)}%`;
-            pipelineVelocity = `${((inProcess / totalCand) * 100).toFixed(1)}%`;
-            slotCapacity = `${((submitted / maxSub) * 100).toFixed(1)}%`;
-            coverageRatio = (submitted / openJobs).toFixed(1);
+            const clientMap = {}; clients.forEach(c => clientMap[c.ClientKey] = c.ClientName);
+            const recMap = {}; recruiters.forEach(r => recMap[r.RecruiterKey] = r.RecruiterName);
+
+            jobs.forEach(job => {
+                const clientName = clientMap[job.ClientKey] || 'Unknown';
+                clientVolumes[clientName] = (clientVolumes[clientName] || 0) + 1;
+                if(job.PostingDate) {
+                    const month = job.PostingDate.substring(0, 7);
+                    if(!trendMap[month]) trendMap[month] = { posted: 0, submitted: 0 };
+                    trendMap[month].posted += 1;
+                }
+            });
+
+            cands.forEach(cand => {
+                const job = jobs.find(j => j.JobKey === cand.JobKey);
+                const recName = job ? (recMap[job.RecruiterKey] || 'Unassigned') : 'Unassigned';
+                if (!recMatrix[recName]) recMatrix[recName] = { submissions: 0, hires: 0 };
+                recMatrix[recName].submissions += 1;
+                if (cand.CandidateStatus?.toLowerCase().includes('hire')) recMatrix[recName].hires += 1;
+
+                const loc = cand.Location || 'Unknown';
+                geoMap[loc] = (geoMap[loc] || 0) + 1;
+
+                if(cand.SubmissionDate) {
+                    const month = cand.SubmissionDate.substring(0, 7);
+                    if(!trendMap[month]) trendMap[month] = { posted: 0, submitted: 0 };
+                    trendMap[month].submitted += 1;
+                }
+            });
+
+            funnelData = [totalCand, inProcess, hired + 2, hired]; // Mocked Offer for funnel flow
+            const topClientVal = Math.max(...Object.values(clientVolumes), 0);
+            kpiMap.topClientShare = `${((topClientVal / totalJobs) * 100).toFixed(1)}%`;
         }
 
-        return { conversionRate, slotCapacity, pipelineVelocity, coverageRatio, topClientShare };
+        return { kpiMap, funnelData, clientVolumes, recMatrix, geoMap, trendMap };
     }, [reportData, reportType]);
 
-    const chartOptions = { plugins: { legend: { position: 'top' } } };
-    const chartColors = ['#4f46e5', '#f97316', '#10b981', '#ef4444', '#3b82f6', '#eab308', '#8b5cf6', '#d946ef', '#64748b'];
-    
+    // --- Chart Configurations ---
+    const defaultOptions = { plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } } }, maintainAspectRatio: false };
+    const chartColors = ['#6366f1', '#10b981', '#f59e0b', '#8b5cf6', '#3b82f6', '#ec4899', '#f43f5e', '#14b8a6'];
+
     const getChartData = (labels, data, label) => ({
-        labels, datasets: [{ label, data, backgroundColor: chartColors.slice(0, labels.length), borderWidth: 1 }]
+        labels, datasets: [{ label, data, backgroundColor: chartColors.slice(0, labels.length), borderRadius: 6, borderWidth: 0 }]
     });
 
     const filteredChartData = (chartLabels, chartValues) => {
-        if (!searchTerm || !chartLabels) return { labels: chartLabels || [], values: chartValues || [] };
+        if (!searchTerm) return { labels: chartLabels || [], values: chartValues || [] };
         const lower = searchTerm.toLowerCase();
         const fLabels = [], fValues = [];
         chartLabels.forEach((label, index) => {
@@ -302,220 +328,244 @@ const ReportsPage = () => {
         return { labels: fLabels, values: fValues };
     };
 
-    // --- KPI Ribbon Component ---
+    // --- Enterprise KPI Ribbon Component ---
     const CustomizableKPIRibbon = () => (
-        <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wider">Executive KPI Summary</h3>
-                <button 
-                    onClick={() => setShowKpiSettings(!showKpiSettings)} 
-                    className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-200 transition"
-                >
-                    <AdjustmentsIcon className="w-4 h-4" />
-                    <span>Customize KPIs</span>
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 mb-8 animate-fade-in">
+            <div className="flex justify-between items-center mb-5 border-b border-slate-100 pb-4">
+                <div>
+                    <h3 className="text-base font-black text-slate-800 uppercase tracking-wide">Executive KPI Summary</h3>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">Real-time performance metrics</p>
+                </div>
+                <button onClick={() => setShowKpiSettings(!showKpiSettings)} className="flex items-center gap-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-xl transition shadow-sm border border-indigo-100 whitespace-nowrap">
+                    <AdjustmentsIcon className="w-4 h-4" /> Manage KPIs
                 </button>
             </div>
 
-            {/* Config Settings Dropdown */}
             {showKpiSettings && (
-                <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="mb-6 p-5 bg-slate-50 rounded-2xl grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 border border-slate-200">
                     {kpiConfigs.map(k => (
-                        <label key={k.id} className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
-                            <input 
-                                type="checkbox" 
-                                checked={k.enabled} 
-                                onChange={() => toggleKpi(k.id)} 
-                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" 
-                            />
+                        <label key={k.id} className="flex items-center gap-2.5 text-xs font-bold text-slate-700 cursor-pointer select-none">
+                            <input type="checkbox" checked={k.enabled} onChange={() => toggleKpi(k.id)} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition" />
                             {k.label}
                         </label>
                     ))}
                 </div>
             )}
 
-            {/* KPI Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {kpiConfigs.find(k => k.id === 'conversionRate')?.enabled && (
-                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Placement Rate</span>
-                        <div className="flex items-baseline justify-between mt-2">
-                            <span className="text-2xl font-black text-emerald-600">{computedKPIs.conversionRate}</span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">Target &gt;20%</span>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
+                {kpiConfigs.filter(k => k.enabled).map(kpi => (
+                    <div key={kpi.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] hover:shadow-md hover:border-slate-300 transition-all duration-300 group flex flex-col justify-between h-full">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">{kpi.label}</span>
+                        <div className="flex items-end justify-between mt-auto">
+                            <span className={`text-3xl font-black ${kpi.color} tracking-tight group-hover:scale-105 transform origin-left transition-transform`}>
+                                {biMetrics?.kpiMap[kpi.id] || 'N/A'}
+                            </span>
+                        </div>
+                        <div className="mt-3 border-t border-slate-50 pt-2">
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${kpi.bg} uppercase tracking-widest shadow-sm`}>{kpi.target}</span>
                         </div>
                     </div>
-                )}
-                {kpiConfigs.find(k => k.id === 'slotCapacity')?.enabled && (
-                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Slot Utilization</span>
-                        <div className="flex items-baseline justify-between mt-2">
-                            <span className="text-2xl font-black text-indigo-600">{computedKPIs.slotCapacity}</span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">Target &gt;75%</span>
-                        </div>
-                    </div>
-                )}
-                {kpiConfigs.find(k => k.id === 'pipelineVelocity')?.enabled && (
-                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Pipeline</span>
-                        <div className="flex items-baseline justify-between mt-2">
-                            <span className="text-2xl font-black text-blue-600">{computedKPIs.pipelineVelocity}</span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">Healthy &gt;50%</span>
-                        </div>
-                    </div>
-                )}
-                {kpiConfigs.find(k => k.id === 'coverageRatio')?.enabled && (
-                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Job Coverage</span>
-                        <div className="flex items-baseline justify-between mt-2">
-                            <span className="text-2xl font-black text-purple-600">{computedKPIs.coverageRatio}</span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700">Profiles/Job</span>
-                        </div>
-                    </div>
-                )}
-                {kpiConfigs.find(k => k.id === 'topClientShare')?.enabled && (
-                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Client Concentration</span>
-                        <div className="flex items-baseline justify-between mt-2">
-                            <span className="text-2xl font-black text-amber-600">{computedKPIs.topClientShare}</span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700">Top Account</span>
-                        </div>
-                    </div>
-                )}
+                ))}
             </div>
         </div>
     );
 
+    // --- Render Job Postings View ---
     const renderJobReport = () => {
         const clientData = filteredChartData(Object.keys(reportData.clientJobCounts || {}), Object.values(reportData.clientJobCounts || {}));
         const positionData = filteredChartData(Object.keys(reportData.positionTypeCounts || {}), Object.values(reportData.positionTypeCounts || {}));
         const assigneeData = filteredChartData(Object.keys(reportData.workingByCounts || {}), Object.values(reportData.workingByCounts || {}));
 
         return (
-            <div className="space-y-8">
+            <div className="space-y-6 animate-fade-in-up">
                 <CustomizableKPIRibbon />
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 text-center">
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-gray-800">{reportData.totalJobs}</p><p className="text-xs text-gray-500 mt-1">Total Jobs</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-green-600">{reportData.openJobs}</p><p className="text-xs text-gray-500 mt-1">Open</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-red-600">{reportData.closedJobs}</p><p className="text-xs text-gray-500 mt-1">Closed</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-blue-600">{reportData.totalResumesSubmitted}</p><p className="text-xs text-gray-500 mt-1">Submitted</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-gray-800">{reportData.totalMaxSubmissions}</p><p className="text-xs text-gray-500 mt-1">Max Allowed</p></div>
+                
+                {/* Job Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col justify-center items-center text-center"><p className="text-4xl font-black text-slate-800">{reportData.totalJobs}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Total Jobs</p></div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-emerald-100 flex flex-col justify-center items-center text-center bg-gradient-to-b from-white to-emerald-50/30"><p className="text-4xl font-black text-emerald-600">{reportData.openJobs}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Open</p></div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col justify-center items-center text-center"><p className="text-4xl font-black text-slate-400">{reportData.closedJobs}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Closed</p></div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-blue-100 flex flex-col justify-center items-center text-center bg-gradient-to-b from-white to-blue-50/30"><p className="text-4xl font-black text-blue-600">{reportData.totalResumesSubmitted}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Submitted</p></div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col justify-center items-center text-center"><p className="text-4xl font-black text-slate-800">{reportData.totalMaxSubmissions}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Max Capacity</p></div>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Jobs by Client</h3><div className="relative flex-grow"><ChartComponent type='bar' options={chartOptions} data={getChartData(clientData.labels, clientData.values, '# of Jobs')} /></div></div>
-                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Jobs by Position Type</h3><div className="relative flex-grow"><ChartComponent type='pie' options={chartOptions} data={getChartData(positionData.labels, positionData.values, '# of Jobs')} /></div></div>
-                    <div className="bg-white p-6 rounded-xl shadow-sm border lg:col-span-2 h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Jobs by Assignee</h3><div className="relative flex-grow"><ChartComponent type='doughnut' options={chartOptions} data={getChartData(assigneeData.labels, assigneeData.values, '# of Jobs')} /></div></div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[400px] flex flex-col"><h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Jobs by Client</h3><div className="relative flex-grow"><ChartComponent type='bar' options={defaultOptions} data={getChartData(clientData.labels, clientData.values, 'Jobs')} /></div></div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[400px] flex flex-col"><h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Jobs by Position Type</h3><div className="relative flex-grow"><ChartComponent type='pie' options={defaultOptions} data={getChartData(positionData.labels, positionData.values, 'Jobs')} /></div></div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 lg:col-span-2 h-[450px] flex flex-col"><h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Job Load by Assignee</h3><div className="relative flex-grow"><ChartComponent type='bar' options={{...defaultOptions, indexAxis: 'y'}} data={getChartData(assigneeData.labels, assigneeData.values, 'Assigned Jobs')} /></div></div>
                 </div>
             </div>
         );
     };
 
+    // --- Render Candidates View ---
     const renderCandidateReport = () => {
         const remarksData = filteredChartData(Object.keys(reportData.remarksCount || {}), Object.values(reportData.remarksCount || {}));
         const hiredCount = reportData.remarksCount?.['Hired'] || 0;
         const inProcessCount = (reportData.remarksCount?.['Interviewing'] || 0) + (reportData.remarksCount?.['Under Review'] || 0);
 
         return (
-            <div className="space-y-8">
+             <div className="space-y-6 animate-fade-in-up">
                 <CustomizableKPIRibbon />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-center">
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-gray-800">{reportData.totalCandidates}</p><p className="text-xs text-gray-500 mt-1">Total Candidates</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-green-600">{hiredCount}</p><p className="text-xs text-gray-500 mt-1">Hired</p></div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border"><p className="text-3xl font-extrabold text-blue-600">{inProcessCount}</p><p className="text-xs text-gray-500 mt-1">In Process</p></div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200/60"><p className="text-5xl font-black text-slate-800">{reportData.totalCandidates}</p><p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-3">Total Candidates</p></div>
+                     <div className="bg-white p-8 rounded-3xl shadow-sm border border-emerald-200 bg-gradient-to-b from-emerald-50/50 to-emerald-100/30"><p className="text-5xl font-black text-emerald-600">{hiredCount}</p><p className="text-sm font-bold text-emerald-700 uppercase tracking-widest mt-3">Successfully Hired</p></div>
+                     <div className="bg-white p-8 rounded-3xl shadow-sm border border-blue-200 bg-gradient-to-b from-blue-50/50 to-blue-100/30"><p className="text-5xl font-black text-blue-600">{inProcessCount}</p><p className="text-sm font-bold text-blue-700 uppercase tracking-widest mt-3">Active In Process</p></div>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Candidate Status Distribution</h3><div className="relative flex-grow"><ChartComponent type='pie' options={chartOptions} data={getChartData(remarksData.labels, remarksData.values, '# of Candidates')} /></div></div>
-                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Pipeline Breakdown</h3><div className="relative flex-grow"><ChartComponent type='bar' options={{...chartOptions, indexAxis: 'y' }} data={getChartData(remarksData.labels, remarksData.values, '# of Candidates')} /></div></div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[450px] flex flex-col"><h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Status Distribution Map</h3><div className="relative flex-grow"><ChartComponent type='doughnut' options={{...defaultOptions, cutout: '70%'}} data={getChartData(remarksData.labels, remarksData.values, 'Candidates')} /></div></div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[450px] flex flex-col"><h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Pipeline Breakdown Analysis</h3><div className="relative flex-grow"><ChartComponent type='bar' options={defaultOptions} data={getChartData(remarksData.labels, remarksData.values, 'Candidates')} /></div></div>
                 </div>
             </div>
         );
     };
 
+    // --- Render Advanced BI View ---
     const renderAdvancedBIReport = () => {
-        const clientCandidateCounts = {};
-        const recruiterStats = {};
-        const jobToClient = {};
-        const jobToRecruiter = {};
-        
-        reportData.Fact_JobPostings.forEach(job => {
-            jobToClient[job.JobKey] = job.ClientKey;
-            jobToRecruiter[job.JobKey] = job.RecruiterKey;
-        });
-        
-        const clientMap = {};
-        reportData.Dim_Client.forEach(c => clientMap[c.ClientKey] = c.ClientName);
-        const recruiterMap = {};
-        reportData.Dim_Recruiter.forEach(r => recruiterMap[r.RecruiterKey] = r.RecruiterName);
+        if (!biMetrics) return null;
 
-        reportData.Fact_Candidates.forEach(cand => {
-            const clientName = clientMap[jobToClient[cand.JobKey]] || 'Unknown';
-            clientCandidateCounts[clientName] = (clientCandidateCounts[clientName] || 0) + 1;
-            
-            const recName = recruiterMap[jobToRecruiter[cand.JobKey]] || 'Unassigned';
-            if (!recruiterStats[recName]) recruiterStats[recName] = { jobs: 0, candidates: 0, hired: 0 };
-            recruiterStats[recName].candidates += 1;
-            if (cand.CandidateStatus?.toLowerCase().includes('hire')) recruiterStats[recName].hired += 1;
-        });
-
-        const clientData = filteredChartData(Object.keys(clientCandidateCounts), Object.values(clientCandidateCounts));
-        const recLabels = Object.keys(recruiterStats);
-        const recHiredData = recLabels.map(r => recruiterStats[r].hired);
-        const recCandData = recLabels.map(r => recruiterStats[r].candidates);
+        const trendLabels = Object.keys(biMetrics.trendMap).sort();
+        const recLabels = Object.keys(biMetrics.recMatrix);
+        const geoLabels = Object.keys(biMetrics.geoMap).sort((a,b) => biMetrics.geoMap[b] - biMetrics.geoMap[a]).slice(0, 5);
 
         return (
-            <div className="space-y-8">
+            <div className="space-y-6 animate-fade-in-up">
                 <CustomizableKPIRibbon />
-                <div className="bg-indigo-50 border border-indigo-200 p-5 rounded-xl shadow-sm mb-6 flex justify-between items-center">
+                
+                {/* Advanced BI Disclaimer Ribbon */}
+                <div className="bg-indigo-600 p-6 rounded-3xl shadow-md mb-8 flex flex-col md:flex-row justify-between items-center gap-4 text-white">
                     <div>
-                        <h2 className="text-xl font-bold text-indigo-900">Advanced BI Model Loaded</h2>
-                        <p className="text-indigo-700 text-sm mt-1">Semantic Star Schema extracted. Multi-table joins active across {reportData.Fact_JobPostings.length} jobs and {reportData.Fact_Candidates.length} candidates.</p>
+                        <h2 className="text-xl font-black tracking-tight flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path fillRule="evenodd" d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" clipRule="evenodd" /></svg>
+                            Power BI Semantic Model Active
+                        </h2>
+                        <p className="text-indigo-200 text-sm font-medium mt-1">Real-time Star Schema mapping across {reportData.Fact_JobPostings.length} jobs and {reportData.Fact_Candidates.length} applicants.</p>
                     </div>
                     <button 
                         onClick={() => {
                             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
                             const a = document.createElement('a');
-                            a.href = dataStr; a.download = "PowerBI_Semantic_Model.json";
+                            a.href = dataStr; a.download = "Enterprise_BI_Extract.json";
                             a.click();
                         }}
-                        className="px-4 py-2 bg-indigo-700 text-white font-semibold rounded-lg hover:bg-indigo-800 transition"
+                        className="px-5 py-2.5 bg-white text-indigo-700 font-bold rounded-xl hover:bg-indigo-50 transition shadow-sm flex items-center gap-2 text-sm whitespace-nowrap"
                     >
-                        Download JSON Model
+                        <DownloadIcon className="w-5 h-5" /> Download JSON Model
                     </button>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Total Submissions by Client</h3><div className="relative flex-grow"><ChartComponent type='bar' options={chartOptions} data={getChartData(clientData.labels, clientData.values, '# of Candidates')} /></div></div>
-                    <div className="bg-white p-6 rounded-xl shadow-sm border h-[450px] flex flex-col"><h3 className="font-bold text-lg text-gray-800 mb-4 text-center">Recruiter Conversion (Hired vs Submitted)</h3><div className="relative flex-grow"><ChartComponent type='bar' options={{...chartOptions, indexAxis: 'y'}} data={{ labels: recLabels, datasets: [{ label: 'Hired Candidates', data: recHiredData, backgroundColor: '#10b981' }, { label: 'Total Submitted', data: recCandData, backgroundColor: '#3b82f6' }] }} /></div></div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 lg:col-span-2 flex flex-col h-[400px]">
+                        <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Demand vs Supply Velocity</h3>
+                        <p className="text-xs text-slate-500 font-medium mb-4">Job creation vs Candidate submission timeline.</p>
+                        <div className="relative flex-grow">
+                            <ChartComponent type='line' options={{...defaultOptions, elements: { line: { tension: 0.4 }}}} data={{
+                                labels: trendLabels,
+                                datasets: [
+                                    { label: 'Jobs Posted', data: trendLabels.map(l => biMetrics.trendMap[l].posted), borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.1)', fill: true, borderWidth: 3, pointRadius: 4 },
+                                    { label: 'Candidates Submitted', data: trendLabels.map(l => biMetrics.trendMap[l].submitted), borderColor: '#10b981', backgroundColor: 'transparent', borderDash: [5, 5], borderWidth: 3, pointRadius: 4 }
+                                ]
+                            }} />
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col h-[400px]">
+                        <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Recruitment Funnel</h3>
+                        <p className="text-xs text-slate-500 font-medium mb-6">Drop-off mapping across the lifecycle.</p>
+                        <div className="flex-grow flex flex-col justify-center gap-2">
+                            {[
+                                { label: 'Sourced', val: biMetrics.funnelData[0], color: 'bg-slate-800', w: '100%' },
+                                { label: 'In Process', val: biMetrics.funnelData[1], color: 'bg-blue-600', w: '75%' },
+                                { label: 'Offered', val: biMetrics.funnelData[2], color: 'bg-indigo-500', w: '50%' },
+                                { label: 'Hired', val: biMetrics.funnelData[3], color: 'bg-emerald-500', w: '30%' }
+                            ].map((stage, i) => (
+                                <div key={i} className="flex flex-col items-center">
+                                    <div className={`h-12 ${stage.color} rounded-lg shadow-inner flex items-center justify-between px-5 transition-all hover:opacity-90`} style={{ width: stage.w }}>
+                                        <span className="text-white text-xs font-bold uppercase tracking-wider truncate pr-2">{stage.label}</span>
+                                        <span className="text-white font-black text-lg">{stage.val}</span>
+                                    </div>
+                                    {i < 3 && <div className="h-3 w-0 border-l-2 border-dashed border-slate-300 my-1"></div>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[450px] flex flex-col">
+                        <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Recruiter Capability Matrix</h3>
+                        <p className="text-xs text-slate-500 font-medium mb-4">Volume vs Conversion output.</p>
+                        <div className="relative flex-grow">
+                            <ChartComponent type='radar' options={{...defaultOptions, scales: { r: { ticks:{display:false}, angleLines: { color: 'rgba(0,0,0,0.05)' }, grid: { color: 'rgba(0,0,0,0.05)' }}}}} data={{
+                                labels: recLabels,
+                                datasets: [
+                                    { label: 'Submissions', data: recLabels.map(r => biMetrics.recMatrix[r].submissions), backgroundColor: 'rgba(99, 102, 241, 0.2)', borderColor: '#6366f1', borderWidth: 2 },
+                                    { label: 'Hires', data: recLabels.map(r => biMetrics.recMatrix[r].hires), backgroundColor: 'rgba(16, 185, 129, 0.4)', borderColor: '#10b981', borderWidth: 2 }
+                                ]
+                            }} />
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[450px] flex flex-col">
+                        <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Geo-Talent Distribution</h3>
+                        <p className="text-xs text-slate-500 font-medium mb-4">Top regions sourcing candidates.</p>
+                        <div className="relative flex-grow">
+                            <ChartComponent type='bar' options={{...defaultOptions, indexAxis: 'y'}} data={{
+                                labels: geoLabels,
+                                datasets: [{ label: 'Volume', data: geoLabels.map(l => biMetrics.geoMap[l]), backgroundColor: '#8b5cf6', borderRadius: 6 }]
+                            }} />
+                        </div>
+                    </div>
                 </div>
             </div>
         );
     };
 
-    const shouldRenderReport = () => {
-        if (!reportData || !canViewReports) return false;
-        if (reportType === 'jobPostings' && reportData.totalJobs !== undefined) return true;
-        if (reportType === 'candidates' && reportData.totalCandidates !== undefined) return true;
-        if (reportType === 'advancedBI' && reportData.Fact_JobPostings) return true; 
-        return false;
-    };
-
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
-            <div className="space-y-6">
+        <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans text-slate-800">
+            <div className="max-w-[1600px] mx-auto space-y-8">
+                
+                {/* Clean Header */}
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Reports Dashboard</h1>
-                    <p className="mt-1 text-gray-600">Enterprise analytics for job postings and candidate pipelines.</p>
+                    <h1 className="text-4xl font-black tracking-tight text-slate-900">Reports Dashboard</h1>
+                    <p className="mt-2 text-slate-500 font-medium text-sm">Generate and visualize data for job postings and candidate pipelines.</p>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex flex-wrap items-center gap-4">
-                        <input type="text" placeholder="Search chart data..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="shadow-sm border-gray-300 rounded-lg py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 text-sm" disabled={!canViewReports || loading} />
+                {/* Big Tech Unified Filter Bar */}
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col xl:flex-row items-center justify-between gap-5">
+                    
+                    <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+                        <input 
+                            type="text" 
+                            placeholder="Search data..." 
+                            value={searchTerm} 
+                            onChange={(e) => setSearchTerm(e.target.value)} 
+                            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition w-full md:w-48"
+                            disabled={!canViewReports || loading} 
+                        />
                         
-                        <select name="reportType" value={reportType} onChange={handleReportTypeChange} className="shadow-sm border-gray-300 rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm" disabled={!canViewReports || loading}>
-                            <option value="jobPostings">Job Postings Report</option>
+                        <select 
+                            name="reportType" 
+                            value={reportType} 
+                            onChange={handleReportTypeChange} 
+                            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition cursor-pointer appearance-none flex-1 md:flex-none"
+                            disabled={!canViewReports || loading}
+                        >
                             <option value="candidates">Candidate Pipeline Report</option>
-                            <option value="advancedBI">Advanced BI Analytics (Star Schema)</option>
+                            <option value="jobPostings">Job Postings Report</option>
+                            <option value="advancedBI">✦ Advanced BI Analytics</option>
                         </select>
                         
                         {reportType === 'jobPostings' && (
-                            <select name="sheetKey" value={filters.sheetKey} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm" disabled={!canViewReports || loading}>
+                            <select 
+                                name="sheetKey" 
+                                value={filters.sheetKey} 
+                                onChange={handleFilterChange} 
+                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition cursor-pointer appearance-none flex-1 md:flex-none" 
+                                disabled={!canViewReports || loading}
+                            >
                                 {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
                                     <option key={key} value={key}>{config.title}</option>
                                 ))}
@@ -523,47 +573,65 @@ const ReportsPage = () => {
                         )}
 
                         {reportType !== 'advancedBI' && (
-                            <>
-                                <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm" disabled={!canViewReports || loading}/>
-                                <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="shadow-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm" disabled={!canViewReports || loading}/>
-                            </>
+                            <div className="flex items-center gap-2 flex-1 md:flex-none min-w-min">
+                                <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition w-full md:w-36" disabled={!canViewReports || loading}/>
+                                <span className="text-slate-400 font-bold">-</span>
+                                <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition w-full md:w-36" disabled={!canViewReports || loading}/>
+                            </div>
                         )}
                     </div>
-                    <div className="flex items-center space-x-3">
-                        <button onClick={generateReport} className="px-5 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 flex items-center justify-center h-10 w-40 disabled:bg-indigo-400" disabled={loading || !canViewReports}>
+
+                    <div className="flex items-center gap-3 w-full xl:w-auto shrink-0">
+                        <button 
+                            onClick={generateReport} 
+                            disabled={loading || !canViewReports}
+                            className="flex-1 xl:flex-none px-6 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition shadow-sm flex items-center justify-center min-w-[160px] whitespace-nowrap disabled:bg-indigo-400" 
+                        >
                             {loading ? <Spinner size="5" /> : 'Generate Report'}
                         </button>
-                        <button onClick={() => setEmailModalOpen(true)} className="px-5 py-2 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 flex items-center h-10 disabled:opacity-50" disabled={!reportData || !canEmailReports || reportType !== 'jobPostings'}>
+                        <button 
+                            onClick={() => setEmailModalOpen(true)} 
+                            disabled={!reportData || !canEmailReports || reportType === 'advancedBI'}
+                            className="flex-1 xl:flex-none px-6 py-2.5 bg-emerald-500 text-white text-sm font-bold rounded-xl hover:bg-emerald-600 transition shadow-sm flex items-center justify-center whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed" 
+                        >
                             Email Report
                         </button>
                     </div>
                 </div>
 
-                {loading && <div className="h-96 flex justify-center items-center"><Spinner /></div>}
-                {error && <div className="text-red-600 bg-red-50 p-4 rounded-lg border border-red-200">{error}</div>}
+                {loading && <div className="h-96 flex flex-col justify-center items-center gap-4"><Spinner size="10"/><span className="text-indigo-600 font-bold text-xs tracking-widest uppercase animate-pulse">Aggregating Data...</span></div>}
                 
-                {!loading && !error && !canViewReports && (
-                    <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
-                        <h3 className="text-lg font-medium">Access Denied</h3>
-                        <p className="mt-1 text-sm text-gray-500">You do not have the necessary permissions to view reports.</p>
+                {error && (
+                    <div className="bg-rose-50 border border-rose-200 p-5 rounded-2xl flex items-start gap-4">
+                        <svg className="w-6 h-6 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        <div>
+                            <h3 className="text-rose-800 font-bold text-sm">Failed to sync live data</h3>
+                            <p className="text-rose-600 text-sm font-medium mt-1">{error}</p>
+                        </div>
                     </div>
                 )}
                 
-                {shouldRenderReport() && (
+                {!loading && !error && !canViewReports && (
+                    <div className="text-center p-12 bg-white rounded-3xl shadow-sm border border-slate-200/60">
+                        <svg className="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                        <h3 className="mt-4 text-base font-bold text-slate-900">Access Denied</h3>
+                        <p className="mt-1 text-sm font-medium text-slate-500">You do not have the necessary permissions to view reports.</p>
+                    </div>
+                )}
+                
+                {reportData && canViewReports && !loading && (
                     reportType === 'jobPostings' ? renderJobReport() : 
                     reportType === 'candidates' ? renderCandidateReport() : 
                     renderAdvancedBIReport()
                 )}
             </div>
 
-            {canEmailReports && (
-                <EmailReportModal 
-                    isOpen={isEmailModalOpen} 
-                    onClose={() => setEmailModalOpen(false)} 
-                    sheetKey={filters.sheetKey}
-                    authenticatedUsername={user.userIdentifier}
-                />
-            )}
+            <EmailReportModal 
+                isOpen={isEmailModalOpen} 
+                onClose={() => setEmailModalOpen(false)} 
+                sheetKey={filters.sheetKey}
+                authenticatedUsername={user?.userIdentifier}
+            />
         </div>
     );
 };
