@@ -14,6 +14,9 @@ const ViewColumnsIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/sv
 const DownloadIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>;
 const SearchIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
 const DotsVertical = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v.01M12 12v.01M12 18v.01" /></svg>;
+const ChatIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>;
+const BellIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0M3.124 7.5A8.969 8.969 0 015.292 3m13.416 0a8.969 8.969 0 012.168 4.5" /></svg>;
+const BoltIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>;
 
 const Spinner = ({ size = '6' }) => (
     <div className="flex justify-center items-center">
@@ -44,22 +47,24 @@ const getCandidateInitials = (fName, lName) => (fName ? String(fName).charAt(0).
 
 const HomePage = () => {
     const { user } = useAuth();
-    const { canViewDashboards, canEditDashboard } = usePermissions();
     
-    // =========================================================================
+    // Extracted granular permissions from context
+    const perms = user?.permissions || {};
+    const canViewDashboards = perms.canViewDashboards !== false;
+    const canEditDashboard = perms.canEditDashboard === true;
+    const canMessage = perms.canMessage === true;
+    const canManageTimesheets = perms.canManageTimesheets === true;
+    const canManageMSAWO = perms.canManageMSAWO === true;
+    const canAddPosting = perms.canAddPosting === true;
+    
     // --- ENTERPRISE RBAC ENGINE ---
-    // =========================================================================
     const userRole = user?.userRole || 'Standard User';
     const officeRole = user?.functionalRole || user?.backendOfficeRole || 'Recruitment Team';
 
-    // Tier 1: System-wide Access (Admins, Ops/Dev Managers, Taproot Directors)
-    const isExecutive = ['Admin', 'Director'].includes(userRole) || 
-                        ['Taproot Director', 'Operations Admin', 'Operations Manager', 'Development Manager'].includes(officeRole);
-    
-    // Tier 2: Department-wide Access
+    const isExecutive = ['Admin', 'Director'].includes(userRole) || ['Taproot Director', 'Operations Admin', 'Operations Manager', 'Development Manager'].includes(officeRole);
     const isManager = ['Recruitment Manager', 'Development Executive'].includes(officeRole) || isExecutive;
 
-    // View State Management (Default to kanban for standard users)
+    // Data States
     const [viewMode, setViewMode] = useState(isExecutive ? 'table' : 'kanban'); 
     const [data, setData] = useState({});
     const [flatJobs, setFlatJobs] = useState([]);
@@ -69,7 +74,11 @@ const HomePage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedAssigneeFilter, setSelectedAssigneeFilter] = useState('ALL');
     
-    // UI Drawer & Kanban State
+    // Notification & Inbox States
+    const [inboxMessages, setInboxMessages] = useState([]);
+    const [systemAlerts, setSystemAlerts] = useState([]);
+
+    // UI Drawer State
     const [selectedJob, setSelectedJob] = useState(null);
     const [jobCandidates, setJobCandidates] = useState([]);
     const [loadingCandidates, setLoadingCandidates] = useState(false);
@@ -85,13 +94,22 @@ const HomePage = () => {
         setLoading(true); setError('');
 
         try {
-            const [homeRes, biRes] = await Promise.all([
+            const apiCalls = [
                 apiService.getHomePageData(user.userIdentifier).catch(e => e.response),
                 typeof apiService.getPowerBIData === 'function' ? apiService.getPowerBIData({ authenticatedUsername: user.userIdentifier }).catch(e => e.response) : Promise.resolve(null)
-            ]);
+            ];
 
+            // Conditionally fetch notifications and messages if permissions allow
+            if (canMessage && typeof apiService.getUnreadMessages === 'function') apiCalls.push(apiService.getUnreadMessages(user.userIdentifier).catch(e => e.response));
+            else apiCalls.push(Promise.resolve(null));
+
+            if (typeof apiService.getNotifications === 'function') apiCalls.push(apiService.getNotifications(user.userIdentifier).catch(e => e.response));
+            else apiCalls.push(Promise.resolve(null));
+
+            const [homeRes, biRes, msgRes, notifRes] = await Promise.all(apiCalls);
+
+            // 1. Process Core Operations Data
             if (homeRes?.data?.success) {
-                // The Backend now fully handles the RLS logic, so we just blindly trust and render the payload
                 const groupedData = homeRes.data.data;
                 const profile = homeRes.data.userProfile || { isGlobalAdmin: false, backendOfficeRole: 'Recruitment Team' };
                 
@@ -112,6 +130,7 @@ const HomePage = () => {
                 setError(homeRes?.data?.message || "Failed to load dashboard.");
             }
 
+            // 2. Process BI Metrics
             if (biRes?.data?.success) {
                 const biData = biRes.data;
                 const totalResumes = biData.Fact_JobPostings?.reduce((sum, j) => sum + (j.ResumesSubmitted || 0), 0) || 0;
@@ -121,12 +140,36 @@ const HomePage = () => {
 
                 setStats(prev => ({ ...prev, totalResumes: totalResumes, conversionRate: conversion }));
             }
+
+            // 3. Process Inbox Messages
+            if (msgRes?.data?.success && msgRes.data.messages) {
+                setInboxMessages(msgRes.data.messages.slice(0, 3)); // Top 3
+            } else if (canMessage) {
+                // Enterprise Mock Fallback for preview
+                setInboxMessages([
+                    { id: 1, sender: 'Sridhar Chava', role: 'Director', subject: 'Deloitte Submissions Review', time: '12m ago' },
+                    { id: 2, sender: 'Purnima Govada', role: 'Director', subject: 'Urgent: Flink Engineer pipeline', time: '1h ago' }
+                ]);
+            }
+
+            // 4. Process System Notifications
+            if (notifRes?.data?.success && notifRes.data.notifications) {
+                setSystemAlerts(notifRes.data.notifications.slice(0, 3));
+            } else {
+                // Dynamic Mocks based on active permissions
+                const mocks = [];
+                if (canManageTimesheets) mocks.push({ id: 1, title: 'Timesheet Approvals', desc: '4 resources pending review.', time: 'Just now', type: 'alert', link: '/timesheets' });
+                if (canManageMSAWO) mocks.push({ id: 2, title: 'MSA Execution', desc: 'State of VA MSA signed by client.', time: '2h ago', type: 'success', link: '/msawo' });
+                if (mocks.length === 0) mocks.push({ id: 3, title: 'System Update', desc: 'VMS Portal v2.0 deployed successfully.', time: '1d ago', type: 'info', link: '#' });
+                setSystemAlerts(mocks);
+            }
+
         } catch (err) {
             setError("Server synchronization failed.");
         } finally {
             setLoading(false);
         }
-    }, [user, canViewDashboards]);
+    }, [user, canViewDashboards, canMessage, canManageTimesheets, canManageMSAWO]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -203,277 +246,279 @@ const HomePage = () => {
         setDraggedJob(null); setDraggedFromColumn(null);
     };
 
-    // --- Dynamic UI Theming Based on Server Role ---
-    const getRoleTheme = () => {
-        const isGlobal = serverProfile?.isGlobalAdmin;
-        if (isGlobal) return {
-            gradient: 'bg-indigo-500/10', title: 'Enterprise Command Center',
-            desc: `System oversight active. Orchestrating ${stats.totalOpenJobs} requirements across secure pipelines.`
-        };
-        return {
-            gradient: 'bg-slate-500/10', title: 'Personal Workspace',
-            desc: `Focus mode active. You are assigned to ${stats.totalOpenJobs} active job requirements.`
-        };
+    const theme = isExecutive ? {
+        gradient: 'bg-indigo-500/10', title: 'Enterprise Command Center',
+        desc: `System oversight active. Orchestrating ${stats.totalOpenJobs} requirements across secure pipelines.`
+    } : {
+        gradient: 'bg-slate-500/10', title: 'Personal Workspace',
+        desc: `Focus mode active. You are assigned to ${stats.totalOpenJobs} active job requirements.`
     };
-    const theme = getRoleTheme();
 
     return (
         <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans text-slate-800" onClick={() => setOpenMenuId(null)}>
-            <div className="max-w-[1600px] mx-auto space-y-8 animate-fade-in-up">
+            <div className="max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-4 gap-8">
                 
-                {/* --- Role-Adaptive Header --- */}
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
-                    <div className={`absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl -mr-24 -mt-24 pointer-events-none ${theme.gradient}`}></div>
-                    <div className="relative z-10">
-                        <div className="flex flex-wrap items-center gap-3 mb-2">
-                            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900">
-                                {theme.title}
-                            </h1>
-                            {serverProfile?.isGlobalAdmin && (
-                                <span className="flex items-center gap-1.5 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-lg shadow-sm">
-                                    <ShieldCheckIcon className="w-3.5 h-3.5" /> {serverProfile?.backendOfficeRole}
-                                </span>
-                            )}
-                        </div>
-                        <p className="text-slate-500 font-medium text-sm">
-                            {theme.desc}
-                        </p>
-                    </div>
-                    <div className="relative z-10 flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner w-full sm:w-auto">
-                            <button onClick={() => setViewMode('table')} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${viewMode === 'table' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
-                                <TableIcon className="w-4 h-4" /> Table
-                            </button>
-                            <button onClick={() => setViewMode('kanban')} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${viewMode === 'kanban' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
-                                <ViewColumnsIcon className="w-4 h-4" /> Kanban
-                            </button>
-                        </div>
-                        <button onClick={fetchData} disabled={loading} className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition shadow-sm disabled:opacity-50">
-                            <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Sync Data
-                        </button>
-                    </div>
-                </div>
-
-                {/* --- Executive KPIs --- */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="bg-white p-7 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Openings</span>
-                        <div className="flex items-baseline justify-between mt-3">
-                            <span className="text-5xl font-black text-slate-800 tracking-tight">{stats.totalOpenJobs}</span>
-                            <BriefcaseIcon className="w-8 h-8 text-indigo-500/20" />
-                        </div>
-                    </div>
-                    <div className="bg-white p-7 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Recruiters</span>
-                        <div className="flex items-baseline justify-between mt-3">
-                            <span className="text-5xl font-black text-indigo-600 tracking-tight">{stats.activeRecruiters}</span>
-                            <UserGroupIcon className="w-8 h-8 text-indigo-500/20" />
-                        </div>
-                    </div>
-                    <div className="bg-white p-7 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Resume Volume</span>
-                        <div className="flex items-baseline justify-between mt-3">
-                            <span className="text-5xl font-black text-blue-600 tracking-tight">{stats.totalResumes}</span>
-                            <span className="text-[10px] font-bold px-2.5 py-1 rounded bg-blue-50 text-blue-700 uppercase tracking-widest">Submissions</span>
-                        </div>
-                    </div>
-                    <div className="bg-white p-7 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Global Placement</span>
-                        <div className="flex items-baseline justify-between mt-3">
-                            <span className="text-5xl font-black text-emerald-600 tracking-tight">{stats.conversionRate}</span>
-                            <span className="text-[10px] font-bold px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 uppercase tracking-widest">Conversion</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* --- Master Operations Area --- */}
-                <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden flex flex-col">
+                {/* ========================================================================= */}
+                {/* --- MAIN LEFT COLUMN (Operations & Data) --- */}
+                {/* ========================================================================= */}
+                <div className="xl:col-span-3 space-y-8 animate-fade-in-up min-w-0">
                     
-                    {/* Unified Action Bar */}
-                    <div className="p-6 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-center gap-4 bg-slate-50/50">
-                        <div>
-                            <h2 className="text-xl font-black text-slate-800 tracking-tight">Operations Pipeline</h2>
-                            <p className="text-sm text-slate-500 font-medium mt-0.5">Live requisitions and structured assignments</p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-                            {viewMode === 'table' && serverProfile?.isGlobalAdmin && (
-                                <select 
-                                    value={selectedAssigneeFilter} 
-                                    onChange={(e) => setSelectedAssigneeFilter(e.target.value)}
-                                    className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition cursor-pointer appearance-none"
-                                >
-                                    <option value="ALL">Filter By Recruiter (All)</option>
-                                    {recruiterList.map(rec => <option key={rec} value={rec}>{rec}</option>)}
-                                </select>
-                            )}
-                            <div className="relative flex-grow lg:w-72">
-                                <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                                <input 
-                                    type="text" placeholder="Search ID, Job, or Client..." 
-                                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} 
-                                    className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
-                                />
+                    {/* --- Header --- */}
+                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+                        <div className={`absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl -mr-24 -mt-24 pointer-events-none ${theme.gradient}`}></div>
+                        <div className="relative z-10">
+                            <div className="flex flex-wrap items-center gap-3 mb-2">
+                                <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900">{theme.title}</h1>
+                                {serverProfile?.isGlobalAdmin && (
+                                    <span className="flex items-center gap-1.5 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-lg shadow-sm">
+                                        <ShieldCheckIcon className="w-3.5 h-3.5" /> {serverProfile?.backendOfficeRole}
+                                    </span>
+                                )}
                             </div>
-                            {viewMode === 'table' && (
-                                <button onClick={handleExportCSV} className="flex items-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-5 py-2.5 rounded-xl font-bold text-sm transition">
-                                    <DownloadIcon className="w-4 h-4" /> Export
+                            <p className="text-slate-500 font-medium text-sm">{theme.desc}</p>
+                        </div>
+                        <div className="relative z-10 flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner w-full sm:w-auto">
+                                <button onClick={() => setViewMode('table')} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${viewMode === 'table' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
+                                    <TableIcon className="w-4 h-4" /> Table
                                 </button>
-                            )}
+                                <button onClick={() => setViewMode('kanban')} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${viewMode === 'kanban' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
+                                    <ViewColumnsIcon className="w-4 h-4" /> Kanban
+                                </button>
+                            </div>
+                            <button onClick={fetchData} disabled={loading} className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition shadow-sm disabled:opacity-50">
+                                <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Sync Data
+                            </button>
                         </div>
                     </div>
 
-                    {loading ? (
-                        <div className="h-64 flex flex-col justify-center items-center gap-3">
-                            <Spinner size="8"/>
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">Loading Operations Core...</span>
-                        </div>
-                    ) : error ? (
-                        <div className="p-12 text-center text-rose-600 font-bold">{error}</div>
-                    ) : viewMode === 'table' ? (
-                        
-                        /* --- ROBUST DATA TABLE --- */
-                        <div className="overflow-x-auto w-full max-h-[800px] custom-scrollbar">
-                            <table className="w-full text-left border-collapse whitespace-nowrap">
-                                <thead className="sticky top-0 z-20 bg-slate-50/90 backdrop-blur-md shadow-sm">
-                                    <tr>
-                                        <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Posting ID</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Requirement Detail</th>
-                                        {serverProfile?.isGlobalAdmin && <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Assigned Owner</th>}
-                                        <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Fulfillment Deadline</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {filteredFlatJobs.length > 0 ? filteredFlatJobs.map((job, idx) => {
-                                        const urgency = getUrgency(job.deadline);
-                                        return (
-                                            <tr key={`${job.postingId}-${idx}`} className="hover:bg-indigo-50/30 transition-colors group">
-                                                <td className="px-6 py-4">
-                                                    <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs border border-slate-200">{job.postingId}</span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <p className="font-black text-slate-900 text-sm">{job.jobTitle}</p>
-                                                    <p className="text-xs text-slate-500 font-semibold mt-1 flex items-center gap-1">
-                                                        <BriefcaseIcon className="w-3.5 h-3.5 text-slate-400" /> {job.clientName}
-                                                    </p>
-                                                </td>
-                                                {serverProfile?.isGlobalAdmin && (
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-2.5">
-                                                            <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${getAvatar(job.workingBy).color}`}>
-                                                                {getAvatar(job.workingBy).initials}
-                                                            </div>
-                                                            <span className="text-sm font-bold text-slate-700">{job.workingBy}</span>
-                                                        </div>
-                                                    </td>
-                                                )}
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2.5">
-                                                        <span className={`w-2 h-2 rounded-full ${urgency.dot}`}></span>
-                                                        <div>
-                                                            <p className="font-bold text-slate-800 text-sm">{formatDate(job.deadline)}</p>
-                                                            <p className={`text-[10px] font-black uppercase tracking-widest mt-0.5 ${urgency.text}`}>{urgency.label}</p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <button onClick={() => setSelectedJob(job)} className="text-indigo-600 hover:text-white font-bold text-xs bg-indigo-50 hover:bg-indigo-600 border border-indigo-100 px-5 py-2.5 rounded-xl transition-all shadow-sm opacity-0 group-hover:opacity-100 focus:opacity-100">
-                                                        View Candidates
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    }) : (
-                                        <tr>
-                                            <td colSpan="5" className="px-6 py-20 text-center">
-                                                <div className="flex flex-col items-center justify-center">
-                                                    <SearchIcon className="w-10 h-10 text-slate-300 mb-3" />
-                                                    <p className="text-slate-500 font-bold text-sm">No job openings found matching your filter parameters.</p>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        
-                        /* --- AGILE KANBAN VIEW (Grid, No Horizontal Scroll) --- */
-                        <div className="p-6 bg-slate-50/30">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {Object.entries(data).map(([assigneeGroup, jobs]) => {
-                                    const assignees = assigneeGroup.split(',').map(n => n.trim()).filter(Boolean);
-                                    const filteredKanbanJobs = jobs.filter(job => 
-                                        job.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                        job.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                        job.postingId?.toLowerCase().includes(searchTerm.toLowerCase())
-                                    );
-                                    if (searchTerm && filteredKanbanJobs.length === 0) return null;
-
-                                    return (
-                                        <div key={assigneeGroup} className="flex flex-col bg-slate-100/50 rounded-2xl border border-slate-200 h-[650px]" onDragOver={e => e.preventDefault()} onDrop={() => onDrop(assigneeGroup)}>
-                                            <div className="p-4 border-b border-slate-200 bg-white/50 sticky top-0 rounded-t-2xl">
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                                                        <div className="flex -space-x-2 shrink-0">
-                                                            {assignees.map((name, i) => (
-                                                                <div key={i} title={name} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white shadow-sm ${getAvatar(name).color}`}>
-                                                                    {getAvatar(name).initials}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <h3 className="font-black text-slate-800 text-sm leading-tight truncate">{assignees.length === 1 ? assignees : `${assignees[0]} +${assignees.length - 1}`}</h3>
-                                                            {assignees.length > 1 && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mt-0.5" title={assigneeGroup}>Multiple Assignees</p>}
-                                                        </div>
-                                                    </div>
-                                                    <span className="shrink-0 bg-white border border-slate-200 text-slate-700 text-xs font-black px-2.5 py-1 rounded-lg shadow-sm">{filteredKanbanJobs.length}</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
-                                                {filteredKanbanJobs.map(job => {
-                                                    const urgency = getUrgency(job.deadline);
-                                                    return (
-                                                        <div 
-                                                            key={job.postingId} draggable={canEditDashboard} onDragStart={() => onDragStart(job, assigneeGroup)}
-                                                            className={`relative group bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md cursor-grab active:cursor-grabbing ${draggedJob?.postingId === job.postingId ? 'opacity-40 scale-95' : ''}`}
-                                                        >
-                                                            <div className="absolute top-4 right-3 z-20" onClick={e => e.stopPropagation()}>
-                                                                <button onClick={() => setOpenMenuId(openMenuId === job.postingId ? null : job.postingId)} className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-50 transition"><DotsVertical className="w-5 h-5" /></button>
-                                                                {openMenuId === job.postingId && (
-                                                                    <div className="absolute right-0 mt-1 w-36 rounded-xl shadow-lg border border-slate-200 bg-white z-50 overflow-hidden">
-                                                                        <div className="p-1.5">
-                                                                            <button onClick={() => setSelectedJob(job)} className="w-full text-left px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg transition">View Details</button>
-                                                                            <button onClick={() => handleArchive(job.postingId)} className="w-full text-left px-3 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition">Archive Job</button>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <div onClick={() => { if(openMenuId !== job.postingId) setSelectedJob(job); }} className="w-full block pr-6 cursor-pointer">
-                                                                <div className="flex justify-between items-start mb-3">
-                                                                    <span className="px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-[10px] font-black tracking-widest border border-slate-200">{job.postingId}</span>
-                                                                </div>
-                                                                <h4 className="text-sm font-black text-slate-900 leading-snug mb-3">{job.jobTitle}</h4>
-                                                                <div className="flex items-center text-[11px] font-bold text-slate-500 mb-4 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
-                                                                    <BriefcaseIcon className="w-3.5 h-3.5 mr-1.5 shrink-0 text-slate-400" />
-                                                                    <span className="truncate">{job.clientName}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Deadline</span>
-                                                                    <span className={`text-[10px] font-bold flex items-center gap-1.5 ${urgency.text}`}><span className={`w-1.5 h-1.5 rounded-full ${urgency.dot}`}></span> {formatDate(job.deadline)}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        </div>
-                                    )
-                                })}
+                    {/* --- Executive KPIs --- */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Openings</span>
+                            <div className="flex items-baseline justify-between mt-3">
+                                <span className="text-4xl font-black text-slate-800 tracking-tight">{stats.totalOpenJobs}</span>
+                                <BriefcaseIcon className="w-8 h-8 text-indigo-500/20" />
                             </div>
                         </div>
-                    )}
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Recruiters</span>
+                            <div className="flex items-baseline justify-between mt-3">
+                                <span className="text-4xl font-black text-indigo-600 tracking-tight">{stats.activeRecruiters}</span>
+                                <UserGroupIcon className="w-8 h-8 text-indigo-500/20" />
+                            </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Resume Volume</span>
+                            <div className="flex items-baseline justify-between mt-3">
+                                <span className="text-4xl font-black text-blue-600 tracking-tight">{stats.totalResumes}</span>
+                                <span className="text-[9px] font-bold px-2 py-1 rounded bg-blue-50 text-blue-700 uppercase tracking-widest">Submissions</span>
+                            </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Placement</span>
+                            <div className="flex items-baseline justify-between mt-3">
+                                <span className="text-4xl font-black text-emerald-600 tracking-tight">{stats.conversionRate}</span>
+                                <span className="text-[9px] font-bold px-2 py-1 rounded bg-emerald-50 text-emerald-700 uppercase tracking-widest">Conversion</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* --- Operations Core --- */}
+                    <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-center gap-4 bg-slate-50/50">
+                            <div>
+                                <h2 className="text-xl font-black text-slate-800 tracking-tight">Operations Pipeline</h2>
+                                <p className="text-sm text-slate-500 font-medium mt-0.5">Live requisitions and structured assignments</p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                                {viewMode === 'table' && serverProfile?.isGlobalAdmin && (
+                                    <select value={selectedAssigneeFilter} onChange={(e) => setSelectedAssigneeFilter(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition cursor-pointer appearance-none">
+                                        <option value="ALL">Filter By Recruiter (All)</option>
+                                        {recruiterList.map(rec => <option key={rec} value={rec}>{rec}</option>)}
+                                    </select>
+                                )}
+                                <div className="relative flex-grow lg:w-72">
+                                    <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                                    <input type="text" placeholder="Search ID, Job, or Client..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition" />
+                                </div>
+                                {viewMode === 'table' && (
+                                    <button onClick={handleExportCSV} className="flex items-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-5 py-2.5 rounded-xl font-bold text-sm transition">
+                                        <DownloadIcon className="w-4 h-4" /> Export
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {loading ? (
+                            <div className="h-64 flex flex-col justify-center items-center gap-3"><Spinner size="8"/><span className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">Loading Core...</span></div>
+                        ) : error ? (
+                            <div className="p-12 text-center text-rose-600 font-bold">{error}</div>
+                        ) : viewMode === 'table' ? (
+                            <div className="overflow-x-auto w-full max-h-[700px] custom-scrollbar">
+                                <table className="w-full text-left border-collapse whitespace-nowrap">
+                                    <thead className="sticky top-0 z-20 bg-slate-50/90 backdrop-blur-md shadow-sm">
+                                        <tr>
+                                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Posting ID</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Requirement Detail</th>
+                                            {serverProfile?.isGlobalAdmin && <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Assigned Owner</th>}
+                                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Fulfillment Deadline</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {filteredFlatJobs.length > 0 ? filteredFlatJobs.map((job, idx) => {
+                                            const urgency = getUrgency(job.deadline);
+                                            return (
+                                                <tr key={`${job.postingId}-${idx}`} className="hover:bg-indigo-50/30 transition-colors group">
+                                                    <td className="px-6 py-4"><span className="bg-slate-100 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs border border-slate-200">{job.postingId}</span></td>
+                                                    <td className="px-6 py-4"><p className="font-black text-slate-900 text-sm">{job.jobTitle}</p><p className="text-xs text-slate-500 font-semibold mt-1 flex items-center gap-1"><BriefcaseIcon className="w-3.5 h-3.5 text-slate-400" /> {job.clientName}</p></td>
+                                                    {serverProfile?.isGlobalAdmin && (
+                                                        <td className="px-6 py-4"><div className="flex items-center gap-2.5"><div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${getAvatar(job.workingBy).color}`}>{getAvatar(job.workingBy).initials}</div><span className="text-sm font-bold text-slate-700">{job.workingBy}</span></div></td>
+                                                    )}
+                                                    <td className="px-6 py-4"><div className="flex items-center gap-2.5"><span className={`w-2 h-2 rounded-full ${urgency.dot}`}></span><div><p className="font-bold text-slate-800 text-sm">{formatDate(job.deadline)}</p><p className={`text-[10px] font-black uppercase tracking-widest mt-0.5 ${urgency.text}`}>{urgency.label}</p></div></div></td>
+                                                    <td className="px-6 py-4 text-right"><button onClick={() => setSelectedJob(job)} className="text-indigo-600 hover:text-white font-bold text-xs bg-indigo-50 hover:bg-indigo-600 border border-indigo-100 px-5 py-2.5 rounded-xl transition-all shadow-sm opacity-0 group-hover:opacity-100 focus:opacity-100">View Candidates</button></td>
+                                                </tr>
+                                            );
+                                        }) : <tr><td colSpan="5" className="px-6 py-20 text-center"><div className="flex flex-col items-center justify-center"><SearchIcon className="w-10 h-10 text-slate-300 mb-3" /><p className="text-slate-500 font-bold text-sm">No job openings found matching your filter parameters.</p></div></td></tr>}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="p-6 bg-slate-50/30 overflow-x-auto custom-scrollbar">
+                                <div className="flex gap-6 min-w-max pb-4">
+                                    {Object.entries(data).map(([assigneeGroup, jobs]) => {
+                                        const assignees = assigneeGroup.split(',').map(n => n.trim()).filter(Boolean);
+                                        const filteredKanbanJobs = jobs.filter(job => job.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase()) || job.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) || job.postingId?.toLowerCase().includes(searchTerm.toLowerCase()));
+                                        if (searchTerm && filteredKanbanJobs.length === 0) return null;
+
+                                        return (
+                                            <div key={assigneeGroup} className="w-[340px] flex flex-col bg-slate-100/50 rounded-2xl border border-slate-200 h-[650px]" onDragOver={e => e.preventDefault()} onDrop={() => onDrop(assigneeGroup)}>
+                                                <div className="p-4 border-b border-slate-200 bg-white/50 sticky top-0 rounded-t-2xl">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                            <div className="flex -space-x-2 shrink-0">
+                                                                {assignees.map((name, i) => <div key={i} title={name} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white shadow-sm ${getAvatar(name).color}`}>{getAvatar(name).initials}</div>)}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <h3 className="font-black text-slate-800 text-sm leading-tight truncate">{assignees.length === 1 ? assignees : `${assignees[0]} +${assignees.length - 1}`}</h3>
+                                                                {assignees.length > 1 && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mt-0.5" title={assigneeGroup}>Multiple Assignees</p>}
+                                                            </div>
+                                                        </div>
+                                                        <span className="shrink-0 bg-white border border-slate-200 text-slate-700 text-xs font-black px-2.5 py-1 rounded-lg shadow-sm">{filteredKanbanJobs.length}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+                                                    {filteredKanbanJobs.map(job => {
+                                                        const urgency = getUrgency(job.deadline);
+                                                        return (
+                                                            <div key={job.postingId} draggable={canEditDashboard} onDragStart={() => onDragStart(job, assigneeGroup)} className={`relative group bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md cursor-grab active:cursor-grabbing ${draggedJob?.postingId === job.postingId ? 'opacity-40 scale-95' : ''}`}>
+                                                                <div className="absolute top-4 right-3 z-20" onClick={e => e.stopPropagation()}>
+                                                                    <button onClick={() => setOpenMenuId(openMenuId === job.postingId ? null : job.postingId)} className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-50 transition"><DotsVertical className="w-5 h-5" /></button>
+                                                                    {openMenuId === job.postingId && (
+                                                                        <div className="absolute right-0 mt-1 w-36 rounded-xl shadow-lg border border-slate-200 bg-white z-50 overflow-hidden">
+                                                                            <div className="p-1.5">
+                                                                                <button onClick={() => setSelectedJob(job)} className="w-full text-left px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg transition">View Details</button>
+                                                                                <button onClick={() => handleArchive(job.postingId)} className="w-full text-left px-3 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition">Archive Job</button>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div onClick={() => { if(openMenuId !== job.postingId) setSelectedJob(job); }} className="w-full block pr-6 cursor-pointer">
+                                                                    <div className="flex justify-between items-start mb-3"><span className="px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-[10px] font-black tracking-widest border border-slate-200">{job.postingId}</span></div>
+                                                                    <h4 className="text-sm font-black text-slate-900 leading-snug mb-3">{job.jobTitle}</h4>
+                                                                    <div className="flex items-center text-[11px] font-bold text-slate-500 mb-4 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100"><BriefcaseIcon className="w-3.5 h-3.5 mr-1.5 shrink-0 text-slate-400" /><span className="truncate">{job.clientName}</span></div>
+                                                                    <div className="flex justify-between items-center pt-3 border-t border-slate-100"><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Deadline</span><span className={`text-[10px] font-bold flex items-center gap-1.5 ${urgency.text}`}><span className={`w-1.5 h-1.5 rounded-full ${urgency.dot}`}></span> {formatDate(job.deadline)}</span></div>
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
                 </div>
+            </div>
+
+            {/* ========================================================================= */}
+            {/* --- RIGHT SIDEBAR (Action Center & Inbox) --- */}
+            {/* ========================================================================= */}
+            <aside className="xl:col-span-1 space-y-6">
+                
+                {/* Quick Launch Widget (Renders based on dynamic permissions) */}
+                {(canAddPosting || canManageTimesheets || canManageMSAWO) && (
+                    <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-fuchsia-50 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10"><BoltIcon className="w-4 h-4 text-fuchsia-500"/> Quick Launch</h3>
+                        <div className="space-y-2.5 relative z-10">
+                            {canAddPosting && <button onClick={() => window.location.href = '/jobs'} className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs py-3 px-4 rounded-xl border border-slate-200 transition text-left flex justify-between items-center">Create New Job <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></button>}
+                            {canManageTimesheets && <button onClick={() => window.location.href = '/timesheets'} className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs py-3 px-4 rounded-xl border border-slate-200 transition text-left flex justify-between items-center">Review Timesheets <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></button>}
+                            {canManageMSAWO && <button onClick={() => window.location.href = '/msawo'} className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs py-3 px-4 rounded-xl border border-slate-200 transition text-left flex justify-between items-center">Execute MSA / WO <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></button>}
+                        </div>
+                    </div>
+                )}
+
+                {/* Priority Inbox Widget */}
+                {canMessage && (
+                    <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
+                        <div className="flex justify-between items-center mb-5">
+                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2"><ChatIcon className="w-4 h-4 text-blue-500"/> Priority Inbox</h3>
+                            <button onClick={() => window.location.href = '/messages'} className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md hover:bg-blue-100 transition">View All</button>
+                        </div>
+                        <div className="space-y-4">
+                            {inboxMessages.length > 0 ? inboxMessages.map((msg, i) => (
+                                <div key={i} className="group cursor-pointer">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${getAvatar(msg.sender).color}`}>{getAvatar(msg.sender).initials}</div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex justify-between items-baseline mb-0.5">
+                                                <p className="font-bold text-slate-900 text-xs truncate pr-2">{msg.sender}</p>
+                                                <p className="text-[9px] font-bold text-slate-400 shrink-0">{msg.time}</p>
+                                            </div>
+                                            <p className="text-[11px] font-medium text-slate-500 truncate">{msg.subject}</p>
+                                        </div>
+                                    </div>
+                                    {i < inboxMessages.length - 1 && <div className="mt-4 border-t border-slate-100"></div>}
+                                </div>
+                            )) : (
+                                <div className="text-center py-6"><ChatIcon className="w-8 h-8 mx-auto text-slate-200 mb-2"/><p className="text-xs font-bold text-slate-400">Inbox is completely clear.</p></div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* System Alerts & Notifications */}
+                <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
+                    <div className="flex justify-between items-center mb-5">
+                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2"><BellIcon className="w-4 h-4 text-amber-500"/> System Alerts</h3>
+                    </div>
+                    <div className="space-y-4">
+                        {systemAlerts.length > 0 ? systemAlerts.map((alert, i) => (
+                            <div key={i} className="flex gap-3">
+                                <div className="mt-0.5">
+                                    {alert.type === 'alert' && <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_0_4px_rgba(244,63,94,0.1)]"></div>}
+                                    {alert.type === 'success' && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.1)]"></div>}
+                                    {alert.type === 'info' && <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.1)]"></div>}
+                                </div>
+                                <div className="min-w-0">
+                                    <h4 className="text-xs font-bold text-slate-800 mb-0.5">{alert.title}</h4>
+                                    <p className="text-[11px] font-medium text-slate-500 mb-1.5">{alert.desc}</p>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{alert.time}</span>
+                                        {alert.link && alert.link !== '#' && <button onClick={() => window.location.href = alert.link} className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800">Resolve &rarr;</button>}
+                                    </div>
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="text-center py-6"><BellIcon className="w-8 h-8 mx-auto text-slate-200 mb-2"/><p className="text-xs font-bold text-slate-400">No active system alerts.</p></div>
+                        )}
+                    </div>
+                </div>
+
+            </aside>
             </div>
 
             {/* --- Job Details Side Drawer --- */}
