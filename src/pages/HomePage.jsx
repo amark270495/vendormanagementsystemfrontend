@@ -21,7 +21,7 @@ const Spinner = ({ size = '6' }) => (
     </div>
 );
 
-// --- Helpers ---
+// --- Robust Helpers ---
 const getUrgency = (dateInput) => {
     if (!dateInput) return { label: 'No Deadline', bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400', ring: 'ring-slate-200' };
     const diffDays = Math.ceil((new Date(dateInput) - new Date()) / (1000 * 60 * 60 * 24));
@@ -46,19 +46,30 @@ const HomePage = () => {
     const { user } = useAuth();
     const { canViewDashboards, canEditDashboard } = usePermissions();
     
-    // --- Enterprise RBAC ---
-    const hasGlobalView = ['Admin', 'Director'].includes(user?.userRole) || 
-                          ['Development Manager', 'Operations Manager'].includes(user?.functionalRole);
-                          
-    const [viewMode, setViewMode] = useState('table');
+    // =========================================================================
+    // --- ENTERPRISE RBAC ENGINE ---
+    // =========================================================================
+    const userRole = user?.userRole || 'Standard User';
+    const officeRole = user?.functionalRole || user?.backendOfficeRole || 'Recruitment Team';
+
+    // Tier 1: System-wide Access (Admins, Ops/Dev Managers, Taproot Directors)
+    const isExecutive = ['Admin', 'Director'].includes(userRole) || 
+                        ['Taproot Director', 'Operations Admin', 'Operations Manager', 'Development Manager'].includes(officeRole);
+    
+    // Tier 2: Department-wide Access
+    const isManager = ['Recruitment Manager', 'Development Executive'].includes(officeRole) || isExecutive;
+
+    // View State Management (Default to kanban for standard users)
+    const [viewMode, setViewMode] = useState(isExecutive ? 'table' : 'kanban'); 
     const [data, setData] = useState({});
     const [flatJobs, setFlatJobs] = useState([]);
+    const [serverProfile, setServerProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedAssigneeFilter, setSelectedAssigneeFilter] = useState('ALL');
     
-    // UI States
+    // UI Drawer & Kanban State
     const [selectedJob, setSelectedJob] = useState(null);
     const [jobCandidates, setJobCandidates] = useState([]);
     const [loadingCandidates, setLoadingCandidates] = useState(false);
@@ -66,6 +77,7 @@ const HomePage = () => {
     const [draggedJob, setDraggedJob] = useState(null);
     const [draggedFromColumn, setDraggedFromColumn] = useState(null);
 
+    // KPI Matrix
     const [stats, setStats] = useState({ totalOpenJobs: 0, totalResumes: 0, activeRecruiters: 0, conversionRate: '0.0%' });
 
     const fetchData = useCallback(async () => {
@@ -79,26 +91,25 @@ const HomePage = () => {
             ]);
 
             if (homeRes?.data?.success) {
-                let fetchedData = homeRes.data.data;
-                let allJobs = [];
+                // The Backend now fully handles the RLS logic, so we just blindly trust and render the payload
+                const groupedData = homeRes.data.data;
+                const profile = homeRes.data.userProfile || { isGlobalAdmin: false, backendOfficeRole: 'Recruitment Team' };
+                
+                setServerProfile(profile);
+
+                let compiledJobs = [];
                 let openCount = 0;
 
-                // Apply RBAC Logic
-                if (!hasGlobalView) {
-                    const myJobs = fetchedData[user.displayName] || [];
-                    fetchedData = { [user.displayName]: myJobs };
-                }
-
-                Object.entries(fetchedData).forEach(([assignee, jobs]) => {
+                Object.entries(groupedData).forEach(([assigneeGroup, jobs]) => {
                     openCount += jobs.length;
-                    jobs.forEach(j => allJobs.push({ ...j, assignee }));
+                    jobs.forEach(j => compiledJobs.push({ ...j, workingBy: j.workingBy || assigneeGroup || 'Unassigned' }));
                 });
 
-                setData(fetchedData);
-                setFlatJobs(allJobs);
-                setStats(prev => ({ ...prev, totalOpenJobs: openCount, activeRecruiters: Object.keys(fetchedData).length }));
+                setData(groupedData);
+                setFlatJobs(compiledJobs);
+                setStats(prev => ({ ...prev, totalOpenJobs: openCount, activeRecruiters: Object.keys(groupedData).length }));
             } else {
-                setError(homeRes?.data?.message || "Failed to load admin dashboard.");
+                setError(homeRes?.data?.message || "Failed to load dashboard.");
             }
 
             if (biRes?.data?.success) {
@@ -115,7 +126,7 @@ const HomePage = () => {
         } finally {
             setLoading(false);
         }
-    }, [user, canViewDashboards, hasGlobalView]);
+    }, [user, canViewDashboards]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -124,9 +135,7 @@ const HomePage = () => {
             setLoadingCandidates(true);
             apiService.getCandidateDetailsPageData(user.userIdentifier)
                 .then(res => {
-                    if (res.data.success) {
-                        setJobCandidates(res.data.candidates.filter(c => c.postingId === selectedJob.postingId));
-                    }
+                    if (res.data.success) setJobCandidates(res.data.candidates.filter(c => c.postingId === selectedJob.postingId));
                 })
                 .catch(err => console.error("Failed to load candidates", err))
                 .finally(() => setLoadingCandidates(false));
@@ -137,7 +146,7 @@ const HomePage = () => {
 
     const recruiterList = useMemo(() => {
         const set = new Set();
-        flatJobs.forEach(j => { if (j.assignee) set.add(j.assignee); });
+        flatJobs.forEach(j => { if (j.workingBy) set.add(j.workingBy); });
         return Array.from(set).sort();
     }, [flatJobs]);
 
@@ -147,31 +156,23 @@ const HomePage = () => {
                 job.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 job.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 job.postingId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                job.assignee?.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesAssignee = selectedAssigneeFilter === 'ALL' || job.assignee === selectedAssigneeFilter;
+                job.workingBy?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesAssignee = selectedAssigneeFilter === 'ALL' || job.workingBy === selectedAssigneeFilter;
             return matchesSearch && matchesAssignee;
         });
     }, [flatJobs, searchTerm, selectedAssigneeFilter]);
 
-    // CSV Export Engine
     const handleExportCSV = () => {
         const headers = ['Posting ID', 'Job Title', 'Client Name', 'Assigned To', 'Deadline'];
         const rows = filteredFlatJobs.map(job => [
-            job.postingId,
-            `"${job.jobTitle || ''}"`,
-            `"${job.clientName || ''}"`,
-            `"${job.assignee || 'Unassigned'}"`,
-            formatDate(job.deadline)
+            job.postingId, `"${job.jobTitle || ''}"`, `"${job.clientName || ''}"`, `"${job.workingBy || 'Unassigned'}"`, formatDate(job.deadline)
         ]);
         const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `VMS_Job_Operations_${new Date().toISOString().slice(0, 10)}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        link.href = url; link.setAttribute('download', `VMS_Operations_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
     };
 
     const handleArchive = async (postingId) => {
@@ -202,128 +203,143 @@ const HomePage = () => {
         setDraggedJob(null); setDraggedFromColumn(null);
     };
 
+    // --- Dynamic UI Theming Based on Server Role ---
+    const getRoleTheme = () => {
+        const isGlobal = serverProfile?.isGlobalAdmin;
+        if (isGlobal) return {
+            gradient: 'bg-indigo-500/10', title: 'Enterprise Command Center',
+            desc: `System oversight active. Orchestrating ${stats.totalOpenJobs} requirements across secure pipelines.`
+        };
+        return {
+            gradient: 'bg-slate-500/10', title: 'Personal Workspace',
+            desc: `Focus mode active. You are assigned to ${stats.totalOpenJobs} active job requirements.`
+        };
+    };
+    const theme = getRoleTheme();
+
     return (
         <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans text-slate-800" onClick={() => setOpenMenuId(null)}>
-            <div className="max-w-[1600px] mx-auto space-y-8">
+            <div className="max-w-[1600px] mx-auto space-y-8 animate-fade-in-up">
                 
-                {/* --- Admin Command Header --- */}
+                {/* --- Role-Adaptive Header --- */}
                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-50 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+                    <div className={`absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl -mr-24 -mt-24 pointer-events-none ${theme.gradient}`}></div>
                     <div className="relative z-10">
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
                             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900">
-                                Welcome, <span className="text-indigo-600">{user?.displayName?.split(' ')[0] || 'Admin'}</span>
+                                {theme.title}
                             </h1>
-                            {hasGlobalView && (
-                                <span className="flex items-center gap-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm">
-                                    <ShieldCheckIcon className="w-4 h-4" /> Global View Active
+                            {serverProfile?.isGlobalAdmin && (
+                                <span className="flex items-center gap-1.5 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-lg shadow-sm">
+                                    <ShieldCheckIcon className="w-3.5 h-3.5" /> {serverProfile?.backendOfficeRole}
                                 </span>
                             )}
                         </div>
                         <p className="text-slate-500 font-medium text-sm">
-                            {hasGlobalView 
-                                ? `System overview enabled. Managing ${stats.totalOpenJobs} active pipelines across the enterprise.` 
-                                : `Your personal workspace. You have ${stats.totalOpenJobs} active assignments.`}
+                            {theme.desc}
                         </p>
                     </div>
                     <div className="relative z-10 flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto">
-                            <button onClick={() => setViewMode('table')} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'table' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner w-full sm:w-auto">
+                            <button onClick={() => setViewMode('table')} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${viewMode === 'table' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
                                 <TableIcon className="w-4 h-4" /> Table
                             </button>
-                            <button onClick={() => setViewMode('kanban')} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'kanban' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                            <button onClick={() => setViewMode('kanban')} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${viewMode === 'kanban' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
                                 <ViewColumnsIcon className="w-4 h-4" /> Kanban
                             </button>
                         </div>
-                        <button onClick={fetchData} disabled={loading} className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 text-white font-bold text-sm rounded-xl hover:bg-slate-800 transition shadow-sm disabled:opacity-50">
-                            <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Sync
+                        <button onClick={fetchData} disabled={loading} className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition shadow-sm disabled:opacity-50">
+                            <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Sync Data
                         </button>
                     </div>
                 </div>
 
                 {/* --- Executive KPIs --- */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                    <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-white p-7 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
                         <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Openings</span>
                         <div className="flex items-baseline justify-between mt-3">
-                            <span className="text-4xl font-black text-slate-800">{stats.totalOpenJobs}</span>
+                            <span className="text-5xl font-black text-slate-800 tracking-tight">{stats.totalOpenJobs}</span>
                             <BriefcaseIcon className="w-8 h-8 text-indigo-500/20" />
                         </div>
                     </div>
-                    <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                    <div className="bg-white p-7 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
                         <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Recruiters</span>
                         <div className="flex items-baseline justify-between mt-3">
-                            <span className="text-4xl font-black text-indigo-600">{stats.activeRecruiters}</span>
+                            <span className="text-5xl font-black text-indigo-600 tracking-tight">{stats.activeRecruiters}</span>
                             <UserGroupIcon className="w-8 h-8 text-indigo-500/20" />
                         </div>
                     </div>
-                    <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                    <div className="bg-white p-7 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
                         <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Resume Volume</span>
                         <div className="flex items-baseline justify-between mt-3">
-                            <span className="text-4xl font-black text-blue-600">{stats.totalResumes}</span>
-                            <span className="text-[10px] font-bold px-2.5 py-1 rounded bg-blue-50 text-blue-700">Submissions</span>
+                            <span className="text-5xl font-black text-blue-600 tracking-tight">{stats.totalResumes}</span>
+                            <span className="text-[10px] font-bold px-2.5 py-1 rounded bg-blue-50 text-blue-700 uppercase tracking-widest">Submissions</span>
                         </div>
                     </div>
-                    <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Global Placement Rate</span>
+                    <div className="bg-white p-7 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Global Placement</span>
                         <div className="flex items-baseline justify-between mt-3">
-                            <span className="text-4xl font-black text-emerald-600">{stats.conversionRate}</span>
-                            <span className="text-[10px] font-bold px-2.5 py-1 rounded bg-emerald-50 text-emerald-700">Hired / Sub</span>
+                            <span className="text-5xl font-black text-emerald-600 tracking-tight">{stats.conversionRate}</span>
+                            <span className="text-[10px] font-bold px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 uppercase tracking-widest">Conversion</span>
                         </div>
                     </div>
                 </div>
 
-                {/* --- Main Dashboard Area --- */}
-                <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden">
+                {/* --- Master Operations Area --- */}
+                <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden flex flex-col">
                     
-                    {/* Universal Tool Bar */}
-                    <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-center gap-4 bg-slate-50/50">
+                    {/* Unified Action Bar */}
+                    <div className="p-6 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-center gap-4 bg-slate-50/50">
                         <div>
-                            <h2 className="text-lg font-black text-slate-800 tracking-tight">Operations Pipeline</h2>
-                            <p className="text-xs text-slate-500 font-medium mt-0.5">Manage live requisitions and assignments</p>
+                            <h2 className="text-xl font-black text-slate-800 tracking-tight">Operations Pipeline</h2>
+                            <p className="text-sm text-slate-500 font-medium mt-0.5">Live requisitions and structured assignments</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-                            {viewMode === 'table' && hasGlobalView && (
+                            {viewMode === 'table' && serverProfile?.isGlobalAdmin && (
                                 <select 
                                     value={selectedAssigneeFilter} 
                                     onChange={(e) => setSelectedAssigneeFilter(e.target.value)}
-                                    className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition cursor-pointer"
+                                    className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition cursor-pointer appearance-none"
                                 >
-                                    <option value="ALL">All Recruiters</option>
+                                    <option value="ALL">Filter By Recruiter (All)</option>
                                     {recruiterList.map(rec => <option key={rec} value={rec}>{rec}</option>)}
                                 </select>
                             )}
-                            <div className="relative flex-grow lg:w-64">
+                            <div className="relative flex-grow lg:w-72">
                                 <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                                 <input 
                                     type="text" placeholder="Search ID, Job, or Client..." 
                                     value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} 
-                                    className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
+                                    className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
                                 />
                             </div>
                             {viewMode === 'table' && (
-                                <button onClick={handleExportCSV} className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-4 py-2.5 rounded-xl font-bold text-xs transition">
-                                    <DownloadIcon className="w-4 h-4" /> Export CSV
+                                <button onClick={handleExportCSV} className="flex items-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-5 py-2.5 rounded-xl font-bold text-sm transition">
+                                    <DownloadIcon className="w-4 h-4" /> Export
                                 </button>
                             )}
                         </div>
                     </div>
 
                     {loading ? (
-                        <div className="h-64 flex flex-col justify-center items-center gap-3"><Spinner size="8"/><span className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">Syncing Databases...</span></div>
+                        <div className="h-64 flex flex-col justify-center items-center gap-3">
+                            <Spinner size="8"/>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">Loading Operations Core...</span>
+                        </div>
                     ) : error ? (
                         <div className="p-12 text-center text-rose-600 font-bold">{error}</div>
                     ) : viewMode === 'table' ? (
                         
-                        /* --- MASTER TABLE VIEW --- */
-                        <div className="overflow-x-auto w-full">
+                        /* --- ROBUST DATA TABLE --- */
+                        <div className="overflow-x-auto w-full max-h-[800px] custom-scrollbar">
                             <table className="w-full text-left border-collapse whitespace-nowrap">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-200">
+                                <thead className="sticky top-0 z-20 bg-slate-50/90 backdrop-blur-md shadow-sm">
+                                    <tr>
                                         <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Posting ID</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Requirement</th>
-                                        {hasGlobalView && <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Owner</th>}
-                                        <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Deadline</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Requirement Detail</th>
+                                        {serverProfile?.isGlobalAdmin && <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Assigned Owner</th>}
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Fulfillment Deadline</th>
                                         <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Action</th>
                                     </tr>
                                 </thead>
@@ -331,82 +347,87 @@ const HomePage = () => {
                                     {filteredFlatJobs.length > 0 ? filteredFlatJobs.map((job, idx) => {
                                         const urgency = getUrgency(job.deadline);
                                         return (
-                                            <tr key={`${job.postingId}-${idx}`} className="hover:bg-slate-50/80 transition-colors group">
+                                            <tr key={`${job.postingId}-${idx}`} className="hover:bg-indigo-50/30 transition-colors group">
                                                 <td className="px-6 py-4">
-                                                    <span className="bg-slate-100 text-slate-700 font-bold px-2.5 py-1 rounded-md text-xs border border-slate-200">{job.postingId}</span>
+                                                    <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs border border-slate-200">{job.postingId}</span>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <p className="font-bold text-slate-900 text-sm">{job.jobTitle}</p>
-                                                    <p className="text-xs text-slate-500 font-medium mt-0.5">{job.clientName}</p>
+                                                    <p className="font-black text-slate-900 text-sm">{job.jobTitle}</p>
+                                                    <p className="text-xs text-slate-500 font-semibold mt-1 flex items-center gap-1">
+                                                        <BriefcaseIcon className="w-3.5 h-3.5 text-slate-400" /> {job.clientName}
+                                                    </p>
                                                 </td>
-                                                {hasGlobalView && (
+                                                {serverProfile?.isGlobalAdmin && (
                                                     <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold ${getAvatar(job.assignee).color}`}>
-                                                                {getAvatar(job.assignee).initials}
+                                                        <div className="flex items-center gap-2.5">
+                                                            <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${getAvatar(job.workingBy).color}`}>
+                                                                {getAvatar(job.workingBy).initials}
                                                             </div>
-                                                            <span className="text-xs font-bold text-slate-700">{job.assignee}</span>
+                                                            <span className="text-sm font-bold text-slate-700">{job.workingBy}</span>
                                                         </div>
                                                     </td>
                                                 )}
                                                 <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2.5">
                                                         <span className={`w-2 h-2 rounded-full ${urgency.dot}`}></span>
                                                         <div>
                                                             <p className="font-bold text-slate-800 text-sm">{formatDate(job.deadline)}</p>
-                                                            <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${urgency.text}`}>{urgency.label}</p>
+                                                            <p className={`text-[10px] font-black uppercase tracking-widest mt-0.5 ${urgency.text}`}>{urgency.label}</p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <button onClick={() => setSelectedJob(job)} className="text-indigo-600 hover:text-indigo-900 font-bold text-xs bg-white border border-slate-200 hover:border-indigo-300 px-4 py-2 rounded-lg transition-all shadow-sm opacity-0 group-hover:opacity-100">
-                                                        View Details
+                                                    <button onClick={() => setSelectedJob(job)} className="text-indigo-600 hover:text-white font-bold text-xs bg-indigo-50 hover:bg-indigo-600 border border-indigo-100 px-5 py-2.5 rounded-xl transition-all shadow-sm opacity-0 group-hover:opacity-100 focus:opacity-100">
+                                                        View Candidates
                                                     </button>
                                                 </td>
                                             </tr>
                                         );
                                     }) : (
-                                        <tr><td colSpan="5" className="px-6 py-16 text-center text-slate-500 font-medium text-sm">No jobs match your current filter.</td></tr>
+                                        <tr>
+                                            <td colSpan="5" className="px-6 py-20 text-center">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <SearchIcon className="w-10 h-10 text-slate-300 mb-3" />
+                                                    <p className="text-slate-500 font-bold text-sm">No job openings found matching your filter parameters.</p>
+                                                </div>
+                                            </td>
+                                        </tr>
                                     )}
                                 </tbody>
                             </table>
                         </div>
                     ) : (
                         
-                        /* --- KANBAN VIEW --- */
-                        <div className="p-6 overflow-x-auto bg-slate-50/30">
-                            <div className="flex gap-6 min-w-max">
+                        /* --- AGILE KANBAN VIEW (Grid, No Horizontal Scroll) --- */
+                        <div className="p-6 bg-slate-50/30">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {Object.entries(data).map(([assigneeGroup, jobs]) => {
                                     const assignees = assigneeGroup.split(',').map(n => n.trim()).filter(Boolean);
-                                    
-                                    // Search Filter Logic for Kanban Cards
                                     const filteredKanbanJobs = jobs.filter(job => 
                                         job.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                                         job.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                                         job.postingId?.toLowerCase().includes(searchTerm.toLowerCase())
                                     );
-
-                                    // Hide empty columns if searching
                                     if (searchTerm && filteredKanbanJobs.length === 0) return null;
 
                                     return (
-                                        <div key={assigneeGroup} className="w-[340px] flex flex-col bg-slate-100/50 rounded-2xl border border-slate-200 h-[650px]" onDragOver={e => e.preventDefault()} onDrop={() => onDrop(assigneeGroup)}>
+                                        <div key={assigneeGroup} className="flex flex-col bg-slate-100/50 rounded-2xl border border-slate-200 h-[650px]" onDragOver={e => e.preventDefault()} onDrop={() => onDrop(assigneeGroup)}>
                                             <div className="p-4 border-b border-slate-200 bg-white/50 sticky top-0 rounded-t-2xl">
                                                 <div className="flex items-start justify-between gap-3">
                                                     <div className="flex items-start gap-3 flex-1 min-w-0">
                                                         <div className="flex -space-x-2 shrink-0">
                                                             {assignees.map((name, i) => (
-                                                                <div key={i} title={name} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white ${getAvatar(name).color}`}>
+                                                                <div key={i} title={name} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white shadow-sm ${getAvatar(name).color}`}>
                                                                     {getAvatar(name).initials}
                                                                 </div>
                                                             ))}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <h3 className="font-bold text-slate-800 text-sm leading-tight truncate">{assignees.length === 1 ? assignees : `${assignees[0]} +${assignees.length - 1}`}</h3>
-                                                            {assignees.length > 1 && <p className="text-[10px] font-medium text-slate-500 truncate" title={assigneeGroup}>{assigneeGroup}</p>}
+                                                            <h3 className="font-black text-slate-800 text-sm leading-tight truncate">{assignees.length === 1 ? assignees : `${assignees[0]} +${assignees.length - 1}`}</h3>
+                                                            {assignees.length > 1 && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mt-0.5" title={assigneeGroup}>Multiple Assignees</p>}
                                                         </div>
                                                     </div>
-                                                    <span className="shrink-0 bg-white border border-slate-200 text-slate-700 text-xs font-bold px-2 py-0.5 rounded shadow-sm">{filteredKanbanJobs.length}</span>
+                                                    <span className="shrink-0 bg-white border border-slate-200 text-slate-700 text-xs font-black px-2.5 py-1 rounded-lg shadow-sm">{filteredKanbanJobs.length}</span>
                                                 </div>
                                             </div>
                                             <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
@@ -415,31 +436,31 @@ const HomePage = () => {
                                                     return (
                                                         <div 
                                                             key={job.postingId} draggable={canEditDashboard} onDragStart={() => onDragStart(job, assigneeGroup)}
-                                                            className={`relative group bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition hover:shadow-md cursor-grab active:cursor-grabbing ${draggedJob?.postingId === job.postingId ? 'opacity-40 scale-95' : ''}`}
+                                                            className={`relative group bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md cursor-grab active:cursor-grabbing ${draggedJob?.postingId === job.postingId ? 'opacity-40 scale-95' : ''}`}
                                                         >
-                                                            <div className="absolute top-3 right-3 z-20" onClick={e => e.stopPropagation()}>
-                                                                <button onClick={() => setOpenMenuId(openMenuId === job.postingId ? null : job.postingId)} className="text-slate-400 hover:text-slate-700 p-1 rounded hover:bg-slate-50 transition"><DotsVertical className="w-5 h-5" /></button>
+                                                            <div className="absolute top-4 right-3 z-20" onClick={e => e.stopPropagation()}>
+                                                                <button onClick={() => setOpenMenuId(openMenuId === job.postingId ? null : job.postingId)} className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-50 transition"><DotsVertical className="w-5 h-5" /></button>
                                                                 {openMenuId === job.postingId && (
-                                                                    <div className="absolute right-0 mt-1 w-32 rounded-xl shadow-lg border border-slate-200 bg-white z-50">
-                                                                        <div className="p-1">
-                                                                            <button onClick={() => setSelectedJob(job)} className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg">View Details</button>
-                                                                            <button onClick={() => handleArchive(job.postingId)} className="w-full text-left px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg mt-1">Archive Job</button>
+                                                                    <div className="absolute right-0 mt-1 w-36 rounded-xl shadow-lg border border-slate-200 bg-white z-50 overflow-hidden">
+                                                                        <div className="p-1.5">
+                                                                            <button onClick={() => setSelectedJob(job)} className="w-full text-left px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg transition">View Details</button>
+                                                                            <button onClick={() => handleArchive(job.postingId)} className="w-full text-left px-3 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition">Archive Job</button>
                                                                         </div>
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                            <div onClick={() => { if(openMenuId !== job.postingId) setSelectedJob(job); }} className="w-full block pr-6">
-                                                                <div className="flex justify-between items-start mb-2">
-                                                                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">{job.postingId}</span>
+                                                            <div onClick={() => { if(openMenuId !== job.postingId) setSelectedJob(job); }} className="w-full block pr-6 cursor-pointer">
+                                                                <div className="flex justify-between items-start mb-3">
+                                                                    <span className="px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-[10px] font-black tracking-widest border border-slate-200">{job.postingId}</span>
                                                                 </div>
-                                                                <h4 className="text-sm font-bold text-slate-900 leading-tight mb-2">{job.jobTitle}</h4>
-                                                                <div className="flex items-center text-[11px] font-bold text-slate-500 mb-3 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                                                                    <BriefcaseIcon className="w-3 h-3 mr-1.5 shrink-0 text-slate-400" />
+                                                                <h4 className="text-sm font-black text-slate-900 leading-snug mb-3">{job.jobTitle}</h4>
+                                                                <div className="flex items-center text-[11px] font-bold text-slate-500 mb-4 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                                                                    <BriefcaseIcon className="w-3.5 h-3.5 mr-1.5 shrink-0 text-slate-400" />
                                                                     <span className="truncate">{job.clientName}</span>
                                                                 </div>
-                                                                <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                                                                <div className="flex justify-between items-center pt-3 border-t border-slate-100">
                                                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Deadline</span>
-                                                                    <span className={`text-[10px] font-bold flex items-center gap-1 ${urgency.text}`}><span className={`w-1.5 h-1.5 rounded-full ${urgency.dot}`}></span> {formatDate(job.deadline)}</span>
+                                                                    <span className={`text-[10px] font-bold flex items-center gap-1.5 ${urgency.text}`}><span className={`w-1.5 h-1.5 rounded-full ${urgency.dot}`}></span> {formatDate(job.deadline)}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -455,76 +476,76 @@ const HomePage = () => {
                 </div>
             </div>
 
-            {/* --- Side Drawer (Job Workspace) --- */}
+            {/* --- Job Details Side Drawer --- */}
             {selectedJob && (
                 <div className="fixed inset-0 z-50 overflow-hidden text-left">
-                    <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm transition-opacity" onClick={() => setSelectedJob(null)}></div>
-                    <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10 text-left">
-                        <div className="pointer-events-auto w-screen max-w-lg transform transition-transform duration-500 ease-in-out bg-white shadow-2xl flex flex-col border-l border-slate-200">
+                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity animate-fade-in" onClick={() => setSelectedJob(null)}></div>
+                    <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+                        <div className="pointer-events-auto w-screen max-w-lg transform transition-transform duration-500 ease-in-out bg-slate-50 shadow-2xl flex flex-col border-l border-slate-200 animate-slide-in-right">
                             
-                            <div className="bg-white border-b border-slate-200 p-8 relative">
+                            <div className="bg-white border-b border-slate-200 p-8 relative shadow-sm z-10">
                                 <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-xs font-black tracking-widest uppercase text-indigo-600 bg-indigo-50 px-3 py-1 rounded-md border border-indigo-100">Job Workspace</h2>
-                                    <button onClick={() => setSelectedJob(null)} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition border border-slate-200">
+                                    <h2 className="text-[10px] font-black tracking-widest uppercase text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">Requirement Workspace</h2>
+                                    <button onClick={() => setSelectedJob(null)} className="text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-50 rounded-full p-2 transition border border-slate-200 shadow-sm">
                                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-3">
-                                    <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-md text-xs border border-slate-200 shadow-sm">{selectedJob.postingId}</span>
+                                    <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-lg text-xs border border-slate-200">{selectedJob.postingId}</span>
                                     <span className="text-slate-600 font-bold text-sm flex items-center gap-1.5"><BriefcaseIcon className="w-4 h-4 text-slate-400"/> {selectedJob.clientName}</span>
                                 </div>
                                 <h3 className="text-2xl font-black text-slate-900 mt-4 leading-tight">{selectedJob.jobTitle}</h3>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-8 bg-slate-50/80">
-                                <div className="grid grid-cols-2 gap-4 mb-8">
+                            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                                <div className="grid grid-cols-2 gap-5 mb-8">
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                                        <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-3">Assignee(s)</p>
-                                        <div className="flex flex-col gap-2">
+                                        <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-3">Assigned Owner(s)</p>
+                                        <div className="flex flex-col gap-2.5">
                                             {selectedJob.workingBy?.split(',').map(n => n.trim()).filter(Boolean).map((name, i) => (
-                                                <div key={i} className="flex items-center gap-2">
-                                                    <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${getAvatar(name).color}`}>{getAvatar(name).initials}</div>
-                                                    <p className="font-bold text-slate-800 text-xs truncate">{name}</p>
+                                                <div key={i} className="flex items-center gap-2.5">
+                                                    <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${getAvatar(name).color}`}>{getAvatar(name).initials}</div>
+                                                    <p className="font-bold text-slate-800 text-sm truncate">{name}</p>
                                                 </div>
                                             ))}
-                                            {(!selectedJob.workingBy || selectedJob.workingBy === 'Unassigned') && <p className="font-bold text-slate-800 text-xs">Unassigned</p>}
+                                            {(!selectedJob.workingBy || selectedJob.workingBy === 'Unassigned') && <p className="font-bold text-slate-800 text-sm">Unassigned</p>}
                                         </div>
                                     </div>
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                                        <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-2">Deadline</p>
-                                        <p className="font-bold text-slate-800 text-sm">{formatDate(selectedJob.deadline)}</p>
+                                        <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-3">Fulfillment Deadline</p>
+                                        <p className="font-bold text-slate-900 text-base">{formatDate(selectedJob.deadline)}</p>
                                         <div className="mt-3">
                                             {(() => {
                                                 const urg = getUrgency(selectedJob.deadline);
-                                                return <span className={`text-[10px] font-bold px-2.5 py-1 rounded bg-slate-50 border ${urg.text} ${urg.ring} inline-flex items-center gap-1.5`}><span className={`w-1.5 h-1.5 rounded-full ${urg.dot}`}></span> {urg.label}</span>
+                                                return <span className={`text-[10px] font-bold px-3 py-1.5 rounded-lg bg-white border shadow-sm ${urg.text} ${urg.ring} inline-flex items-center gap-1.5`}><span className={`w-2 h-2 rounded-full ${urg.dot}`}></span> {urg.label}</span>
                                             })()}
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="border-t border-slate-200 pt-8">
+                                <div>
                                     <div className="flex items-center justify-between mb-6">
-                                        <h4 className="text-lg font-black text-slate-900">Submitted Candidates</h4>
-                                        <span className="bg-white border border-slate-200 text-slate-700 font-bold px-3 py-1 rounded-md text-xs shadow-sm">{jobCandidates.length}</span>
+                                        <h4 className="text-lg font-black text-slate-900">Submitted Pipeline</h4>
+                                        <span className="bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-lg text-xs shadow-sm">{jobCandidates.length} Candidates</span>
                                     </div>
 
                                     {loadingCandidates ? (
                                         <div className="animate-pulse space-y-4">
-                                            {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-20 bg-slate-200/50 rounded-2xl w-full"></div>)}
+                                            {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-24 bg-white border border-slate-200 rounded-2xl w-full"></div>)}
                                         </div>
                                     ) : jobCandidates.length > 0 ? (
                                         <div className="space-y-4">
                                             {jobCandidates.map(candidate => (
                                                 <div key={candidate.email} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition">
-                                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 font-black shrink-0 border border-slate-200 shadow-sm">
+                                                    <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 font-black shrink-0 border border-slate-200 shadow-inner">
                                                         {getCandidateInitials(candidate.firstName, candidate.lastName)}
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <h5 className="font-black text-slate-900 text-sm truncate">{candidate.firstName} {candidate.lastName}</h5>
-                                                        <p className="text-xs text-slate-500 font-semibold mb-3 mt-0.5 truncate">{candidate.currentRole || 'Candidate'}</p>
-                                                        <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold">
-                                                            <span className="bg-slate-100 px-2 py-1 rounded text-slate-600 border border-slate-200">{candidate.currentLocation || 'Location N/A'}</span>
-                                                            <span className={`px-2 py-1 rounded border ${candidate.remarks === 'Rejected' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
+                                                        <p className="text-xs text-slate-500 font-bold mb-3 mt-1 truncate">{candidate.currentRole || 'Candidate'}</p>
+                                                        <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider">
+                                                            <span className="bg-slate-50 px-2.5 py-1 rounded-md text-slate-600 border border-slate-200">{candidate.currentLocation || 'Location N/A'}</span>
+                                                            <span className={`px-2.5 py-1 rounded-md border ${candidate.remarks === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
                                                                 {candidate.remarks || 'Under Review'}
                                                             </span>
                                                         </div>
@@ -533,9 +554,10 @@ const HomePage = () => {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-300">
-                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3"><UserGroupIcon className="w-8 h-8 text-slate-400" /></div>
-                                            <p className="text-slate-500 font-bold text-sm">No candidates submitted yet.</p>
+                                        <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-300">
+                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4"><UserGroupIcon className="w-8 h-8 text-slate-400" /></div>
+                                            <p className="text-slate-800 font-black text-sm">Empty Pipeline</p>
+                                            <p className="text-slate-500 font-medium text-xs mt-1">No candidates submitted yet.</p>
                                         </div>
                                     )}
                                 </div>
