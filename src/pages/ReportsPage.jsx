@@ -16,7 +16,7 @@ ChartJS.register(
 ChartJS.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
 ChartJS.defaults.color = '#64748b';
 
-// --- Icons ---
+// --- SVGs & Icons ---
 const RefreshIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>;
 const DownloadIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>;
 const EmailIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>;
@@ -31,7 +31,6 @@ const Spinner = ({ size = '6' }) => (
     </div>
 );
 
-// --- Configurations ---
 const DASHBOARD_CONFIGS = {
     'all': { title: 'All VMS Sources' },
     'ecaltVMSDisplay': { title: 'Eclat VMS' },
@@ -146,7 +145,7 @@ const ReportsPage = () => {
     const [datePreset, setDatePreset] = useState('30D');
     const [isEmailModalOpen, setEmailModalOpen] = useState(false);
     
-    const [activeTab, setActiveTab] = useState('recruiters'); // Explorer tab state
+    const [activeTab, setActiveTab] = useState('recruiters'); 
 
     const [filters, setFilters] = useState({
         startDate: getDateString(30),
@@ -183,7 +182,6 @@ const ReportsPage = () => {
                 endDate: filters.endDate,
                 sheetKey: filters.sheetKey 
             };
-            
             const response = await apiService.getReportsAnalytics(params);
 
             if (response.data.success) {
@@ -235,7 +233,27 @@ const ReportsPage = () => {
         };
     };
 
-    // --- Access Gate ---
+    // --- BI Logic: Derived Frontend Variables ---
+    let totalCandsPeriod = 0, hiredCount = 0, rejectedCount = 0;
+    let rejectedPercent = '0.0', hiredPercent = '0.0';
+
+    if (analytics) {
+        // Calculate Conversion Percentages safely
+        const statuses = analytics.candidates.byStatus;
+        if (statuses.labels && statuses.labels.length > 0) {
+            totalCandsPeriod = statuses.values.reduce((a, b) => a + b, 0) || 1;
+            
+            const hiredIdx = statuses.labels.indexOf("Hired");
+            if (hiredIdx !== -1) hiredCount = statuses.values[hiredIdx];
+            
+            const rejectedIdx = statuses.labels.indexOf("Rejected");
+            if (rejectedIdx !== -1) rejectedCount = statuses.values[rejectedIdx];
+
+            hiredPercent = ((hiredCount / totalCandsPeriod) * 100).toFixed(1);
+            rejectedPercent = ((rejectedCount / totalCandsPeriod) * 100).toFixed(1);
+        }
+    }
+
     if (!canViewReports && !loading) {
         return (
             <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -250,7 +268,7 @@ const ReportsPage = () => {
 
     return (
         <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans text-slate-800">
-            <div className="max-w-[1600px] mx-auto space-y-8">
+            <div className="max-w-[1600px] mx-auto space-y-6">
                 
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
@@ -264,7 +282,7 @@ const ReportsPage = () => {
                 </div>
 
                 {/* Controls Bar */}
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/60 flex flex-col xl:flex-row items-center justify-between gap-5 sticky top-4 z-10 backdrop-blur-md bg-white/90">
+                <div className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-slate-900/5 flex flex-col xl:flex-row items-center justify-between gap-5 sticky top-4 z-10 backdrop-blur-md bg-white/90">
                     <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
                         <select 
                             value={filters.sheetKey} 
@@ -323,25 +341,53 @@ const ReportsPage = () => {
                 )}
 
                 {analytics && !loading && (
-                    <div className="space-y-8 animate-fade-in-up">
+                    <div className="space-y-6 animate-fade-in-up">
                         
-                        {/* 1. Operational Snapshot (Ignoring Date Filter) */}
-                        <div>
-                            <h2 className="text-lg font-black text-slate-800 mb-4 tracking-tight flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Live Operational Queue
-                            </h2>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {[
-                                    { label: 'Active Open Jobs', val: analytics.live_kpis.openJobs, color: 'text-indigo-600' },
-                                    { label: 'Current Submissions', val: analytics.live_kpis.totalSubmissions, color: 'text-slate-800' },
-                                    { label: 'Total Capacity', val: analytics.live_kpis.totalCapacity, color: 'text-slate-800' },
-                                    { label: 'Capacity Utilized', val: `${analytics.live_kpis.utilization}%`, color: 'text-emerald-600' }
-                                ].map((kpi, i) => (
-                                    <div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">{kpi.label}</span>
-                                        <span className={`text-3xl font-black ${kpi.color} tracking-tight`}>{kpi.val}</span>
+                        {/* BENTO BOX 1: LIVE OPERATIONAL HEALTH */}
+                        <div className="bg-white rounded-2xl p-6 ring-1 ring-slate-900/5 shadow-sm bg-gradient-to-br from-white to-slate-50/50">
+                            <div className="flex items-center gap-3 mb-6">
+                                <span className="flex h-3 w-3 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span></span>
+                                <h2 className="text-base font-black text-slate-800 tracking-tight uppercase">Operational Health (Live)</h2>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                {/* Metric 1: Open Jobs */}
+                                <div className="flex flex-col justify-between border-r border-slate-100 pr-6">
+                                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Active Open Jobs</span>
+                                    <span className="text-4xl font-black text-slate-800 tracking-tight">{analytics.live_kpis.openJobs}</span>
+                                </div>
+                                
+                                {/* Metric 2: Capacity Utilization (Submission %) */}
+                                <div className="flex flex-col justify-between border-r border-slate-100 pr-6">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Submission %</span>
+                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${analytics.live_kpis.utilization >= 100 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>{analytics.live_kpis.utilization}%</span>
                                     </div>
-                                ))}
+                                    <div>
+                                        <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                                            <span>{analytics.live_kpis.totalSubmissions} Subs</span>
+                                            <span className="text-slate-400">/ {analytics.live_kpis.totalCapacity} Cap</span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                                            <div className={`h-2.5 rounded-full transition-all duration-1000 ${analytics.live_kpis.utilization >= 100 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(analytics.live_kpis.utilization, 100)}%` }}></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Metric 3: Zero Subs */}
+                                <div className="flex flex-col justify-between border-r border-slate-100 pr-6">
+                                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Zero-Sub Jobs</span>
+                                    <span className={`text-4xl font-black tracking-tight ${analytics.live_kpis.jobsWithZeroSubmissions > 0 ? 'text-amber-500' : 'text-slate-800'}`}>{analytics.live_kpis.jobsWithZeroSubmissions}</span>
+                                </div>
+
+                                {/* Metric 4: Avg Job Age */}
+                                <div className="flex flex-col justify-between">
+                                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Avg Job Age</span>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-4xl font-black text-slate-800 tracking-tight">{analytics.live_kpis.avgJobAge}</span>
+                                        <span className="text-sm font-bold text-slate-400">Days</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -360,29 +406,48 @@ const ReportsPage = () => {
                             </div>
                         )}
 
-                        {/* 2. Period Velocity (Respecting Date Filter) */}
-                        <div className="pt-4 border-t border-slate-200 border-dashed">
-                            <h2 className="text-lg font-black text-slate-800 mb-4 tracking-tight">Period Velocity <span className="text-sm font-medium text-slate-400 ml-2">({datePreset})</span></h2>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {[
-                                    { label: 'New Jobs Posted', val: analytics.period_kpis.newJobs },
-                                    { label: 'Jobs Closed', val: analytics.period_kpis.closedJobs },
-                                    { label: 'New Candidates Sourced', val: analytics.period_kpis.newCandidates },
-                                    { label: 'Candidates Hired', val: analytics.period_kpis.periodHires, color: 'text-emerald-600' }
-                                ].map((kpi, i) => (
-                                    <div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">{kpi.label}</span>
-                                        <span className={`text-3xl font-black ${kpi.color || 'text-slate-800'} tracking-tight`}>{kpi.val}</span>
+                        {/* BENTO BOX 2: PIPELINE CONVERSION (PERIOD SPECIFIC) */}
+                        <div className="bg-white rounded-2xl p-6 ring-1 ring-slate-900/5 shadow-sm">
+                            <h2 className="text-base font-black text-slate-800 mb-6 tracking-tight uppercase">Pipeline Conversion <span className="text-slate-400 lowercase ml-2 font-semibold bg-slate-100 px-2 py-0.5 rounded-md">({datePreset})</span></h2>
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                {/* Sourced */}
+                                <div className="flex flex-col justify-between border-r border-slate-100 pr-6">
+                                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Candidates Sourced</span>
+                                    <span className="text-4xl font-black text-indigo-600 tracking-tight">{analytics.period_kpis.newCandidates}</span>
+                                </div>
+                                
+                                {/* Hired */}
+                                <div className="flex flex-col justify-between border-r border-slate-100 pr-6">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block">Hired</span>
+                                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">{hiredPercent}% Hire Rate</span>
                                     </div>
-                                ))}
+                                    <span className="text-4xl font-black text-slate-800 tracking-tight">{hiredCount}</span>
+                                </div>
+
+                                {/* Rejected */}
+                                <div className="flex flex-col justify-between border-r border-slate-100 pr-6">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block">Rejected</span>
+                                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">{rejectedPercent}% Rej. Rate</span>
+                                    </div>
+                                    <span className="text-4xl font-black text-slate-800 tracking-tight">{rejectedCount}</span>
+                                </div>
+
+                                {/* Jobs Closed */}
+                                <div className="flex flex-col justify-between">
+                                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Jobs Closed</span>
+                                    <span className="text-4xl font-black text-slate-800 tracking-tight">{analytics.period_kpis.closedJobs}</span>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Charts Section */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col lg:col-span-2">
+                        {/* Charts Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm ring-1 ring-slate-900/5 h-[350px] flex flex-col lg:col-span-2">
                                 <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Demand vs Supply Velocity</h3>
-                                <p className="text-xs text-slate-500 font-medium mb-4">Jobs created vs candidates submitted.</p>
+                                <p className="text-xs text-slate-500 font-medium mb-4">Jobs created vs candidates submitted over the selected period.</p>
                                 <div className="relative flex-grow">
                                     <ChartComponent type='line' options={{...enterpriseChartOptions, plugins: { legend: { display: true, position: 'top' } }, elements: { line: { tension: 0.3 }}}} data={{
                                         labels: analytics.trends.labels,
@@ -393,31 +458,37 @@ const ReportsPage = () => {
                                     }} />
                                 </div>
                             </div>
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
-                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Active Job Aging</h3>
+                            
+                            <div className="bg-white p-6 rounded-2xl shadow-sm ring-1 ring-slate-900/5 h-[350px] flex flex-col">
+                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Candidate Status Distribution</h3>
+                                <div className="relative flex-grow flex items-center justify-center">
+                                    <div className="w-full h-full max-h-[250px]">
+                                        <ChartComponent type='doughnut' options={{...enterpriseChartOptions, cutout: '70%', scales: {x:{display:false}, y:{display:false}}, plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }}} data={{
+                                            labels: analytics.candidates.byStatus.labels,
+                                            datasets: [{ data: analytics.candidates.byStatus.values, backgroundColor: ['#10b981', '#f43f5e', '#3b82f6', '#f59e0b', '#94a3b8'], borderWidth: 0 }]
+                                        }} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm ring-1 ring-slate-900/5 h-[350px] flex flex-col">
+                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Client Demand (New Jobs)</h3>
+                                <div className="relative flex-grow">
+                                    <ChartComponent type='bar' options={{...enterpriseChartOptions, indexAxis: 'y'}} data={getChartData(analytics.jobs.byClient, 'Jobs', '#4f46e5', true)} />
+                                </div>
+                            </div>
+                            <div className="bg-white p-6 rounded-2xl shadow-sm ring-1 ring-slate-900/5 h-[350px] flex flex-col">
+                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Active Job Aging Distribution</h3>
                                 <div className="relative flex-grow">
                                     <ChartComponent type='bar' options={enterpriseChartOptions} data={getChartData(analytics.jobs.aging, 'Jobs', '#f59e0b')} />
                                 </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
-                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Period Client Demand</h3>
-                                <div className="relative flex-grow">
-                                    <ChartComponent type='bar' options={enterpriseChartOptions} data={getChartData(analytics.jobs.byClient, 'Jobs', '#4f46e5')} />
-                                </div>
-                            </div>
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
-                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Period Candidate Statuses</h3>
-                                <div className="relative flex-grow">
-                                    <ChartComponent type='bar' options={{...enterpriseChartOptions, indexAxis: 'y'}} data={getChartData(analytics.candidates.byStatus, 'Candidates', '#10b981', true)} />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 3. Detailed Data Explorer */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden pt-2">
+                        {/* Detailed Data Explorer */}
+                        <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-900/5 overflow-hidden pt-2">
                             <div className="flex border-b border-slate-200 px-6">
                                 <button onClick={() => setActiveTab('recruiters')} className={`px-4 py-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'recruiters' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Recruiter Performance</button>
                                 <button onClick={() => setActiveTab('clients')} className={`px-4 py-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'clients' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Client Portfolio</button>
