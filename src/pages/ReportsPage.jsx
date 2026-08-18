@@ -1,5 +1,3 @@
-// src/pages/ReportsPage.jsx
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
     Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, 
@@ -33,7 +31,7 @@ const Spinner = ({ size = '6' }) => (
     </div>
 );
 
-// --- Sheet Configuration from original code ---
+// --- Configurations ---
 const DASHBOARD_CONFIGS = {
     'all': { title: 'All VMS Sources' },
     'ecaltVMSDisplay': { title: 'Eclat VMS' },
@@ -56,7 +54,7 @@ const ChartComponent = ({ type, options, data }) => {
     return null;
 };
 
-// --- RESTORED Email Modal ---
+// --- Email Modal ---
 const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) => {
     const [toEmails, setToEmails] = useState('');
     const [ccEmails, setCcEmails] = useState('');
@@ -72,8 +70,6 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
 
     const handleSendEmail = async () => {
         if (!canEmailReports) return setError("Permission denied to send email reports.");
-        
-        // Prevent sending "all" as sheetKey to the legacy email API if it expects a specific sheet
         const emailSheetKey = sheetKey === 'all' ? 'taprootVMSDisplay' : sheetKey; 
 
         const toEmailArray = toEmails.split(',').map(e => e.trim()).filter(Boolean);
@@ -134,7 +130,6 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
     );
 };
 
-// --- Helper Date Functions ---
 const getDateString = (daysAgo) => {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
@@ -151,10 +146,12 @@ const ReportsPage = () => {
     const [datePreset, setDatePreset] = useState('30D');
     const [isEmailModalOpen, setEmailModalOpen] = useState(false);
     
+    const [activeTab, setActiveTab] = useState('recruiters'); // Explorer tab state
+
     const [filters, setFilters] = useState({
         startDate: getDateString(30),
         endDate: getDateString(0),
-        sheetKey: 'all' // Added back the Sheet filter
+        sheetKey: 'all'
     });
 
     const handlePresetChange = (preset) => {
@@ -204,7 +201,6 @@ const ReportsPage = () => {
 
     useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
-    // --- RESTORED Data Export Function ---
     const handleExportData = () => {
         if (!analytics) return;
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(analytics, null, 2));
@@ -267,15 +263,13 @@ const ReportsPage = () => {
                     </div>
                 </div>
 
-                {/* RESTORED Controls Bar w/ Filters & Actions */}
+                {/* Controls Bar */}
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/60 flex flex-col xl:flex-row items-center justify-between gap-5 sticky top-4 z-10 backdrop-blur-md bg-white/90">
-                    
                     <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
-                        {/* Source Filter */}
                         <select 
                             value={filters.sheetKey} 
                             onChange={(e) => setFilters(p => ({...p, sheetKey: e.target.value}))}
-                            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition cursor-pointer appearance-none min-w-[180px]"
+                            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition cursor-pointer min-w-[180px]"
                             disabled={loading}
                         >
                             {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
@@ -283,7 +277,6 @@ const ReportsPage = () => {
                             ))}
                         </select>
 
-                        {/* Date Presets */}
                         <div className="flex space-x-1 p-1 bg-slate-100 rounded-xl overflow-x-auto">
                             {['7D', '30D', '90D', '6M', '12M', 'YTD', 'ALL'].map(preset => (
                                 <button 
@@ -296,7 +289,6 @@ const ReportsPage = () => {
                             ))}
                         </div>
                         
-                        {/* Custom Date Ranges */}
                         {datePreset === 'Custom' && (
                             <div className="flex items-center gap-2 text-xs">
                                 <input type="date" value={filters.startDate} onChange={e => setFilters(p => ({...p, startDate: e.target.value}))} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none" />
@@ -310,11 +302,9 @@ const ReportsPage = () => {
                         <button onClick={fetchAnalytics} disabled={loading} className="px-4 py-2 bg-indigo-50 text-indigo-600 font-semibold hover:bg-indigo-100 rounded-xl transition flex items-center gap-2 text-sm">
                             <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
                         </button>
-                        
                         <button onClick={handleExportData} disabled={!analytics || loading} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 rounded-xl transition flex items-center gap-2 text-sm disabled:opacity-50">
-                            <DownloadIcon className="w-4 h-4" /> Export Data
+                            <DownloadIcon className="w-4 h-4" /> JSON Export
                         </button>
-
                         <button onClick={() => setEmailModalOpen(true)} disabled={!analytics || !canEmailReports || loading} className="px-4 py-2 bg-emerald-500 text-white font-semibold hover:bg-emerald-600 rounded-xl transition flex items-center gap-2 text-sm disabled:opacity-50">
                             <EmailIcon className="w-4 h-4" /> Email Report
                         </button>
@@ -324,10 +314,7 @@ const ReportsPage = () => {
                 {error && (
                     <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-xl flex items-start gap-3">
                         <AlertIcon className="w-5 h-5 text-rose-600 mt-0.5" severity="critical" />
-                        <div>
-                            <h3 className="text-rose-800 font-bold text-sm">Data Fetch Error</h3>
-                            <p className="text-rose-600 text-sm mt-1">{error}</p>
-                        </div>
+                        <div><h3 className="text-rose-800 font-bold text-sm">Data Fetch Error</h3><p className="text-rose-600 text-sm mt-1">{error}</p></div>
                     </div>
                 )}
 
@@ -338,116 +325,165 @@ const ReportsPage = () => {
                 {analytics && !loading && (
                     <div className="space-y-8 animate-fade-in-up">
                         
-                        {/* Executive KPI Strip */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-                            {[
-                                { label: 'Total Jobs', val: analytics.kpis.totalJobs },
-                                { label: 'Open Jobs', val: analytics.kpis.openJobs, color: 'text-indigo-600' },
-                                { label: 'Candidate Pool', val: analytics.kpis.totalCandidates },
-                                { label: 'Submissions', val: analytics.kpis.totalSubmissions, color: 'text-emerald-600' },
-                                { label: 'Total Capacity', val: analytics.kpis.totalCapacity },
-                                { label: 'Utilization', val: `${analytics.kpis.utilization}%` },
-                                { label: 'Zero Subs', val: analytics.kpis.jobsWithZeroSubmissions, color: 'text-amber-600' },
-                                { label: 'New Jobs', val: analytics.kpis.newJobs }
-                            ].map((kpi, i) => (
-                                <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">{kpi.label}</span>
-                                    <span className={`text-2xl font-black ${kpi.color || 'text-slate-800'} tracking-tight`}>{kpi.val}</span>
-                                </div>
-                            ))}
+                        {/* 1. Operational Snapshot (Ignoring Date Filter) */}
+                        <div>
+                            <h2 className="text-lg font-black text-slate-800 mb-4 tracking-tight flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Live Operational Queue
+                            </h2>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {[
+                                    { label: 'Active Open Jobs', val: analytics.live_kpis.openJobs, color: 'text-indigo-600' },
+                                    { label: 'Current Submissions', val: analytics.live_kpis.totalSubmissions, color: 'text-slate-800' },
+                                    { label: 'Total Capacity', val: analytics.live_kpis.totalCapacity, color: 'text-slate-800' },
+                                    { label: 'Capacity Utilized', val: `${analytics.live_kpis.utilization}%`, color: 'text-emerald-600' }
+                                ].map((kpi, i) => (
+                                    <div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">{kpi.label}</span>
+                                        <span className={`text-3xl font-black ${kpi.color} tracking-tight`}>{kpi.val}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
-                        {/* Action Center Alerts */}
+                        {/* Alerts */}
                         {analytics.alerts && analytics.alerts.length > 0 && (
-                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide mb-4">Attention Required</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {analytics.alerts.map((alert, i) => (
-                                        <div key={i} className={`p-4 rounded-xl border flex items-start gap-3 ${alert.severity === 'critical' ? 'bg-rose-50 border-rose-100 text-rose-800' : 'bg-amber-50 border-amber-100 text-amber-800'}`}>
-                                            <AlertIcon severity={alert.severity} className={`w-5 h-5 mt-0.5 shrink-0 ${alert.severity === 'critical' ? 'text-rose-600' : 'text-amber-600'}`} />
-                                            <div>
-                                                <h4 className="font-bold text-sm">{alert.title} <span className="ml-1 opacity-75">({alert.count})</span></h4>
-                                                <p className="text-xs font-medium mt-1 opacity-90 leading-relaxed">{alert.description}</p>
-                                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {analytics.alerts.map((alert, i) => (
+                                    <div key={i} className={`p-4 rounded-xl border flex items-start gap-3 ${alert.severity === 'critical' ? 'bg-rose-50 border-rose-100 text-rose-800' : 'bg-amber-50 border-amber-100 text-amber-800'}`}>
+                                        <AlertIcon severity={alert.severity} className={`w-5 h-5 mt-0.5 shrink-0 ${alert.severity === 'critical' ? 'text-rose-600' : 'text-amber-600'}`} />
+                                        <div>
+                                            <h4 className="font-bold text-sm">{alert.title} <span className="ml-1 opacity-75">({alert.count})</span></h4>
+                                            <p className="text-xs font-medium mt-1 opacity-90 leading-relaxed">{alert.description}</p>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
 
-                        {/* Business Overview Trends */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
-                            <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Velocity & Growth Trend</h3>
-                            <p className="text-xs text-slate-500 font-medium mb-4">Jobs created vs candidates submitted over the selected period.</p>
-                            <div className="relative flex-grow">
-                                <ChartComponent type='line' options={{...enterpriseChartOptions, plugins: { legend: { display: true, position: 'top' } }, elements: { line: { tension: 0.3 }}}} data={{
-                                    labels: analytics.trends.labels,
-                                    datasets: [
-                                        { label: 'Jobs Created', data: analytics.trends.jobs, borderColor: '#4f46e5', backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true, borderWidth: 3, pointRadius: 3 },
-                                        { label: 'Candidates Submitted', data: analytics.trends.candidates, borderColor: '#0ea5e9', backgroundColor: 'transparent', borderDash: [5, 5], borderWidth: 3, pointRadius: 3 }
-                                    ]
-                                }} />
+                        {/* 2. Period Velocity (Respecting Date Filter) */}
+                        <div className="pt-4 border-t border-slate-200 border-dashed">
+                            <h2 className="text-lg font-black text-slate-800 mb-4 tracking-tight">Period Velocity <span className="text-sm font-medium text-slate-400 ml-2">({datePreset})</span></h2>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {[
+                                    { label: 'New Jobs Posted', val: analytics.period_kpis.newJobs },
+                                    { label: 'Jobs Closed', val: analytics.period_kpis.closedJobs },
+                                    { label: 'New Candidates Sourced', val: analytics.period_kpis.newCandidates },
+                                    { label: 'Candidates Hired', val: analytics.period_kpis.periodHires, color: 'text-emerald-600' }
+                                ].map((kpi, i) => (
+                                    <div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">{kpi.label}</span>
+                                        <span className={`text-3xl font-black ${kpi.color || 'text-slate-800'} tracking-tight`}>{kpi.val}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
-                        {/* Job Intelligence */}
+                        {/* Charts Section */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col lg:col-span-2">
+                                <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Demand vs Supply Velocity</h3>
+                                <p className="text-xs text-slate-500 font-medium mb-4">Jobs created vs candidates submitted.</p>
+                                <div className="relative flex-grow">
+                                    <ChartComponent type='line' options={{...enterpriseChartOptions, plugins: { legend: { display: true, position: 'top' } }, elements: { line: { tension: 0.3 }}}} data={{
+                                        labels: analytics.trends.labels,
+                                        datasets: [
+                                            { label: 'Jobs Created', data: analytics.trends.jobs, borderColor: '#4f46e5', backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true, borderWidth: 3, pointRadius: 3 },
+                                            { label: 'Candidates Submitted', data: analytics.trends.candidates, borderColor: '#0ea5e9', backgroundColor: 'transparent', borderDash: [5, 5], borderWidth: 3, pointRadius: 3 }
+                                        ]
+                                    }} />
+                                </div>
+                            </div>
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
+                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Active Job Aging</h3>
+                                <div className="relative flex-grow">
+                                    <ChartComponent type='bar' options={enterpriseChartOptions} data={getChartData(analytics.jobs.aging, 'Jobs', '#f59e0b')} />
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
-                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Jobs by Client Demand</h3>
+                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Period Client Demand</h3>
                                 <div className="relative flex-grow">
                                     <ChartComponent type='bar' options={enterpriseChartOptions} data={getChartData(analytics.jobs.byClient, 'Jobs', '#4f46e5')} />
                                 </div>
                             </div>
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
-                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Jobs by Position Type</h3>
+                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Period Candidate Statuses</h3>
                                 <div className="relative flex-grow">
-                                    <ChartComponent type='bar' options={{...enterpriseChartOptions, indexAxis: 'y'}} data={getChartData(analytics.jobs.byPosition, 'Jobs', '#0ea5e9', true)} />
+                                    <ChartComponent type='bar' options={{...enterpriseChartOptions, indexAxis: 'y'}} data={getChartData(analytics.candidates.byStatus, 'Candidates', '#10b981', true)} />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Candidate Intelligence */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
-                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Candidate Status Distribution</h3>
-                                <div className="relative flex-grow flex items-center justify-center">
-                                    <div className="w-full h-full max-h-[250px]">
-                                        <ChartComponent type='doughnut' options={{...enterpriseChartOptions, cutout: '70%', scales: {x:{display:false}, y:{display:false}}}} data={{
-                                            labels: analytics.candidates.byStatus.labels,
-                                            datasets: [{ data: analytics.candidates.byStatus.values, backgroundColor: ['#10b981', '#f43f5e', '#3b82f6', '#f59e0b', '#94a3b8'], borderWidth: 0 }]
-                                        }} />
-                                    </div>
-                                </div>
+                        {/* 3. Detailed Data Explorer */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden pt-2">
+                            <div className="flex border-b border-slate-200 px-6">
+                                <button onClick={() => setActiveTab('recruiters')} className={`px-4 py-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'recruiters' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Recruiter Performance</button>
+                                <button onClick={() => setActiveTab('clients')} className={`px-4 py-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'clients' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Client Portfolio</button>
                             </div>
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col lg:col-span-2">
-                                <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Top Database Skills</h3>
-                                <p className="text-xs text-slate-500 font-medium mb-4">Most frequently mapped skills across candidate profiles.</p>
-                                <div className="relative flex-grow">
-                                    <ChartComponent type='bar' options={enterpriseChartOptions} data={getChartData(analytics.candidates.topSkills, 'Candidates', '#8b5cf6')} />
-                                </div>
+                            
+                            <div className="overflow-x-auto">
+                                {activeTab === 'recruiters' && (
+                                    <table className="w-full text-left text-sm whitespace-nowrap">
+                                        <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-black">
+                                            <tr>
+                                                <th className="px-6 py-4">Recruiter Name</th>
+                                                <th className="px-6 py-4 text-center">Active Jobs</th>
+                                                <th className="px-6 py-4 text-center">Zero-Sub Jobs</th>
+                                                <th className="px-6 py-4 text-center border-l border-slate-200 bg-slate-100/50">Candidates Submitted <span className="opacity-60 block text-[9px]">({datePreset})</span></th>
+                                                <th className="px-6 py-4 text-center border-l border-slate-200 bg-slate-100/50">Hires <span className="opacity-60 block text-[9px]">({datePreset})</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {analytics.tables.recruiters.map((row, i) => (
+                                                <tr key={i} className="hover:bg-slate-50/80 transition">
+                                                    <td className="px-6 py-4 font-bold text-slate-700">{row.name}</td>
+                                                    <td className="px-6 py-4 text-center font-medium">{row.activeJobs}</td>
+                                                    <td className="px-6 py-4 text-center font-medium">
+                                                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${row.zeroSubJobs > 0 ? 'bg-amber-100 text-amber-700' : 'text-slate-400'}`}>{row.zeroSubJobs}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center font-bold border-l border-slate-50 bg-slate-50/30 text-indigo-600">{row.periodSubs}</td>
+                                                    <td className="px-6 py-4 text-center font-bold border-l border-slate-50 bg-slate-50/30 text-emerald-600">{row.periodHires}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+
+                                {activeTab === 'clients' && (
+                                    <table className="w-full text-left text-sm whitespace-nowrap">
+                                        <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-black">
+                                            <tr>
+                                                <th className="px-6 py-4">Client Name</th>
+                                                <th className="px-6 py-4 text-center">Open Jobs</th>
+                                                <th className="px-6 py-4 text-center">Total Cap.</th>
+                                                <th className="px-6 py-4 text-center">Utilized Subs</th>
+                                                <th className="px-6 py-4 text-center border-l border-slate-200 bg-slate-100/50">Hires <span className="opacity-60 block text-[9px]">({datePreset})</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {analytics.tables.clients.map((row, i) => (
+                                                <tr key={i} className="hover:bg-slate-50/80 transition">
+                                                    <td className="px-6 py-4 font-bold text-slate-700">{row.name}</td>
+                                                    <td className="px-6 py-4 text-center font-medium text-indigo-600">{row.openJobs}</td>
+                                                    <td className="px-6 py-4 text-center font-medium text-slate-500">{row.capacity}</td>
+                                                    <td className="px-6 py-4 text-center font-medium">
+                                                        {row.totalSubs} <span className="text-xs text-slate-400 ml-1">({row.capacity > 0 ? Math.round((row.totalSubs/row.capacity)*100) : 0}%)</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center font-bold border-l border-slate-50 bg-slate-50/30 text-emerald-600">{row.periodHires}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
                             </div>
                         </div>
 
-                        {/* Recruiter & Client Intelligence */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
-                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Recruiter Workload (Jobs)</h3>
-                                <div className="relative flex-grow">
-                                    <ChartComponent type='bar' options={{...enterpriseChartOptions, indexAxis: 'y'}} data={getChartData(analytics.recruiters.jobs, 'Assigned Jobs', '#64748b', true)} />
-                                </div>
-                            </div>
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
-                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Client Candidate Coverage</h3>
-                                <div className="relative flex-grow">
-                                    <ChartComponent type='bar' options={{...enterpriseChartOptions, indexAxis: 'y'}} data={getChartData(analytics.clients.candidates, 'Candidates Submitted', '#14b8a6', true)} />
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 )}
             </div>
 
-            {/* Modal Injection */}
             <EmailReportModal 
                 isOpen={isEmailModalOpen} 
                 onClose={() => setEmailModalOpen(false)} 
