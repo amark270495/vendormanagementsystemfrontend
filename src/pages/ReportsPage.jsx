@@ -1,27 +1,31 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+// src/pages/ReportsPage.jsx
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
     Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, 
-    LinearScale, BarElement, LineElement, PointElement, RadialLinearScale, Filler 
+    LinearScale, BarElement, LineElement, PointElement, DoughnutController 
 } from 'chart.js';
-import { Bar, Pie, Doughnut, Line, Radar } from 'react-chartjs-2';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import { usePermissions } from '../hooks/usePermissions';
-import axios from 'axios';
 
-// Register advanced Chart.js elements
 ChartJS.register(
     ArcElement, Tooltip, Legend, CategoryScale, LinearScale, 
-    BarElement, LineElement, PointElement, RadialLinearScale, Filler
+    BarElement, LineElement, PointElement, DoughnutController
 );
 
-// Global Chart Typography & Styling
 ChartJS.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
 ChartJS.defaults.color = '#64748b';
 
 // --- Icons ---
-const AdjustmentsIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>;
+const RefreshIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>;
 const DownloadIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>;
+const EmailIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>;
+const AlertIcon = ({ className, severity }) => {
+    if (severity === 'critical') return <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>;
+    return <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>;
+};
 
 const Spinner = ({ size = '6' }) => (
     <div className="flex justify-center items-center">
@@ -29,18 +33,30 @@ const Spinner = ({ size = '6' }) => (
     </div>
 );
 
-const ChartComponent = ({ type, options, data }) => {
-    if (!data || !data.labels || data.labels.length === 0) return <div className="flex justify-center items-center h-full text-slate-400 font-medium text-sm border-2 border-dashed border-slate-200 rounded-2xl m-4">No data available for this dimension.</div>;
-    const commonOptions = { responsive: true, maintainAspectRatio: false, ...options };
-    if (type === 'bar') return <Bar options={commonOptions} data={data} />;
-    if (type === 'pie') return <Pie options={commonOptions} data={data} />;
-    if (type === 'doughnut') return <Doughnut options={commonOptions} data={data} />;
-    if (type === 'line') return <Line options={commonOptions} data={data} />;
-    if (type === 'radar') return <Radar options={commonOptions} data={data} />;
-    return <div className="text-red-500">Unknown chart type</div>;
+// --- Sheet Configuration from original code ---
+const DASHBOARD_CONFIGS = {
+    'all': { title: 'All VMS Sources' },
+    'ecaltVMSDisplay': { title: 'Eclat VMS' },
+    'taprootVMSDisplay': { title: 'Taproot VMS' },
+    'michiganDisplay': { title: 'Michigan VMS' },
+    'EclatTexasDisplay': { title: 'Eclat Texas VMS' },
+    'TaprootTexasDisplay': { title: 'Taproot Texas VMS' },
+    'VirtusaDisplay': { title: 'Virtusa Taproot' },
+    'DeloitteDisplay': { title: 'Deloitte Taproot' },
+    'tsiBdmDisplay': { title: 'TSI - BDM Openings' },
+    'tsiBdrDisplay': { title: 'TSI - BDR Openings' }
 };
 
-// --- Email Modal ---
+const ChartComponent = ({ type, options, data }) => {
+    if (!data || !data.labels || data.labels.length === 0) return <div className="flex justify-center items-center h-full text-slate-400 font-medium text-sm">No data available.</div>;
+    const commonOptions = { responsive: true, maintainAspectRatio: false, ...options };
+    if (type === 'bar') return <Bar options={commonOptions} data={data} />;
+    if (type === 'doughnut') return <Doughnut options={commonOptions} data={data} />;
+    if (type === 'line') return <Line options={commonOptions} data={data} />;
+    return null;
+};
+
+// --- RESTORED Email Modal ---
 const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) => {
     const [toEmails, setToEmails] = useState('');
     const [ccEmails, setCcEmails] = useState('');
@@ -56,13 +72,17 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
 
     const handleSendEmail = async () => {
         if (!canEmailReports) return setError("Permission denied to send email reports.");
+        
+        // Prevent sending "all" as sheetKey to the legacy email API if it expects a specific sheet
+        const emailSheetKey = sheetKey === 'all' ? 'taprootVMSDisplay' : sheetKey; 
+
         const toEmailArray = toEmails.split(',').map(e => e.trim()).filter(Boolean);
         const ccEmailArray = ccEmails.split(',').map(e => e.trim()).filter(Boolean);
         if (toEmailArray.length === 0) return setError("Please provide at least one 'To' email.");
 
         setIsSending(true); setError(''); setSuccessMessage('');
         try {
-            const response = await apiService.generateAndSendJobReport(sheetKey, statusFilter, toEmailArray, ccEmailArray, authenticatedUsername);
+            const response = await apiService.generateAndSendJobReport(emailSheetKey, statusFilter, toEmailArray, ccEmailArray, authenticatedUsername);
             if (response.data.success) {
                 setSuccessMessage('Report sent successfully!');
                 setTimeout(() => onClose(), 2000);
@@ -114,234 +134,91 @@ const EmailReportModal = ({ isOpen, onClose, sheetKey, authenticatedUsername }) 
     );
 };
 
-// FULLY UPDATED DASHBOARD CONFIGS (Added TSI variants)
-const DASHBOARD_CONFIGS = {
-    'ecaltVMSDisplay': { title: 'Eclat VMS' },
-    'taprootVMSDisplay': { title: 'Taproot VMS' },
-    'michiganDisplay': { title: 'Michigan VMS' },
-    'EclatTexasDisplay': { title: 'Eclat Texas VMS' },
-    'TaprootTexasDisplay': { title: 'Taproot Texas VMS' },
-    'VirtusaDisplay': { title: 'Virtusa Taproot' },
-    'DeloitteDisplay': { title: 'Deloitte Taproot' },
-    'tsiBdmDisplay': { title: 'TSI - BDM Openings' },
-    'tsiBdrDisplay': { title: 'TSI - BDR Openings' }
+// --- Helper Date Functions ---
+const getDateString = (daysAgo) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    return d.toISOString().split('T')[0];
 };
-
-const DEFAULT_KPIS = [
-    { id: 'conversionRate', label: 'Placement Conversion', target: 'Target >20%', color: 'text-emerald-600', bg: 'bg-emerald-50 text-emerald-700', enabled: true },
-    { id: 'fillRatio', label: 'Overall Fill Rate', target: 'Target >50%', color: 'text-blue-600', bg: 'bg-blue-50 text-blue-700', enabled: true },
-    { id: 'slotCapacity', label: 'Slot Utilization', target: 'Target >75%', color: 'text-indigo-600', bg: 'bg-indigo-50 text-indigo-700', enabled: true },
-    { id: 'pipelineVelocity', label: 'Active Pipeline', target: 'Healthy >40%', color: 'text-cyan-600', bg: 'bg-cyan-50 text-cyan-700', enabled: true },
-    { id: 'avgTimeSubmit', label: 'Avg Time-to-Submit', target: '< 48 Hours', color: 'text-sky-600', bg: 'bg-sky-50 text-sky-700', enabled: true },
-    { id: 'agingJobs', label: 'SLA Breach Risk', target: '> 14 Days Old', color: 'text-rose-600', bg: 'bg-rose-50 text-rose-700', enabled: true },
-    { id: 'offerAcceptance', label: 'Offer Acceptance', target: 'Target >85%', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50 text-fuchsia-700', enabled: true },
-    { id: 'coverageRatio', label: 'Job Coverage Ratio', target: 'Profiles/Job', color: 'text-purple-600', bg: 'bg-purple-50 text-purple-700', enabled: true },
-    { id: 'topClientShare', label: 'Client Concentration', target: 'Risk <50%', color: 'text-amber-600', bg: 'bg-amber-50 text-amber-700', enabled: false },
-    { id: 'rejectionRate', label: 'Rejection Rate', target: 'Target <30%', color: 'text-red-600', bg: 'bg-red-50 text-red-700', enabled: false }
-];
 
 const ReportsPage = () => {
     const { user } = useAuth();
     const { canViewReports, canEmailReports } = usePermissions();
     
-    const [reportType, setReportType] = useState('advancedBI'); 
-    const [reportData, setReportData] = useState(null);
+    const [analytics, setAnalytics] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [filters, setFilters] = useState({ sheetKey: 'taprootVMSDisplay', startDate: '', endDate: '' });
-    const [searchTerm, setSearchTerm] = useState('');
+    const [datePreset, setDatePreset] = useState('30D');
     const [isEmailModalOpen, setEmailModalOpen] = useState(false);
     
-    const [kpiConfigs, setKpiConfigs] = useState(DEFAULT_KPIS);
-    const [showKpiSettings, setShowKpiSettings] = useState(false);
+    const [filters, setFilters] = useState({
+        startDate: getDateString(30),
+        endDate: getDateString(0),
+        sheetKey: 'all' // Added back the Sheet filter
+    });
 
-    const toggleKpi = (id) => setKpiConfigs(prev => prev.map(k => k.id === id ? { ...k, enabled: !k.enabled } : k));
+    const handlePresetChange = (preset) => {
+        setDatePreset(preset);
+        let start = '';
+        const end = getDateString(0);
+        switch (preset) {
+            case '7D': start = getDateString(7); break;
+            case '30D': start = getDateString(30); break;
+            case '90D': start = getDateString(90); break;
+            case '6M': start = getDateString(180); break;
+            case '12M': start = getDateString(365); break;
+            case 'YTD': start = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]; break;
+            case 'ALL': start = ''; break;
+            default: start = getDateString(30);
+        }
+        setFilters(prev => ({ ...prev, startDate: start, endDate: end }));
+    };
 
-    const generateReport = useCallback(async () => {
+    const fetchAnalytics = useCallback(async () => {
         if (!user?.userIdentifier || !canViewReports) { setLoading(false); return; }
         
-        setLoading(true); setError(''); setReportData(null);
+        setLoading(true); setError('');
         
         try {
-            let response;
-            const params = { authenticatedUsername: user.userIdentifier, startDate: filters.startDate, endDate: filters.endDate };
-
-            if (reportType === 'jobPostings') {
-                params.sheetKey = filters.sheetKey;
-                if (typeof apiService.getReportData === 'function') response = await apiService.getReportData(params);
-                else response = await axios.get('/api/getReportData', { params });
-            } else if (reportType === 'candidates') {
-                if (typeof apiService.getCandidateReportData === 'function') response = await apiService.getCandidateReportData(params);
-                else response = await axios.get('/api/getCandidateReportData', { params });
-            } else if (reportType === 'advancedBI') {
-                if (typeof apiService.getPowerBIData === 'function') response = await apiService.getPowerBIData({ authenticatedUsername: user.userIdentifier });
-                else response = await axios.get('/api/getPowerBIData', { params: { authenticatedUsername: user.userIdentifier } });
-            }
+            const params = { 
+                authenticatedUsername: user.userIdentifier, 
+                startDate: filters.startDate, 
+                endDate: filters.endDate,
+                sheetKey: filters.sheetKey 
+            };
+            
+            const response = await apiService.getReportsAnalytics(params);
 
             if (response.data.success) {
-                setReportData(response.data);
+                setAnalytics(response.data);
             } else {
                 throw new Error(response.data.message || "Failed to fetch data.");
             }
         } catch (err) {
             console.error("API call failed:", err);
-            setError("Failed to fetch report data. Displaying sample data for preview.");
-            
-            // Comprehensive Enterprise Mock Data
-            if (reportType === 'jobPostings') {
-                setReportData({
-                    totalJobs: 120, openJobs: 75, closedJobs: 45, totalResumesSubmitted: 350, totalMaxSubmissions: 500,
-                    clientJobCounts: { 'State of VA': 50, 'Deloitte': 40, 'Morgan Stanley': 30 },
-                    positionTypeCounts: { 'Full-Time': 80, 'Contract': 40 },
-                    workingByCounts: { 'Kolla Bala Teja': 50, 'Saidulu Bonthala': 40, 'Mounika Turakapudi': 30 }
-                });
-            } else if (reportType === 'candidates') {
-                setReportData({
-                    totalCandidates: 250,
-                    remarksCount: { 'Hired': 35, 'Interviewing': 60, 'Under Review': 85, 'Rejected': 70 }
-                });
-            } else if (reportType === 'advancedBI') {
-                setReportData({
-                    Dim_Client: [{ ClientKey: 'c1', ClientName: 'State of VA' }, { ClientKey: 'c2', ClientName: 'Morgan Stanley' }, { ClientKey: 'c3', ClientName: 'Deloitte' }],
-                    Dim_Recruiter: [{ RecruiterKey: 'r1', RecruiterName: 'Kolla Teja' }, { RecruiterKey: 'r2', RecruiterName: 'Saidulu B.' }],
-                    Dim_Job: [{ JobKey: 'j1', JobTitle: 'Data Engineer', PositionType: 'Senior' }, { JobKey: 'j2', JobTitle: 'React Developer', PositionType: 'Mid-Level' }, { JobKey: 'j3', JobTitle: 'Cloud Architect', PositionType: 'Senior' }],
-                    Fact_JobPostings: [ 
-                        { JobKey: 'j1', ClientKey: 'c1', RecruiterKey: 'r1', Status: 'Open', ResumesSubmitted: 12, MaxSubmissions: 15, PostingDate: '2026-08-01' },
-                        { JobKey: 'j2', ClientKey: 'c2', RecruiterKey: 'r2', Status: 'Closed', ResumesSubmitted: 8, MaxSubmissions: 10, PostingDate: '2026-07-15' },
-                        { JobKey: 'j3', ClientKey: 'c3', RecruiterKey: 'r1', Status: 'Open', ResumesSubmitted: 5, MaxSubmissions: 10, PostingDate: '2026-07-28' }
-                    ],
-                    Fact_Candidates: [
-                        { CandidateKey: 'cand1', JobKey: 'j1', CandidateStatus: 'Hired', SubmissionDate: '2026-08-05', Location: 'Texas', RejectionReason: null },
-                        { CandidateKey: 'cand2', JobKey: 'j1', CandidateStatus: 'Interviewing', SubmissionDate: '2026-08-06', Location: 'Virginia', RejectionReason: null },
-                        { CandidateKey: 'cand3', JobKey: 'j2', CandidateStatus: 'Rejected - Salary', SubmissionDate: '2026-07-20', Location: 'Remote', RejectionReason: 'Salary Expectations' },
-                        { CandidateKey: 'cand4', JobKey: 'j2', CandidateStatus: 'Rejected - Tech', SubmissionDate: '2026-07-22', Location: 'New York', RejectionReason: 'Technical Screen' },
-                        { CandidateKey: 'cand5', JobKey: 'j3', CandidateStatus: 'Under Review', SubmissionDate: '2026-08-02', Location: 'California', RejectionReason: null }
-                    ]
-                });
-            }
+            setError(err.response?.data?.message || err.message || "Failed to load live reports.");
         } finally {
             setLoading(false);
         }
-    }, [filters, user?.userIdentifier, canViewReports, reportType]);
+    }, [filters, user?.userIdentifier, canViewReports]);
 
-    useEffect(() => { generateReport(); }, [generateReport]);
+    useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
-    const handleFilterChange = (e) => setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    const handleReportTypeChange = (e) => setReportType(e.target.value);
+    // --- RESTORED Data Export Function ---
+    const handleExportData = () => {
+        if (!analytics) return;
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(analytics, null, 2));
+        const a = document.createElement('a');
+        a.href = dataStr; 
+        a.download = `Taproot_Analytics_Extract_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+    };
 
-    // --- Dynamic Core KPI Engine ---
-    const biMetrics = useMemo(() => {
-        if (!reportData) return null;
-
-        let conversionRate = '0.0%', fillRatio = '0.0%', slotCapacity = '0.0%';
-        let pipelineVelocity = '0.0%', coverageRatio = '0.0', topClientShare = '0.0%';
-        let agingJobs = '0 Jobs', offerAcceptance = '0.0%', avgTimeSubmit = '0 Days', rejectionRate = '0.0%';
-
-        const kpiMap = { conversionRate, fillRatio, slotCapacity, pipelineVelocity, agingJobs, coverageRatio, topClientShare, offerAcceptance, avgTimeSubmit, rejectionRate };
-        let funnelData = [0,0,0,0], clientVolumes = {}, recMatrix = {}, geoMap = {}, trendMap = {}, rejectionMap = {}, roleMap = {};
-
-        if (reportType === 'jobPostings') {
-            const submitted = reportData?.totalResumesSubmitted || 0;
-            const maxSub = reportData?.totalMaxSubmissions || 1;
-            kpiMap.slotCapacity = `${((submitted / maxSub) * 100).toFixed(1)}%`;
-            kpiMap.coverageRatio = (submitted / (reportData?.openJobs || 1)).toFixed(1);
-            kpiMap.fillRatio = `${(((reportData?.closedJobs || 0) / (reportData?.totalJobs || 1)) * 100).toFixed(1)}%`;
-            clientVolumes = reportData?.clientJobCounts || {};
-        } 
-        else if (reportType === 'candidates') {
-            const total = reportData?.totalCandidates || 1;
-            const hired = reportData?.remarksCount?.['Hired'] || 0;
-            const inProcess = (reportData?.remarksCount?.['Interviewing'] || 0) + (reportData?.remarksCount?.['Under Review'] || 0);
-            const rejected = reportData?.remarksCount?.['Rejected'] || 0;
-            
-            kpiMap.conversionRate = `${((hired / total) * 100).toFixed(1)}%`;
-            kpiMap.pipelineVelocity = `${((inProcess / total) * 100).toFixed(1)}%`;
-            kpiMap.rejectionRate = `${((rejected / total) * 100).toFixed(1)}%`;
-        } 
-        else if (reportType === 'advancedBI') {
-            const jobs = reportData?.Fact_JobPostings || [];
-            const cands = reportData?.Fact_Candidates || [];
-            const clients = reportData?.Dim_Client || [];
-            const recruiters = reportData?.Dim_Recruiter || [];
-            const dimJobs = reportData?.Dim_Job || [];
-
-            const totalJobs = jobs.length || 1;
-            const openJobs = jobs.filter(j => j.Status === 'Open').length || 1;
-            const totalCand = cands.length || 1;
-            
-            const hired = cands.filter(c => c.CandidateStatus?.toLowerCase().includes('hire')).length;
-            const inProcess = cands.filter(c => c.CandidateStatus?.toLowerCase().includes('interview') || c.CandidateStatus?.toLowerCase().includes('review')).length;
-            const rejected = cands.filter(c => c.CandidateStatus?.toLowerCase().includes('reject')).length;
-            const submitted = jobs.reduce((acc, j) => acc + (j.ResumesSubmitted || 0), 0);
-            const maxSub = jobs.reduce((acc, j) => acc + (j.MaxSubmissions || 0), 0) || 1;
-
-            kpiMap.conversionRate = `${((hired / totalCand) * 100).toFixed(1)}%`;
-            kpiMap.fillRatio = `${((jobs.filter(j => j.Status === 'Closed').length / totalJobs) * 100).toFixed(1)}%`;
-            kpiMap.slotCapacity = `${((submitted / maxSub) * 100).toFixed(1)}%`;
-            kpiMap.pipelineVelocity = `${((inProcess / totalCand) * 100).toFixed(1)}%`;
-            kpiMap.coverageRatio = (submitted / openJobs).toFixed(1);
-            kpiMap.rejectionRate = `${((rejected / totalCand) * 100).toFixed(1)}%`;
-            
-            const today = new Date();
-            const agingCount = jobs.filter(j => {
-                if(!j.PostingDate || j.Status !== 'Open') return false;
-                return Math.ceil(Math.abs(today - new Date(j.PostingDate)) / (1000 * 60 * 60 * 24)) > 14;
-            }).length;
-            kpiMap.agingJobs = `${agingCount} Jobs`;
-            kpiMap.offerAcceptance = hired > 0 ? `${((hired / (hired + 1)) * 100).toFixed(1)}%` : '0%';
-            kpiMap.avgTimeSubmit = `2.4 Days`;
-
-            const clientMap = {}; clients.forEach(c => clientMap[c.ClientKey] = c.ClientName);
-            const recMap = {}; recruiters.forEach(r => recMap[r.RecruiterKey] = r.RecruiterName);
-            const roleLvlMap = {}; dimJobs.forEach(j => roleLvlMap[j.JobKey] = j.PositionType || 'Standard');
-
-            jobs.forEach(job => {
-                const clientName = clientMap[job.ClientKey] || 'Unknown';
-                clientVolumes[clientName] = (clientVolumes[clientName] || 0) + 1;
-                if(job.PostingDate) {
-                    const month = job.PostingDate.substring(0, 7);
-                    if(!trendMap[month]) trendMap[month] = { posted: 0, submitted: 0 };
-                    trendMap[month].posted += 1;
-                }
-            });
-
-            cands.forEach(cand => {
-                const job = jobs.find(j => j.JobKey === cand.JobKey);
-                const recName = job ? (recMap[job.RecruiterKey] || 'Unassigned') : 'Unassigned';
-                if (!recMatrix[recName]) recMatrix[recName] = { submissions: 0, hires: 0 };
-                recMatrix[recName].submissions += 1;
-                if (cand.CandidateStatus?.toLowerCase().includes('hire')) recMatrix[recName].hires += 1;
-
-                const loc = cand.Location || 'Unknown';
-                geoMap[loc] = (geoMap[loc] || 0) + 1;
-                
-                const roleLevel = roleLvlMap[cand.JobKey] || 'Standard';
-                roleMap[roleLevel] = (roleMap[roleLevel] || 0) + 1;
-
-                if (cand.RejectionReason) {
-                    rejectionMap[cand.RejectionReason] = (rejectionMap[cand.RejectionReason] || 0) + 1;
-                }
-
-                if(cand.SubmissionDate) {
-                    const month = cand.SubmissionDate.substring(0, 7);
-                    if(!trendMap[month]) trendMap[month] = { posted: 0, submitted: 0 };
-                    trendMap[month].submitted += 1;
-                }
-            });
-
-            funnelData = [totalCand, inProcess, hired + 1, hired]; 
-            const topClientVal = Math.max(...Object.values(clientVolumes), 0);
-            kpiMap.topClientShare = `${((topClientVal / totalJobs) * 100).toFixed(1)}%`;
-        }
-
-        return { kpiMap, funnelData, clientVolumes, recMatrix, geoMap, trendMap, rejectionMap, roleMap };
-    }, [reportData, reportType]);
-
-    // --- High-End Enterprise Chart Configurations ---
+    // --- Chart Configurations ---
     const enterpriseChartOptions = {
         responsive: true, maintainAspectRatio: false,
         plugins: { 
-            legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: { weight: '600', size: 11 } } },
+            legend: { display: false },
             tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', titleFont: { size: 13, family: 'Inter' }, padding: 12, cornerRadius: 8 }
         },
         scales: {
@@ -349,366 +226,228 @@ const ReportsPage = () => {
             y: { grid: { color: '#f1f5f9', drawBorder: false }, border: { display: false }, beginAtZero: true, ticks: { font: { size: 11 } } }
         }
     };
-    
-    // IBM Carbon Inspired Enterprise Palette
-    const enterpriseColors = ['#6929c4', '#009d9a', '#d12771', '#0043ce', '#fa4d56', '#8a3800', '#198038', '#012749'];
 
-    const getChartData = (labels, data, label, isHorizontal = false) => ({
-        labels, datasets: [{ 
-            label, data, 
-            backgroundColor: isHorizontal ? enterpriseColors[1] : enterpriseColors, 
-            borderRadius: 6, borderSkipped: false 
-        }]
-    });
-
-    const filteredChartData = (chartLabels, chartValues) => {
-        if (!searchTerm) return { labels: chartLabels || [], values: chartValues || [] };
-        const lower = searchTerm.toLowerCase();
-        const fLabels = [], fValues = [];
-        chartLabels.forEach((label, index) => {
-            if (label.toLowerCase().includes(lower)) { fLabels.push(label); fValues.push(chartValues[index]); }
-        });
-        return { labels: fLabels, values: fValues };
+    const getChartData = (dataObj, label, colorHex = '#4f46e5', isHorizontal = false) => {
+        if (!dataObj) return { labels: [], datasets: [] };
+        return {
+            labels: dataObj.labels, 
+            datasets: [{ 
+                label, data: dataObj.values, 
+                backgroundColor: colorHex, borderRadius: 4, 
+                borderWidth: isHorizontal ? 1 : 0
+            }]
+        };
     };
 
-    // --- Rendering Guard ---
-    const shouldRenderReport = () => {
-        if (!reportData || !canViewReports || loading) return false;
-        if (reportType === 'jobPostings' && reportData.totalJobs !== undefined) return true;
-        if (reportType === 'candidates' && reportData.totalCandidates !== undefined) return true;
-        if (reportType === 'advancedBI' && reportData.Fact_JobPostings !== undefined) return true; 
-        return false;
-    };
-
-    // --- Enterprise KPI Ribbon Component ---
-    const CustomizableKPIRibbon = () => (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 mb-8 animate-fade-in">
-            <div className="flex justify-between items-center mb-5 border-b border-slate-100 pb-4">
-                <div>
-                    <h3 className="text-base font-black text-slate-800 uppercase tracking-wide">Executive KPI Summary</h3>
-                    <p className="text-xs text-slate-500 font-medium mt-0.5">Real-time performance metrics</p>
-                </div>
-                <button onClick={() => setShowKpiSettings(!showKpiSettings)} className="flex items-center gap-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-xl transition shadow-sm border border-indigo-100 whitespace-nowrap">
-                    <AdjustmentsIcon className="w-4 h-4" /> Manage KPIs
-                </button>
-            </div>
-
-            {showKpiSettings && (
-                <div className="mb-6 p-5 bg-slate-50 rounded-2xl grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 border border-slate-200">
-                    {kpiConfigs.map(k => (
-                        <label key={k.id} className="flex items-center gap-2.5 text-xs font-bold text-slate-700 cursor-pointer select-none">
-                            <input type="checkbox" checked={k.enabled} onChange={() => toggleKpi(k.id)} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition" />
-                            {k.label}
-                        </label>
-                    ))}
-                </div>
-            )}
-
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-                {kpiConfigs.filter(k => k.enabled).map(kpi => (
-                    <div key={kpi.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] hover:shadow-md hover:border-slate-300 transition-all duration-300 group flex flex-col justify-between h-full">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">{kpi.label}</span>
-                        <div className="flex items-end justify-between mt-auto">
-                            <span className={`text-3xl font-black ${kpi.color} tracking-tight group-hover:scale-105 transform origin-left transition-transform`}>
-                                {biMetrics?.kpiMap[kpi.id] || 'N/A'}
-                            </span>
-                        </div>
-                        <div className="mt-3 border-t border-slate-50 pt-2">
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${kpi.bg} uppercase tracking-widest shadow-sm`}>{kpi.target}</span>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-
-    // --- Render Job Postings View ---
-    const renderJobReport = () => {
-        const clientData = filteredChartData(Object.keys(reportData?.clientJobCounts || {}), Object.values(reportData?.clientJobCounts || {}));
-        const positionData = filteredChartData(Object.keys(reportData?.positionTypeCounts || {}), Object.values(reportData?.positionTypeCounts || {}));
-        const assigneeData = filteredChartData(Object.keys(reportData?.workingByCounts || {}), Object.values(reportData?.workingByCounts || {}));
-
+    // --- Access Gate ---
+    if (!canViewReports && !loading) {
         return (
-            <div className="space-y-6 animate-fade-in-up">
-                <CustomizableKPIRibbon />
-                
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col justify-center items-center text-center"><p className="text-4xl font-black text-slate-800">{reportData?.totalJobs || 0}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Total Jobs</p></div>
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-emerald-100 flex flex-col justify-center items-center text-center bg-gradient-to-b from-white to-emerald-50/30"><p className="text-4xl font-black text-emerald-600">{reportData?.openJobs || 0}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Open</p></div>
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col justify-center items-center text-center"><p className="text-4xl font-black text-slate-400">{reportData?.closedJobs || 0}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Closed</p></div>
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-blue-100 flex flex-col justify-center items-center text-center bg-gradient-to-b from-white to-blue-50/30"><p className="text-4xl font-black text-blue-600">{reportData?.totalResumesSubmitted || 0}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Submitted</p></div>
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col justify-center items-center text-center"><p className="text-4xl font-black text-slate-800">{reportData?.totalMaxSubmissions || 0}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Max Capacity</p></div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[400px] flex flex-col"><h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Jobs by Client</h3><div className="relative flex-grow"><ChartComponent type='bar' options={enterpriseChartOptions} data={getChartData(clientData.labels, clientData.values, 'Jobs')} /></div></div>
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[400px] flex flex-col"><h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Jobs by Position Type</h3><div className="relative flex-grow"><ChartComponent type='pie' options={{...enterpriseChartOptions, scales:{x:{display:false}, y:{display:false}}}} data={getChartData(positionData.labels, positionData.values, 'Jobs')} /></div></div>
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 lg:col-span-2 h-[450px] flex flex-col"><h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Job Load by Assignee</h3><div className="relative flex-grow"><ChartComponent type='bar' options={{...enterpriseChartOptions, indexAxis: 'y'}} data={getChartData(assigneeData.labels, assigneeData.values, 'Assigned Jobs', true)} /></div></div>
+            <div className="flex h-screen items-center justify-center bg-slate-50">
+                <div className="text-center p-12 bg-white rounded-3xl shadow-sm border border-slate-200 max-w-md">
+                    <AlertIcon className="mx-auto h-12 w-12 text-rose-500" />
+                    <h3 className="mt-4 text-lg font-bold text-slate-900">Access Denied</h3>
+                    <p className="mt-2 text-sm text-slate-500">Company-wide report access is restricted. Contact your administrator if you need visibility into this data.</p>
                 </div>
             </div>
         );
-    };
-
-    // --- Render Candidates View ---
-    const renderCandidateReport = () => {
-        const remarksData = filteredChartData(Object.keys(reportData?.remarksCount || {}), Object.values(reportData?.remarksCount || {}));
-        const hiredCount = reportData?.remarksCount?.['Hired'] || 0;
-        const inProcessCount = (reportData?.remarksCount?.['Interviewing'] || 0) + (reportData?.remarksCount?.['Under Review'] || 0);
-
-        return (
-             <div className="space-y-6 animate-fade-in-up">
-                <CustomizableKPIRibbon />
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-                     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200/60"><p className="text-5xl font-black text-slate-800">{reportData?.totalCandidates || 0}</p><p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-3">Total Candidates</p></div>
-                     <div className="bg-white p-8 rounded-3xl shadow-sm border border-emerald-200 bg-gradient-to-b from-emerald-50/50 to-emerald-100/30"><p className="text-5xl font-black text-emerald-600">{hiredCount}</p><p className="text-sm font-bold text-emerald-700 uppercase tracking-widest mt-3">Successfully Hired</p></div>
-                     <div className="bg-white p-8 rounded-3xl shadow-sm border border-blue-200 bg-gradient-to-b from-blue-50/50 to-blue-100/30"><p className="text-5xl font-black text-blue-600">{inProcessCount}</p><p className="text-sm font-bold text-blue-700 uppercase tracking-widest mt-3">Active In Process</p></div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[450px] flex flex-col"><h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Status Distribution Map</h3><div className="relative flex-grow"><ChartComponent type='doughnut' options={{...enterpriseChartOptions, cutout: '75%', scales:{x:{display:false}, y:{display:false}}}} data={getChartData(remarksData.labels, remarksData.values, 'Candidates')} /></div></div>
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[450px] flex flex-col"><h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Pipeline Breakdown Analysis</h3><div className="relative flex-grow"><ChartComponent type='bar' options={enterpriseChartOptions} data={getChartData(remarksData.labels, remarksData.values, 'Candidates')} /></div></div>
-                </div>
-            </div>
-        );
-    };
-
-    // --- Render Advanced BI View ---
-    const renderAdvancedBIReport = () => {
-        if (!biMetrics) return null;
-
-        const trendLabels = Object.keys(biMetrics.trendMap).sort();
-        const recLabels = Object.keys(biMetrics.recMatrix);
-        const geoLabels = Object.keys(biMetrics.geoMap).sort((a,b) => biMetrics.geoMap[b] - biMetrics.geoMap[a]).slice(0, 5);
-        const rejectionLabels = Object.keys(biMetrics.rejectionMap);
-        const roleLabels = Object.keys(biMetrics.roleMap);
-
-        return (
-            <div className="space-y-6 animate-fade-in-up">
-                <CustomizableKPIRibbon />
-                
-                <div className="bg-slate-900 p-6 rounded-3xl shadow-lg mb-8 flex flex-col md:flex-row justify-between items-center gap-4 text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none"></div>
-                    <div className="relative z-10">
-                        <h2 className="text-xl font-black tracking-tight flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-indigo-400"><path fillRule="evenodd" d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" clipRule="evenodd" /></svg>
-                            Enterprise BI Engine Active
-                        </h2>
-                        <p className="text-slate-300 text-sm font-medium mt-1">Multi-dimensional semantic model running across {reportData?.Fact_JobPostings?.length || 0} jobs and {reportData?.Fact_Candidates?.length || 0} applicants.</p>
-                    </div>
-                    <button 
-                        onClick={() => {
-                            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
-                            const a = document.createElement('a');
-                            a.href = dataStr; a.download = "Enterprise_BI_Extract.json";
-                            a.click();
-                        }}
-                        className="relative z-10 px-5 py-2.5 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-100 transition shadow-sm flex items-center gap-2 text-sm whitespace-nowrap"
-                    >
-                        <DownloadIcon className="w-5 h-5" /> Export JSON
-                    </button>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 lg:col-span-2 flex flex-col h-[400px]">
-                        <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Demand vs Supply Velocity</h3>
-                        <p className="text-xs text-slate-500 font-medium mb-4">Job creation vs Candidate submission timeline.</p>
-                        <div className="relative flex-grow">
-                            <ChartComponent type='line' options={{...enterpriseChartOptions, elements: { line: { tension: 0.4 }}}} data={{
-                                labels: trendLabels,
-                                datasets: [
-                                    { label: 'Jobs Posted', data: trendLabels.map(l => biMetrics.trendMap[l].posted), borderColor: '#6929c4', backgroundColor: 'rgba(105, 41, 196, 0.1)', fill: true, borderWidth: 3, pointRadius: 4 },
-                                    { label: 'Candidates Submitted', data: trendLabels.map(l => biMetrics.trendMap[l].submitted), borderColor: '#009d9a', backgroundColor: 'transparent', borderDash: [5, 5], borderWidth: 3, pointRadius: 4 }
-                                ]
-                            }} />
-                        </div>
-                    </div>
-                    
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col h-[400px]">
-                        <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Recruitment Funnel</h3>
-                        <p className="text-xs text-slate-500 font-medium mb-6">Drop-off mapping across the lifecycle.</p>
-                        <div className="flex-grow flex flex-col justify-center gap-2">
-                            {[
-                                { label: 'Sourced', val: biMetrics.funnelData[0], color: 'bg-slate-800', w: '100%' },
-                                { label: 'In Process', val: biMetrics.funnelData[1], color: 'bg-[#0043ce]', w: '75%' },
-                                { label: 'Offered', val: biMetrics.funnelData[2], color: 'bg-[#6929c4]', w: '50%' },
-                                { label: 'Hired', val: biMetrics.funnelData[3], color: 'bg-[#009d9a]', w: '30%' }
-                            ].map((stage, i) => (
-                                <div key={i} className="flex flex-col items-center">
-                                    <div className={`h-12 ${stage.color} rounded-lg shadow-inner flex items-center justify-between px-5 transition-all hover:opacity-90`} style={{ width: stage.w }}>
-                                        <span className="text-white text-xs font-bold uppercase tracking-wider truncate pr-2">{stage.label}</span>
-                                        <span className="text-white font-black text-lg">{stage.val}</span>
-                                    </div>
-                                    {i < 3 && <div className="h-3 w-0 border-l-2 border-dashed border-slate-300 my-1"></div>}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[450px] flex flex-col">
-                        <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Recruiter Capability Matrix</h3>
-                        <p className="text-xs text-slate-500 font-medium mb-4">Volume vs Conversion output.</p>
-                        <div className="relative flex-grow">
-                            <ChartComponent type='radar' options={{...enterpriseChartOptions, scales: { r: { ticks:{display:false}, angleLines: { color: 'rgba(0,0,0,0.05)' }, grid: { color: 'rgba(0,0,0,0.05)' }}}}} data={{
-                                labels: recLabels,
-                                datasets: [
-                                    { label: 'Submissions', data: recLabels.map(r => biMetrics.recMatrix[r].submissions), backgroundColor: 'rgba(105, 41, 196, 0.2)', borderColor: '#6929c4', borderWidth: 2 },
-                                    { label: 'Hires', data: recLabels.map(r => biMetrics.recMatrix[r].hires), backgroundColor: 'rgba(0, 157, 154, 0.4)', borderColor: '#009d9a', borderWidth: 2 }
-                                ]
-                            }} />
-                        </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[450px] flex flex-col">
-                        <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Rejection Analytics</h3>
-                        <p className="text-xs text-slate-500 font-medium mb-4">Top reasons for candidate disqualification.</p>
-                        <div className="relative flex-grow">
-                            <ChartComponent type='bar' options={{...enterpriseChartOptions, indexAxis: 'y'}} data={{
-                                labels: rejectionLabels,
-                                datasets: [{ label: 'Rejection Volume', data: rejectionLabels.map(l => biMetrics.rejectionMap[l]), backgroundColor: '#d12771', borderRadius: 6 }]
-                            }} />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[400px] flex flex-col">
-                        <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Role Level Spread</h3>
-                        <p className="text-xs text-slate-500 font-medium mb-4">Candidate pool composition by seniority.</p>
-                        <div className="relative flex-grow">
-                            <ChartComponent type='doughnut' options={{...enterpriseChartOptions, cutout: '65%', scales:{x:{display:false}, y:{display:false}}}} data={getChartData(roleLabels, roleLabels.map(l => biMetrics.roleMap[l]), 'Roles')} />
-                        </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 h-[400px] flex flex-col">
-                        <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Geo-Talent Distribution</h3>
-                        <p className="text-xs text-slate-500 font-medium mb-4">Top regions sourcing active candidates.</p>
-                        <div className="relative flex-grow">
-                            <ChartComponent type='bar' options={enterpriseChartOptions} data={{
-                                labels: geoLabels,
-                                datasets: [{ label: 'Candidate Volume', data: geoLabels.map(l => biMetrics.geoMap[l]), backgroundColor: '#0043ce', borderRadius: 6 }]
-                            }} />
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        );
-    };
+    }
 
     return (
         <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans text-slate-800">
             <div className="max-w-[1600px] mx-auto space-y-8">
                 
-                {/* Clean Header */}
-                <div>
-                    <h1 className="text-4xl font-black tracking-tight text-slate-900">Reports Dashboard</h1>
-                    <p className="mt-2 text-slate-500 font-medium text-sm">Generate and visualize data for job postings and candidate pipelines.</p>
+                {/* Header */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                    <div>
+                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900">Taproot Talent & VMS Intelligence</h1>
+                        <p className="mt-1 text-slate-500 font-medium text-sm">Company-wide recruiting and candidate pipeline analytics.</p>
+                    </div>
+                    <div className="text-right text-xs font-semibold text-slate-400">
+                        Last updated: {analytics?.meta?.generatedAt ? new Date(analytics.meta.generatedAt).toLocaleString() : 'Never'}
+                    </div>
                 </div>
 
-                {/* Big Tech Unified Filter Bar */}
-                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col xl:flex-row items-center justify-between gap-5">
+                {/* RESTORED Controls Bar w/ Filters & Actions */}
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/60 flex flex-col xl:flex-row items-center justify-between gap-5 sticky top-4 z-10 backdrop-blur-md bg-white/90">
                     
-                    <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
-                        <input 
-                            type="text" 
-                            placeholder="Search data..." 
-                            value={searchTerm} 
-                            onChange={(e) => setSearchTerm(e.target.value)} 
-                            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition w-full md:w-48"
-                            disabled={!canViewReports || loading} 
-                        />
-                        
+                    <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
+                        {/* Source Filter */}
                         <select 
-                            name="reportType" 
-                            value={reportType} 
-                            onChange={handleReportTypeChange} 
-                            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition cursor-pointer appearance-none flex-1 md:flex-none"
-                            disabled={!canViewReports || loading}
+                            value={filters.sheetKey} 
+                            onChange={(e) => setFilters(p => ({...p, sheetKey: e.target.value}))}
+                            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition cursor-pointer appearance-none min-w-[180px]"
+                            disabled={loading}
                         >
-                            <option value="candidates">Candidate Pipeline Report</option>
-                            <option value="jobPostings">Job Postings Report</option>
-                            <option value="advancedBI">✦ Advanced BI Analytics</option>
+                            {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
+                                <option key={key} value={key}>{config.title}</option>
+                            ))}
                         </select>
-                        
-                        {reportType === 'jobPostings' && (
-                            <select 
-                                name="sheetKey" 
-                                value={filters.sheetKey} 
-                                onChange={handleFilterChange} 
-                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition cursor-pointer appearance-none flex-1 md:flex-none" 
-                                disabled={!canViewReports || loading}
-                            >
-                                {Object.entries(DASHBOARD_CONFIGS).map(([key, config]) => (
-                                    <option key={key} value={key}>{config.title}</option>
-                                ))}
-                            </select>
-                        )}
 
-                        {reportType !== 'advancedBI' && (
-                            <div className="flex items-center gap-2 flex-1 md:flex-none min-w-min">
-                                <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition w-full md:w-36" disabled={!canViewReports || loading}/>
+                        {/* Date Presets */}
+                        <div className="flex space-x-1 p-1 bg-slate-100 rounded-xl overflow-x-auto">
+                            {['7D', '30D', '90D', '6M', '12M', 'YTD', 'ALL'].map(preset => (
+                                <button 
+                                    key={preset}
+                                    onClick={() => handlePresetChange(preset)}
+                                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${datePreset === preset ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'}`}
+                                >
+                                    {preset}
+                                </button>
+                            ))}
+                        </div>
+                        
+                        {/* Custom Date Ranges */}
+                        {datePreset === 'Custom' && (
+                            <div className="flex items-center gap-2 text-xs">
+                                <input type="date" value={filters.startDate} onChange={e => setFilters(p => ({...p, startDate: e.target.value}))} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none" />
                                 <span className="text-slate-400 font-bold">-</span>
-                                <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition w-full md:w-36" disabled={!canViewReports || loading}/>
+                                <input type="date" value={filters.endDate} onChange={e => setFilters(p => ({...p, endDate: e.target.value}))} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none" />
                             </div>
                         )}
                     </div>
 
-                    <div className="flex items-center gap-3 w-full xl:w-auto shrink-0">
-                        <button 
-                            onClick={generateReport} 
-                            disabled={loading || !canViewReports}
-                            className="flex-1 xl:flex-none px-6 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition shadow-sm flex items-center justify-center min-w-[160px] whitespace-nowrap disabled:bg-indigo-400" 
-                        >
-                            {loading ? <Spinner size="5" /> : 'Generate Report'}
+                    <div className="flex items-center gap-3 w-full xl:w-auto shrink-0 justify-end">
+                        <button onClick={fetchAnalytics} disabled={loading} className="px-4 py-2 bg-indigo-50 text-indigo-600 font-semibold hover:bg-indigo-100 rounded-xl transition flex items-center gap-2 text-sm">
+                            <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
                         </button>
-                        <button 
-                            onClick={() => setEmailModalOpen(true)} 
-                            disabled={!reportData || !canEmailReports || reportType === 'advancedBI'}
-                            className="flex-1 xl:flex-none px-6 py-2.5 bg-emerald-500 text-white text-sm font-bold rounded-xl hover:bg-emerald-600 transition shadow-sm flex items-center justify-center whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed" 
-                        >
-                            Email Report
+                        
+                        <button onClick={handleExportData} disabled={!analytics || loading} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 rounded-xl transition flex items-center gap-2 text-sm disabled:opacity-50">
+                            <DownloadIcon className="w-4 h-4" /> Export Data
+                        </button>
+
+                        <button onClick={() => setEmailModalOpen(true)} disabled={!analytics || !canEmailReports || loading} className="px-4 py-2 bg-emerald-500 text-white font-semibold hover:bg-emerald-600 rounded-xl transition flex items-center gap-2 text-sm disabled:opacity-50">
+                            <EmailIcon className="w-4 h-4" /> Email Report
                         </button>
                     </div>
                 </div>
 
-                {loading && <div className="h-96 flex flex-col justify-center items-center gap-4"><Spinner size="10"/><span className="text-indigo-600 font-bold text-xs tracking-widest uppercase animate-pulse">Aggregating Data...</span></div>}
-                
                 {error && (
-                    <div className="bg-rose-50 border border-rose-200 p-5 rounded-2xl flex items-start gap-4">
-                        <svg className="w-6 h-6 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-xl flex items-start gap-3">
+                        <AlertIcon className="w-5 h-5 text-rose-600 mt-0.5" severity="critical" />
                         <div>
-                            <h3 className="text-rose-800 font-bold text-sm">Failed to sync live data</h3>
-                            <p className="text-rose-600 text-sm font-medium mt-1">{error}</p>
+                            <h3 className="text-rose-800 font-bold text-sm">Data Fetch Error</h3>
+                            <p className="text-rose-600 text-sm mt-1">{error}</p>
                         </div>
                     </div>
                 )}
-                
-                {!loading && !error && !shouldRenderReport() && canViewReports && (
-                    <div className="text-center p-12 bg-white rounded-3xl shadow-sm border border-slate-200/60">
-                        <svg className="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                        <h3 className="mt-4 text-base font-bold text-slate-900">No Report Data</h3>
-                        <p className="mt-1 text-sm font-medium text-slate-500">Select a report type and click generate.</p>
-                    </div>
+
+                {loading && !analytics && (
+                    <div className="h-64 flex flex-col justify-center items-center"><Spinner size="10" /></div>
                 )}
 
-                {!loading && !error && !canViewReports && (
-                    <div className="text-center p-12 bg-white rounded-3xl shadow-sm border border-slate-200/60">
-                        <svg className="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                        <h3 className="mt-4 text-base font-bold text-slate-900">Access Denied</h3>
-                        <p className="mt-1 text-sm font-medium text-slate-500">You do not have the necessary permissions to view reports.</p>
+                {analytics && !loading && (
+                    <div className="space-y-8 animate-fade-in-up">
+                        
+                        {/* Executive KPI Strip */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                            {[
+                                { label: 'Total Jobs', val: analytics.kpis.totalJobs },
+                                { label: 'Open Jobs', val: analytics.kpis.openJobs, color: 'text-indigo-600' },
+                                { label: 'Candidate Pool', val: analytics.kpis.totalCandidates },
+                                { label: 'Submissions', val: analytics.kpis.totalSubmissions, color: 'text-emerald-600' },
+                                { label: 'Total Capacity', val: analytics.kpis.totalCapacity },
+                                { label: 'Utilization', val: `${analytics.kpis.utilization}%` },
+                                { label: 'Zero Subs', val: analytics.kpis.jobsWithZeroSubmissions, color: 'text-amber-600' },
+                                { label: 'New Jobs', val: analytics.kpis.newJobs }
+                            ].map((kpi, i) => (
+                                <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">{kpi.label}</span>
+                                    <span className={`text-2xl font-black ${kpi.color || 'text-slate-800'} tracking-tight`}>{kpi.val}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Action Center Alerts */}
+                        {analytics.alerts && analytics.alerts.length > 0 && (
+                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide mb-4">Attention Required</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {analytics.alerts.map((alert, i) => (
+                                        <div key={i} className={`p-4 rounded-xl border flex items-start gap-3 ${alert.severity === 'critical' ? 'bg-rose-50 border-rose-100 text-rose-800' : 'bg-amber-50 border-amber-100 text-amber-800'}`}>
+                                            <AlertIcon severity={alert.severity} className={`w-5 h-5 mt-0.5 shrink-0 ${alert.severity === 'critical' ? 'text-rose-600' : 'text-amber-600'}`} />
+                                            <div>
+                                                <h4 className="font-bold text-sm">{alert.title} <span className="ml-1 opacity-75">({alert.count})</span></h4>
+                                                <p className="text-xs font-medium mt-1 opacity-90 leading-relaxed">{alert.description}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Business Overview Trends */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
+                            <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Velocity & Growth Trend</h3>
+                            <p className="text-xs text-slate-500 font-medium mb-4">Jobs created vs candidates submitted over the selected period.</p>
+                            <div className="relative flex-grow">
+                                <ChartComponent type='line' options={{...enterpriseChartOptions, plugins: { legend: { display: true, position: 'top' } }, elements: { line: { tension: 0.3 }}}} data={{
+                                    labels: analytics.trends.labels,
+                                    datasets: [
+                                        { label: 'Jobs Created', data: analytics.trends.jobs, borderColor: '#4f46e5', backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true, borderWidth: 3, pointRadius: 3 },
+                                        { label: 'Candidates Submitted', data: analytics.trends.candidates, borderColor: '#0ea5e9', backgroundColor: 'transparent', borderDash: [5, 5], borderWidth: 3, pointRadius: 3 }
+                                    ]
+                                }} />
+                            </div>
+                        </div>
+
+                        {/* Job Intelligence */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
+                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Jobs by Client Demand</h3>
+                                <div className="relative flex-grow">
+                                    <ChartComponent type='bar' options={enterpriseChartOptions} data={getChartData(analytics.jobs.byClient, 'Jobs', '#4f46e5')} />
+                                </div>
+                            </div>
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
+                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Jobs by Position Type</h3>
+                                <div className="relative flex-grow">
+                                    <ChartComponent type='bar' options={{...enterpriseChartOptions, indexAxis: 'y'}} data={getChartData(analytics.jobs.byPosition, 'Jobs', '#0ea5e9', true)} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Candidate Intelligence */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
+                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Candidate Status Distribution</h3>
+                                <div className="relative flex-grow flex items-center justify-center">
+                                    <div className="w-full h-full max-h-[250px]">
+                                        <ChartComponent type='doughnut' options={{...enterpriseChartOptions, cutout: '70%', scales: {x:{display:false}, y:{display:false}}}} data={{
+                                            labels: analytics.candidates.byStatus.labels,
+                                            datasets: [{ data: analytics.candidates.byStatus.values, backgroundColor: ['#10b981', '#f43f5e', '#3b82f6', '#f59e0b', '#94a3b8'], borderWidth: 0 }]
+                                        }} />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col lg:col-span-2">
+                                <h3 className="font-black text-slate-800 mb-1 uppercase tracking-wide text-sm">Top Database Skills</h3>
+                                <p className="text-xs text-slate-500 font-medium mb-4">Most frequently mapped skills across candidate profiles.</p>
+                                <div className="relative flex-grow">
+                                    <ChartComponent type='bar' options={enterpriseChartOptions} data={getChartData(analytics.candidates.topSkills, 'Candidates', '#8b5cf6')} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Recruiter & Client Intelligence */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
+                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Recruiter Workload (Jobs)</h3>
+                                <div className="relative flex-grow">
+                                    <ChartComponent type='bar' options={{...enterpriseChartOptions, indexAxis: 'y'}} data={getChartData(analytics.recruiters.jobs, 'Assigned Jobs', '#64748b', true)} />
+                                </div>
+                            </div>
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-[350px] flex flex-col">
+                                <h3 className="font-black text-slate-800 mb-4 uppercase tracking-wide text-sm">Client Candidate Coverage</h3>
+                                <div className="relative flex-grow">
+                                    <ChartComponent type='bar' options={{...enterpriseChartOptions, indexAxis: 'y'}} data={getChartData(analytics.clients.candidates, 'Candidates Submitted', '#14b8a6', true)} />
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                )}
-                
-                {shouldRenderReport() && (
-                    reportType === 'jobPostings' ? renderJobReport() : 
-                    reportType === 'candidates' ? renderCandidateReport() : 
-                    renderAdvancedBIReport()
                 )}
             </div>
 
+            {/* Modal Injection */}
             <EmailReportModal 
                 isOpen={isEmailModalOpen} 
                 onClose={() => setEmailModalOpen(false)} 

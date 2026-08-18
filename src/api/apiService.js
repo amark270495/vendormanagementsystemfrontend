@@ -1,3 +1,5 @@
+// src/api/apiService.js
+
 import axios from 'axios';
 
 const API_BASE_URL = '/api';
@@ -114,10 +116,13 @@ export const apiService = {
     apiClient.get('/getReportData', { params }),
     
   // =========================================================================
-  // NEW: ADVANCED BI ENGINE ENDPOINT ADDED HERE
+  // NEW: ADVANCED BI ENGINE ENDPOINTS ADDED HERE
   // =========================================================================
   getPowerBIData: (params) =>
     apiClient.get('/getPowerBIData', { params }),
+  
+  getReportsAnalytics: (params) =>
+    apiClient.get('/getReportsAnalytics', { params }),
   // =========================================================================
 
   generateAndSendJobReport: (sheetKey, statusFilter, toEmails, ccEmails, authenticatedUsername) =>
