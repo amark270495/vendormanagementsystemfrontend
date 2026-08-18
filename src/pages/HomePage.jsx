@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import { usePermissions } from '../hooks/usePermissions';
@@ -47,6 +48,7 @@ const getCandidateInitials = (fName, lName) => (fName ? String(fName).charAt(0).
 
 const HomePage = () => {
     const { user } = useAuth();
+    const navigate = useNavigate(); // React Router hook for fast client-side navigation
     
     // Extracted granular permissions from context
     const perms = user?.permissions || {};
@@ -143,24 +145,22 @@ const HomePage = () => {
 
             // 3. Process Inbox Messages
             if (msgRes?.data?.success && msgRes.data.messages) {
-                setInboxMessages(msgRes.data.messages.slice(0, 3)); // Top 3
+                setInboxMessages(msgRes.data.messages.slice(0, 3));
             } else if (canMessage) {
-                // Enterprise Mock Fallback for preview
                 setInboxMessages([
                     { id: 1, sender: 'Sridhar Chava', role: 'Director', subject: 'Deloitte Submissions Review', time: '12m ago' },
                     { id: 2, sender: 'Purnima Govada', role: 'Director', subject: 'Urgent: Flink Engineer pipeline', time: '1h ago' }
                 ]);
             }
 
-            // 4. Process System Notifications
+            // 4. Process System Notifications dynamically matched to router paths
             if (notifRes?.data?.success && notifRes.data.notifications) {
                 setSystemAlerts(notifRes.data.notifications.slice(0, 3));
             } else {
-                // Dynamic Mocks based on active permissions
                 const mocks = [];
-                if (canManageTimesheets) mocks.push({ id: 1, title: 'Timesheet Approvals', desc: '4 resources pending review.', time: 'Just now', type: 'alert', link: '/timesheets' });
-                if (canManageMSAWO) mocks.push({ id: 2, title: 'MSA Execution', desc: 'State of VA MSA signed by client.', time: '2h ago', type: 'success', link: '/msawo' });
-                if (mocks.length === 0) mocks.push({ id: 3, title: 'System Update', desc: 'VMS Portal v2.0 deployed successfully.', time: '1d ago', type: 'info', link: '#' });
+                if (canManageTimesheets) mocks.push({ id: 1, title: 'Timesheet Approvals', desc: '4 resources pending review.', time: 'Just now', type: 'alert', link: '/timesheets-dashboard' });
+                if (canManageMSAWO) mocks.push({ id: 2, title: 'MSA Execution', desc: 'State of VA MSA signed by client.', time: '2h ago', type: 'success', link: '/msa-wo-dashboard' });
+                if (mocks.length === 0) mocks.push({ id: 3, title: 'System Update', desc: 'VMS Portal v2.0 deployed successfully.', time: '1d ago', type: 'info', link: '/home' });
                 setSystemAlerts(mocks);
             }
 
@@ -440,85 +440,87 @@ const HomePage = () => {
                                 </div>
                             </div>
                         )}
-                </div>
-            </div>
-
-            {/* ========================================================================= */}
-            {/* --- RIGHT SIDEBAR (Action Center & Inbox) --- */}
-            {/* ========================================================================= */}
-            <aside className="xl:col-span-1 space-y-6">
-                
-                {/* Quick Launch Widget (Renders based on dynamic permissions) */}
-                {(canAddPosting || canManageTimesheets || canManageMSAWO) && (
-                    <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-fuchsia-50 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
-                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10"><BoltIcon className="w-4 h-4 text-fuchsia-500"/> Quick Launch</h3>
-                        <div className="space-y-2.5 relative z-10">
-                            {canAddPosting && <button onClick={() => window.location.href = '/jobs'} className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs py-3 px-4 rounded-xl border border-slate-200 transition text-left flex justify-between items-center">Create New Job <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></button>}
-                            {canManageTimesheets && <button onClick={() => window.location.href = '/timesheets'} className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs py-3 px-4 rounded-xl border border-slate-200 transition text-left flex justify-between items-center">Review Timesheets <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></button>}
-                            {canManageMSAWO && <button onClick={() => window.location.href = '/msawo'} className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs py-3 px-4 rounded-xl border border-slate-200 transition text-left flex justify-between items-center">Execute MSA / WO <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></button>}
-                        </div>
                     </div>
-                )}
+                </div>
 
-                {/* Priority Inbox Widget */}
-                {canMessage && (
+                {/* ========================================================================= */}
+                {/* --- RIGHT SIDEBAR (Action Center & Inbox) --- */}
+                {/* ========================================================================= */}
+                <aside className="xl:col-span-1 space-y-6">
+                    
+                    {/* --- Dynamics Quick Launch Widget --- */}
+                    {(canAddPosting || canManageTimesheets || canManageMSAWO || perms.canManageOfferLetters || perms.canManageAssets) && (
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-fuchsia-50 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10"><BoltIcon className="w-4 h-4 text-fuchsia-500"/> Quick Launch</h3>
+                            <div className="space-y-2.5 relative z-10">
+                                {canAddPosting && <button onClick={() => navigate('/new-posting')} className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs py-3 px-4 rounded-xl border border-slate-200 transition text-left flex justify-between items-center">Create New Job <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></button>}
+                                {canManageTimesheets && <button onClick={() => navigate('/timesheets-dashboard')} className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs py-3 px-4 rounded-xl border border-slate-200 transition text-left flex justify-between items-center">Review Timesheets <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></button>}
+                                {canManageMSAWO && <button onClick={() => navigate('/msa-wo-dashboard')} className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs py-3 px-4 rounded-xl border border-slate-200 transition text-left flex justify-between items-center">Execute MSA / WO <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></button>}
+                                {perms.canManageOfferLetters && <button onClick={() => navigate('/offer-letter-dashboard')} className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs py-3 px-4 rounded-xl border border-slate-200 transition text-left flex justify-between items-center">Manage Offer Letters <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></button>}
+                                {perms.canManageAssets && <button onClick={() => navigate('/asset-dashboard')} className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs py-3 px-4 rounded-xl border border-slate-200 transition text-left flex justify-between items-center">Asset Management <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></button>}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- Priority Inbox Widget --- */}
+                    {canMessage && (
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
+                            <div className="flex justify-between items-center mb-5">
+                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2"><ChatIcon className="w-4 h-4 text-blue-500"/> Priority Inbox</h3>
+                                <button onClick={() => navigate('/messages')} className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md hover:bg-blue-100 transition">View All</button>
+                            </div>
+                            <div className="space-y-4">
+                                {inboxMessages.length > 0 ? inboxMessages.map((msg, i) => (
+                                    <div key={i} className="group cursor-pointer">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${getAvatar(msg.sender).color}`}>{getAvatar(msg.sender).initials}</div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex justify-between items-baseline mb-0.5">
+                                                    <p className="font-bold text-slate-900 text-xs truncate pr-2">{msg.sender}</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 shrink-0">{msg.time}</p>
+                                                </div>
+                                                <p className="text-[11px] font-medium text-slate-500 truncate">{msg.subject}</p>
+                                            </div>
+                                        </div>
+                                        {i < inboxMessages.length - 1 && <div className="mt-4 border-t border-slate-100"></div>}
+                                    </div>
+                                )) : (
+                                    <div className="text-center py-6"><ChatIcon className="w-8 h-8 mx-auto text-slate-200 mb-2"/><p className="text-xs font-bold text-slate-400">Inbox is completely clear.</p></div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- System Alerts & Notifications --- */}
                     <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
                         <div className="flex justify-between items-center mb-5">
-                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2"><ChatIcon className="w-4 h-4 text-blue-500"/> Priority Inbox</h3>
-                            <button onClick={() => window.location.href = '/messages'} className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md hover:bg-blue-100 transition">View All</button>
+                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2"><BellIcon className="w-4 h-4 text-amber-500"/> System Alerts</h3>
                         </div>
                         <div className="space-y-4">
-                            {inboxMessages.length > 0 ? inboxMessages.map((msg, i) => (
-                                <div key={i} className="group cursor-pointer">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${getAvatar(msg.sender).color}`}>{getAvatar(msg.sender).initials}</div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex justify-between items-baseline mb-0.5">
-                                                <p className="font-bold text-slate-900 text-xs truncate pr-2">{msg.sender}</p>
-                                                <p className="text-[9px] font-bold text-slate-400 shrink-0">{msg.time}</p>
-                                            </div>
-                                            <p className="text-[11px] font-medium text-slate-500 truncate">{msg.subject}</p>
+                            {systemAlerts.length > 0 ? systemAlerts.map((alert, i) => (
+                                <div key={i} className="flex gap-3">
+                                    <div className="mt-0.5">
+                                        {alert.type === 'alert' && <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_0_4px_rgba(244,63,94,0.1)]"></div>}
+                                        {alert.type === 'success' && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.1)]"></div>}
+                                        {alert.type === 'info' && <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.1)]"></div>}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h4 className="text-xs font-bold text-slate-800 mb-0.5">{alert.title}</h4>
+                                        <p className="text-[11px] font-medium text-slate-500 mb-1.5">{alert.desc}</p>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{alert.time}</span>
+                                            {alert.link && alert.link !== '#' && <button onClick={() => navigate(alert.link)} className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 transition">Resolve &rarr;</button>}
                                         </div>
                                     </div>
-                                    {i < inboxMessages.length - 1 && <div className="mt-4 border-t border-slate-100"></div>}
                                 </div>
                             )) : (
-                                <div className="text-center py-6"><ChatIcon className="w-8 h-8 mx-auto text-slate-200 mb-2"/><p className="text-xs font-bold text-slate-400">Inbox is completely clear.</p></div>
+                                <div className="text-center py-6"><BellIcon className="w-8 h-8 mx-auto text-slate-200 mb-2"/><p className="text-xs font-bold text-slate-400">No active system alerts.</p></div>
                             )}
                         </div>
                     </div>
-                )}
 
-                {/* System Alerts & Notifications */}
-                <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
-                    <div className="flex justify-between items-center mb-5">
-                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2"><BellIcon className="w-4 h-4 text-amber-500"/> System Alerts</h3>
-                    </div>
-                    <div className="space-y-4">
-                        {systemAlerts.length > 0 ? systemAlerts.map((alert, i) => (
-                            <div key={i} className="flex gap-3">
-                                <div className="mt-0.5">
-                                    {alert.type === 'alert' && <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_0_4px_rgba(244,63,94,0.1)]"></div>}
-                                    {alert.type === 'success' && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.1)]"></div>}
-                                    {alert.type === 'info' && <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.1)]"></div>}
-                                </div>
-                                <div className="min-w-0">
-                                    <h4 className="text-xs font-bold text-slate-800 mb-0.5">{alert.title}</h4>
-                                    <p className="text-[11px] font-medium text-slate-500 mb-1.5">{alert.desc}</p>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{alert.time}</span>
-                                        {alert.link && alert.link !== '#' && <button onClick={() => window.location.href = alert.link} className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800">Resolve &rarr;</button>}
-                                    </div>
-                                </div>
-                            </div>
-                        )) : (
-                            <div className="text-center py-6"><BellIcon className="w-8 h-8 mx-auto text-slate-200 mb-2"/><p className="text-xs font-bold text-slate-400">No active system alerts.</p></div>
-                        )}
-                    </div>
-                </div>
-
-            </aside>
+                </aside>
             </div>
 
             {/* --- Job Details Side Drawer --- */}
