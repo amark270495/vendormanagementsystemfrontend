@@ -40,6 +40,7 @@ const ChartPieIcon = ({className}) => <svg fill="none" viewBox="0 0 24 24" strok
 const InboxIcon = ({className}) => <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" /></svg>;
 const EyeIcon = ({className}) => <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>;
 const ClipboardIcon = ({className}) => <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 15.75h3.75M18 9.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-10.5A2.25 2.25 0 0 1 3 20.25V9.75m15 0a2.25 2.25 0 0 0-2.25-2.25h-1.372c-.516-.962-1.51-1.625-2.628-1.625H9.75c-1.118 0-2.112.663-2.628 1.625H5.75A2.25 2.25 0 0 0 3.5 9.75m15 0V18a2.25 2.25 0 0 1-2.25 2.25h-10.5A2.25 2.25 0 0 1 3 18v-8.25" /></svg>;
+const LightningIcon = ({className}) => <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>;
 
 const Spinner = ({ size = '6' }) => <div className="flex justify-center items-center"><div className={`w-${size} h-${size} border-4 border-t-transparent border-indigo-600 rounded-full animate-spin`}></div></div>;
 
@@ -190,7 +191,7 @@ const InlineBarTable = ({ columns, data, barColumnIndex, colorClass = "bg-emeral
                 {data.map((row, rowIndex) => (
                     <tr key={rowIndex} className="hover:bg-slate-50/50">
                         {row.map((cell, colIndex) => (
-                            <td key={colIndex} className={`py-2.5 px-3 text-slate-700 ${colIndex === 0 ? 'font-medium truncate max-w-[200px]' : 'text-center'}`} title={colIndex === 0 ? cell : ''}>
+                            <td key={colIndex} className={`py-2.5 px-3 text-slate-700 ${colIndex === 0 ? 'font-medium truncate max-w-[150px]' : 'text-center'}`} title={colIndex === 0 ? cell : ''}>
                                 {colIndex === barColumnIndex ? (
                                     <div className="flex items-center gap-2 justify-center">
                                         <div className="w-24 bg-slate-100 h-2 rounded-sm overflow-hidden">
@@ -459,13 +460,16 @@ export default function ReportsPage() {
                     <div className="space-y-4 animate-fade-in-up">
                         
                         {/* KPI BANNER ROW */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-                            <KpiCard icon={LocationIcon} title="Open Positions" value={formatMetric(analytics.live_kpis.openJobs)} subtext="Live Available" />
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                            <KpiCard icon={LocationIcon} title="Open Jobs" value={formatMetric(analytics.live_kpis.openJobs)} subtext="Live Available" />
+                            <KpiCard icon={ClockIcon} title="Avg Job Age" value={formatMetric(analytics.live_kpis.avgJobAge) + " d"} subtext="Live Open Time" />
                             <KpiCard icon={BriefcaseIcon} title="New Jobs" value={formatMetric(analytics.period_kpis.newJobs)} subtext="Created in Period" />
-                            <KpiCard icon={InboxIcon} title="Submitted" value={formatMetric(analytics.period_kpis.newCandidates)} subtext="Total Applications" />
+                            <KpiCard icon={InboxIcon} title="Submitted" value={formatMetric(analytics.period_kpis.newCandidates)} subtext="Total Resumes" />
+                            <KpiCard icon={LightningIcon} title="Avg Sourcing Time" value={formatMetric(analytics.period_kpis.avgTimeToSubmit) + " d"} subtext="Time to Submit" />
+                            
                             <KpiCard icon={EyeIcon} title="Under Review" value={formatMetric(funnelStages.find(s=>s.stage==='Under Review')?.count)} subtext="Active Screening" />
                             <KpiCard icon={ClipboardIcon} title="Shortlisted" value={formatMetric(funnelStages.find(s=>s.stage==='Shortlisted')?.count)} subtext="Passed Screening" />
-                            <KpiCard icon={ClockIcon} title="Interviews" value={formatMetric(funnelStages.find(s=>s.stage==='Interview')?.count)} subtext="In Progress" />
+                            <KpiCard icon={CalendarIcon} title="Interviews" value={formatMetric(funnelStages.find(s=>s.stage==='Interview')?.count)} subtext="In Progress" />
                             <KpiCard icon={UserCheckIcon} title="Selected" value={formatMetric(analytics.period_kpis.periodHires)} subtext="Candidates Hired" />
                             <KpiCard icon={ChartPieIcon} title="Sub. Util" value={formatMetric(analytics.live_kpis.utilization, true)} subtext="Live Capacity" />
                         </div>
@@ -485,7 +489,7 @@ export default function ReportsPage() {
                             </DashboardCard>
                         </div>
 
-                        {/* ROW 2: EFFICIENCY, FUNNEL */}
+                        {/* ROW 2: EFFICIENCY, FUNNEL, SOURCING SPEED */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
                             <DashboardCard title="Pipeline Efficiency / Status" className="h-[280px]">
                                 <div className="relative flex-grow flex items-center justify-center pb-2">
@@ -521,7 +525,6 @@ export default function ReportsPage() {
                                                 }]
                                             }}
                                         />
-
                                         {/* Center Value */}
                                         <div className="absolute left-[40%] top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none">
                                             <span className="text-3xl font-black text-slate-800 leading-none">
@@ -535,8 +538,18 @@ export default function ReportsPage() {
                                 </div>
                             </DashboardCard>
                             
-                            <DashboardCard title="Recruitment Funnel" className="h-[280px] lg:col-span-2">
+                            <DashboardCard title="Recruitment Funnel" className="h-[280px]">
                                 <CustomFunnel stages={funnelStages} />
+                            </DashboardCard>
+
+                            <DashboardCard title="Avg Sourcing Time (Days)" className="h-[280px]">
+                                <div className="relative flex-grow pr-2">
+                                    <ChartComponent 
+                                        type="bar" 
+                                        options={{ indexAxis: 'y' }} 
+                                        data={getChartData(analytics.recruitersSourcing, 'Avg Days to Submit', '#10b981', true)} 
+                                    />
+                                </div>
                             </DashboardCard>
                         </div>
 
@@ -590,7 +603,7 @@ export default function ReportsPage() {
                             </DashboardCard>
                         </div>
 
-                        {/* DETAILED TABLES (STRICTLY FILTERED) */}
+                        {/* DETAILED TABLES */}
                         <DashboardCard title="Performance Data Explorer" className="mt-4">
                             <div className="flex border-b border-slate-200 mb-4">
                                 <button onClick={() => setActiveTab('recruiters')} className={`px-4 py-2 text-xs font-bold border-b-2 ${activeTab==='recruiters'?'border-blue-600 text-blue-600':'border-transparent text-slate-500'}`}>Recruiters</button>
@@ -601,7 +614,7 @@ export default function ReportsPage() {
                                     <thead className="bg-slate-50 text-slate-600 uppercase font-bold sticky top-0 border-y border-slate-200 z-10 shadow-sm">
                                         <tr>
                                             <th className="px-4 py-2">Name</th>
-                                            {activeTab==='recruiters' && <><th className="px-4 py-2 text-center">Active Jobs</th><th className="px-4 py-2 text-center">Zero-Sub</th></>}
+                                            {activeTab==='recruiters' && <><th className="px-4 py-2 text-center">Active Jobs</th><th className="px-4 py-2 text-center">Zero-Sub</th><th className="px-4 py-2 text-center text-emerald-600">Avg Sourcing</th></>}
                                             {activeTab==='clients' && <><th className="px-4 py-2 text-center">Open Jobs</th><th className="px-4 py-2 text-center">New Jobs</th></>}
                                             <th className="px-4 py-2 text-center">Submitted</th>
                                             <th className="px-4 py-2 text-center">Interviews</th>
@@ -613,7 +626,7 @@ export default function ReportsPage() {
                                         {(activeTab === 'recruiters' ? activeRecruiters : activeClients).map((row, i) => (
                                             <tr key={i} className="hover:bg-slate-50">
                                                 <td className="px-4 py-2 font-medium text-slate-800 max-w-[200px] truncate">{decodeHtml(row.name)}</td>
-                                                {activeTab==='recruiters' && <><td className="px-4 py-2 text-center">{formatMetric(row.activeJobs)}</td><td className="px-4 py-2 text-center">{formatMetric(row.zeroSubJobs)}</td></>}
+                                                {activeTab==='recruiters' && <><td className="px-4 py-2 text-center">{formatMetric(row.activeJobs)}</td><td className="px-4 py-2 text-center">{formatMetric(row.zeroSubJobs)}</td><td className="px-4 py-2 text-center font-bold text-emerald-600">{row.avgSourcingDays !== null ? row.avgSourcingDays + ' d' : 'N/A'}</td></>}
                                                 {activeTab==='clients' && <><td className="px-4 py-2 text-center">{formatMetric(row.openJobs)}</td><td className="px-4 py-2 text-center">{formatMetric(row.newJobs)}</td></>}
                                                 <td className="px-4 py-2 text-center">{formatMetric(row.periodSubs ?? row.submitted)}</td>
                                                 <td className="px-4 py-2 text-center">{formatMetric(row.periodInterviews ?? row.interviews)}</td>
@@ -622,7 +635,7 @@ export default function ReportsPage() {
                                             </tr>
                                         ))}
                                         {(activeTab === 'recruiters' ? activeRecruiters : activeClients).length === 0 && (
-                                            <tr><td colSpan="8" className="text-center py-6 text-slate-400">No active data for selected period.</td></tr>
+                                            <tr><td colSpan="9" className="text-center py-6 text-slate-400">No active data for selected period.</td></tr>
                                         )}
                                     </tbody>
                                 </table>
