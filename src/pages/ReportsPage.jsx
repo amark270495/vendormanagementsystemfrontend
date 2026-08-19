@@ -52,7 +52,7 @@ const DASHBOARD_CONFIGS = {
     'VirtusaDisplay': 'Virtusa', 'DeloitteDisplay': 'Deloitte', 'tsiBdmDisplay': 'TSI - BDM', 'tsiBdrDisplay': 'TSI - BDR'
 };
 
-const safeDiv = (num, denom) => (denom ? (num / denom) : null);
+const safeDiv = (num, denom) => (denom ? (num / denom) : 0);
 const formatMetric = (val, isPercent = false) => {
     if (val === null || val === undefined || Number.isNaN(val)) return 'N/A';
     return isPercent ? `${Number(val).toFixed(1)}%` : new Intl.NumberFormat().format(val);
@@ -72,7 +72,7 @@ const calculateFunnel = (funnelData, totalSubmitted) => {
     const submitted = totalSubmitted || 0; 
     
     return [
-        { stage: 'Submitted', count: submitted, rateOverall: 100 },
+        { stage: 'Application', count: submitted, rateOverall: 100 },
         { stage: 'Under Review', count: underReview, rateOverall: safeDiv(underReview, submitted)*100 },
         { stage: 'Shortlisted', count: shortlisted, rateOverall: safeDiv(shortlisted, submitted)*100 },
         { stage: 'Interview', count: interview, rateOverall: safeDiv(interview, submitted)*100 },
@@ -176,7 +176,7 @@ const ChartComponent = ({ type, options, data }) => {
 };
 
 const InlineBarTable = ({ columns, data, barColumnIndex, colorClass = "bg-emerald-500" }) => (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto h-full pr-2">
         <table className="w-full text-left text-xs whitespace-nowrap">
             <thead className="bg-slate-50 border-y border-slate-200 text-slate-500 font-bold">
                 <tr>
@@ -190,7 +190,7 @@ const InlineBarTable = ({ columns, data, barColumnIndex, colorClass = "bg-emeral
                 {data.map((row, rowIndex) => (
                     <tr key={rowIndex} className="hover:bg-slate-50/50">
                         {row.map((cell, colIndex) => (
-                            <td key={colIndex} className={`py-2.5 px-3 text-slate-700 ${colIndex === 0 ? 'font-medium truncate max-w-[150px]' : 'text-center'}`}>
+                            <td key={colIndex} className={`py-2.5 px-3 text-slate-700 ${colIndex === 0 ? 'font-medium truncate max-w-[200px]' : 'text-center'}`} title={colIndex === 0 ? cell : ''}>
                                 {colIndex === barColumnIndex ? (
                                     <div className="flex items-center gap-2 justify-center">
                                         <div className="w-24 bg-slate-100 h-2 rounded-sm overflow-hidden">
@@ -235,7 +235,7 @@ const StackedPipeline = ({ funnel }) => {
     
     const total = submitted + review + shortlist + interview;
     
-    if (total === 0) return <div className="text-xs text-slate-400 text-center py-8">No candidates currently in active pipeline.</div>;
+    if (total === 0) return <div className="text-xs text-slate-400 text-center py-8 flex-grow">No candidates currently in active pipeline.</div>;
 
     const pSub = (submitted / total) * 100;
     const pReview = (review / total) * 100;
@@ -246,13 +246,13 @@ const StackedPipeline = ({ funnel }) => {
         <div className="flex flex-col h-full justify-center">
             <div className="flex justify-between text-xs font-bold text-slate-600 mb-2">
                 <span>Active Pipeline</span>
-                <span>{total} Pending APP(s)</span>
+                <span>{formatMetric(total)} Pending APP(s)</span>
             </div>
             <div className="w-full flex h-10 rounded-sm overflow-hidden shadow-sm">
-                {submitted > 0 && <div style={{width: `${pSub}%`}} className="bg-slate-400 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{submitted}</span></div>}
-                {review > 0 && <div style={{width: `${pReview}%`}} className="bg-indigo-500 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{review}</span></div>}
-                {shortlist > 0 && <div style={{width: `${pShortlist}%`}} className="bg-blue-500 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{shortlist}</span></div>}
-                {interview > 0 && <div style={{width: `${pInterview}%`}} className="bg-emerald-500 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{interview}</span></div>}
+                {submitted > 0 && <div style={{width: `${pSub}%`}} className="bg-slate-400 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{formatMetric(submitted)}</span></div>}
+                {review > 0 && <div style={{width: `${pReview}%`}} className="bg-indigo-500 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{formatMetric(review)}</span></div>}
+                {shortlist > 0 && <div style={{width: `${pShortlist}%`}} className="bg-blue-500 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{formatMetric(shortlist)}</span></div>}
+                {interview > 0 && <div style={{width: `${pInterview}%`}} className="bg-emerald-500 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{formatMetric(interview)}</span></div>}
             </div>
             <div className="flex justify-between text-[10px] text-slate-500 mt-2 font-medium px-1">
                 {submitted > 0 && <div style={{width: `${pSub}%`}} className="text-center truncate pr-1">Submitted</div>}
@@ -398,9 +398,10 @@ export default function ReportsPage() {
         s.name, s.selected, safeDiv(s.selected, s.submitted)*100
     ]);
     
+    const totalRejections = analytics?.rejections?.values?.reduce((a,b)=>a+b, 0) || 1;
     const rejectionTableData = analytics?.rejections?.labels?.map((label, idx) => [
-        decodeHtml(label), analytics.rejections.values[idx], safeDiv(analytics.rejections.values[idx], analytics.rejections.values.reduce((a,b)=>a+b,0))*100
-    ]).slice(0, 5) || [];
+        decodeHtml(label), analytics.rejections.values[idx], safeDiv(analytics.rejections.values[idx], totalRejections)*100
+    ]).slice(0, 10) || [];
 
     return (
         <div className="p-4 md:p-6 bg-[#f3f4f6] min-h-screen font-sans text-slate-800">
@@ -527,7 +528,7 @@ export default function ReportsPage() {
                             <DashboardCard title="Application Sources" className="h-[240px]">
                                 <InlineBarTable columns={["Source", "# Hired", "Conv Rate"]} data={sourceTableData} barColumnIndex={2} colorClass="bg-emerald-500" />
                             </DashboardCard>
-                            <DashboardCard title="Decline Reasons" className="h-[240px]">
+                            <DashboardCard title="Decline Reasons" className="h-[240px] overflow-hidden">
                                 <InlineBarTable columns={["Reason", "# APPS", "% of APPS"]} data={rejectionTableData} barColumnIndex={2} colorClass="bg-rose-600" />
                             </DashboardCard>
                         </div>
@@ -553,7 +554,7 @@ export default function ReportsPage() {
                             </DashboardCard>
                         </div>
 
-                        {/* DETAILED TABLES */}
+                        {/* DETAILED TABLES (STRICTLY FILTERED) */}
                         <DashboardCard title="Performance Data Explorer" className="mt-4">
                             <div className="flex border-b border-slate-200 mb-4">
                                 <button onClick={() => setActiveTab('recruiters')} className={`px-4 py-2 text-xs font-bold border-b-2 ${activeTab==='recruiters'?'border-blue-600 text-blue-600':'border-transparent text-slate-500'}`}>Recruiters</button>
