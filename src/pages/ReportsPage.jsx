@@ -486,15 +486,49 @@ export default function ReportsPage() {
                             
                             <DashboardCard title="Pipeline Efficiency / Status" className="h-[280px]">
                                 <div className="relative flex-grow flex items-center justify-center pb-2">
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center mt-2 pointer-events-none">
-                                        <span className="text-3xl font-black text-slate-800 leading-none">{formatMetric(analytics.period_kpis.newCandidates)}</span>
-                                        <span className="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Total APPS</span>
-                                    </div>
-                                    <div className="w-full h-full max-h-[200px]">
-                                        <ChartComponent type="doughnut" options={{ cutout: '75%', plugins: { legend: { display: true, position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } } }} data={{
-                                            labels: analytics.candidates.byReportingStage.labels.map(decodeHtml),
-                                            datasets: [{ data: analytics.candidates.byReportingStage.values, backgroundColor: ['#8b5cf6', '#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#64748b'], borderWidth: 0 }]
-                                        }} />
+                                    <div className="relative w-full h-full max-h-[200px] flex items-center justify-center">
+                                        {/* Doughnut */}
+                                        <ChartComponent
+                                            type="doughnut"
+                                            options={{
+                                                cutout: '75%',
+                                                plugins: {
+                                                    legend: {
+                                                        display: true,
+                                                        position: 'right',
+                                                        labels: {
+                                                            boxWidth: 10,
+                                                            font: { size: 10 }
+                                                        }
+                                                    }
+                                                }
+                                            }}
+                                            data={{
+                                                labels: analytics.candidates.byReportingStage.labels.map(decodeHtml),
+                                                datasets: [{
+                                                    data: analytics.candidates.byReportingStage.values,
+                                                    backgroundColor: [
+                                                        '#8b5cf6',
+                                                        '#ef4444',
+                                                        '#f59e0b',
+                                                        '#22c55e',
+                                                        '#3b82f6',
+                                                        '#64748b'
+                                                    ],
+                                                    borderWidth: 0
+                                                }]
+                                            }}
+                                        />
+
+                                        {/* Center Value - Offset left to account for right legend */}
+                                        <div className="absolute left-[40%] top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none">
+                                            <span className="text-3xl font-black text-slate-800 leading-none">
+                                                {formatMetric(analytics.period_kpis.newCandidates)}
+                                            </span>
+                                            <span className="text-[10px] text-slate-500 uppercase tracking-widest mt-1">
+                                                TOTAL APPS
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </DashboardCard>
@@ -535,11 +569,11 @@ export default function ReportsPage() {
 
                         {/* ROW 4: PIPELINE & ALERTS */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            <DashboardCard title="Active Pipeline" className="h-[250px] lg:col-span-2">
+                            <DashboardCard title="Active Pipeline" className="h-[150px] lg:col-span-2">
                                 <StackedPipeline funnel={analytics.funnel} />
                             </DashboardCard>
-                            <DashboardCard title="Alerts & Comments" className="h-[250px]">
-                                <div className="space-y-3 overflow-y-auto max-h-[200px] pr-2">
+                            <DashboardCard title="Alerts & Comments" className="h-[150px]">
+                                <div className="space-y-3 overflow-y-auto max-h-[100px] pr-2">
                                     {!analytics.alerts?.length && <div className="text-xs text-slate-500">No active alerts. System healthy.</div>}
                                     {analytics.alerts?.map((a, i) => (
                                         <div key={i} className="flex items-start gap-2">
