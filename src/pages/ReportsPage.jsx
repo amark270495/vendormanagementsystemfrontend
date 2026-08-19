@@ -72,7 +72,7 @@ const calculateFunnel = (funnelData, totalSubmitted) => {
     const submitted = totalSubmitted || 0; 
     
     return [
-        { stage: 'Application', count: submitted, rateOverall: 100 },
+        { stage: 'Submitted', count: submitted, rateOverall: 100 },
         { stage: 'Under Review', count: underReview, rateOverall: safeDiv(underReview, submitted)*100 },
         { stage: 'Shortlisted', count: shortlisted, rateOverall: safeDiv(shortlisted, submitted)*100 },
         { stage: 'Interview', count: interview, rateOverall: safeDiv(interview, submitted)*100 },
@@ -228,13 +228,16 @@ const CustomFunnel = ({ stages }) => (
 );
 
 const StackedPipeline = ({ funnel }) => {
+    const submitted = funnel['Submitted'] || 0;
     const review = funnel['Under Review'] || 0;
     const shortlist = funnel['Shortlisted'] || 0;
     const interview = funnel['Interview'] || 0;
-    const total = review + shortlist + interview;
+    
+    const total = submitted + review + shortlist + interview;
     
     if (total === 0) return <div className="text-xs text-slate-400 text-center py-8">No candidates currently in active pipeline.</div>;
 
+    const pSub = (submitted / total) * 100;
     const pReview = (review / total) * 100;
     const pShortlist = (shortlist / total) * 100;
     const pInterview = (interview / total) * 100;
@@ -246,13 +249,15 @@ const StackedPipeline = ({ funnel }) => {
                 <span>{total} Pending APP(s)</span>
             </div>
             <div className="w-full flex h-10 rounded-sm overflow-hidden shadow-sm">
-                {review > 0 && <div style={{width: `${pReview}%`}} className="bg-indigo-600 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{review}</span></div>}
-                {shortlist > 0 && <div style={{width: `${pShortlist}%`}} className="bg-blue-400 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{shortlist}</span></div>}
+                {submitted > 0 && <div style={{width: `${pSub}%`}} className="bg-slate-400 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{submitted}</span></div>}
+                {review > 0 && <div style={{width: `${pReview}%`}} className="bg-indigo-500 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{review}</span></div>}
+                {shortlist > 0 && <div style={{width: `${pShortlist}%`}} className="bg-blue-500 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{shortlist}</span></div>}
                 {interview > 0 && <div style={{width: `${pInterview}%`}} className="bg-emerald-500 text-white flex flex-col items-center justify-center text-[10px] font-bold"><span>{interview}</span></div>}
             </div>
-            <div className="flex justify-between text-[10px] text-slate-500 mt-2 font-medium">
-                {review > 0 && <div style={{width: `${pReview}%`}} className="text-center truncate">Review</div>}
-                {shortlist > 0 && <div style={{width: `${pShortlist}%`}} className="text-center truncate">Shortlist</div>}
+            <div className="flex justify-between text-[10px] text-slate-500 mt-2 font-medium px-1">
+                {submitted > 0 && <div style={{width: `${pSub}%`}} className="text-center truncate pr-1">Submitted</div>}
+                {review > 0 && <div style={{width: `${pReview}%`}} className="text-center truncate pr-1">Review</div>}
+                {shortlist > 0 && <div style={{width: `${pShortlist}%`}} className="text-center truncate pr-1">Shortlist</div>}
                 {interview > 0 && <div style={{width: `${pInterview}%`}} className="text-center truncate">Interview</div>}
             </div>
         </div>
@@ -452,7 +457,7 @@ export default function ReportsPage() {
                 {analytics && !loading && (
                     <div className="space-y-4 animate-fade-in-up">
                         
-                        {/* KPI BANNER ROW (8 Metrics Restored) */}
+                        {/* KPI BANNER ROW */}
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
                             <KpiCard icon={LocationIcon} title="Open Positions" value={formatMetric(analytics.live_kpis.openJobs)} subtext="Live Available" />
                             <KpiCard icon={BriefcaseIcon} title="New Jobs" value={formatMetric(analytics.period_kpis.newJobs)} subtext="Created in Period" />
@@ -548,7 +553,7 @@ export default function ReportsPage() {
                             </DashboardCard>
                         </div>
 
-                        {/* DETAILED TABLES (STRICTLY FILTERED) */}
+                        {/* DETAILED TABLES */}
                         <DashboardCard title="Performance Data Explorer" className="mt-4">
                             <div className="flex border-b border-slate-200 mb-4">
                                 <button onClick={() => setActiveTab('recruiters')} className={`px-4 py-2 text-xs font-bold border-b-2 ${activeTab==='recruiters'?'border-blue-600 text-blue-600':'border-transparent text-slate-500'}`}>Recruiters</button>
