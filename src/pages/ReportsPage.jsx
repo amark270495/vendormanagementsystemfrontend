@@ -569,11 +569,11 @@ export default function ReportsPage() {
 
                         {/* ROW 4: PIPELINE & ALERTS */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            <DashboardCard title="Active Pipeline" className="h-[150px] lg:col-span-2">
+                            <DashboardCard title="Active Pipeline" className="h-[250px] lg:col-span-2">
                                 <StackedPipeline funnel={analytics.funnel} />
                             </DashboardCard>
-                            <DashboardCard title="Alerts & Comments" className="h-[150px]">
-                                <div className="space-y-3 overflow-y-auto max-h-[100px] pr-2">
+                            <DashboardCard title="Alerts & Comments" className="h-[250px]">
+                                <div className="space-y-3 overflow-y-auto max-h-[200px] pr-2">
                                     {!analytics.alerts?.length && <div className="text-xs text-slate-500">No active alerts. System healthy.</div>}
                                     {analytics.alerts?.map((a, i) => (
                                         <div key={i} className="flex items-start gap-2">
