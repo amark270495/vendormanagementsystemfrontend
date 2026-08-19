@@ -470,9 +470,9 @@ export default function ReportsPage() {
                             <KpiCard icon={ChartPieIcon} title="Sub. Util" value={formatMetric(analytics.live_kpis.utilization, true)} subtext="Live Capacity" />
                         </div>
 
-                        {/* ROW 1: VELOCITY, EFFICIENCY, FUNNEL */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            <DashboardCard title={`Velocity Metrics (${datePreset})`} className="h-[280px]">
+                        {/* ROW 1: VELOCITY (FULL WIDTH) */}
+                        <div className="mb-4">
+                            <DashboardCard title={`Velocity Metrics (${datePreset})`} className="h-[320px]">
                                 <div className="relative flex-grow mt-2">
                                     <ChartComponent type="line" options={{ plugins: { legend: { display: true, position: 'top', labels: {boxWidth: 10, font:{size:10}} } }, elements: {line: {tension: 0.3}} }} data={{
                                         labels: analytics.trends.labels,
@@ -483,11 +483,13 @@ export default function ReportsPage() {
                                     }} />
                                 </div>
                             </DashboardCard>
-                            
+                        </div>
+
+                        {/* ROW 2: EFFICIENCY, FUNNEL */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
                             <DashboardCard title="Pipeline Efficiency / Status" className="h-[280px]">
                                 <div className="relative flex-grow flex items-center justify-center pb-2">
                                     <div className="relative w-full h-full max-h-[200px] flex items-center justify-center">
-                                        {/* Doughnut */}
                                         <ChartComponent
                                             type="doughnut"
                                             options={{
@@ -520,7 +522,7 @@ export default function ReportsPage() {
                                             }}
                                         />
 
-                                        {/* Center Value - Offset left to account for right legend */}
+                                        {/* Center Value */}
                                         <div className="absolute left-[40%] top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none">
                                             <span className="text-3xl font-black text-slate-800 leading-none">
                                                 {formatMetric(analytics.period_kpis.newCandidates)}
@@ -533,13 +535,13 @@ export default function ReportsPage() {
                                 </div>
                             </DashboardCard>
                             
-                            <DashboardCard title="Recruitment Funnel" className="h-[280px]">
+                            <DashboardCard title="Recruitment Funnel" className="h-[280px] lg:col-span-2">
                                 <CustomFunnel stages={funnelStages} />
                             </DashboardCard>
                         </div>
 
-                        {/* ROW 2: DEMAND & AGING */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* ROW 3: DEMAND & AGING */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                             <DashboardCard title="Client Demand (New Jobs)" className="h-[280px]">
                                 <div className="relative flex-grow">
                                     <ChartComponent type="bar" options={{ indexAxis: 'y' }} data={getChartData(analytics.jobs.byClient, 'Jobs', '#3b82f6', true)} />
@@ -552,8 +554,8 @@ export default function ReportsPage() {
                             </DashboardCard>
                         </div>
                         
-                        {/* ROW 3: SKILLS, SOURCES, REJECTIONS */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        {/* ROW 4: SKILLS, SOURCES, REJECTIONS */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
                             <DashboardCard title="Top Required Skills (Jobs)" className="h-[240px]">
                                 <div className="relative flex-grow">
                                     <ChartComponent type="bar" options={{ indexAxis: 'y' }} data={getChartData(analytics.skills.jobsRequiring, 'Mentions', '#8b5cf6', true)} />
@@ -567,8 +569,8 @@ export default function ReportsPage() {
                             </DashboardCard>
                         </div>
 
-                        {/* ROW 4: PIPELINE & ALERTS */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        {/* ROW 5: PIPELINE & ALERTS */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
                             <DashboardCard title="Active Pipeline" className="h-[250px] lg:col-span-2">
                                 <StackedPipeline funnel={analytics.funnel} />
                             </DashboardCard>
