@@ -1,9 +1,19 @@
 # =========================================================
 # ENTERPRISE VMS AGENT - COMMON MODULE
-# VERSION: 5.1.3 (STABLE - FULLY PATCHED)
+# VERSION: 5.1.3 (STABLE - FULLY PATCHED - OPTIMIZED)
 # =========================================================
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+# =========================================================
+# VMS TELEMETRY CONFIGURATION (COST OPTIMIZATION)
+# =========================================================
+$Global:heartbeatIntervalSeconds     = 120
+$Global:uploadIntervalSeconds        = 60
+$Global:maxBatchEvents               = 25
+$Global:stateSaveIntervalSeconds     = 60
+$Global:defenderIntervalSeconds      = 86400 # 24 Hours
+$Global:windowsUpdateIntervalSeconds = 86400 # 24 Hours
 
 # =========================================================
 # GLOBAL PATHS

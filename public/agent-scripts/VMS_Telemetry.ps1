@@ -1,6 +1,6 @@
 # =========================================================
 # ENTERPRISE TELEMETRY WORKER
-# FULLY FIXED VERSION
+# FULLY FIXED VERSION (OPTIMIZED)
 # =========================================================
 
 $ErrorActionPreference = "Stop"
@@ -21,6 +21,20 @@ $events = @()
 $timestamp = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
 
 # =========================================================
+# CACHE MANAGEMENT (COST OPTIMIZATION)
+# =========================================================
+$telemetryCacheFile = Join-Path $Global:CacheDir "telemetry_cache.json"
+$telemetryCache = @{}
+
+if (Test-Path $telemetryCacheFile) {
+    $telemetryCache = Read-SafeJson -Path $telemetryCacheFile
+}
+
+# Ensure keys exist for first run
+if (-not $telemetryCache.DefenderLastCheck) { $telemetryCache.DefenderLastCheck = (Get-Date).AddDays(-2).ToString("o") }
+if (-not $telemetryCache.WinUpdateLastCheck) { $telemetryCache.WinUpdateLastCheck = (Get-Date).AddDays(-2).ToString("o") }
+
+# =========================================================
 # SAFE EXECUTION WRAPPER
 # =========================================================
 function Invoke-Safely {
@@ -38,7 +52,7 @@ function Invoke-Safely {
 }
 
 # =========================================================
-# SYSTEM HEALTH
+# SYSTEM HEALTH (Always Run)
 # =========================================================
 Invoke-Safely -Operation "System Health Collection" -ScriptBlock {
 
@@ -109,142 +123,152 @@ Invoke-Safely -Operation "System Health Collection" -ScriptBlock {
 }
 
 # =========================================================
-# WINDOWS DEFENDER STATUS
+# WINDOWS DEFENDER STATUS (Throttled)
 # =========================================================
-Invoke-Safely -Operation "Windows Defender Collection" -ScriptBlock {
+$defLastCheck = [DateTime]::Parse($telemetryCache.DefenderLastCheck)
 
-    $defenderCommand = Get-Command Get-MpComputerStatus -ErrorAction SilentlyContinue
+if (((Get-Date) - $defLastCheck).TotalSeconds -ge $Global:defenderIntervalSeconds) {
+    Invoke-Safely -Operation "Windows Defender Collection" -ScriptBlock {
 
-    if (-not $defenderCommand) {
-        Write-VMSLog "Windows Defender cmdlets unavailable." "WARN"
-        return
-    }
+        $defenderCommand = Get-Command Get-MpComputerStatus -ErrorAction SilentlyContinue
 
-    $defender = Get-MpComputerStatus
-
-    if (-not $defender) {
-        Write-VMSLog "Windows Defender returned no data." "WARN"
-        return
-    }
-
-    $signatureAge = $null
-
-    if ($defender.AntivirusSignatureLastUpdated) {
-
-        $signatureAge = [math]::Round(
-            (
-                (Get-Date) - $defender.AntivirusSignatureLastUpdated
-            ).TotalDays,
-            2
-        )
-    }
-
-    # FIX: Explicitly target the script-scoped variable
-    $script:events += @{
-        agentVersion = $agentVersion
-        assetId      = $assetId
-        userEmail    = $userEmail
-
-        actionType   = "DefenderStatus"
-        eventCategory = "Security"
-
-        metadata = @{
-            antivirusEnabled    = [bool]$defender.AMServiceEnabled
-            realtimeProtection  = [bool]$defender.RealTimeProtectionEnabled
-            engineVersion       = $defender.AMEngineVersion
-            antivirusVersion    = $defender.AntivirusSignatureVersion
-            signatureAgeDays    = $signatureAge
-            defenderRunningMode = $defender.AMRunningMode
+        if (-not $defenderCommand) {
+            Write-VMSLog "Windows Defender cmdlets unavailable." "WARN"
+            return
         }
 
-        timestamp = $timestamp
-    }
+        $defender = Get-MpComputerStatus
 
-    Write-VMSLog "Windows Defender status collected successfully."
+        if (-not $defender) {
+            Write-VMSLog "Windows Defender returned no data." "WARN"
+            return
+        }
+
+        $signatureAge = $null
+
+        if ($defender.AntivirusSignatureLastUpdated) {
+
+            $signatureAge = [math]::Round(
+                (
+                    (Get-Date) - $defender.AntivirusSignatureLastUpdated
+                ).TotalDays,
+                2
+            )
+        }
+
+        # FIX: Explicitly target the script-scoped variable
+        $script:events += @{
+            agentVersion = $agentVersion
+            assetId      = $assetId
+            userEmail    = $userEmail
+
+            actionType   = "DefenderStatus"
+            eventCategory = "Security"
+
+            metadata = @{
+                antivirusEnabled    = [bool]$defender.AMServiceEnabled
+                realtimeProtection  = [bool]$defender.RealTimeProtectionEnabled
+                engineVersion       = $defender.AMEngineVersion
+                antivirusVersion    = $defender.AntivirusSignatureVersion
+                signatureAgeDays    = $signatureAge
+                defenderRunningMode = $defender.AMRunningMode
+            }
+
+            timestamp = $timestamp
+        }
+
+        $telemetryCache.DefenderLastCheck = (Get-Date).ToString("o")
+        Write-VMSLog "Windows Defender status collected successfully."
+    }
 }
 
 # =========================================================
-# WINDOWS UPDATE SCAN
+# WINDOWS UPDATE SCAN (Throttled)
 # =========================================================
-Invoke-Safely -Operation "Windows Update Scan" -ScriptBlock {
+$wuLastCheck = [DateTime]::Parse($telemetryCache.WinUpdateLastCheck)
 
-    $wuaService = Get-Service wuauserv -ErrorAction SilentlyContinue
+if (((Get-Date) - $wuLastCheck).TotalSeconds -ge $Global:windowsUpdateIntervalSeconds) {
+    Invoke-Safely -Operation "Windows Update Scan" -ScriptBlock {
 
-    if (-not $wuaService) {
-        throw "Windows Update service not found."
-    }
+        $wuaService = Get-Service wuauserv -ErrorAction SilentlyContinue
 
-    # -----------------------------------------------------
-    # START SERVICE IF STOPPED
-    # -----------------------------------------------------
-    if ($wuaService.Status -ne 'Running') {
-
-        Write-VMSLog "Starting Windows Update service..." "WARN"
-
-        Start-Service wuauserv -ErrorAction Stop
-        Start-Sleep -Seconds 3
-
-        $wuaService.Refresh()
-    }
-
-    if ($wuaService.Status -ne 'Running') {
-        throw "Windows Update service failed to start."
-    }
-
-    # -----------------------------------------------------
-    # COM OBJECT
-    # -----------------------------------------------------
-    $updateSession = New-Object -ComObject Microsoft.Update.Session
-
-    if (-not $updateSession) {
-        throw "Unable to create Microsoft.Update.Session COM object."
-    }
-
-    $updateSearcher = $updateSession.CreateUpdateSearcher()
-
-    $searchResult = $updateSearcher.Search(
-        "IsInstalled=0 and Type='Software'"
-    )
-
-    $criticalCount = 0
-    $securityCount = 0
-
-    $updatesList = @()
-
-    foreach ($update in $searchResult.Updates) {
-
-        if ($update.MsrcSeverity -eq 'Critical') {
-            $criticalCount++
+        if (-not $wuaService) {
+            throw "Windows Update service not found."
         }
 
-        if ($update.MsrcSeverity -eq 'Important') {
-            $securityCount++
+        # -----------------------------------------------------
+        # START SERVICE IF STOPPED
+        # -----------------------------------------------------
+        if ($wuaService.Status -ne 'Running') {
+
+            Write-VMSLog "Starting Windows Update service..." "WARN"
+
+            Start-Service wuauserv -ErrorAction Stop
+            Start-Sleep -Seconds 3
+
+            $wuaService.Refresh()
         }
 
-        $updatesList += $update.Title
-    }
-
-    # FIX: Explicitly target the script-scoped variable
-    $script:events += @{
-        agentVersion = $agentVersion
-        assetId      = $assetId
-        userEmail    = $userEmail
-
-        actionType   = "WindowsUpdateScan"
-        eventCategory = "WindowsUpdate"
-
-        metadata = @{
-            pendingCount = $searchResult.Updates.Count
-            criticalCount = $criticalCount
-            securityCount = $securityCount
-            serviceStatus = $wuaService.Status.ToString()
-            updates       = $updatesList
+        if ($wuaService.Status -ne 'Running') {
+            throw "Windows Update service failed to start."
         }
 
-        timestamp = $timestamp
-    }
+        # -----------------------------------------------------
+        # COM OBJECT
+        # -----------------------------------------------------
+        $updateSession = New-Object -ComObject Microsoft.Update.Session
 
-    Write-VMSLog "Windows Update scan completed successfully."
+        if (-not $updateSession) {
+            throw "Unable to create Microsoft.Update.Session COM object."
+        }
+
+        $updateSearcher = $updateSession.CreateUpdateSearcher()
+
+        $searchResult = $updateSearcher.Search(
+            "IsInstalled=0 and Type='Software'"
+        )
+
+        $criticalCount = 0
+        $securityCount = 0
+
+        $updatesList = @()
+
+        foreach ($update in $searchResult.Updates) {
+
+            if ($update.MsrcSeverity -eq 'Critical') {
+                $criticalCount++
+            }
+
+            if ($update.MsrcSeverity -eq 'Important') {
+                $securityCount++
+            }
+
+            $updatesList += $update.Title
+        }
+
+        # FIX: Explicitly target the script-scoped variable
+        $script:events += @{
+            agentVersion = $agentVersion
+            assetId      = $assetId
+            userEmail    = $userEmail
+
+            actionType   = "WindowsUpdateScan"
+            eventCategory = "WindowsUpdate"
+
+            metadata = @{
+                pendingCount = $searchResult.Updates.Count
+                criticalCount = $criticalCount
+                securityCount = $securityCount
+                serviceStatus = $wuaService.Status.ToString()
+                updates       = $updatesList
+            }
+
+            timestamp = $timestamp
+        }
+
+        $telemetryCache.WinUpdateLastCheck = (Get-Date).ToString("o")
+        Write-VMSLog "Windows Update scan completed successfully."
+    }
 }
 
 # =========================================================
@@ -297,7 +321,10 @@ if ($events.Count -gt 0) {
             -ApiUrl $apiUrl `
             -ApiKey $apiKey `
             -Payload $events | Out-Null
-
+            
+        # Write cache to disk ONLY on successful upload so failed states re-trigger
+        Write-AtomicJson -Path $telemetryCacheFile -Data $telemetryCache | Out-Null
+        
         Write-VMSLog "Telemetry upload completed successfully."
     }
     catch {
@@ -309,7 +336,6 @@ if ($events.Count -gt 0) {
     }
 }
 else {
-
     Write-VMSLog "No telemetry data collected." "WARN"
 }
 

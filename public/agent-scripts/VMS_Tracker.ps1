@@ -1,7 +1,7 @@
 # =========================================================
 # ENTERPRISE VMS AGENT
 # VERSION 5.1.3
-# FINAL STABLE TRACKER ENGINE
+# FINAL STABLE TRACKER ENGINE (OPTIMIZED)
 # =========================================================
 
 param(
@@ -57,6 +57,7 @@ $script:queue = @()
 $script:isIdle = $false
 $script:lastUpload = Get-Date
 $script:lastLoop = Get-Date
+$script:lastStateSave = Get-Date
 $lastHeartbeat = (Get-Date).AddMinutes(-2)
 $lastApp = ""
 
@@ -257,9 +258,8 @@ try {
                         $app = $sb.ToString().Trim()
 
                         if (-not [string]::IsNullOrWhiteSpace($app)) {
-                            $secondsSinceHeartbeat = ((Get-Date) - $lastHeartbeat).TotalSeconds
-
-                            if ($app -ne $lastApp -or $secondsSinceHeartbeat -ge 30) {
+                            # COST OPTIMIZATION: Only log when application actually changes
+                            if ($app -ne $lastApp) {
                                 Add-VMSEvent -Action "ActiveApp" -Category "Usage" -Notes $app
                                 $lastApp = $app
                             }
@@ -273,9 +273,9 @@ try {
 
             # HEARTBEAT
             try {
-                $minutesSinceHeartbeat = ((Get-Date) - $lastHeartbeat).TotalMinutes
+                $secondsSinceHeartbeat = ((Get-Date) - $lastHeartbeat).TotalSeconds
 
-                if ($minutesSinceHeartbeat -ge 1) {
+                if ($secondsSinceHeartbeat -ge $Global:heartbeatIntervalSeconds) {
                     Add-VMSEvent -Action "Heartbeat" -Category "Session" -Notes "Agent Active"
                     $lastHeartbeat = Get-Date
                 }
@@ -292,11 +292,11 @@ try {
             }
             catch {}
 
-            # QUEUE FLUSH
+            # QUEUE FLUSH (BATCH UPLOADS)
             try {
                 $secondsSinceUpload = ((Get-Date) - $script:lastUpload).TotalSeconds
 
-                if ($secondsSinceUpload -ge 30) {
+                if ($script:queue.Count -ge $Global:maxBatchEvents -or $secondsSinceUpload -ge $Global:uploadIntervalSeconds) {
                     Flush-Queue
                 }
             }
@@ -304,8 +304,18 @@ try {
                 Write-VMSLog "Queue flush failed: $($_.Exception.Message)" "WARN"
             }
 
-            # SAVE STATE
-            Save-State
+            # SAVE STATE (THROTTLED)
+            try {
+                $secondsSinceStateSave = ((Get-Date) - $script:lastStateSave).TotalSeconds
+                
+                if ($secondsSinceStateSave -ge $Global:stateSaveIntervalSeconds) {
+                    Save-State
+                    $script:lastStateSave = Get-Date
+                }
+            }
+            catch {
+                Write-VMSLog "Save state throttle failed: $($_.Exception.Message)" "WARN"
+            }
         }
         catch {
             Write-VMSLog "Main loop crash: $($_.Exception.ToString())" "ERROR"
