@@ -8,7 +8,7 @@ import {
 } from '../components/msa-wo/MSATemplateDefinition';
 import '../components/msa-wo/MSADocumentStyles.css';
 
-const STORAGE_KEY = 'vms2_msa_template_editor_v1';
+const STORAGE_KEY = 'vms2_msa_template_editor_v2';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -116,7 +116,20 @@ const MSATemplateEditorPage = () => {
   };
 
   const printDocument = () => {
-    window.print();
+    document.body.classList.add('msa-print-mode');
+
+    const cleanup = () => {
+      document.body.classList.remove('msa-print-mode');
+      window.removeEventListener('afterprint', cleanup);
+    };
+
+    window.addEventListener('afterprint', cleanup);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print();
+      });
+    });
   };
 
   return (
@@ -124,14 +137,16 @@ const MSATemplateEditorPage = () => {
       <aside className="document-sidebar no-print">
         <h1 className="editor-title">MSA / WO Template Editor</h1>
         <p className="editor-subtitle">
-          Seven-page source layout, A4 paper, Word-style margins, centered logo,
-          exact footer, editable legal copy, preview data, and print/PDF export.
+          Seven-page source layout, A4 paper, 25.4 mm normal margins, centered
+          logo, exact footer, editable legal copy, preview data, and clean
+          7-page print/PDF export.
         </p>
 
         <div className="editor-note">
-          The editor saves locally in this browser for now. During the VMS 2.0
-          backend build, save the same JSON payload as a versioned template in
-          Azure Storage/Table instead of localStorage.
+          The editor saves locally in this browser for now. This tuned version
+          uses a new storage key so old experimental font/footer settings do not
+          override the source-style defaults. During the VMS 2.0 backend build,
+          save the same JSON payload as a versioned template in Azure Storage/Table.
         </div>
 
         <section className="editor-section">
