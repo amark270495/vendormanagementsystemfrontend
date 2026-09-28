@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { apiService } from '../api/apiService';
 import Spinner from '../components/Spinner';
 import { usePermissions } from '../hooks/usePermissions';
+import html2pdf from 'html2pdf.js';
+import { MSATemplatePages } from '../components/msa-wo/MSATemplatePages';
 
 const CreateMSAandWOPage = ({ onNavigate }) => {
     const { user } = useAuth();
@@ -17,6 +19,10 @@ const CreateMSAandWOPage = ({ onNavigate }) => {
     const [selectedCompany, setSelectedCompany] = useState(null);
     const [showDropdown, setShowDropdown] = useState(false);
     const searchRef = useRef(null);
+    
+    // NEW: Ref to capture the invisible document template and state for contract number
+    const documentRef = useRef(null);
+    const [contractNumber, setContractNumber] = useState('');
 
     const loadCompanies = useCallback(async () => {
         if (!canManageMSAWO) return;
@@ -32,6 +38,8 @@ const CreateMSAandWOPage = ({ onNavigate }) => {
 
     useEffect(() => {
         loadCompanies();
+        // Initialize a random contract number on mount
+        setContractNumber(`Taproot-Subk-${Math.floor(10000 + Math.random() * 90000)}`);
     }, [loadCompanies]);
 
     useEffect(() => {
@@ -54,7 +62,6 @@ const CreateMSAandWOPage = ({ onNavigate }) => {
         setSelectedCompany(company);
         setSearchTerm(company.vendorName);
         setShowDropdown(false);
-        // Pre-fill form data from the selected company
         setFormData(prev => ({
             ...prev,
             vendorName: company.vendorName,
@@ -83,12 +90,34 @@ const CreateMSAandWOPage = ({ onNavigate }) => {
         setLoading(true);
 
         try {
-            const response = await apiService.createMSAandWO(formData, user.userIdentifier);
+            // 1. Generate PDF from the hidden React Component
+            const element = documentRef.current;
+            const opt = {
+                margin: 0,
+                filename: `MSA_WO_${contractNumber}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Convert DOM element to Base64 String
+            const pdfBase64 = await html2pdf().set(opt).from(element).output('datauristring');
+
+            // 2. Attach PDF and Contract Number to the Payload
+            const payload = {
+                ...formData,
+                contractNumber,
+                pdfBase64
+            };
+
+            // 3. Send to Backend
+            const response = await apiService.createMSAandWO(payload, user.userIdentifier);
             if (response.data.success) {
                 setSuccess(response.data.message);
                 setFormData({});
                 setSelectedCompany(null);
                 setSearchTerm('');
+                setContractNumber(`Taproot-Subk-${Math.floor(10000 + Math.random() * 90000)}`); // Reset for next
                 setTimeout(() => setSuccess(''), 3000);
             } else {
                 setError(response.data.message);
@@ -105,7 +134,7 @@ const CreateMSAandWOPage = ({ onNavigate }) => {
     }
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-6 max-w-4xl mx-auto relative">
             <div className="text-center">
                 <h1 className="text-3xl font-bold text-gray-900">Create MSA and Work Order</h1>
                 <p className="mt-2 text-gray-600">Select a vendor, then fill out the work order details.</p>
@@ -228,6 +257,20 @@ const CreateMSAandWOPage = ({ onNavigate }) => {
                     </button>
                 </div>
             </form>
+
+            {/* INVISIBLE DOCUMENT RENDERER FOR PDF EXTRACTION */}
+            <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', zIndex: -1000 }}>
+                <div ref={documentRef}>
+                    <MSATemplatePages 
+                        data={{
+                            ...formData, 
+                            CURRENT_DATE: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), 
+                            CONTRACT_NUMBER: contractNumber.replace('Taproot-Subk-', '')
+                        }} 
+                        margins={{top: 25.4, bottom: 25.4, left: 25.4, right: 25.4}} 
+                    />
+                </div>
+            </div>
         </div>
     );
 };

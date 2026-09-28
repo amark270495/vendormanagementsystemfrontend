@@ -607,7 +607,26 @@ const TopNav = () => {
                         {showDocsReports && canSeeDocs && (
                             <div className="mt-4 mb-2">
                                 <div className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-t border-slate-100">Docs & Reports</div>
-                                <button onClick={() => handleNav('msa-wo-dashboard')} className="w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2"><Icons.FileSignature className="w-4 h-4"/> Documents (MSA/Offers)</button>
+                                {permissions.canManageMSAWO && (
+                                    <>
+                                        <button onClick={() => handleNav('create-msa-wo')} className="w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2">
+                                            <Icons.FileSignature className="w-4 h-4"/> Create MSA/WO
+                                        </button>
+                                        <button onClick={() => handleNav('msa-wo-dashboard')} className="w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2">
+                                            <Icons.FileText className="w-4 h-4"/> MSA & WO Dashboard
+                                        </button>
+                                    </>
+                                )}
+                                {permissions.canManageOfferLetters && (
+                                    <>
+                                         <button onClick={() => handleNav('create-offer-letter')} className="w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2">
+                                            <Icons.FileSignature className="w-4 h-4"/> Create Offer Letter
+                                        </button>
+                                        <button onClick={() => handleNav('offer-letter-dashboard')} className="w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2">
+                                            <Icons.FileText className="w-4 h-4"/> Offer Letters Dashboard
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         )}
 
