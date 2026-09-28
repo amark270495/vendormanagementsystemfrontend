@@ -225,6 +225,7 @@ const TopNav = () => {
                 routes.push({ label: 'Manage Vendors', category: 'Documents & Reports', target: 'manage-msa-wo-vendor-companies' });
                 routes.push({ label: 'Create MSA/WO', category: 'Documents & Reports', target: 'create-msa-wo' });
                 routes.push({ label: 'MSA/WO Dashboard', category: 'Documents & Reports', target: 'msa-wo-dashboard' });
+                routes.push({ label: 'MSA Template Editor', category: 'Documents & Reports', target: 'msa-template-editor' });
             }
             if (permissions.canManageOfferLetters) {
                 routes.push({ label: 'Create Offer Letter', category: 'Documents & Reports', target: 'create-offer-letter' });
@@ -352,7 +353,7 @@ const TopNav = () => {
                         {/* --- ENTERPRISE DOCS & REPORTS DROPDOWN (Dual Column Layout) --- */}
                         {showDocsReports && canSeeDocs && (
                             <Dropdown align="left" trigger={
-                                <button className={triggerClass(['msa-wo-dashboard', 'offer-letter-dashboard', 'create-msa-wo-vendor-company', 'manage-msa-wo-vendor-companies', 'create-msa-wo', 'create-offer-letter'])}>
+                                <button className={triggerClass(['msa-wo-dashboard', 'offer-letter-dashboard', 'create-msa-wo-vendor-company', 'manage-msa-wo-vendor-companies', 'create-msa-wo', 'create-offer-letter', 'msa-template-editor'])}>
                                     Docs & Reports <Icons.ChevronDown className="text-slate-400" />
                                 </button>
                             }>
@@ -364,6 +365,7 @@ const TopNav = () => {
                                             <DropdownItem icon={Icons.Store} label="Manage Vendors" target="manage-msa-wo-vendor-companies" onClick={handleNav} />
                                             <DropdownItem icon={Icons.FileSignature} label="Create MSA/WO" target="create-msa-wo" onClick={handleNav} />
                                             <DropdownItem icon={Icons.FileText} label="MSA & WO Dashboard" target="msa-wo-dashboard" onClick={handleNav} />
+                                            <DropdownItem icon={Icons.Layout} label="MSA Template Editor" target="msa-template-editor" onClick={handleNav} />
                                         </div>
                                     )}
                                     
@@ -614,6 +616,9 @@ const TopNav = () => {
                                         </button>
                                         <button onClick={() => handleNav('msa-wo-dashboard')} className="w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2">
                                             <Icons.FileText className="w-4 h-4"/> MSA & WO Dashboard
+                                        </button>
+                                        <button onClick={() => handleNav('msa-template-editor')} className="w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2">
+                                            <Icons.Layout className="w-4 h-4"/> MSA Template Editor
                                         </button>
                                     </>
                                 )}

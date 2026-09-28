@@ -15,7 +15,7 @@ const OfferLetterRedirect = () => {
     return <Navigate to={`/offer-letter?token=${token}`} replace />;
 };
 
-// 🌟 NEW HELPER: For MSA paths if they ever come through as /msa-sign/123
+// HELPER: For MSA paths if they ever come through as /msa-sign/123
 const MsaRedirect = () => {
     const { token } = useParams();
     return <Navigate to={`/msa-sign?token=${token}`} replace />;
@@ -27,7 +27,7 @@ const AppRoutes = () => {
             {/* === PUBLIC ROUTES === */}
             <Route path="/login" element={<LoginPage />} />
             
-            {/* 🌟 FIX: Document Signing Routes for MSA */}
+            {/* Document Signing Routes for MSA */}
             {/* 1. Matches the Query Param format from your Outlook email link (/msa-sign?token=...) */}
             <Route path="/msa-sign" element={<MSAandWOSigningPage />} />
             {/* 2. Matches the Path Param format just in case (/msa-sign/123...) */}

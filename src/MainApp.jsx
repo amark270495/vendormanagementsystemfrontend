@@ -20,6 +20,7 @@ import CreateMSAandWOPage from './pages/CreateMSAandWOPage';
 import MSAandWODashboardPage from './pages/MSAandWODashboardPage';
 import CreateMSAWOVendorCompanyPage from './pages/CreateMSAWOVendorCompanyPage';
 import ManageMSAWOVendorCompaniesPage from './pages/ManageMSAWOVendorCompaniesPage';
+import MSATemplateEditorPage from './pages/MSATemplateEditorPage'; // <--- NEW IMPORT
 import CreateOfferLetterPage from './pages/CreateOfferLetterPage';
 import OfferLetterDashboardPage from './pages/OfferLetterDashboardPage';
 import ProfilePage from './pages/ProfilePage';
@@ -71,6 +72,7 @@ const MainApp = () => {
                     <Route path="/manage-msa-wo-vendor-companies" element={<ManageMSAWOVendorCompaniesPage onNavigate={handleNavigate}/>} />
                     <Route path="/create-msa-wo" element={<CreateMSAandWOPage onNavigate={handleNavigate} />} />
                     <Route path="/msa-wo-dashboard" element={<MSAandWODashboardPage />} />
+                    <Route path="/msa-template-editor" element={<MSATemplateEditorPage />} />  {/* <--- NEW ROUTE */}
                     
                     <Route path="/create-offer-letter" element={<CreateOfferLetterPage onNavigate={handleNavigate} />} />
                     <Route path="/offer-letter-dashboard" element={<OfferLetterDashboardPage />} />
