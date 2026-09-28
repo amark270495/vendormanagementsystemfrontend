@@ -1,5 +1,5 @@
 :root {
-  --doc-margin-top: 25.4mm;    /* Normal MS Word Margin (1 inch) */
+  --doc-margin-top: 25.4mm;
   --doc-margin-bottom: 25.4mm;
   --doc-margin-left: 25.4mm;
   --doc-margin-right: 25.4mm;
@@ -7,7 +7,7 @@
 
 .document-editor-layout {
   display: flex;
-  height: 100vh;
+  height: calc(100vh - 72px);
   background-color: #f3f4f6;
   font-family: 'Inter', sans-serif;
 }
@@ -19,6 +19,7 @@
   padding: 24px;
   overflow-y: auto;
   box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+  z-index: 10;
 }
 
 .document-canvas {
@@ -28,7 +29,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 30px;
+  gap: 40px;
+  background-color: #e5e7eb;
 }
 
 /* Strict A4 Page Definition */
@@ -36,13 +38,12 @@
   width: 210mm;
   min-height: 297mm;
   background: white;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
   position: relative;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   
-  /* Dynamic Margins injected via style prop, falling back to root variables */
   padding-top: var(--doc-margin-top);
   padding-bottom: var(--doc-margin-bottom);
   padding-left: var(--doc-margin-left);
@@ -50,8 +51,8 @@
 
   /* Document Typography matching MS Word */
   font-family: "Times New Roman", Times, serif;
-  font-size: 11pt;
-  line-height: 1.6;
+  font-size: 10.5pt;
+  line-height: 1.4;
   color: #000;
 }
 
@@ -59,7 +60,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #000;
+  border-bottom: 2px solid #000;
   padding-bottom: 15px;
   margin-bottom: 20px;
 }
@@ -70,11 +71,11 @@
 }
 
 .page-footer {
-  margin-top: auto; /* Pushes footer to the bottom of the A4 page */
+  margin-top: auto; 
   border-top: 1px solid #000;
   padding-top: 10px;
   text-align: center;
-  font-size: 9pt;
+  font-size: 8.5pt;
   color: #555;
 }
 
@@ -90,6 +91,17 @@
   text-align: justify;
 }
 
+.doc-list {
+  margin-top: 5px;
+  margin-bottom: 12px;
+  padding-left: 40px;
+  text-align: justify;
+}
+
+.doc-list li {
+  margin-bottom: 5px;
+}
+
 .doc-table {
   width: 100%;
   border-collapse: collapse;
@@ -98,31 +110,37 @@
 
 .doc-table th, .doc-table td {
   border: 1px solid #000;
-  padding: 8px;
+  padding: 8px 12px;
   text-align: left;
   vertical-align: top;
 }
 
 /* Print Specific Rules */
 @media print {
+  @page {
+    margin: 0;
+    size: A4 portrait;
+  }
   body {
     background: white;
     margin: 0;
     padding: 0;
   }
-  .document-sidebar, .no-print {
+  .document-sidebar, .no-print, header, nav {
     display: none !important;
   }
   .document-canvas {
     padding: 0;
     background: white;
+    gap: 0;
+    display: block;
   }
   .a4-page {
     box-shadow: none;
     margin: 0;
     page-break-after: always;
+    min-height: 297mm; /* Force exact page sizing */
   }
-  /* Remove page break from the very last page */
   .a4-page:last-child {
     page-break-after: auto;
   }
