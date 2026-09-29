@@ -1,22 +1,41 @@
-/* src/components/msa-wo/MSADocumentStyles.css */
+/* ============================================================
+   VMS 2.0 MSA / WO DOCUMENT EDITOR
+   src/components/msa-wo/MSADocumentStyles.css
+============================================================ */
 
 :root {
+  /*
+   * Standard Word Normal Margins
+   * 1 inch = 25.4mm
+   */
   --doc-margin-top: 25.4mm;
   --doc-margin-bottom: 25.4mm;
   --doc-margin-left: 25.4mm;
   --doc-margin-right: 25.4mm;
 
+  /*
+   * Default contract typography
+   */
   --doc-font-family: "Times New Roman", Times, serif;
   --doc-font-size: 10.5pt;
   --doc-line-height: 1.06;
 
+  /*
+   * Titles
+   */
   --doc-title-size: 14.5pt;
   --doc-section-title-size: 10.5pt;
 
+  /*
+   * Footer
+   */
   --doc-footer-font-size: 8.25pt;
   --doc-footer-rule-color: #6f2a2a;
   --doc-footer-rule-width: 1.2mm;
 
+  /*
+   * Header Logo
+   */
   --doc-logo-width: 86mm;
 }
 
@@ -24,11 +43,13 @@
   box-sizing: border-box;
 }
 
-/* ==========================================================
-   EDITOR SHELL
-========================================================== */
+/* ============================================================
+   MAIN WYSIWYG EDITOR SHELL
+============================================================ */
 
 .msa-editor-app {
+  width: 100%;
+
   height: calc(100vh - 72px);
 
   min-height: 0;
@@ -37,15 +58,22 @@
 
   flex-direction: column;
 
+  overflow: hidden;
+
   background: #e5e7eb;
 
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
 }
 
-/* ==========================================================
+/* ============================================================
    TOP BAR
-========================================================== */
+============================================================ */
 
 .wysiwyg-topbar {
   min-height: 64px;
@@ -70,6 +98,8 @@
 }
 
 .wysiwyg-topbar-left {
+  min-width: 0;
+
   display: flex;
 
   align-items: center;
@@ -83,6 +113,8 @@
   font-size: 18px;
 
   font-weight: 800;
+
+  line-height: 1.2;
 }
 
 .wysiwyg-editor-meta {
@@ -91,7 +123,13 @@
   color: #6b7280;
 
   font-size: 12px;
+
+  line-height: 1.3;
 }
+
+/* ============================================================
+   PREVIEW / EDIT SWITCH
+============================================================ */
 
 .editor-mode-switch {
   display: flex;
@@ -101,12 +139,16 @@
   border: 1px solid #d1d5db;
 
   border-radius: 8px;
+
+  background: #ffffff;
 }
 
 .editor-mode-switch button {
   appearance: none;
 
   border: 0;
+
+  border-right: 1px solid #e5e7eb;
 
   padding: 8px 12px;
 
@@ -119,6 +161,18 @@
   font-size: 12px;
 
   font-weight: 700;
+
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.editor-mode-switch button:last-child {
+  border-right: 0;
+}
+
+.editor-mode-switch button:hover {
+  background: #f3f4f6;
 }
 
 .editor-mode-switch button.active {
@@ -127,14 +181,24 @@
   color: #ffffff;
 }
 
+/* ============================================================
+   TOP ACTION BUTTONS
+============================================================ */
+
 .wysiwyg-topbar-actions {
+  flex: 0 0 auto;
+
   display: flex;
+
+  align-items: center;
 
   gap: 8px;
 }
 
 .wysiwyg-topbar-actions button {
   appearance: none;
+
+  min-height: 34px;
 
   border: 1px solid #d1d5db;
 
@@ -151,6 +215,16 @@
   font-size: 12px;
 
   font-weight: 700;
+
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.wysiwyg-topbar-actions button:hover {
+  background: #f9fafb;
+
+  border-color: #9ca3af;
 }
 
 .wysiwyg-topbar-actions .publish {
@@ -161,6 +235,12 @@
   color: #ffffff;
 }
 
+.wysiwyg-topbar-actions .publish:hover {
+  border-color: #047857;
+
+  background: #047857;
+}
+
 .wysiwyg-topbar-actions .print {
   border-color: #2563eb;
 
@@ -169,9 +249,15 @@
   color: #ffffff;
 }
 
-/* ==========================================================
-   TOOLBAR
-========================================================== */
+.wysiwyg-topbar-actions .print:hover {
+  border-color: #1d4ed8;
+
+  background: #1d4ed8;
+}
+
+/* ============================================================
+   WORD-STYLE TOOLBAR
+============================================================ */
 
 .wysiwyg-toolbar {
   min-height: 48px;
@@ -188,6 +274,8 @@
 
   overflow-x: auto;
 
+  overflow-y: hidden;
+
   border-bottom: 1px solid #d1d5db;
 
   background: #f9fafb;
@@ -196,6 +284,8 @@
 }
 
 .toolbar-group {
+  flex: 0 0 auto;
+
   display: flex;
 
   align-items: center;
@@ -224,11 +314,11 @@
 
   justify-content: center;
 
-  padding: 0 8px;
-
   border: 1px solid transparent;
 
   border-radius: 5px;
+
+  padding: 0 8px;
 
   background: transparent;
 
@@ -237,6 +327,12 @@
   cursor: pointer;
 
   font-size: 13px;
+
+  line-height: 1;
+
+  transition:
+    background-color 0.1s ease,
+    border-color 0.1s ease;
 }
 
 .wysiwyg-toolbar-button:hover {
@@ -245,10 +341,14 @@
   background: #e2e8f0;
 }
 
+.wysiwyg-toolbar-button:active {
+  background: #cbd5e1;
+}
+
 .wysiwyg-toolbar select {
   height: 32px;
 
-  max-width: 175px;
+  max-width: 180px;
 
   border: 1px solid #cbd5e1;
 
@@ -258,12 +358,26 @@
 
   background: #ffffff;
 
+  color: #111827;
+
   font-size: 12px;
+
+  cursor: pointer;
+}
+
+.wysiwyg-toolbar select:focus {
+  border-color: #2563eb;
+
+  outline: 2px solid #bfdbfe;
 }
 
 .insert-field-select {
-  min-width: 170px;
+  min-width: 175px;
 }
+
+/* ============================================================
+   TOOLBAR COLOR PICKERS
+============================================================ */
 
 .toolbar-color-label {
   position: relative;
@@ -279,6 +393,8 @@
   justify-content: center;
 
   border-radius: 5px;
+
+  color: #111827;
 
   cursor: pointer;
 
@@ -299,11 +415,13 @@
   height: 1px;
 
   opacity: 0;
+
+  pointer-events: none;
 }
 
-/* ==========================================================
-   EDITOR BODY
-========================================================== */
+/* ============================================================
+   MAIN EDITOR BODY
+============================================================ */
 
 .document-editor-layout {
   flex: 1;
@@ -312,15 +430,25 @@
 
   display: flex;
 
+  overflow: hidden;
+
   background: #e5e7eb;
 }
+
+/* ============================================================
+   LEFT SIDEBAR
+============================================================ */
 
 .document-sidebar {
   width: 350px;
 
   flex: 0 0 350px;
 
+  min-height: 0;
+
   padding: 16px;
+
+  overflow-x: hidden;
 
   overflow-y: auto;
 
@@ -328,19 +456,30 @@
 
   background: #ffffff;
 
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    2px 0 10px
+    rgba(0, 0, 0, 0.04);
 
   z-index: 20;
 }
+
+/* ============================================================
+   DOCUMENT CANVAS
+============================================================ */
 
 .document-canvas {
   flex: 1;
 
   min-width: 0;
 
+  min-height: 0;
+
   overflow: auto;
 
-  padding: 32px 48px 54px;
+  padding:
+    32px
+    48px
+    54px;
 
   background: #dfe3e8;
 }
@@ -361,20 +500,31 @@
   margin: 0 auto;
 }
 
-/* ==========================================================
-   SIDEBAR CONTROLS
-========================================================== */
+/* ============================================================
+   SIDEBAR SECTIONS
+============================================================ */
 
 .editor-section-details {
-  padding: 0 0 12px;
+  padding:
+    0
+    0
+    12px;
 
-  margin: 0 0 12px;
+  margin:
+    0
+    0
+    12px;
 
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom:
+    1px solid
+    #e5e7eb;
 }
 
 .editor-section-details summary {
-  padding: 6px 0 10px;
+  padding:
+    6px
+    0
+    10px;
 
   color: #111827;
 
@@ -387,9 +537,17 @@
   font-weight: 800;
 }
 
+.editor-section-details summary:hover {
+  color: #2563eb;
+}
+
 .editor-section-content {
   padding-top: 3px;
 }
+
+/* ============================================================
+   SIDEBAR FORM FIELDS
+============================================================ */
 
 .editor-field {
   display: flex;
@@ -414,7 +572,9 @@
 
   min-height: 36px;
 
-  border: 1px solid #d1d5db;
+  border:
+    1px solid
+    #d1d5db;
 
   border-radius: 7px;
 
@@ -424,7 +584,12 @@
 
   color: #111827;
 
-  font: 400 12px/1.35 Inter, system-ui, sans-serif;
+  font:
+    400
+    12px/1.35
+    Inter,
+    system-ui,
+    sans-serif;
 }
 
 .editor-field textarea {
@@ -436,20 +601,38 @@
 .editor-field textarea:focus {
   border-color: #2563eb;
 
-  outline: 2px solid #bfdbfe;
+  outline:
+    2px solid
+    #bfdbfe;
+
+  outline-offset: 0;
 }
 
 .editor-field input[type="color"] {
+  min-height: 36px;
+
   padding: 3px;
+
+  cursor: pointer;
 }
+
+/* ============================================================
+   TWO COLUMN SIDEBAR GRID
+============================================================ */
 
 .editor-grid-2 {
   display: grid;
 
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
 
   gap: 8px;
 }
+
+/* ============================================================
+   CHECKBOX
+============================================================ */
 
 .editor-checkbox {
   display: flex;
@@ -460,10 +643,22 @@
 
   color: #374151;
 
+  cursor: pointer;
+
   font-size: 12px;
 
   font-weight: 600;
 }
+
+.editor-checkbox input {
+  width: 15px;
+
+  height: 15px;
+}
+
+/* ============================================================
+   EDITOR ACTION BUTTONS
+============================================================ */
 
 .editor-actions {
   display: grid;
@@ -474,7 +669,9 @@
 }
 
 .editor-actions.two-columns {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
 }
 
 .editor-button {
@@ -491,6 +688,15 @@
   font-size: 11px;
 
   font-weight: 700;
+
+  transition:
+    background-color 0.15s ease,
+    transform 0.05s ease;
+}
+
+.editor-button:active {
+  transform:
+    translateY(1px);
 }
 
 .editor-button.light {
@@ -499,10 +705,18 @@
   color: #111827;
 }
 
+.editor-button.light:hover {
+  background: #e2e8f0;
+}
+
 .editor-button.danger {
   background: #fee2e2;
 
   color: #991b1b;
+}
+
+.editor-button.danger:hover {
+  background: #fecaca;
 }
 
 .editor-button.full {
@@ -510,6 +724,10 @@
 
   margin-top: 8px;
 }
+
+/* ============================================================
+   STATUS / WARNING CARDS
+============================================================ */
 
 .editor-note,
 .editor-success-message,
@@ -532,12 +750,20 @@
 }
 
 .editor-success-message {
+  border:
+    1px solid
+    #a7f3d0;
+
   background: #ecfdf5;
 
   color: #065f46;
 }
 
 .editor-overflow-warning {
+  border:
+    1px solid
+    #fed7aa;
+
   background: #fff7ed;
 
   color: #9a3412;
@@ -564,6 +790,8 @@
 .selected-block-summary {
   display: flex;
 
+  align-items: center;
+
   justify-content: space-between;
 
   gap: 8px;
@@ -581,9 +809,9 @@
   font-size: 10px;
 }
 
-/* ==========================================================
+/* ============================================================
    A4 PAGE
-========================================================== */
+============================================================ */
 
 .a4-page {
   position: relative;
@@ -602,39 +830,57 @@
 
   box-sizing: border-box;
 
-  padding-top: var(--doc-margin-top);
+  padding-top:
+    var(--doc-margin-top);
 
-  padding-bottom: var(--doc-margin-bottom);
+  padding-bottom:
+    var(--doc-margin-bottom);
 
-  padding-left: var(--doc-margin-left);
+  padding-left:
+    var(--doc-margin-left);
 
-  padding-right: var(--doc-margin-right);
+  padding-right:
+    var(--doc-margin-right);
 
   background: #ffffff;
 
   color: #000000;
 
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+  box-shadow:
+    0
+    12px
+    30px
+    rgba(0, 0, 0, 0.16);
 
-  font-family: var(--doc-font-family);
+  font-family:
+    var(--doc-font-family);
 
-  font-size: var(--doc-font-size);
+  font-size:
+    var(--doc-font-size);
 
-  line-height: var(--doc-line-height);
+  line-height:
+    var(--doc-line-height);
 
   print-color-adjust: exact;
 
-  -webkit-print-color-adjust: exact;
+  -webkit-print-color-adjust:
+    exact;
 }
+
+/* ============================================================
+   PAGE HEADER / LOGO
+============================================================ */
 
 .page-header {
   position: absolute;
 
   top: 5.8mm;
 
-  left: var(--doc-margin-left);
+  left:
+    var(--doc-margin-left);
 
-  right: var(--doc-margin-right);
+  right:
+    var(--doc-margin-right);
 
   height: 18mm;
 
@@ -645,21 +891,35 @@
   justify-content: center;
 
   pointer-events: none;
+
+  z-index: 2;
 }
 
 .page-header img {
   display: block;
 
-  width: var(--doc-logo-width);
+  width:
+    var(--doc-logo-width);
 
   max-width: 100%;
 
   max-height: 18mm;
 
+  height: auto;
+
   object-fit: contain;
+
+  object-position:
+    center top;
 }
 
+/* ============================================================
+   PAGE BODY
+============================================================ */
+
 .page-body {
+  position: relative;
+
   width: 100%;
 
   height: calc(
@@ -668,8 +928,16 @@
       var(--doc-margin-bottom)
   );
 
+  min-height: 0;
+
   overflow: visible;
+
+  z-index: 1;
 }
+
+/* ============================================================
+   PAGE FOOTER
+============================================================ */
 
 .page-footer {
   position: absolute;
@@ -689,7 +957,8 @@
 
   color: #000000;
 
-  font-size: var(--doc-footer-font-size);
+  font-size:
+    var(--doc-footer-font-size);
 
   line-height: 1;
 
@@ -698,7 +967,13 @@
   text-align: left;
 
   pointer-events: none;
+
+  z-index: 2;
 }
+
+/* ============================================================
+   DEBUG PAGE NUMBER
+============================================================ */
 
 .page-debug-badge {
   position: absolute;
@@ -707,43 +982,68 @@
 
   right: 3mm;
 
-  z-index: 5;
+  z-index: 20;
 
   padding: 3px 5px;
 
   border-radius: 4px;
 
-  background: rgba(17, 24, 39, 0.08);
+  background:
+    rgba(
+      17,
+      24,
+      39,
+      0.08
+    );
 
   color: #4b5563;
 
-  font: 10px/1 Arial, sans-serif;
+  font:
+    10px/1
+    Arial,
+    sans-serif;
 }
 
-/* ==========================================================
-   DOCUMENT CONTENT
-========================================================== */
+/* ============================================================
+   DOCUMENT TITLE
+============================================================ */
 
 .doc-main-title {
-  margin: 0 0 4.2mm;
+  margin:
+    0
+    0
+    4.2mm;
+
+  padding: 0;
 
   text-align: center;
 
-  font-size: var(--doc-title-size);
+  font-size:
+    var(--doc-title-size);
 
   line-height: 1.05;
 
   font-weight: 700;
 
-  text-decoration: underline;
+  text-decoration:
+    underline;
 }
 
 .doc-wo-title {
-  margin: 0 0 5mm;
+  margin:
+    0
+    0
+    5mm;
+
+  padding: 0;
 
   text-align: center;
 
-  font-size: calc(var(--doc-title-size) - 2pt);
+  font-size:
+    calc(
+      var(--doc-title-size) -
+        2pt
+    );
 
   line-height: 1.05;
 
@@ -751,13 +1051,24 @@
 
   font-style: italic;
 
-  text-decoration: underline;
+  text-decoration:
+    underline;
 }
 
-.doc-section-title {
-  margin: 2.2mm 0 1mm;
+/* ============================================================
+   SECTION TITLES
+============================================================ */
 
-  font-size: var(--doc-section-title-size);
+.doc-section-title {
+  margin:
+    2.2mm
+    0
+    1mm;
+
+  font-size:
+    var(
+      --doc-section-title-size
+    );
 
   line-height: 1.05;
 
@@ -773,100 +1084,175 @@
 
   font-weight: 700;
 
-  text-decoration: underline;
+  text-decoration:
+    underline;
 }
 
+/* ============================================================
+   NORMAL DOCUMENT PARAGRAPH
+============================================================ */
+
 .doc-text {
-  margin: 0 0 2mm;
+  margin:
+    0
+    0
+    2mm;
 
   padding: 0;
 
   text-align: justify;
 
-  text-justify: inter-word;
+  text-justify:
+    inter-word;
+
+  word-break: normal;
+
+  overflow-wrap:
+    break-word;
 }
 
 .doc-text.no-bottom {
   margin-bottom: 0;
 }
 
+/* ============================================================
+   NUMBERED LEGAL CLAUSES
+============================================================ */
+
 .numbered-clause {
   display: grid;
 
-  grid-template-columns: 7mm 1fr;
+  grid-template-columns:
+    7mm
+    minmax(0, 1fr);
 
   column-gap: 0;
 
-  margin: 0 0 1.8mm;
+  margin:
+    0
+    0
+    1.8mm;
 }
 
 .numbered-clause-number {
   white-space: nowrap;
 }
 
+.numbered-clause-body {
+  min-width: 0;
+}
+
 .numbered-clause-title {
   margin-bottom: 0.7mm;
 }
 
-.numbered-clause-body p:last-child {
+.numbered-clause-body
+  p:last-child {
   margin-bottom: 0;
 }
 
+/* ============================================================
+   ALPHABETICAL LEGAL LISTS
+============================================================ */
+
 .alpha-list {
-  margin: 0.4mm 0 1.6mm 7mm;
+  margin:
+    0.4mm
+    0
+    1.6mm
+    7mm;
 
   padding-left: 6mm;
 
-  list-style-type: lower-alpha;
+  list-style-type:
+    lower-alpha;
 }
 
 .alpha-list li {
-  margin: 0 0 0.7mm;
+  margin:
+    0
+    0
+    0.7mm;
 
   padding-left: 1.5mm;
 
   text-align: justify;
+
+  text-justify:
+    inter-word;
 }
+
+/* ============================================================
+   TABLES
+============================================================ */
 
 .doc-table {
   width: 100%;
 
-  margin: 2.5mm 0 3mm;
+  margin:
+    2.5mm
+    0
+    3mm;
 
-  border-collapse: collapse;
+  border-collapse:
+    collapse;
+
+  border-spacing: 0;
 
   table-layout: fixed;
 }
 
 .doc-table td,
 .doc-table th {
-  border: 0.25mm solid #000000;
+  border:
+    0.25mm solid
+    #000000;
 
-  padding: 1.8mm 2mm;
+  padding:
+    1.8mm
+    2mm;
 
   vertical-align: top;
 
   text-align: left;
 
   font-weight: 400;
+
+  overflow-wrap:
+    break-word;
 }
 
-.insurance-table td:first-child {
+/* ============================================================
+   INSURANCE TABLE
+============================================================ */
+
+.insurance-table
+  td:first-child {
   width: 59%;
 }
 
-.insurance-table td:last-child {
+.insurance-table
+  td:last-child {
   width: 41%;
 }
+
+/* ============================================================
+   NOTICE SECTION
+============================================================ */
 
 .notice-grid {
   display: grid;
 
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
 
   column-gap: 18mm;
 
-  margin: 12mm 7mm 5mm;
+  margin:
+    12mm
+    7mm
+    5mm;
 }
 
 .notice-grid p {
@@ -875,10 +1261,16 @@
   text-align: left;
 }
 
+/* ============================================================
+   MSA SIGNATURE AREA
+============================================================ */
+
 .signature-columns {
   display: grid;
 
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
 
   column-gap: 14mm;
 
@@ -886,13 +1278,17 @@
 }
 
 .signature-party-title {
-  margin: 0 0 5mm;
+  margin:
+    0
+    0
+    5mm;
 
   font-weight: 700;
 
   font-style: italic;
 
-  text-decoration: underline;
+  text-decoration:
+    underline;
 }
 
 .signature-label {
@@ -914,7 +1310,9 @@
 
   margin-bottom: 4.5mm;
 
-  border-bottom: 0.25mm solid #000000;
+  border-bottom:
+    0.25mm solid
+    #000000;
 }
 
 .signature-meta {
@@ -926,56 +1324,85 @@
 .signature-meta-row {
   padding-bottom: 1mm;
 
-  border-bottom: 0.25mm solid #000000;
+  border-bottom:
+    0.25mm solid
+    #000000;
 }
 
 .signature-date-row {
   padding-top: 1mm;
 }
 
+/* ============================================================
+   WORK ORDER TABLE
+============================================================ */
+
 .wo-table {
   margin-top: 10mm;
 }
 
-.wo-table td:first-child {
+.wo-table
+  td:first-child {
   width: 37%;
 }
+
+/* ============================================================
+   WO ACCEPTANCE
+============================================================ */
 
 .wo-acceptance-head {
   display: grid;
 
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
 
   gap: 12mm;
 
-  margin: 5mm 0 2mm;
+  margin:
+    5mm
+    0
+    2mm;
 
   text-align: center;
 }
+
+/* ============================================================
+   WO SIGNATURE TABLE
+============================================================ */
 
 .wo-signature-table {
   margin-top: 0;
 }
 
-.wo-signature-table td:nth-child(1),
-.wo-signature-table td:nth-child(3) {
+.wo-signature-table
+  td:nth-child(1),
+.wo-signature-table
+  td:nth-child(3) {
   width: 47%;
 }
 
-.wo-signature-table td:nth-child(2),
+.wo-signature-table
+  td:nth-child(2),
 .divider-cell {
   width: 6%;
 
   padding: 0;
+
+  border-top: 0;
+
+  border-bottom: 0;
 }
 
 .wo-signature-cell {
+  min-height: 28mm;
+
   height: 28mm;
 }
 
-/* ==========================================================
-   DIRECT EDITING
-========================================================== */
+/* ============================================================
+   EDITABLE BLOCK WRAPPER
+============================================================ */
 
 .editable-block {
   position: relative;
@@ -983,34 +1410,77 @@
   border-radius: 2px;
 }
 
-.document-edit-mode .editable-block.is-editable,
-.document-edit-mode .editable-table-cell.is-editable {
+/* ============================================================
+   EDIT MODE HOVER
+============================================================ */
+
+.document-edit-mode
+  .editable-block.is-editable,
+.document-edit-mode
+  .editable-table-cell.is-editable {
   cursor: text;
 }
 
-.document-edit-mode .editable-block:hover {
-  outline: 1px dashed rgba(37, 99, 235, 0.45);
+.document-edit-mode
+  .editable-block:hover {
+  outline:
+    1px dashed
+    rgba(
+      37,
+      99,
+      235,
+      0.45
+    );
 
   outline-offset: 2px;
 }
 
-.document-edit-mode .editable-block.is-selected,
-.document-edit-mode .table-block.is-selected {
-  outline: 2px solid rgba(37, 99, 235, 0.7);
+/* ============================================================
+   SELECTED BLOCK
+============================================================ */
+
+.document-edit-mode
+  .editable-block.is-selected,
+.document-edit-mode
+  .table-block.is-selected {
+  outline:
+    2px solid
+    rgba(
+      37,
+      99,
+      235,
+      0.7
+    );
 
   outline-offset: 3px;
 }
 
-.editable-block[contenteditable="true"]:focus,
-.editable-table-cell[contenteditable="true"]:focus {
+/* ============================================================
+   CONTENTEDITABLE FOCUS
+============================================================ */
+
+.editable-block[
+    contenteditable="true"
+  ]:focus,
+.editable-table-cell[
+    contenteditable="true"
+  ]:focus {
   outline: none;
 }
 
+/* ============================================================
+   EDITABLE TABLE CELL
+============================================================ */
+
 .editable-table-cell {
   min-height: 1em;
+
+  width: 100%;
 }
 
-/* Protected VMS field while editing */
+/* ============================================================
+   PROTECTED VMS DYNAMIC FIELD CHIP
+============================================================ */
 
 .dynamic-field-chip {
   display: inline-flex;
@@ -1019,9 +1489,13 @@
 
   min-height: 1.3em;
 
-  padding: 0 3px;
+  padding:
+    0
+    3px;
 
-  border: 1px solid #93c5fd;
+  border:
+    1px solid
+    #93c5fd;
 
   border-radius: 3px;
 
@@ -1033,24 +1507,129 @@
 
   user-select: all;
 
-  vertical-align: baseline;
+  vertical-align:
+    baseline;
 
-  font-family: Inter, Arial, sans-serif;
+  white-space: nowrap;
+
+  font-family:
+    Inter,
+    Arial,
+    sans-serif;
 
   font-size: 0.83em;
+
+  line-height: 1.2;
 
   font-weight: 700;
 }
 
-/* Value after field resolution */
+/* ============================================================
+   RESOLVED FIELD IN PREVIEW
+============================================================ */
 
 .resolved-dynamic-field {
   font-weight: 700;
 }
 
-/* ==========================================================
-   PRINT / PDF
-========================================================== */
+/* ============================================================
+   PREVIEW MODE
+============================================================ */
+
+.document-preview-mode
+  .editable-block,
+.document-preview-mode
+  .editable-table-cell {
+  cursor: default;
+}
+
+/* ============================================================
+   HTML2PDF OFF-SCREEN GENERATION
+============================================================ */
+
+.pdf-export-root {
+  width: 210mm;
+
+  min-width: 210mm;
+
+  margin: 0;
+
+  padding: 0;
+
+  overflow: visible;
+
+  background: #ffffff;
+}
+
+.pdf-export-root
+  .document-pages-shell {
+  display: block;
+
+  width: 210mm;
+
+  min-width: 210mm;
+
+  margin: 0;
+
+  padding: 0;
+
+  background: #ffffff;
+}
+
+.pdf-export-root
+  .a4-page {
+  width: 210mm;
+
+  height: 297mm;
+
+  min-height: 297mm;
+
+  max-height: 297mm;
+
+  margin: 0;
+
+  box-shadow: none;
+
+  overflow: hidden;
+
+  page-break-after:
+    always;
+
+  break-after:
+    page;
+
+  page-break-inside:
+    avoid;
+
+  break-inside:
+    avoid;
+
+  print-color-adjust:
+    exact;
+
+  -webkit-print-color-adjust:
+    exact;
+}
+
+.pdf-export-root
+  .a4-page:last-child {
+  page-break-after:
+    auto;
+
+  break-after:
+    auto;
+}
+
+.pdf-export-root
+  .editable-block,
+.pdf-export-root
+  .editable-table-cell {
+  outline: none !important;
+}
+
+/* ============================================================
+   NATIVE BROWSER PRINT
+============================================================ */
 
 @page {
   size: A4 portrait;
@@ -1068,6 +1647,8 @@
 
     min-height: 0 !important;
 
+    max-height: none !important;
+
     margin: 0 !important;
 
     padding: 0 !important;
@@ -1077,10 +1658,17 @@
     background: #ffffff !important;
   }
 
+  /*
+   * Hide complete VMS UI.
+   */
   body * {
-    visibility: hidden !important;
+    visibility:
+      hidden !important;
   }
 
+  /*
+   * Re-enable only the document.
+   */
   .msa-editor-app,
   .msa-editor-app *,
   .document-editor-layout,
@@ -1089,140 +1677,347 @@
   .document-canvas *,
   .document-pages-shell,
   .document-pages-shell * {
-    visibility: visible !important;
+    visibility:
+      visible !important;
   }
 
+  /*
+   * Move contract to print origin.
+   */
   .msa-editor-app {
-    position: absolute !important;
+    position:
+      absolute !important;
 
     top: 0 !important;
 
     left: 0 !important;
 
-    width: 210mm !important;
+    display:
+      block !important;
 
-    height: auto !important;
+    width:
+      210mm !important;
 
-    min-height: 0 !important;
+    height:
+      auto !important;
 
-    margin: 0 !important;
+    min-height:
+      0 !important;
 
-    padding: 0 !important;
+    max-height:
+      none !important;
 
-    overflow: visible !important;
+    margin:
+      0 !important;
 
-    background: #ffffff !important;
+    padding:
+      0 !important;
+
+    overflow:
+      visible !important;
+
+    background:
+      #ffffff !important;
   }
 
+  /*
+   * Remove all editor controls.
+   */
   .wysiwyg-topbar,
   .wysiwyg-toolbar,
   .document-sidebar,
   .no-print,
   .page-debug-badge {
-    display: none !important;
+    display:
+      none !important;
   }
 
   .document-editor-layout {
-    display: block !important;
+    display:
+      block !important;
 
-    width: 210mm !important;
+    width:
+      210mm !important;
 
-    height: auto !important;
+    height:
+      auto !important;
 
-    min-height: 0 !important;
+    min-height:
+      0 !important;
 
-    margin: 0 !important;
+    margin:
+      0 !important;
 
-    padding: 0 !important;
+    padding:
+      0 !important;
 
-    overflow: visible !important;
+    overflow:
+      visible !important;
 
-    background: #ffffff !important;
+    background:
+      #ffffff !important;
   }
 
-  .document-canvas,
+  .document-canvas {
+    display:
+      block !important;
+
+    width:
+      210mm !important;
+
+    min-width:
+      210mm !important;
+
+    height:
+      auto !important;
+
+    min-height:
+      0 !important;
+
+    margin:
+      0 !important;
+
+    padding:
+      0 !important;
+
+    overflow:
+      visible !important;
+
+    background:
+      #ffffff !important;
+  }
+
   .document-pages-shell {
-    display: block !important;
+    display:
+      block !important;
 
-    width: 210mm !important;
+    width:
+      210mm !important;
 
-    min-width: 210mm !important;
+    min-width:
+      210mm !important;
 
-    height: auto !important;
+    height:
+      auto !important;
 
-    min-height: 0 !important;
+    min-height:
+      0 !important;
 
-    margin: 0 !important;
+    margin:
+      0 !important;
 
-    padding: 0 !important;
+    padding:
+      0 !important;
 
-    overflow: visible !important;
+    overflow:
+      visible !important;
 
-    background: #ffffff !important;
+    background:
+      #ffffff !important;
   }
 
+  /*
+   * Chromium/Windows sometimes rounds
+   * exactly 297mm and creates a phantom sheet.
+   *
+   * @page remains real A4.
+   *
+   * Rendered content is shortened by only 0.2mm.
+   */
   .a4-page {
-    position: relative !important;
+    position:
+      relative !important;
 
-    display: block !important;
+    display:
+      block !important;
 
-    width: 210mm !important;
+    width:
+      210mm !important;
 
-    /*
-      Slightly below 297 prevents Chromium/Windows
-      phantom blank pages.
-    */
-    height: 296.8mm !important;
+    height:
+      296.8mm !important;
 
-    min-height: 296.8mm !important;
+    min-height:
+      296.8mm !important;
 
-    max-height: 296.8mm !important;
+    max-height:
+      296.8mm !important;
 
-    margin: 0 !important;
+    margin:
+      0 !important;
 
-    box-shadow: none !important;
+    padding-top:
+      var(--doc-margin-top) !important;
 
-    overflow: hidden !important;
+    padding-bottom:
+      var(--doc-margin-bottom) !important;
 
-    break-inside: avoid !important;
+    padding-left:
+      var(--doc-margin-left) !important;
 
-    page-break-inside: avoid !important;
+    padding-right:
+      var(--doc-margin-right) !important;
 
-    break-after: page !important;
+    box-shadow:
+      none !important;
 
-    page-break-after: always !important;
+    overflow:
+      hidden !important;
 
-    print-color-adjust: exact !important;
+    transform:
+      none !important;
 
-    -webkit-print-color-adjust: exact !important;
+    page-break-inside:
+      avoid !important;
+
+    break-inside:
+      avoid !important;
+
+    page-break-after:
+      always !important;
+
+    break-after:
+      page !important;
+
+    print-color-adjust:
+      exact !important;
+
+    -webkit-print-color-adjust:
+      exact !important;
   }
 
   .a4-page:last-child {
-    break-after: auto !important;
+    page-break-after:
+      auto !important;
 
-    page-break-after: auto !important;
+    break-after:
+      auto !important;
   }
 
   .editable-block,
   .editable-table-cell {
-    outline: none !important;
+    outline:
+      none !important;
+  }
+
+  /*
+   * Dynamic fields should never render
+   * as blue editor chips during printing.
+   *
+   * Normally Preview mode has already resolved them,
+   * but this provides an additional safeguard.
+   */
+  .dynamic-field-chip {
+    border:
+      0 !important;
+
+    padding:
+      0 !important;
+
+    background:
+      transparent !important;
+
+    color:
+      #000000 !important;
+
+    font:
+      inherit !important;
+  }
+
+  .page-header,
+  .page-footer {
+    print-color-adjust:
+      exact !important;
+
+    -webkit-print-color-adjust:
+      exact !important;
   }
 }
 
-@media screen and (max-width: 1180px) {
-  .document-sidebar {
-    width: 310px;
+/* ============================================================
+   RESPONSIVE EDITOR
+============================================================ */
 
-    flex-basis: 310px;
+@media screen and (max-width: 1300px) {
+  .document-sidebar {
+    width: 320px;
+
+    flex-basis: 320px;
   }
 
   .document-canvas {
-    padding-left: 24px;
+    padding-left: 28px;
 
-    padding-right: 24px;
+    padding-right: 28px;
+  }
+}
+
+@media screen and (max-width: 1120px) {
+  .document-sidebar {
+    width: 300px;
+
+    flex-basis: 300px;
+  }
+
+  .document-canvas {
+    padding-left: 20px;
+
+    padding-right: 20px;
   }
 
   .document-pages-shell {
-    align-items: flex-start;
+    align-items:
+      flex-start;
   }
+
+  .wysiwyg-topbar {
+    align-items:
+      flex-start;
+
+    flex-direction:
+      column;
+  }
+
+  .wysiwyg-topbar-actions {
+    width: 100%;
+
+    flex-wrap: wrap;
+  }
+}
+
+/* ============================================================
+   OPTIONAL SCROLLBAR POLISH
+============================================================ */
+
+.document-sidebar::-webkit-scrollbar,
+.document-canvas::-webkit-scrollbar,
+.wysiwyg-toolbar::-webkit-scrollbar {
+  width: 10px;
+
+  height: 10px;
+}
+
+.document-sidebar::-webkit-scrollbar-track,
+.document-canvas::-webkit-scrollbar-track,
+.wysiwyg-toolbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.document-sidebar::-webkit-scrollbar-thumb,
+.document-canvas::-webkit-scrollbar-thumb,
+.wysiwyg-toolbar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+
+  border-radius: 999px;
+
+  background:
+    rgba(
+      107,
+      114,
+      128,
+      0.45
+    );
+
+  background-clip:
+    padding-box;
 }
