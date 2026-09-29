@@ -1,153 +1,788 @@
+/* src/components/msa-wo/MSADocumentStyles.css */
+
 :root {
   --doc-margin-top: 25.4mm;
   --doc-margin-bottom: 25.4mm;
   --doc-margin-left: 25.4mm;
   --doc-margin-right: 25.4mm;
+
+  --doc-font-family: "Times New Roman", Times, serif;
   --doc-font-size: 10.5pt;
   --doc-line-height: 1.06;
+
   --doc-title-size: 14.5pt;
   --doc-section-title-size: 10.5pt;
+
   --doc-footer-font-size: 8.25pt;
-  --doc-logo-width: 86mm;
   --doc-footer-rule-color: #6f2a2a;
+  --doc-footer-rule-width: 1.2mm;
+
+  --doc-logo-width: 86mm;
 }
 
-.document-editor-layout {
-  display: flex;
+* {
+  box-sizing: border-box;
+}
+
+/* ==========================================================
+   EDITOR SHELL
+========================================================== */
+
+.msa-editor-app {
   height: calc(100vh - 72px);
+
   min-height: 0;
-  background: #f3f4f6;
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  display: flex;
+
+  flex-direction: column;
+
+  background: #e5e7eb;
+
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+/* ==========================================================
+   TOP BAR
+========================================================== */
+
+.wysiwyg-topbar {
+  min-height: 64px;
+
+  flex: 0 0 auto;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 16px;
+
+  padding: 10px 16px;
+
+  border-bottom: 1px solid #d1d5db;
+
+  background: #ffffff;
+
+  z-index: 50;
+}
+
+.wysiwyg-topbar-left {
+  display: flex;
+
+  align-items: center;
+
+  gap: 20px;
+}
+
+.wysiwyg-editor-name {
+  color: #111827;
+
+  font-size: 18px;
+
+  font-weight: 800;
+}
+
+.wysiwyg-editor-meta {
+  margin-top: 3px;
+
+  color: #6b7280;
+
+  font-size: 12px;
+}
+
+.editor-mode-switch {
+  display: flex;
+
+  overflow: hidden;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 8px;
+}
+
+.editor-mode-switch button {
+  appearance: none;
+
+  border: 0;
+
+  padding: 8px 12px;
+
+  background: #ffffff;
+
+  color: #4b5563;
+
+  cursor: pointer;
+
+  font-size: 12px;
+
+  font-weight: 700;
+}
+
+.editor-mode-switch button.active {
+  background: #111827;
+
+  color: #ffffff;
+}
+
+.wysiwyg-topbar-actions {
+  display: flex;
+
+  gap: 8px;
+}
+
+.wysiwyg-topbar-actions button {
+  appearance: none;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 7px;
+
+  padding: 8px 11px;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  cursor: pointer;
+
+  font-size: 12px;
+
+  font-weight: 700;
+}
+
+.wysiwyg-topbar-actions .publish {
+  border-color: #059669;
+
+  background: #059669;
+
+  color: #ffffff;
+}
+
+.wysiwyg-topbar-actions .print {
+  border-color: #2563eb;
+
+  background: #2563eb;
+
+  color: #ffffff;
+}
+
+/* ==========================================================
+   TOOLBAR
+========================================================== */
+
+.wysiwyg-toolbar {
+  min-height: 48px;
+
+  flex: 0 0 auto;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  padding: 6px 12px;
+
+  overflow-x: auto;
+
+  border-bottom: 1px solid #d1d5db;
+
+  background: #f9fafb;
+
+  z-index: 45;
+}
+
+.toolbar-group {
+  display: flex;
+
+  align-items: center;
+
+  gap: 3px;
+
+  padding-right: 7px;
+
+  margin-right: 3px;
+
+  border-right: 1px solid #d1d5db;
+}
+
+.toolbar-group:last-child {
+  border-right: 0;
+}
+
+.wysiwyg-toolbar-button {
+  min-width: 32px;
+
+  height: 32px;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  padding: 0 8px;
+
+  border: 1px solid transparent;
+
+  border-radius: 5px;
+
+  background: transparent;
+
+  color: #111827;
+
+  cursor: pointer;
+
+  font-size: 13px;
+}
+
+.wysiwyg-toolbar-button:hover {
+  border-color: #cbd5e1;
+
+  background: #e2e8f0;
+}
+
+.wysiwyg-toolbar select {
+  height: 32px;
+
+  max-width: 175px;
+
+  border: 1px solid #cbd5e1;
+
+  border-radius: 5px;
+
+  padding: 0 7px;
+
+  background: #ffffff;
+
+  font-size: 12px;
+}
+
+.insert-field-select {
+  min-width: 170px;
+}
+
+.toolbar-color-label {
+  position: relative;
+
+  width: 32px;
+
+  height: 32px;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  border-radius: 5px;
+
+  cursor: pointer;
+
+  font-size: 13px;
+
+  font-weight: 700;
+}
+
+.toolbar-color-label:hover {
+  background: #e2e8f0;
+}
+
+.toolbar-color-label input {
+  position: absolute;
+
+  width: 1px;
+
+  height: 1px;
+
+  opacity: 0;
+}
+
+/* ==========================================================
+   EDITOR BODY
+========================================================== */
+
+.document-editor-layout {
+  flex: 1;
+
+  min-height: 0;
+
+  display: flex;
+
+  background: #e5e7eb;
 }
 
 .document-sidebar {
-  width: 360px;
-  flex: 0 0 360px;
-  background: #fff;
-  border-right: 1px solid #e5e7eb;
-  padding: 20px;
+  width: 350px;
+
+  flex: 0 0 350px;
+
+  padding: 16px;
+
   overflow-y: auto;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+
+  border-right: 1px solid #d1d5db;
+
+  background: #ffffff;
+
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.04);
+
   z-index: 20;
 }
 
 .document-canvas {
   flex: 1;
+
   min-width: 0;
+
   overflow: auto;
-  padding: 36px 48px 56px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 32px;
+
+  padding: 32px 48px 54px;
+
   background: #dfe3e8;
 }
 
+.document-pages-shell {
+  width: fit-content;
+
+  min-width: 100%;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  gap: 32px;
+
+  margin: 0 auto;
+}
+
+/* ==========================================================
+   SIDEBAR CONTROLS
+========================================================== */
+
+.editor-section-details {
+  padding: 0 0 12px;
+
+  margin: 0 0 12px;
+
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.editor-section-details summary {
+  padding: 6px 0 10px;
+
+  color: #111827;
+
+  cursor: pointer;
+
+  user-select: none;
+
+  font-size: 13px;
+
+  font-weight: 800;
+}
+
+.editor-section-content {
+  padding-top: 3px;
+}
+
+.editor-field {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 5px;
+
+  margin-bottom: 9px;
+
+  color: #374151;
+
+  font-size: 11px;
+
+  font-weight: 700;
+}
+
+.editor-field input,
+.editor-field select,
+.editor-field textarea {
+  width: 100%;
+
+  min-height: 36px;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 7px;
+
+  padding: 7px 9px;
+
+  background: #ffffff;
+
+  color: #111827;
+
+  font: 400 12px/1.35 Inter, system-ui, sans-serif;
+}
+
+.editor-field textarea {
+  resize: vertical;
+}
+
+.editor-field input:focus,
+.editor-field select:focus,
+.editor-field textarea:focus {
+  border-color: #2563eb;
+
+  outline: 2px solid #bfdbfe;
+}
+
+.editor-field input[type="color"] {
+  padding: 3px;
+}
+
+.editor-grid-2 {
+  display: grid;
+
+  grid-template-columns: 1fr 1fr;
+
+  gap: 8px;
+}
+
+.editor-checkbox {
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  color: #374151;
+
+  font-size: 12px;
+
+  font-weight: 600;
+}
+
+.editor-actions {
+  display: grid;
+
+  gap: 7px;
+
+  margin-top: 8px;
+}
+
+.editor-actions.two-columns {
+  grid-template-columns: 1fr 1fr;
+}
+
+.editor-button {
+  appearance: none;
+
+  border: 0;
+
+  border-radius: 7px;
+
+  padding: 9px 10px;
+
+  cursor: pointer;
+
+  font-size: 11px;
+
+  font-weight: 700;
+}
+
+.editor-button.light {
+  background: #eef2f7;
+
+  color: #111827;
+}
+
+.editor-button.danger {
+  background: #fee2e2;
+
+  color: #991b1b;
+}
+
+.editor-button.full {
+  width: 100%;
+
+  margin-top: 8px;
+}
+
+.editor-note,
+.editor-success-message,
+.editor-overflow-warning {
+  margin-bottom: 12px;
+
+  border-radius: 8px;
+
+  padding: 10px 11px;
+
+  font-size: 11px;
+
+  line-height: 1.45;
+}
+
+.editor-note {
+  background: #eff6ff;
+
+  color: #1e3a8a;
+}
+
+.editor-success-message {
+  background: #ecfdf5;
+
+  color: #065f46;
+}
+
+.editor-overflow-warning {
+  background: #fff7ed;
+
+  color: #9a3412;
+}
+
+.editor-overflow-warning strong,
+.editor-overflow-warning div,
+.editor-overflow-warning small {
+  display: block;
+}
+
+.editor-overflow-warning div {
+  margin: 4px 0;
+}
+
+.editor-muted {
+  color: #6b7280;
+
+  font-size: 11px;
+
+  line-height: 1.45;
+}
+
+.selected-block-summary {
+  display: flex;
+
+  justify-content: space-between;
+
+  gap: 8px;
+
+  padding: 8px;
+
+  margin-bottom: 8px;
+
+  border-radius: 7px;
+
+  background: #f3f4f6;
+
+  color: #374151;
+
+  font-size: 10px;
+}
+
+/* ==========================================================
+   A4 PAGE
+========================================================== */
+
 .a4-page {
-  width: 210mm;
-  height: 297mm;
-  min-height: 297mm;
-  max-height: 297mm;
   position: relative;
-  box-sizing: border-box;
-  overflow: hidden;
+
+  width: 210mm;
+
+  height: 297mm;
+
+  min-height: 297mm;
+
+  max-height: 297mm;
+
   flex: 0 0 auto;
 
+  overflow: hidden;
+
+  box-sizing: border-box;
+
   padding-top: var(--doc-margin-top);
+
   padding-bottom: var(--doc-margin-bottom);
+
   padding-left: var(--doc-margin-left);
+
   padding-right: var(--doc-margin-right);
 
-  background: #fff;
-  color: #000;
+  background: #ffffff;
+
+  color: #000000;
+
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
 
-  font-family: "Times New Roman", Times, serif;
+  font-family: var(--doc-font-family);
+
   font-size: var(--doc-font-size);
+
   line-height: var(--doc-line-height);
-  font-weight: 400;
 
   print-color-adjust: exact;
+
   -webkit-print-color-adjust: exact;
 }
 
 .page-header {
   position: absolute;
+
   top: 5.8mm;
+
   left: var(--doc-margin-left);
+
   right: var(--doc-margin-right);
+
   height: 18mm;
+
   display: flex;
-  justify-content: center;
+
   align-items: flex-start;
+
+  justify-content: center;
+
   pointer-events: none;
 }
 
 .page-header img {
   display: block;
+
   width: var(--doc-logo-width);
+
   max-width: 100%;
+
   max-height: 18mm;
-  height: auto;
+
   object-fit: contain;
 }
 
 .page-body {
   width: 100%;
+
+  height: calc(
+    297mm -
+      var(--doc-margin-top) -
+      var(--doc-margin-bottom)
+  );
+
+  overflow: visible;
 }
 
 .page-footer {
   position: absolute;
+
   left: 15mm;
+
   right: 15mm;
+
   bottom: 7.5mm;
-  border-top: 1.2mm solid var(--doc-footer-rule-color);
+
   padding-top: 1.1mm;
-  text-align: left;
-  color: #000;
+
+  border-top:
+    var(--doc-footer-rule-width)
+    solid
+    var(--doc-footer-rule-color);
+
+  color: #000000;
+
   font-size: var(--doc-footer-font-size);
+
   line-height: 1;
+
   white-space: nowrap;
+
+  text-align: left;
+
+  pointer-events: none;
 }
+
+.page-debug-badge {
+  position: absolute;
+
+  top: 2mm;
+
+  right: 3mm;
+
+  z-index: 5;
+
+  padding: 3px 5px;
+
+  border-radius: 4px;
+
+  background: rgba(17, 24, 39, 0.08);
+
+  color: #4b5563;
+
+  font: 10px/1 Arial, sans-serif;
+}
+
+/* ==========================================================
+   DOCUMENT CONTENT
+========================================================== */
 
 .doc-main-title {
   margin: 0 0 4.2mm;
+
   text-align: center;
+
   font-size: var(--doc-title-size);
+
   line-height: 1.05;
+
   font-weight: 700;
+
   text-decoration: underline;
 }
 
 .doc-wo-title {
   margin: 0 0 5mm;
+
   text-align: center;
+
   font-size: calc(var(--doc-title-size) - 2pt);
+
   line-height: 1.05;
+
   font-weight: 700;
+
   font-style: italic;
+
   text-decoration: underline;
 }
 
 .doc-section-title {
   margin: 2.2mm 0 1mm;
+
   font-size: var(--doc-section-title-size);
+
   line-height: 1.05;
+
   font-weight: 400;
 }
 
 .doc-section-title.centered {
-  text-align: center;
-  font-weight: 700;
-  text-decoration: underline;
   margin-top: 3mm;
+
   margin-bottom: 3mm;
+
+  text-align: center;
+
+  font-weight: 700;
+
+  text-decoration: underline;
 }
 
 .doc-text {
-  margin: 0 0 2.0mm;
+  margin: 0 0 2mm;
+
   padding: 0;
+
   text-align: justify;
+
   text-justify: inter-word;
 }
 
@@ -155,19 +790,13 @@
   margin-bottom: 0;
 }
 
-.doc-field {
-  font-weight: 700;
-  color: #000;
-}
-
-.doc-field.is-placeholder {
-  color: #a51d2d;
-}
-
 .numbered-clause {
   display: grid;
+
   grid-template-columns: 7mm 1fr;
+
   column-gap: 0;
+
   margin: 0 0 1.8mm;
 }
 
@@ -176,9 +805,7 @@
 }
 
 .numbered-clause-title {
-  display: block;
   margin-bottom: 0.7mm;
-  font-weight: 400;
 }
 
 .numbered-clause-body p:last-child {
@@ -186,35 +813,41 @@
 }
 
 .alpha-list {
-  list-style-type: lower-alpha;
   margin: 0.4mm 0 1.6mm 7mm;
+
   padding-left: 6mm;
+
+  list-style-type: lower-alpha;
 }
 
 .alpha-list li {
   margin: 0 0 0.7mm;
-  padding-left: 1.5mm;
-  text-align: justify;
-}
 
-.requirement-list {
-  margin-top: 0;
-  margin-bottom: 1mm;
+  padding-left: 1.5mm;
+
+  text-align: justify;
 }
 
 .doc-table {
   width: 100%;
-  border-collapse: collapse;
+
   margin: 2.5mm 0 3mm;
+
+  border-collapse: collapse;
+
   table-layout: fixed;
 }
 
 .doc-table td,
 .doc-table th {
-  border: 0.25mm solid #000;
+  border: 0.25mm solid #000000;
+
   padding: 1.8mm 2mm;
+
   vertical-align: top;
+
   text-align: left;
+
   font-weight: 400;
 }
 
@@ -228,27 +861,37 @@
 
 .notice-grid {
   display: grid;
+
   grid-template-columns: 1fr 1fr;
+
   column-gap: 18mm;
+
   margin: 12mm 7mm 5mm;
 }
 
 .notice-grid p {
   margin: 0;
+
   text-align: left;
 }
 
 .signature-columns {
   display: grid;
+
   grid-template-columns: 1fr 1fr;
+
   column-gap: 14mm;
+
   margin-top: 10mm;
 }
 
 .signature-party-title {
   margin: 0 0 5mm;
+
   font-weight: 700;
+
   font-style: italic;
+
   text-decoration: underline;
 }
 
@@ -258,30 +901,32 @@
 
 .signature-space {
   height: 16mm;
+
   display: flex;
+
   align-items: flex-end;
+
   margin-bottom: 1.5mm;
 }
 
-.signature-text {
-  font-style: italic;
-  font-size: 12pt;
-}
-
 .signature-line {
-  border-bottom: 0.25mm solid #000;
   height: 0;
+
   margin-bottom: 4.5mm;
+
+  border-bottom: 0.25mm solid #000000;
 }
 
 .signature-meta {
   display: grid;
+
   row-gap: 4mm;
 }
 
 .signature-meta-row {
-  border-bottom: 0.25mm solid #000;
-  padding: 0 0 1mm;
+  padding-bottom: 1mm;
+
+  border-bottom: 0.25mm solid #000000;
 }
 
 .signature-date-row {
@@ -298,9 +943,13 @@
 
 .wo-acceptance-head {
   display: grid;
+
   grid-template-columns: 1fr 1fr;
+
   gap: 12mm;
+
   margin: 5mm 0 2mm;
+
   text-align: center;
 }
 
@@ -313,8 +962,10 @@
   width: 47%;
 }
 
-.wo-signature-table td:nth-child(2) {
+.wo-signature-table td:nth-child(2),
+.divider-cell {
   width: 6%;
+
   padding: 0;
 }
 
@@ -322,162 +973,88 @@
   height: 28mm;
 }
 
-.page-debug-badge {
-  position: absolute;
-  top: 2mm;
-  right: 3mm;
-  font: 10px/1 Arial, sans-serif;
-  color: #6b7280;
-  display: none;
+/* ==========================================================
+   DIRECT EDITING
+========================================================== */
+
+.editable-block {
+  position: relative;
+
+  border-radius: 2px;
 }
 
-.show-page-guides .page-debug-badge {
-  display: block;
+.document-edit-mode .editable-block.is-editable,
+.document-edit-mode .editable-table-cell.is-editable {
+  cursor: text;
 }
 
-/* Editor */
-.editor-title {
-  margin: 0 0 6px;
-  font-size: 20px;
+.document-edit-mode .editable-block:hover {
+  outline: 1px dashed rgba(37, 99, 235, 0.45);
+
+  outline-offset: 2px;
+}
+
+.document-edit-mode .editable-block.is-selected,
+.document-edit-mode .table-block.is-selected {
+  outline: 2px solid rgba(37, 99, 235, 0.7);
+
+  outline-offset: 3px;
+}
+
+.editable-block[contenteditable="true"]:focus,
+.editable-table-cell[contenteditable="true"]:focus {
+  outline: none;
+}
+
+.editable-table-cell {
+  min-height: 1em;
+}
+
+/* Protected VMS field while editing */
+
+.dynamic-field-chip {
+  display: inline-flex;
+
+  align-items: center;
+
+  min-height: 1.3em;
+
+  padding: 0 3px;
+
+  border: 1px solid #93c5fd;
+
+  border-radius: 3px;
+
+  background: #dbeafe;
+
+  color: #1d4ed8;
+
+  cursor: default;
+
+  user-select: all;
+
+  vertical-align: baseline;
+
+  font-family: Inter, Arial, sans-serif;
+
+  font-size: 0.83em;
+
   font-weight: 700;
-  color: #111827;
 }
 
-.editor-subtitle {
-  margin: 0 0 18px;
-  font-size: 13px;
-  line-height: 1.45;
-  color: #6b7280;
-}
+/* Value after field resolution */
 
-.editor-section {
-  border-top: 1px solid #e5e7eb;
-  padding-top: 16px;
-  margin-top: 16px;
-}
-
-.editor-section:first-of-type {
-  border-top: 0;
-  padding-top: 0;
-  margin-top: 0;
-}
-
-.editor-section h3 {
-  margin: 0 0 10px;
-  font-size: 14px;
+.resolved-dynamic-field {
   font-weight: 700;
-  color: #111827;
 }
 
-.editor-grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 9px;
-}
+/* ==========================================================
+   PRINT / PDF
+========================================================== */
 
-.editor-field {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin-bottom: 9px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #374151;
-}
-
-.editor-field input,
-.editor-field select,
-.editor-field textarea {
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid #d1d5db;
-  border-radius: 7px;
-  background: #fff;
-  padding: 8px 9px;
-  font: 400 13px/1.35 Inter, system-ui, sans-serif;
-  color: #111827;
-}
-
-.editor-field textarea {
-  min-height: 150px;
-  resize: vertical;
-}
-
-.editor-field input:focus,
-.editor-field select:focus,
-.editor-field textarea:focus {
-  outline: 2px solid #93c5fd;
-  border-color: #2563eb;
-}
-
-.editor-actions {
-  display: grid;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.editor-actions.two-columns {
-  grid-template-columns: 1fr 1fr;
-}
-
-.editor-button {
-  appearance: none;
-  border: 0;
-  border-radius: 8px;
-  padding: 10px 12px;
-  cursor: pointer;
-  font: 700 13px/1 Inter, system-ui, sans-serif;
-  transition: transform 0.08s ease, opacity 0.15s ease;
-}
-
-.editor-button:active {
-  transform: translateY(1px);
-}
-
-.editor-button.primary {
-  background: #2563eb;
-  color: #fff;
-}
-
-.editor-button.dark {
-  background: #111827;
-  color: #fff;
-}
-
-.editor-button.light {
-  background: #eef2f7;
-  color: #111827;
-}
-
-.editor-button.danger {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.editor-save-status {
-  margin-top: 9px;
-  font-size: 12px;
-  color: #047857;
-}
-
-.editor-note {
-  border-radius: 8px;
-  padding: 10px 11px;
-  background: #eff6ff;
-  color: #1e3a8a;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-/* Print / PDF
-   ------------------------------------------------------------
-   The VMS shell/navbar must not participate in print layout.
-   We isolate only the MSA editor and pin it to the physical page origin.
-   296.8mm avoids Chromium rounding from producing a phantom blank page
-   while still rendering on a true A4 sheet via @page.
-*/
 @page {
   size: A4 portrait;
+
   margin: 0;
 }
 
@@ -486,65 +1063,102 @@
   body,
   #root {
     width: 210mm !important;
+
     height: auto !important;
+
     min-height: 0 !important;
-    max-height: none !important;
+
     margin: 0 !important;
+
     padding: 0 !important;
+
     overflow: visible !important;
-    background: #fff !important;
+
+    background: #ffffff !important;
   }
 
-  /* Strong print isolation: hide the VMS shell, navbar, banners, etc. */
   body * {
     visibility: hidden !important;
   }
 
+  .msa-editor-app,
+  .msa-editor-app *,
   .document-editor-layout,
-  .document-editor-layout * {
+  .document-editor-layout *,
+  .document-canvas,
+  .document-canvas *,
+  .document-pages-shell,
+  .document-pages-shell * {
     visibility: visible !important;
   }
 
-  .document-editor-layout {
+  .msa-editor-app {
     position: absolute !important;
-    left: 0 !important;
+
     top: 0 !important;
 
-    display: block !important;
+    left: 0 !important;
 
     width: 210mm !important;
+
     height: auto !important;
+
     min-height: 0 !important;
-    max-height: none !important;
 
     margin: 0 !important;
+
     padding: 0 !important;
 
     overflow: visible !important;
 
-    background: #fff !important;
+    background: #ffffff !important;
   }
 
+  .wysiwyg-topbar,
+  .wysiwyg-toolbar,
   .document-sidebar,
   .no-print,
   .page-debug-badge {
     display: none !important;
   }
 
-  .document-canvas {
+  .document-editor-layout {
     display: block !important;
 
     width: 210mm !important;
+
     height: auto !important;
+
     min-height: 0 !important;
-    max-height: none !important;
 
     margin: 0 !important;
+
     padding: 0 !important;
 
     overflow: visible !important;
 
-    background: #fff !important;
+    background: #ffffff !important;
+  }
+
+  .document-canvas,
+  .document-pages-shell {
+    display: block !important;
+
+    width: 210mm !important;
+
+    min-width: 210mm !important;
+
+    height: auto !important;
+
+    min-height: 0 !important;
+
+    margin: 0 !important;
+
+    padding: 0 !important;
+
+    overflow: visible !important;
+
+    background: #ffffff !important;
   }
 
   .a4-page {
@@ -554,50 +1168,61 @@
 
     width: 210mm !important;
 
-    /* Prevent Chromium / Windows print rounding from adding a blank page. */
+    /*
+      Slightly below 297 prevents Chromium/Windows
+      phantom blank pages.
+    */
     height: 296.8mm !important;
+
     min-height: 296.8mm !important;
+
     max-height: 296.8mm !important;
 
     margin: 0 !important;
-
-    box-sizing: border-box !important;
 
     box-shadow: none !important;
 
     overflow: hidden !important;
 
     break-inside: avoid !important;
+
     page-break-inside: avoid !important;
 
     break-after: page !important;
+
     page-break-after: always !important;
 
-    transform: none !important;
-
     print-color-adjust: exact !important;
+
     -webkit-print-color-adjust: exact !important;
   }
 
   .a4-page:last-child {
     break-after: auto !important;
+
     page-break-after: auto !important;
   }
 
-  .page-header,
-  .page-footer {
-    print-color-adjust: exact !important;
-    -webkit-print-color-adjust: exact !important;
+  .editable-block,
+  .editable-table-cell {
+    outline: none !important;
   }
 }
 
-@media screen and (max-width: 1100px) {
+@media screen and (max-width: 1180px) {
   .document-sidebar {
-    width: 320px;
-    flex-basis: 320px;
+    width: 310px;
+
+    flex-basis: 310px;
   }
 
   .document-canvas {
+    padding-left: 24px;
+
+    padding-right: 24px;
+  }
+
+  .document-pages-shell {
     align-items: flex-start;
   }
 }
