@@ -1,3 +1,5 @@
+// src/pages/CreateMSAandWOPage.jsx
+
 import React, {
   useCallback,
   useEffect,
@@ -8,9 +10,7 @@ import React, {
 
 import { useAuth } from "../context/AuthContext";
 import { apiService } from "../api/apiService";
-
 import Spinner from "../components/Spinner";
-
 import { usePermissions } from "../hooks/usePermissions";
 
 import html2pdf from "html2pdf.js";
@@ -25,135 +25,36 @@ import {
   TEMPLATE_STORAGE_KEY,
 } from "../components/msa-wo/MSATemplateDefinition";
 
-/*
- * =========================================================
- * HELPERS
- * =========================================================
- */
 
-/*
- * For your current laptop/browser implementation:
- *
- * - Template Editor publishes versions to localStorage.
- * - Create MSA/WO reads the ACTIVE published version.
- * - If no published version exists, the approved default
- *   template is used.
- *
- * Later we will replace this helper with:
- *
- * apiService.getActiveMSATemplate(...)
- */
-const loadPublishedTemplate = () => {
-  const fallback =
-    createDefaultTemplate();
+/* ============================================================
+   CONSTANTS
+============================================================ */
 
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return fallback;
-  }
+const PDF_GENERATION_TIMEOUT_MS =
+  60_000;
 
-  try {
-    const raw =
-      localStorage.getItem(
-        TEMPLATE_STORAGE_KEY
+const IMAGE_WAIT_TIMEOUT_MS =
+  5_000;
+
+
+/* ============================================================
+   HELPERS
+============================================================ */
+
+const createContractNumber =
+  () => {
+    const number =
+      Math.floor(
+        10000 +
+          Math.random() *
+            90000
       );
 
-    if (!raw) {
-      return fallback;
-    }
+    return `Taproot-Subk-${number}`;
+  };
 
-    const versions =
-      JSON.parse(raw);
 
-    if (
-      !Array.isArray(
-        versions
-      )
-    ) {
-      return fallback;
-    }
-
-    const activeVersions =
-      versions
-        .filter(
-          (template) =>
-            template?.status ===
-              "ACTIVE" &&
-            template?.pages &&
-            template?.styleConfig
-        )
-        .sort(
-          (a, b) =>
-            Number(
-              b.version || 0
-            ) -
-            Number(
-              a.version || 0
-            )
-        );
-
-    if (
-      activeVersions.length ===
-      0
-    ) {
-      return fallback;
-    }
-
-    return deepCloneTemplate(
-      activeVersions[0]
-    );
-  } catch (error) {
-    console.error(
-      "Unable to load published MSA/WO template:",
-      error
-    );
-
-    return fallback;
-  }
-};
-
-/*
- * Browser date input gives us:
- *
- * 2026-10-15
- *
- * For the document we want:
- *
- * October 15, 2026
- */
-const formatDocumentDate = (
-  value
-) => {
-  if (!value) {
-    return "";
-  }
-
-  const date =
-    new Date(
-      `${value}T00:00:00`
-    );
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-    return value;
-  }
-
-  return date.toLocaleDateString(
-    "en-US",
-    {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    }
-  );
-};
-
-const getCurrentDocumentDate =
+const currentDocumentDate =
   () =>
     new Date().toLocaleDateString(
       "en-US",
@@ -164,14 +65,54 @@ const getCurrentDocumentDate =
       }
     );
 
-/*
- * html2canvas can capture the document before the
- * company logo has fully loaded.
+
+const formatDocumentDate =
+  (value) => {
+    if (!value) {
+      return "";
+    }
+
+    const date =
+      new Date(
+        `${value}T00:00:00`
+      );
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+      return value;
+    }
+
+    return date.toLocaleDateString(
+      "en-US",
+      {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }
+    );
+  };
+
+
+/**
+ * Never allow a document image to hold PDF generation forever.
  *
- * Wait for all images first.
+ * Important:
+ *
+ * image.complete === true
+ * image.naturalWidth === 0
+ *
+ * means the image already failed.
+ *
+ * In that situation load/error already fired, so attaching a listener
+ * afterwards would wait forever.
  */
 const waitForImages = async (
-  rootElement
+  rootElement,
+  timeoutMs =
+    IMAGE_WAIT_TIMEOUT_MS
 ) => {
   if (!rootElement) {
     return;
@@ -184,50 +125,281 @@ const waitForImages = async (
       )
     );
 
-  await Promise.all(
-    images.map(
-      (image) => {
-        if (
-          image.complete &&
-          image.naturalWidth >
-            0
-        ) {
-          return Promise.resolve();
-        }
+  const waitForImage =
+    (image) =>
+      new Promise(
+        (resolve) => {
+          if (
+            image.complete
+          ) {
+            resolve({
+              src:
+                image.src,
 
-        return new Promise(
-          (resolve) => {
-            const finish =
-              () =>
-                resolve();
+              loaded:
+                image.naturalWidth >
+                0,
+            });
 
-            image.addEventListener(
-              "load",
-              finish,
-              {
-                once: true,
-              }
-            );
-
-            image.addEventListener(
-              "error",
-              finish,
-              {
-                once: true,
-              }
-            );
+            return;
           }
-        );
-      }
-    )
-  );
+
+          let finished =
+            false;
+
+          let timeoutId =
+            null;
+
+          const cleanup =
+            () => {
+              image.removeEventListener(
+                "load",
+                handleLoad
+              );
+
+              image.removeEventListener(
+                "error",
+                handleError
+              );
+
+              if (
+                timeoutId
+              ) {
+                clearTimeout(
+                  timeoutId
+                );
+              }
+            };
+
+          const finish =
+            (loaded) => {
+              if (
+                finished
+              ) {
+                return;
+              }
+
+              finished =
+                true;
+
+              cleanup();
+
+              resolve({
+                src:
+                  image.src,
+
+                loaded,
+              });
+            };
+
+          const handleLoad =
+            () =>
+              finish(
+                true
+              );
+
+          const handleError =
+            () =>
+              finish(
+                false
+              );
+
+          image.addEventListener(
+            "load",
+            handleLoad,
+            {
+              once: true,
+            }
+          );
+
+          image.addEventListener(
+            "error",
+            handleError,
+            {
+              once: true,
+            }
+          );
+
+          timeoutId =
+            setTimeout(
+              () =>
+                finish(
+                  false
+                ),
+              timeoutMs
+            );
+        }
+      );
+
+  const results =
+    await Promise.all(
+      images.map(
+        waitForImage
+      )
+    );
+
+  const failed =
+    results.filter(
+      (result) =>
+        !result.loaded
+    );
+
+  if (
+    failed.length >
+    0
+  ) {
+    console.warn(
+      "[MSA/WO] Some document images did not load:",
+      failed
+    );
+  }
 };
 
-/*
- * =========================================================
- * COMPONENT
- * =========================================================
+
+/**
+ * Promise timeout which clears the timer when the real promise finishes.
  */
+const withTimeout = (
+  promise,
+  timeoutMs,
+  message
+) =>
+  new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+      const timeoutId =
+        setTimeout(
+          () => {
+            reject(
+              new Error(
+                message
+              )
+            );
+          },
+          timeoutMs
+        );
+
+      promise.then(
+        (value) => {
+          clearTimeout(
+            timeoutId
+          );
+
+          resolve(
+            value
+          );
+        },
+        (error) => {
+          clearTimeout(
+            timeoutId
+          );
+
+          reject(
+            error
+          );
+        }
+      );
+    }
+  );
+
+
+/**
+ * Read ACTIVE template published from our editor.
+ *
+ * Current laptop/browser version:
+ * localStorage.
+ *
+ * Later:
+ * Python API + Azure Storage.
+ */
+const loadPublishedTemplate =
+  () => {
+    const fallback =
+      createDefaultTemplate();
+
+    fallback.status =
+      "ACTIVE";
+
+    if (
+      typeof window ===
+      "undefined"
+    ) {
+      return fallback;
+    }
+
+    try {
+      const raw =
+        localStorage.getItem(
+          TEMPLATE_STORAGE_KEY
+        );
+
+      if (!raw) {
+        return fallback;
+      }
+
+      const versions =
+        JSON.parse(raw);
+
+      if (
+        !Array.isArray(
+          versions
+        )
+      ) {
+        return fallback;
+      }
+
+      const active =
+        versions
+          .filter(
+            (item) =>
+              item &&
+              item.status ===
+                "ACTIVE" &&
+              Array.isArray(
+                item.pages
+              ) &&
+              item.styleConfig
+          )
+          .sort(
+            (a, b) =>
+              Number(
+                b.version ||
+                  0
+              ) -
+              Number(
+                a.version ||
+                  0
+              )
+          );
+
+      if (
+        active.length ===
+        0
+      ) {
+        return fallback;
+      }
+
+      return deepCloneTemplate(
+        active[0]
+      );
+    } catch (
+      error
+    ) {
+      console.error(
+        "[MSA/WO] Failed loading published template:",
+        error
+      );
+
+      return fallback;
+    }
+  };
+
+
+/* ============================================================
+   PAGE
+============================================================ */
 
 const CreateMSAandWOPage = ({
   onNavigate,
@@ -253,6 +425,12 @@ const CreateMSAandWOPage = ({
     useState(false);
 
   const [
+    generationStage,
+    setGenerationStage,
+  ] =
+    useState("");
+
+  const [
     error,
     setError,
   ] =
@@ -264,9 +442,6 @@ const CreateMSAandWOPage = ({
   ] =
     useState("");
 
-  /*
-   * Vendor company search
-   */
   const [
     companies,
     setCompanies,
@@ -291,110 +466,88 @@ const CreateMSAandWOPage = ({
   ] =
     useState(false);
 
-  const searchRef =
-    useRef(null);
-
-  /*
-   * PDF document renderer
-   */
-  const documentRef =
-    useRef(null);
-
-  /*
-   * Loaded/published template
-   */
   const [
     baseTemplate,
     setBaseTemplate,
   ] =
-    useState(() =>
-      loadPublishedTemplate()
+    useState(
+      () =>
+        loadPublishedTemplate()
     );
 
-  /*
-   * Contract Number
-   *
-   * Stored full:
-   *
-   * Taproot-Subk-12345
-   */
   const [
     contractNumber,
     setContractNumber,
   ] =
-    useState("");
-
-  /*
-   * =======================================================
-   * CONTRACT NUMBER
-   * =======================================================
-   */
-
-  const generateContractNumber =
-    useCallback(() => {
-      const number =
-        Math.floor(
-          10000 +
-            Math.random() *
-              90000
-        );
-
-      return `Taproot-Subk-${number}`;
-    }, []);
-
-  useEffect(() => {
-    setContractNumber(
-      generateContractNumber()
+    useState(
+      () =>
+        createContractNumber()
     );
-  }, [
-    generateContractNumber,
-  ]);
 
-  /*
-   * =======================================================
-   * LOAD VENDORS
-   * =======================================================
-   */
+  const searchRef =
+    useRef(null);
+
+  const documentRef =
+    useRef(null);
+
+
+  /* ==========================================================
+     LOAD VENDORS
+  ========================================================== */
 
   const loadCompanies =
     useCallback(
       async () => {
         if (
-          !canManageMSAWO
+          !canManageMSAWO ||
+          !user?.userIdentifier
         ) {
           return;
         }
 
         try {
           const response =
-            await apiService.getMSAWOVendorCompanies(
-              user.userIdentifier
-            );
+            await apiService
+              .getMSAWOVendorCompanies(
+                user.userIdentifier
+              );
 
           if (
             response.data
-              .success
+              ?.success
           ) {
             setCompanies(
               response.data
                 .companies ||
                 []
             );
+          } else {
+            throw new Error(
+              response.data
+                ?.message ||
+                "Failed to load vendor companies."
+            );
           }
-        } catch (err) {
+        } catch (
+          err
+        ) {
           console.error(
-            "Vendor loading failed:",
+            "[MSA/WO] Vendor loading error:",
             err
           );
 
           setError(
-            "Failed to load vendor companies."
+            err.response
+              ?.data
+              ?.message ||
+              err.message ||
+              "Failed to load vendor companies."
           );
         }
       },
       [
-        user.userIdentifier,
         canManageMSAWO,
+        user?.userIdentifier,
       ]
     );
 
@@ -404,9 +557,9 @@ const CreateMSAandWOPage = ({
     loadCompanies,
   ]);
 
+
   /*
-   * Reload the current published template when
-   * this page opens.
+   * Refresh currently ACTIVE template when entering page.
    */
   useEffect(() => {
     setBaseTemplate(
@@ -414,11 +567,10 @@ const CreateMSAandWOPage = ({
     );
   }, []);
 
-  /*
-   * =======================================================
-   * CLOSE VENDOR SEARCH WHEN CLICKING OUTSIDE
-   * =======================================================
-   */
+
+  /* ==========================================================
+     DROPDOWN OUTSIDE CLICK
+  ========================================================== */
 
   useEffect(() => {
     const handleClickOutside =
@@ -448,45 +600,48 @@ const CreateMSAandWOPage = ({
     };
   }, []);
 
-  /*
-   * =======================================================
-   * VENDOR SEARCH
-   * =======================================================
-   */
+
+  /* ==========================================================
+     SEARCH
+  ========================================================== */
 
   const filteredCompanies =
-    useMemo(() => {
-      const value =
-        searchTerm
-          .trim()
-          .toLowerCase();
+    useMemo(
+      () => {
+        const search =
+          searchTerm
+            .trim()
+            .toLowerCase();
 
-      if (!value) {
-        return [];
-      }
-
-      return companies.filter(
-        (company) => {
-          const vendorName =
-            company.vendorName ||
-            company.vendorCompanyName ||
-            "";
-
-          return vendorName
-            .toLowerCase()
-            .includes(value);
+        if (!search) {
+          return [];
         }
-      );
-    }, [
-      searchTerm,
-      companies,
-    ]);
 
-  /*
-   * =======================================================
-   * VENDOR SELECT
-   * =======================================================
-   */
+        return companies.filter(
+          (company) => {
+            const name =
+              company.vendorName ||
+              company.vendorCompanyName ||
+              "";
+
+            return name
+              .toLowerCase()
+              .includes(
+                search
+              );
+          }
+        );
+      },
+      [
+        companies,
+        searchTerm,
+      ]
+    );
+
+
+  /* ==========================================================
+     SELECT VENDOR
+  ========================================================== */
 
   const handleSelectCompany =
     (company) => {
@@ -495,10 +650,6 @@ const CreateMSAandWOPage = ({
         company.vendorCompanyName ||
         "";
 
-      /*
-       * Support both your current fields and the
-       * VMS 2.0 Vendor Master field names.
-       */
       const state =
         company.state ||
         company.companyStateName ||
@@ -522,14 +673,14 @@ const CreateMSAandWOPage = ({
 
       const authorizedSignatureName =
         company.authorizedSignatureName ||
-        company.authorizedSignPersonName ||
         company.vendorAuthorizedSignPersonName ||
+        company.authorizedSignPersonName ||
         "";
 
       const authorizedPersonTitle =
         company.authorizedPersonTitle ||
-        company.authorizedSignPersonTitle ||
         company.vendorAuthorizedPersonTitle ||
+        company.authorizedSignPersonTitle ||
         "";
 
       setSelectedCompany(
@@ -549,27 +700,20 @@ const CreateMSAandWOPage = ({
           ...previous,
 
           vendorName,
-
           state,
-
           federalId,
-
           companyAddress,
-
           vendorEmail,
-
           authorizedSignatureName,
-
           authorizedPersonTitle,
         })
       );
     };
 
-  /*
-   * =======================================================
-   * FORM CHANGE
-   * =======================================================
-   */
+
+  /* ==========================================================
+     FORM
+  ========================================================== */
 
   const handleChange =
     (event) => {
@@ -589,19 +733,6 @@ const CreateMSAandWOPage = ({
       );
     };
 
-  /*
-   * =======================================================
-   * CONTRACT NUMBER USED INSIDE WO
-   * =======================================================
-   *
-   * Template already contains:
-   *
-   * Taproot-Subk-
-   *
-   * therefore only pass:
-   *
-   * 12345
-   */
 
   const contractNumberOnly =
     useMemo(
@@ -610,89 +741,84 @@ const CreateMSAandWOPage = ({
           /^Taproot-Subk-/i,
           ""
         ),
-
       [
         contractNumber,
       ]
     );
 
-  /*
-   * =======================================================
-   * BUILD COMPLETE TEMPLATE FOR PDF
-   * =======================================================
-   *
-   * THIS IS THE CRITICAL FIX.
-   *
-   * New MSATemplatePages requires:
-   *
-   * template={...}
-   *
-   * NOT:
-   *
-   * data={}
-   * margins={}
-   */
+
+  /* ==========================================================
+     BUILD DOCUMENT TEMPLATE
+  ========================================================== */
 
   const renderedTemplate =
-    useMemo(() => {
-      const template =
-        deepCloneTemplate(
-          baseTemplate ||
-            createDefaultTemplate()
-        );
+    useMemo(
+      () => {
+        const template =
+          deepCloneTemplate(
+            baseTemplate ||
+              createDefaultTemplate()
+          );
 
-      /*
-       * Create page always generates the complete
-       * MSA + Work Order package.
-       */
-      template.packageMode =
-        "MSA_WO";
+        /*
+         * Create page always creates MSA + WO.
+         */
+        template.packageMode =
+          "MSA_WO";
 
-      template.showPageNumbers =
-        false;
+        template.showPageNumbers =
+          false;
 
-      /*
-       * Actual transaction data replaces preview data.
-       */
-      template.documentData = {
-        ...template.documentData,
+        template.documentData = {
+          ...template.documentData,
 
-        ...formData,
+          ...formData,
 
-        CURRENT_DATE:
-          getCurrentDocumentDate(),
+          CURRENT_DATE:
+            currentDocumentDate(),
 
-        CONTRACT_NUMBER:
-          contractNumberOnly,
+          CONTRACT_NUMBER:
+            contractNumberOnly,
 
-        tentativeStartDate:
-          formatDocumentDate(
-            formData.tentativeStartDate
-          ),
-      };
+          tentativeStartDate:
+            formatDocumentDate(
+              formData.tentativeStartDate
+            ),
+        };
 
-      return template;
-    }, [
-      baseTemplate,
-      formData,
-      contractNumberOnly,
-    ]);
+        return template;
+      },
+      [
+        baseTemplate,
+        formData,
+        contractNumberOnly,
+      ]
+    );
 
-  /*
-   * =======================================================
-   * VALIDATION
-   * =======================================================
-   */
+
+  /* ==========================================================
+     VALIDATION
+  ========================================================== */
 
   const validateForm =
     () => {
       if (
         !selectedCompany
       ) {
-        return "Please select a valid vendor company first.";
+        return "Please select a valid Vendor Company first.";
       }
 
-      const requiredFields = [
+      const required = [
+        [
+          "vendorName",
+          "Vendor Company",
+        ],
+
+        [
+          "vendorEmail",
+          "Vendor Email",
+        ],
+
         [
           "candidateName",
           "Candidate Name",
@@ -746,14 +872,15 @@ const CreateMSAandWOPage = ({
 
       for (
         const [
-          field,
+          key,
           label,
-        ] of requiredFields
+        ] of required
       ) {
         if (
-          !formData[
-            field
-          ]
+          !String(
+            formData[key] ??
+              ""
+          ).trim()
         ) {
           return `${label} is required.`;
         }
@@ -762,11 +889,10 @@ const CreateMSAandWOPage = ({
       return null;
     };
 
-  /*
-   * =======================================================
-   * CREATE PDF
-   * =======================================================
-   */
+
+  /* ==========================================================
+     PDF GENERATION
+  ========================================================== */
 
   const generatePDFBase64 =
     async () => {
@@ -775,20 +901,39 @@ const CreateMSAandWOPage = ({
 
       if (!element) {
         throw new Error(
-          "MSA/WO document renderer is not available."
+          "Document renderer is not available."
         );
       }
 
+      console.log(
+        "[MSA/WO] Waiting for document resources..."
+      );
+
       /*
-       * Wait for the Taproot logo or any future
-       * image inside the template.
+       * Wait for browser fonts where available.
+       */
+      if (
+        document.fonts
+          ?.ready
+      ) {
+        try {
+          await document
+            .fonts
+            .ready;
+        } catch {
+          // Do not block generation.
+        }
+      }
+
+      /*
+       * Never wait forever on the Blob logo.
        */
       await waitForImages(
         element
       );
 
       /*
-       * Allow browser layout to settle.
+       * Allow React/CSS to settle.
        */
       await new Promise(
         (resolve) => {
@@ -802,6 +947,24 @@ const CreateMSAandWOPage = ({
         }
       );
 
+      const pageElements =
+        element.querySelectorAll(
+          ".a4-page"
+        );
+
+      if (
+        pageElements.length !==
+        7
+      ) {
+        throw new Error(
+          `Document renderer contains ${pageElements.length} pages. Expected exactly 7 pages for MSA + WO.`
+        );
+      }
+
+      console.log(
+        "[MSA/WO] Generating seven-page PDF..."
+      );
+
       const options = {
         margin: 0,
 
@@ -811,11 +974,17 @@ const CreateMSAandWOPage = ({
         image: {
           type: "jpeg",
 
-          quality: 0.98,
+          quality:
+            0.95,
         },
 
         html2canvas: {
-          scale: 2,
+          /*
+           * 1.5 gives good document quality without
+           * putting unnecessary memory pressure on
+           * seven full A4 canvases.
+           */
+          scale: 1.5,
 
           useCORS: true,
 
@@ -846,7 +1015,13 @@ const CreateMSAandWOPage = ({
         },
 
         /*
-         * Respect our .a4-page CSS page breaks.
+         * Respect CSS:
+         *
+         * break-after: page
+         * page-break-after: always
+         *
+         * Do NOT force "after: .a4-page":
+         * that can create a blank final sheet.
          */
         pagebreak: {
           mode: [
@@ -856,28 +1031,64 @@ const CreateMSAandWOPage = ({
         },
       };
 
-      /*
-       * html2pdf returns:
-       *
-       * data:application/pdf;base64,JVBER...
-       */
-      return html2pdf()
-        .set(options)
-        .from(element)
-        .outputPdf(
-          "datauristring"
+      const pdfPromise =
+        html2pdf()
+          .set(options)
+          .from(element)
+          .toPdf()
+          .outputPdf(
+            "datauristring"
+          );
+
+      const pdfBase64 =
+        await withTimeout(
+          pdfPromise,
+
+          PDF_GENERATION_TIMEOUT_MS,
+
+          "PDF generation timed out. Check the document logo, A4 layout, browser memory, or page overflow."
         );
+
+      if (
+        typeof pdfBase64 !==
+          "string" ||
+        !pdfBase64.startsWith(
+          "data:application/pdf"
+        )
+      ) {
+        throw new Error(
+          "PDF generator returned invalid document data."
+        );
+      }
+
+      console.log(
+        "[MSA/WO] PDF created.",
+        {
+          characters:
+            pdfBase64.length,
+
+          pages:
+            pageElements.length,
+        }
+      );
+
+      return pdfBase64;
     };
 
-  /*
-   * =======================================================
-   * SUBMIT
-   * =======================================================
-   */
+
+  /* ==========================================================
+     SUBMIT
+  ========================================================== */
 
   const handleSubmit =
     async (event) => {
       event.preventDefault();
+
+      if (
+        loading
+      ) {
+        return;
+      }
 
       if (
         !canManageMSAWO
@@ -903,41 +1114,32 @@ const CreateMSAandWOPage = ({
       }
 
       setError("");
-
       setSuccess("");
-
-      setLoading(
-        true
-      );
+      setLoading(true);
 
       try {
         /*
-         * STEP 1
-         *
-         * Generate PDF from the exact same
-         * published WYSIWYG template.
+         * Stage 1
          */
+        setGenerationStage(
+          "Preparing document..."
+        );
+
         const pdfBase64 =
           await generatePDFBase64();
 
         /*
-         * STEP 2
-         *
-         * Build backend payload.
+         * Stage 2
          */
+        setGenerationStage(
+          "Saving & sending..."
+        );
+
         const payload = {
           ...formData,
 
-          /*
-           * Full contract number:
-           *
-           * Taproot-Subk-12345
-           */
           contractNumber,
 
-          /*
-           * Useful for backend history/audit.
-           */
           templateId:
             renderedTemplate.templateId,
 
@@ -947,68 +1149,93 @@ const CreateMSAandWOPage = ({
           templateName:
             renderedTemplate.templateName,
 
-          /*
-           * PDF document
-           */
+          documentType:
+            "MSA_WO",
+
           pdfBase64,
         };
 
-        /*
-         * STEP 3
-         *
-         * Existing Python/Azure Function endpoint.
-         */
-        const response =
-          await apiService.createMSAandWO(
-            payload,
+        console.log(
+          "[MSA/WO] Sending request to backend.",
+          {
+            contractNumber,
 
-            user.userIdentifier
-          );
+            vendorName:
+              payload.vendorName,
+
+            vendorEmail:
+              payload.vendorEmail,
+
+            templateVersion:
+              payload.templateVersion,
+
+            pdfCharacters:
+              pdfBase64.length,
+          }
+        );
+
+        const response =
+          await apiService
+            .createMSAandWO(
+              payload,
+
+              user.userIdentifier
+            );
+
+        console.log(
+          "[MSA/WO] Backend response:",
+          response.data
+        );
 
         if (
-          response.data
-            .success
+          !response.data
+            ?.success
         ) {
-          setSuccess(
+          throw new Error(
             response.data
-              .message ||
-              "MSA and Work Order created successfully."
-          );
-
-          setFormData({});
-
-          setSelectedCompany(
-            null
-          );
-
-          setSearchTerm(
-            ""
-          );
-
-          setContractNumber(
-            generateContractNumber()
-          );
-
-          setTimeout(
-            () => {
-              setSuccess(
-                ""
-              );
-            },
-
-            3000
-          );
-        } else {
-          setError(
-            response.data
-              .message ||
+              ?.message ||
               "Unable to create MSA and Work Order."
           );
         }
-      } catch (err) {
+
+        setSuccess(
+          response.data
+            .message ||
+            "MSA and Work Order created successfully."
+        );
+
+        setGenerationStage(
+          ""
+        );
+
+        setFormData({});
+
+        setSelectedCompany(
+          null
+        );
+
+        setSearchTerm("");
+
+        setContractNumber(
+          createContractNumber()
+        );
+
+        /*
+         * Refresh active template in case it changed.
+         */
+        setBaseTemplate(
+          loadPublishedTemplate()
+        );
+      } catch (
+        err
+      ) {
         console.error(
-          "Create MSA/WO error:",
+          "[MSA/WO] Creation failed:",
           err
+        );
+
+        setGenerationStage(
+          ""
         );
 
         setError(
@@ -1024,37 +1251,32 @@ const CreateMSAandWOPage = ({
       }
     };
 
-  /*
-   * =======================================================
-   * ACCESS CONTROL
-   * =======================================================
-   */
+
+  /* ==========================================================
+     ACCESS
+  ========================================================== */
 
   if (
     !canManageMSAWO
   ) {
     return (
       <div className="text-center text-gray-500 p-10 bg-white rounded-xl shadow-sm border">
-
         <h3 className="text-lg font-medium">
           Access Denied
         </h3>
-
       </div>
     );
   }
 
-  /*
-   * =======================================================
-   * UI
-   * =======================================================
-   */
+
+  /* ==========================================================
+     RENDER
+  ========================================================== */
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto relative">
 
       <div className="text-center">
-
         <h1 className="text-3xl font-bold text-gray-900">
           Create MSA and Work Order
         </h1>
@@ -1064,14 +1286,12 @@ const CreateMSAandWOPage = ({
         </p>
 
         <p className="mt-1 text-xs text-gray-500">
-          Template:
-          {" "}
+          Template:{" "}
           {
             renderedTemplate.templateName
           }
           {" • "}
-          Version
-          {" "}
+          Version{" "}
           {
             renderedTemplate.version
           }
@@ -1080,15 +1300,14 @@ const CreateMSAandWOPage = ({
             renderedTemplate.status
           }
         </p>
-
       </div>
+
 
       <form
         onSubmit={
           handleSubmit
         }
       >
-
         <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg border space-y-8">
 
           {error && (
@@ -1103,16 +1322,16 @@ const CreateMSAandWOPage = ({
             </div>
           )}
 
-          {/* ==========================================
+
+          {/* =================================================
               STEP 1
-          ========================================== */}
+          ================================================= */}
 
           <div
             ref={
               searchRef
             }
           >
-
             <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">
               Step 1: Select Vendor Company
             </h2>
@@ -1121,7 +1340,7 @@ const CreateMSAandWOPage = ({
               htmlFor="companySearch"
               className="block text-sm font-medium text-gray-700"
             >
-              Vendor Company Name
+              Vendor Company Name{" "}
 
               <span className="text-red-500">
                 *
@@ -1129,19 +1348,22 @@ const CreateMSAandWOPage = ({
             </label>
 
             <div className="relative">
-
               <input
                 id="companySearch"
                 type="text"
                 value={
                   searchTerm
                 }
+                onFocus={() =>
+                  setShowDropdown(
+                    true
+                  )
+                }
                 onChange={(
                   event
                 ) => {
                   setSearchTerm(
-                    event.target
-                      .value
+                    event.target.value
                   );
 
                   setShowDropdown(
@@ -1152,11 +1374,6 @@ const CreateMSAandWOPage = ({
                     null
                   );
                 }}
-                onFocus={() =>
-                  setShowDropdown(
-                    true
-                  )
-                }
                 placeholder="Type to search for a vendor..."
                 className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500"
                 autoComplete="off"
@@ -1190,7 +1407,7 @@ const CreateMSAandWOPage = ({
                                 company
                               )
                             }
-                            className="block w-full text-left px-4 py-3 hover:bg-indigo-50 cursor-pointer"
+                            className="block w-full text-left px-4 py-3 hover:bg-indigo-50"
                           >
                             <div className="font-medium text-gray-900">
                               {name}
@@ -1198,9 +1415,8 @@ const CreateMSAandWOPage = ({
 
                             {(company.federalId ||
                               company.ein) && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                EIN:
-                                {" "}
+                              <div className="mt-1 text-xs text-gray-500">
+                                EIN:{" "}
                                 {company.federalId ||
                                   company.ein}
                               </div>
@@ -1236,7 +1452,7 @@ const CreateMSAandWOPage = ({
                         </>
                       ) : (
                         <p>
-                          Start typing a Vendor name.
+                          Start typing a Vendor Company name.
                         </p>
                       )}
 
@@ -1245,18 +1461,16 @@ const CreateMSAandWOPage = ({
 
                 </div>
               )}
-
             </div>
-
           </div>
 
-          {/* ==========================================
-              SELECTED VENDOR SUMMARY
-          ========================================== */}
+
+          {/* =================================================
+              SELECTED VENDOR
+          ================================================= */}
 
           {selectedCompany && (
             <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-
               <div className="text-sm font-semibold text-green-900">
                 Vendor Selected
               </div>
@@ -1266,8 +1480,7 @@ const CreateMSAandWOPage = ({
                 <div>
                   <strong>
                     Company:
-                  </strong>
-                  {" "}
+                  </strong>{" "}
                   {
                     formData.vendorName
                   }
@@ -1276,8 +1489,7 @@ const CreateMSAandWOPage = ({
                 <div>
                   <strong>
                     EIN:
-                  </strong>
-                  {" "}
+                  </strong>{" "}
                   {
                     formData.federalId ||
                     "-"
@@ -1287,8 +1499,7 @@ const CreateMSAandWOPage = ({
                 <div>
                   <strong>
                     Authorized Signer:
-                  </strong>
-                  {" "}
+                  </strong>{" "}
                   {
                     formData.authorizedSignatureName ||
                     "-"
@@ -1298,22 +1509,20 @@ const CreateMSAandWOPage = ({
                 <div>
                   <strong>
                     Title:
-                  </strong>
-                  {" "}
+                  </strong>{" "}
                   {
                     formData.authorizedPersonTitle ||
                     "-"
                   }
                 </div>
-
               </div>
-
             </div>
           )}
 
-          {/* ==========================================
+
+          {/* =================================================
               STEP 2
-          ========================================== */}
+          ================================================= */}
 
           {selectedCompany && (
             <div className="border-t pt-8">
@@ -1325,12 +1534,9 @@ const CreateMSAandWOPage = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
 
                 <div>
-
                   <label className="block text-sm font-medium text-gray-700">
-                    Candidate Name
-                    <span className="text-red-500">
-                      *
-                    </span>
+                    Candidate Name{" "}
+                    <span className="text-red-500">*</span>
                   </label>
 
                   <input
@@ -1346,16 +1552,13 @@ const CreateMSAandWOPage = ({
                     required
                     className="mt-1 block w-full border border-gray-300 rounded-lg p-3"
                   />
-
                 </div>
 
-                <div>
 
+                <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Tentative Start Date
-                    <span className="text-red-500">
-                      *
-                    </span>
+                    Tentative Start Date{" "}
+                    <span className="text-red-500">*</span>
                   </label>
 
                   <input
@@ -1371,16 +1574,13 @@ const CreateMSAandWOPage = ({
                     required
                     className="mt-1 block w-full border border-gray-300 rounded-lg p-3"
                   />
-
                 </div>
 
-                <div>
 
+                <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Job Title
-                    <span className="text-red-500">
-                      *
-                    </span>
+                    Job Title{" "}
+                    <span className="text-red-500">*</span>
                   </label>
 
                   <input
@@ -1396,16 +1596,13 @@ const CreateMSAandWOPage = ({
                     required
                     className="mt-1 block w-full border border-gray-300 rounded-lg p-3"
                   />
-
                 </div>
 
-                <div>
 
+                <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Client Name
-                    <span className="text-red-500">
-                      *
-                    </span>
+                    Client Name{" "}
+                    <span className="text-red-500">*</span>
                   </label>
 
                   <input
@@ -1421,16 +1618,13 @@ const CreateMSAandWOPage = ({
                     required
                     className="mt-1 block w-full border border-gray-300 rounded-lg p-3"
                   />
-
                 </div>
 
-                <div className="md:col-span-2">
 
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700">
-                    Client Location
-                    <span className="text-red-500">
-                      *
-                    </span>
+                    Client Location{" "}
+                    <span className="text-red-500">*</span>
                   </label>
 
                   <input
@@ -1446,16 +1640,13 @@ const CreateMSAandWOPage = ({
                     required
                     className="mt-1 block w-full border border-gray-300 rounded-lg p-3"
                   />
-
                 </div>
 
-                <div>
 
+                <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Type Of Service
-                    <span className="text-red-500">
-                      *
-                    </span>
+                    Type Of Service{" "}
+                    <span className="text-red-500">*</span>
                   </label>
 
                   <select
@@ -1470,7 +1661,6 @@ const CreateMSAandWOPage = ({
                     required
                     className="mt-1 block w-full border border-gray-300 rounded-lg p-3 h-[50px]"
                   >
-
                     <option value="">
                       Select Service
                     </option>
@@ -1482,18 +1672,14 @@ const CreateMSAandWOPage = ({
                     <option value="Staffing">
                       Staffing
                     </option>
-
                   </select>
-
                 </div>
 
-                <div>
 
+                <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Type Of Subcontract
-                    <span className="text-red-500">
-                      *
-                    </span>
+                    Type Of Subcontract{" "}
+                    <span className="text-red-500">*</span>
                   </label>
 
                   <select
@@ -1508,7 +1694,6 @@ const CreateMSAandWOPage = ({
                     required
                     className="mt-1 block w-full border border-gray-300 rounded-lg p-3 h-[50px]"
                   >
-
                     <option value="">
                       Select Subcontract
                     </option>
@@ -1524,18 +1709,14 @@ const CreateMSAandWOPage = ({
                     <option value="Fixed Price">
                       Fixed Price
                     </option>
-
                   </select>
-
                 </div>
 
-                <div>
 
+                <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Rate
-                    <span className="text-red-500">
-                      *
-                    </span>
+                    Rate{" "}
+                    <span className="text-red-500">*</span>
                   </label>
 
                   <input
@@ -1553,16 +1734,13 @@ const CreateMSAandWOPage = ({
                     required
                     className="mt-1 block w-full border border-gray-300 rounded-lg p-3"
                   />
-
                 </div>
 
-                <div>
 
+                <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Per Hour / Day / Month
-                    <span className="text-red-500">
-                      *
-                    </span>
+                    Per Hour / Day / Month{" "}
+                    <span className="text-red-500">*</span>
                   </label>
 
                   <select
@@ -1577,7 +1755,6 @@ const CreateMSAandWOPage = ({
                     required
                     className="mt-1 block w-full border border-gray-300 rounded-lg p-3 h-[50px]"
                   >
-
                     <option value="">
                       Select Option
                     </option>
@@ -1593,18 +1770,14 @@ const CreateMSAandWOPage = ({
                     <option value="PER MONTH">
                       Per Month
                     </option>
-
                   </select>
-
                 </div>
 
-                <div className="md:col-span-2">
 
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700">
-                    Payment Terms (NET)
-                    <span className="text-red-500">
-                      *
-                    </span>
+                    Payment Terms (NET){" "}
+                    <span className="text-red-500">*</span>
                   </label>
 
                   <select
@@ -1619,7 +1792,6 @@ const CreateMSAandWOPage = ({
                     required
                     className="mt-1 block w-full border border-gray-300 rounded-lg p-3 h-[50px]"
                   >
-
                     <option value="">
                       Select Days
                     </option>
@@ -1635,58 +1807,53 @@ const CreateMSAandWOPage = ({
                     <option value="60">
                       60 Days
                     </option>
-
                   </select>
-
                 </div>
 
               </div>
-
             </div>
           )}
 
         </div>
 
-        <div className="mt-6 flex justify-end">
 
+        <div className="mt-6 flex justify-end">
           <button
             type="submit"
             disabled={
               loading ||
-              Boolean(
-                success
-              ) ||
+              Boolean(success) ||
               !selectedCompany
             }
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center min-w-48 h-12 disabled:bg-indigo-400 disabled:cursor-not-allowed shadow-lg"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center min-w-56 h-12 disabled:bg-indigo-400 disabled:cursor-not-allowed shadow-lg"
           >
-
             {loading ? (
               <>
                 <Spinner size="6" />
 
                 <span className="ml-2">
-                  Generating...
+                  {
+                    generationStage ||
+                    "Processing..."
+                  }
                 </span>
               </>
             ) : (
-              "Generate & Send"
+              "Generate MSA & WO"
             )}
-
           </button>
-
         </div>
 
       </form>
 
-      {/* ==================================================
-          OFF-SCREEN PDF DOCUMENT
+
+      {/* =====================================================
+          OFF-SCREEN PDF RENDERER
 
           IMPORTANT:
-          Do NOT use display:none.
-
-          html2canvas must be able to physically render it.
-      ================================================== */}
+          Do not use display:none.
+          html2canvas needs the DOM to be rendered.
+      ===================================================== */}
 
       <div
         aria-hidden="true"
@@ -1694,10 +1861,10 @@ const CreateMSAandWOPage = ({
           position:
             "fixed",
 
-          left:
-            "-10000px",
-
           top: 0,
+
+          left:
+            "-12000px",
 
           width:
             "210mm",
@@ -1709,27 +1876,20 @@ const CreateMSAandWOPage = ({
             "none",
 
           zIndex:
-            -1000,
+            -9999,
         }}
       >
-
         <div
           ref={
             documentRef
           }
           className="pdf-export-root"
         >
-
           <MSATemplatePages
             template={
               renderedTemplate
             }
 
-            /*
-             * CRITICAL:
-             *
-             * Preview mode resolves dynamic fields.
-             */
             editMode={
               false
             }
@@ -1738,9 +1898,7 @@ const CreateMSAandWOPage = ({
               null
             }
           />
-
         </div>
-
       </div>
 
     </div>
