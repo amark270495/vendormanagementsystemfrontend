@@ -32,6 +32,62 @@ import {
    HELPERS
 ============================================================ */
 
+const normalizeSignerType = (
+  value
+) => {
+  /*
+   * Normal case:
+   *
+   * "vendor"
+   * "taproot"
+   */
+  if (
+    typeof value ===
+    "string"
+  ) {
+    return value
+      .trim()
+      .toLowerCase();
+  }
+
+
+  /*
+   * Defensive compatibility:
+   *
+   * {
+   *   signerType: "taproot"
+   * }
+   */
+  if (
+    value &&
+    typeof value ===
+      "object"
+  ) {
+    if (
+      typeof value.signerType ===
+      "string"
+    ) {
+      return value.signerType
+        .trim()
+        .toLowerCase();
+    }
+
+
+    if (
+      typeof value.type ===
+      "string"
+    ) {
+      return value.type
+        .trim()
+        .toLowerCase();
+    }
+  }
+
+
+  return "";
+};
+
+
 const formatDate = (
   value
 ) => {
@@ -39,37 +95,36 @@ const formatDate = (
     return "N/A";
   }
 
+
   try {
-    /*
-     * Support:
-     *
-     * 2026-10-15
-     * 2026-10-15T00:00:00
-     * ISO timestamps
-     */
+    const rawValue =
+      String(
+        value
+      );
+
+
     const normalizedValue =
       /^\d{4}-\d{2}-\d{2}$/.test(
-        String(
-          value
-        )
+        rawValue
       )
-        ? `${value}T00:00:00`
-        : value;
+        ? `${rawValue}T00:00:00`
+        : rawValue;
+
 
     const date =
       new Date(
         normalizedValue
       );
 
+
     if (
       Number.isNaN(
         date.getTime()
       )
     ) {
-      return String(
-        value
-      );
+      return rawValue;
     }
+
 
     return date.toLocaleDateString(
       "en-US",
@@ -110,13 +165,14 @@ const MSAandWOSigningPage =
   () => {
 
     /* ========================================================
-       URL TOKEN
+       TOKEN
     ======================================================== */
 
     const [
       searchParams,
     ] =
       useSearchParams();
+
 
     const token =
       searchParams.get(
@@ -125,14 +181,17 @@ const MSAandWOSigningPage =
 
 
     /* ========================================================
-       CURRENT USER
+       AUTH
     ======================================================== */
 
-    const auth =
-      useAuth() || {};
+    const authContext =
+      useAuth() ||
+      {};
+
 
     const user =
-      auth.user;
+      authContext.user;
+
 
     const {
       canManageMSAWO,
@@ -141,9 +200,10 @@ const MSAandWOSigningPage =
 
 
     /*
-     * Internal signer:
+     * Internal Taproot signer must:
      *
-     * Must be logged into VMS and have MSA/WO permission.
+     * 1. Have an authenticated VMS account.
+     * 2. Have canManageMSAWO.
      */
     const isInternalSigner =
       Boolean(
@@ -229,7 +289,7 @@ const MSAandWOSigningPage =
     ] =
       useState({
         signerType:
-          null,
+          "",
 
         requiresPassword:
           false,
@@ -245,17 +305,15 @@ const MSAandWOSigningPage =
 
 
     /* ========================================================
-       VENDOR SIGNING SESSION
+       VENDOR AUTHENTICATION SESSION
 
-       IMPORTANT:
+       This is deliberately kept only in React memory.
 
-       The temporary password remains ONLY in React memory.
-
-       Do NOT save this in:
-       - localStorage
-       - sessionStorage
-       - cookies
-       - URL/querystring
+       NEVER store it in:
+       localStorage
+       sessionStorage
+       URL
+       query parameters
     ======================================================== */
 
     const [
@@ -281,10 +339,6 @@ const MSAandWOSigningPage =
           }
 
 
-          /*
-           * Actual fields are more reliable than relying
-           * exclusively on the overall document status.
-           */
           if (
             documentData
               .vendorSignedDate ||
@@ -352,7 +406,7 @@ const MSAandWOSigningPage =
 
 
     /* ========================================================
-       INTERNAL DOCUMENT FETCH
+       INTERNAL DOCUMENT LOAD
     ======================================================== */
 
     const fetchInternalDocument =
@@ -360,6 +414,7 @@ const MSAandWOSigningPage =
         async (
           isPolling = false
         ) => {
+
           if (
             !token ||
             !user
@@ -468,26 +523,30 @@ const MSAandWOSigningPage =
         },
         [
           token,
-          user
-            ?.userIdentifier,
+          user?.userIdentifier,
         ]
       );
 
 
     /* ========================================================
-       VENDOR DOCUMENT FETCH
+       VENDOR DOCUMENT LOAD / REFRESH
     ======================================================== */
 
     const fetchVendorDocument =
       useCallback(
         async (
-          tempPassword =
-            vendorTempPassword
+          passwordOverride =
+            null
         ) => {
+
+          const password =
+            passwordOverride ||
+            vendorTempPassword;
+
 
           if (
             !token ||
-            !tempPassword
+            !password
           ) {
             return;
           }
@@ -498,7 +557,7 @@ const MSAandWOSigningPage =
               await apiService
                 .accessMSAandWO(
                   token,
-                  tempPassword
+                  password
                 );
 
 
@@ -548,7 +607,6 @@ const MSAandWOSigningPage =
                 "Unable to retrieve document."
               )
             );
-
           }
         },
         [
@@ -559,7 +617,7 @@ const MSAandWOSigningPage =
 
 
     /* ========================================================
-       REFRESH
+       REFRESH CURRENT DOCUMENT
     ======================================================== */
 
     const refreshDocument =
@@ -598,11 +656,11 @@ const MSAandWOSigningPage =
     /* ========================================================
        VENDOR ACCESS GRANTED
 
-       AccessModal MUST invoke:
+       AccessModal must call:
 
        onAccessGranted(
-         response.data.documentData,
-         tempPassword
+         documentData,
+         verifiedPassword
        )
     ======================================================== */
 
@@ -640,7 +698,8 @@ const MSAandWOSigningPage =
 
 
           /*
-           * Keep only in React memory.
+           * Keep the verified password only in current
+           * component memory.
            */
           setVendorTempPassword(
             verifiedTempPassword
@@ -703,23 +762,27 @@ const MSAandWOSigningPage =
 
 
           /*
-           * Let the backend finish Table/Blob operations,
-           * then reload status.
+           * Allow Azure Table/Blob state to settle,
+           * then reload the current document.
            */
           window.setTimeout(
             async () => {
 
-              await refreshDocument();
+              try {
+                await refreshDocument();
 
+              } finally {
 
-              window.setTimeout(
-                () => {
-                  setSuccessMessage(
-                    ""
-                  );
-                },
-                3500
-              );
+                window.setTimeout(
+                  () => {
+                    setSuccessMessage(
+                      ""
+                    );
+                  },
+                  3500
+                );
+
+              }
 
             },
             700
@@ -733,29 +796,126 @@ const MSAandWOSigningPage =
 
 
     /* ========================================================
-       SIGN HANDLER
+       SIGN
+
+       Defensive against:
+       onSign(data, "taproot")
+
+       AND accidental:
+       onSign(data, { signerType: "taproot" })
     ======================================================== */
 
     const handleSign =
       useCallback(
         async (
-          signerData,
-          signerTypeFromModal
+          incomingSignerData,
+          incomingSignerType
         ) => {
 
-          const signerType =
-            (
-              signerTypeFromModal ||
-              signerConfig
-                .signerType ||
-              ""
-            )
-              .trim()
-              .toLowerCase();
+          let signerData =
+            incomingSignerData;
+
+
+          let resolvedSignerType =
+            "";
 
 
           /* --------------------------------------------------
-             GENERAL VALIDATION
+             SUPPORT WRAPPED PAYLOADS
+          -------------------------------------------------- */
+
+          if (
+            incomingSignerData &&
+            typeof incomingSignerData ===
+              "object" &&
+            incomingSignerData
+              .signerData &&
+            typeof incomingSignerData
+              .signerData ===
+              "object"
+          ) {
+            signerData =
+              incomingSignerData
+                .signerData;
+
+
+            resolvedSignerType =
+              normalizeSignerType(
+                incomingSignerData
+                  .signerType
+              );
+          }
+
+
+          /* --------------------------------------------------
+             SECOND ARGUMENT
+          -------------------------------------------------- */
+
+          if (
+            !resolvedSignerType
+          ) {
+            resolvedSignerType =
+              normalizeSignerType(
+                incomingSignerType
+              );
+          }
+
+
+          /* --------------------------------------------------
+             AUTHORITATIVE FALLBACK
+
+             This was established when we opened the modal:
+             openSigningModal("vendor")
+             openSigningModal("taproot")
+          -------------------------------------------------- */
+
+          if (
+            !resolvedSignerType
+          ) {
+            resolvedSignerType =
+              normalizeSignerType(
+                signerConfig
+                  .signerType
+              );
+          }
+
+
+          console.log(
+            "[MSA/WO] Normalized signing request:",
+            {
+              incomingSignerType,
+
+              incomingSignerTypeType:
+                typeof incomingSignerType,
+
+              resolvedSignerType,
+
+              configuredSignerType:
+                signerConfig
+                  .signerType,
+
+              hasSignerData:
+                Boolean(
+                  signerData
+                ),
+
+              hasSignature:
+                Boolean(
+                  signerData
+                    ?.signatureImage
+                ),
+
+              hasPassword:
+                Boolean(
+                  signerData
+                    ?.password
+                ),
+            }
+          );
+
+
+          /* --------------------------------------------------
+             BASIC VALIDATION
           -------------------------------------------------- */
 
           if (
@@ -764,9 +924,11 @@ const MSAandWOSigningPage =
             const message =
               "Document signing token is missing.";
 
+
             setError(
               message
             );
+
 
             throw new Error(
               message
@@ -782,9 +944,11 @@ const MSAandWOSigningPage =
             const message =
               "Signature information is missing.";
 
+
             setError(
               message
             );
+
 
             throw new Error(
               message
@@ -799,9 +963,37 @@ const MSAandWOSigningPage =
             const message =
               "Please provide your signature before continuing.";
 
+
             setError(
               message
             );
+
+
+            throw new Error(
+              message
+            );
+          }
+
+
+          if (
+            ![
+              "vendor",
+              "taproot",
+            ].includes(
+              resolvedSignerType
+            )
+          ) {
+            const message =
+              `Unsupported signer type: ${
+                resolvedSignerType ||
+                "empty"
+              }`;
+
+
+            setError(
+              message
+            );
+
 
             throw new Error(
               message
@@ -820,29 +1012,25 @@ const MSAandWOSigningPage =
 
 
           try {
-
             let response;
 
 
             /* =================================================
-               VENDOR SIGNING
+               VENDOR
             ================================================= */
 
             if (
-              signerType ===
+              resolvedSignerType ===
               "vendor"
             ) {
 
               if (
                 !vendorTempPassword
               ) {
-                /*
-                 * Do not let the backend receive an empty
-                 * password and return another confusing 401.
-                 */
                 setIsSigningModalOpen(
                   false
                 );
+
 
                 setIsAccessModalOpen(
                   true
@@ -850,22 +1038,49 @@ const MSAandWOSigningPage =
 
 
                 throw new Error(
-                  "Your Vendor signing session has expired. Please enter the temporary password again."
+                  "Your Vendor signing session has expired. Please enter the temporary access code again."
                 );
               }
 
 
-              console.log(
-                "[MSA/WO] Vendor signing request:",
-                {
-                  token,
+              const vendorSignerData = {
+                ...signerData,
 
+                name:
+                  signerData
+                    .name ||
+                  documentData
+                    ?.authorizedSignatureName ||
+                  "",
+
+                title:
+                  signerData
+                    .title ||
+                  documentData
+                    ?.authorizedPersonTitle ||
+                  "",
+              };
+
+
+              console.log(
+                "[MSA/WO] Sending Vendor signature:",
+                {
                   signerType:
                     "vendor",
 
+                  token,
+
+                  name:
+                    vendorSignerData
+                      .name,
+
+                  title:
+                    vendorSignerData
+                      .title,
+
                   hasSignature:
                     Boolean(
-                      signerData
+                      vendorSignerData
                         .signatureImage
                     ),
 
@@ -877,6 +1092,13 @@ const MSAandWOSigningPage =
               );
 
 
+              /*
+               * IMPORTANT:
+               * Dedicated API method.
+               *
+               * signerType is hard-coded to "vendor"
+               * in apiService.js.
+               */
               response =
                 await apiService
                   .updateVendorSigningStatus(
@@ -884,40 +1106,16 @@ const MSAandWOSigningPage =
 
                     vendorTempPassword,
 
-                    {
-                      ...signerData,
-
-                      /*
-                       * Keep signer identity based on the
-                       * Vendor record when modal doesn't
-                       * explicitly return it.
-                       */
-                      name:
-                        signerData
-                          .name ||
-                        documentData
-                          ?.authorizedSignatureName ||
-                        "",
-
-                      title:
-                        signerData
-                          .title ||
-                        documentData
-                          ?.authorizedPersonTitle ||
-                        "",
-                    }
+                    vendorSignerData
                   );
             }
 
 
             /* =================================================
-               TAPROOT SIGNING
+               TAPROOT
             ================================================= */
 
-            else if (
-              signerType ===
-              "taproot"
-            ) {
+            else {
 
               if (
                 !isInternalSigner
@@ -928,13 +1126,6 @@ const MSAandWOSigningPage =
               }
 
 
-              /*
-               * SignatureModal must return:
-               *
-               * signerData.password
-               *
-               * when requiresPassword=true.
-               */
               if (
                 !signerData
                   .password
@@ -943,6 +1134,29 @@ const MSAandWOSigningPage =
                   "Please enter your VMS password to authorize this electronic signature."
                 );
               }
+
+
+              const taprootSignerData = {
+                ...signerData,
+
+                name:
+                  signerData
+                    .name ||
+                  user
+                    ?.userName ||
+                  user
+                    ?.displayName ||
+                  user
+                    ?.userIdentifier ||
+                  "",
+
+                title:
+                  signerData
+                    .title ||
+                  user
+                    ?.userRole ||
+                  "Director",
+              };
 
 
               const jobInfo = {
@@ -969,58 +1183,56 @@ const MSAandWOSigningPage =
 
 
               console.log(
-                "[MSA/WO] Taproot signing request:",
+                "[MSA/WO] Sending Taproot signature:",
                 {
-                  token,
-
                   signerType:
                     "taproot",
+
+                  token,
 
                   authenticatedUsername:
                     user
                       ?.userIdentifier,
 
+                  name:
+                    taprootSignerData
+                      .name,
+
+                  title:
+                    taprootSignerData
+                      .title,
+
                   hasSignature:
                     Boolean(
-                      signerData
+                      taprootSignerData
                         .signatureImage
                     ),
 
                   hasPassword:
                     Boolean(
-                      signerData
+                      taprootSignerData
                         .password
                     ),
                 }
               );
 
 
+              /*
+               * IMPORTANT:
+               *
+               * Dedicated method means the browser cannot
+               * accidentally send an object as signerType.
+               *
+               * apiService hard-codes:
+               *
+               * signerType: "taproot"
+               */
               response =
                 await apiService
                   .updateTaprootSigningStatus(
                     token,
 
-                    {
-                      ...signerData,
-
-                      name:
-                        signerData
-                          .name ||
-                        user
-                          ?.userName ||
-                        user
-                          ?.displayName ||
-                        user
-                          ?.userIdentifier ||
-                        "",
-
-                      title:
-                        signerData
-                          .title ||
-                        user
-                          ?.userRole ||
-                        "Director",
-                    },
+                    taprootSignerData,
 
                     user
                       .userIdentifier,
@@ -1030,22 +1242,9 @@ const MSAandWOSigningPage =
             }
 
 
-            /* =================================================
-               UNKNOWN SIGNER
-            ================================================= */
-
-            else {
-              throw new Error(
-                `Unsupported signer type: ${String(
-                  signerType
-                )}`
-              );
-            }
-
-
-            /* --------------------------------------------------
+            /* ------------------------------------------------
                RESPONSE
-            -------------------------------------------------- */
+            ------------------------------------------------ */
 
             if (
               !response.data
@@ -1063,6 +1262,9 @@ const MSAandWOSigningPage =
               response.data
                 ?.message
             );
+
+
+            return response;
 
 
           } catch (
@@ -1093,8 +1295,8 @@ const MSAandWOSigningPage =
 
 
             /*
-             * SignatureModal may rely on this rejection
-             * to stop its local spinner.
+             * Let SignatureModal receive the same failure so
+             * it can stop its own spinner and show the error.
              */
             throw err;
           }
@@ -1105,9 +1307,9 @@ const MSAandWOSigningPage =
           signerConfig
             .signerType,
           vendorTempPassword,
+          documentData,
           isInternalSigner,
           user,
-          documentData,
           handleSignSuccess,
         ]
       );
@@ -1127,16 +1329,18 @@ const MSAandWOSigningPage =
             "No document token was provided in the URL."
           );
 
+
           setLoading(
             false
           );
+
 
           return;
         }
 
 
         /*
-         * Logged-in authorized internal user.
+         * Authorized internal VMS signer.
          */
         if (
           isInternalSigner
@@ -1145,9 +1349,11 @@ const MSAandWOSigningPage =
             false
           );
 
+
           fetchInternalDocument(
             false
           );
+
 
           return;
         }
@@ -1160,9 +1366,11 @@ const MSAandWOSigningPage =
           null
         );
 
+
         setIsAccessModalOpen(
           true
         );
+
 
         setLoading(
           false
@@ -1178,7 +1386,7 @@ const MSAandWOSigningPage =
 
 
     /* ========================================================
-       INTERNAL AUTO REFRESH
+       INTERNAL POLLING
     ======================================================== */
 
     useEffect(
@@ -1221,13 +1429,19 @@ const MSAandWOSigningPage =
 
 
     /* ========================================================
-       OPEN SIGNING MODAL
+       OPEN SIGNATURE MODAL
     ======================================================== */
 
     const openSigningModal =
       (
-        type
+        requestedType
       ) => {
+
+        const type =
+          normalizeSignerType(
+            requestedType
+          );
+
 
         setError(
           ""
@@ -1258,12 +1472,14 @@ const MSAandWOSigningPage =
             !vendorTempPassword
           ) {
             setError(
-              "Please authenticate with your temporary password before signing."
+              "Please authenticate with your temporary access code before signing."
             );
+
 
             setIsAccessModalOpen(
               true
             );
+
 
             return;
           }
@@ -1273,10 +1489,6 @@ const MSAandWOSigningPage =
             signerType:
               "vendor",
 
-            /*
-             * Vendor already authenticated with temporary
-             * password in AccessModal.
-             */
             requiresPassword:
               false,
 
@@ -1297,6 +1509,7 @@ const MSAandWOSigningPage =
           setIsSigningModalOpen(
             true
           );
+
 
           return;
         }
@@ -1337,9 +1550,6 @@ const MSAandWOSigningPage =
             signerType:
               "taproot",
 
-            /*
-             * Director must re-enter VMS password.
-             */
             requiresPassword:
               true,
 
@@ -1365,6 +1575,7 @@ const MSAandWOSigningPage =
             true
           );
 
+
           return;
         }
 
@@ -1376,7 +1587,7 @@ const MSAandWOSigningPage =
 
 
     /* ========================================================
-       STATUS PROGRESS
+       CURRENT PROGRESS
     ======================================================== */
 
     const currentStep =
@@ -1440,14 +1651,15 @@ const MSAandWOSigningPage =
           }
 
 
-          const unit =
-            documentData
-              ?.perHour
-              ? ` ${documentData.perHour}`
-              : "";
-
-
-          return `$${documentData.rate}${unit}`;
+          return (
+            `$${documentData.rate}` +
+            (
+              documentData
+                ?.perHour
+                ? ` ${documentData.perHour}`
+                : ""
+            )
+          );
 
         },
         [
@@ -1471,6 +1683,7 @@ const MSAandWOSigningPage =
           <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
             {label}
           </span>
+
 
           <span className="text-sm font-medium text-gray-900 break-words">
             {
@@ -1552,6 +1765,7 @@ const MSAandWOSigningPage =
                 <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center">
 
                   <span className="text-sm font-bold text-blue-700">
+
                     {
                       (
                         user?.userName ||
@@ -1564,6 +1778,7 @@ const MSAandWOSigningPage =
                         )
                         .toUpperCase()
                     }
+
                   </span>
 
                 </div>
@@ -1572,18 +1787,23 @@ const MSAandWOSigningPage =
                 <div className="flex flex-col">
 
                   <span className="text-sm font-semibold text-gray-700">
+
                     {
                       user?.userName ||
                       user?.displayName ||
                       user?.userIdentifier
                     }
+
                   </span>
 
+
                   <span className="text-[10px] uppercase tracking-wider font-semibold text-gray-400">
+
                     {
                       user?.userRole ||
                       "Internal Signer"
                     }
+
                   </span>
 
                 </div>
@@ -1668,15 +1888,11 @@ const MSAandWOSigningPage =
 
 
         {/* ====================================================
-            MAIN WORKSPACE
+            MAIN
         ==================================================== */}
 
         <main className="flex-1 flex overflow-hidden relative">
 
-
-          {/* ==================================================
-              LOADING
-          ================================================== */}
 
           {loading &&
           !documentData ? (
@@ -1684,6 +1900,7 @@ const MSAandWOSigningPage =
             <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex flex-col justify-center items-center">
 
               <Spinner size="12" />
+
 
               <div className="mt-4 text-sm font-semibold text-gray-600">
                 Loading secure document...
@@ -1697,15 +1914,11 @@ const MSAandWOSigningPage =
 
 
               {/* ===============================================
-                  DOCUMENT VIEWER
+                  PDF VIEWER
               =============================================== */}
 
               <section className="flex-1 min-w-0 bg-[#303336] flex flex-col overflow-hidden">
 
-
-                {/* ---------------------------------------------
-                    DOCUMENT TOOLBAR
-                --------------------------------------------- */}
 
                 <div className="h-12 flex-shrink-0 bg-[#292c2f] border-b border-black/30 px-5 flex items-center justify-between">
 
@@ -1717,12 +1930,14 @@ const MSAandWOSigningPage =
                       stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
+
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth="2"
                         d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"
                       />
+
                     </svg>
 
 
@@ -1745,10 +1960,6 @@ const MSAandWOSigningPage =
 
                 </div>
 
-
-                {/* ---------------------------------------------
-                    ACTUAL PDF
-                --------------------------------------------- */}
 
                 <div className="flex-1 min-h-0 p-5">
 
@@ -1774,30 +1985,13 @@ const MSAandWOSigningPage =
 
                       <div className="bg-white p-10 rounded-xl shadow-xl text-center max-w-md">
 
-                        <svg
-                          className="w-16 h-16 mx-auto text-gray-300"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="1.5"
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-
-                        </svg>
-
-
-                        <h3 className="mt-4 font-semibold text-gray-800">
+                        <h3 className="font-semibold text-gray-800">
                           Document Preview Unavailable
                         </h3>
 
 
                         <p className="mt-2 text-sm text-gray-500">
-                          The document record was loaded, but a secure PDF URL was not returned.
+                          The document record loaded, but no secure PDF URL was returned.
                         </p>
 
                       </div>
@@ -1812,15 +2006,11 @@ const MSAandWOSigningPage =
 
 
               {/* ===============================================
-                  SIGNING SIDEBAR
+                  RIGHT SIDEBAR
               =============================================== */}
 
               <aside className="w-[420px] max-w-[42vw] bg-white border-l border-gray-200 flex flex-col flex-shrink-0 shadow-[-8px_0_24px_rgba(0,0,0,0.04)] z-20">
 
-
-                {/* ---------------------------------------------
-                    SIDEBAR HEADER
-                --------------------------------------------- */}
 
                 <div className="p-6 border-b border-gray-200 bg-gray-50/70">
 
@@ -1835,10 +2025,6 @@ const MSAandWOSigningPage =
 
                 </div>
 
-
-                {/* ---------------------------------------------
-                    SCROLL CONTENT
-                --------------------------------------------- */}
 
                 <div className="flex-1 overflow-y-auto p-6">
 
@@ -1902,29 +2088,13 @@ const MSAandWOSigningPage =
                             >
 
                               {completed ? (
-
-                                <svg
-                                  className="w-3.5 h-3.5"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                    clipRule="evenodd"
-                                  />
-
-                                </svg>
-
+                                "✓"
                               ) : (
-
                                 <span className="text-[10px] font-bold">
                                   {
                                     stepNumber
                                   }
                                 </span>
-
                               )}
 
                             </div>
@@ -1960,8 +2130,6 @@ const MSAandWOSigningPage =
                   <section className="grid grid-cols-2 gap-3 mb-8">
 
 
-                    {/* Vendor */}
-
                     <div
                       className={
                         `rounded-lg border p-4 ${
@@ -1986,11 +2154,13 @@ const MSAandWOSigningPage =
                           }`
                         }
                       >
+
                         {
                           hasVendorSigned
                             ? "Signed"
                             : "Pending"
                         }
+
                       </div>
 
 
@@ -1998,20 +2168,20 @@ const MSAandWOSigningPage =
                         ?.vendorSignedDate && (
 
                         <div className="mt-1 text-[10px] text-gray-500">
+
                           {
                             formatDate(
                               documentData
                                 .vendorSignedDate
                             )
                           }
+
                         </div>
 
                       )}
 
                     </div>
 
-
-                    {/* Taproot */}
 
                     <div
                       className={
@@ -2037,11 +2207,13 @@ const MSAandWOSigningPage =
                           }`
                         }
                       >
+
                         {
                           hasTaprootSigned
                             ? "Signed"
                             : "Pending"
                         }
+
                       </div>
 
 
@@ -2049,12 +2221,14 @@ const MSAandWOSigningPage =
                         ?.taprootDirectorSignedDate && (
 
                         <div className="mt-1 text-[10px] text-gray-500">
+
                           {
                             formatDate(
                               documentData
                                 .taprootDirectorSignedDate
                             )
                           }
+
                         </div>
 
                       )}
@@ -2065,7 +2239,7 @@ const MSAandWOSigningPage =
 
 
                   {/* ===========================================
-                      CONTRACT SUMMARY
+                      CONTRACT
                   =========================================== */}
 
                   <section>
@@ -2075,167 +2249,144 @@ const MSAandWOSigningPage =
                     </h3>
 
 
-                    <div>
+                    <DetailItem
+                      label="Contract ID"
+                      value={
+                        documentData
+                          .contractNumber
+                      }
+                    />
 
-                      <DetailItem
-                        label="Contract ID"
-                        value={
+
+                    <DetailItem
+                      label="Status"
+                      value={
+                        documentData
+                          .status
+                      }
+                    />
+
+
+                    <DetailItem
+                      label="Vendor"
+                      value={
+                        documentData
+                          .vendorName
+                      }
+                    />
+
+
+                    <DetailItem
+                      label="Authorized Signer"
+                      value={
+                        documentData
+                          .authorizedSignatureName
+                      }
+                    />
+
+
+                    <DetailItem
+                      label="Candidate"
+                      value={
+                        documentData
+                          .candidateName
+                      }
+                    />
+
+
+                    <DetailItem
+                      label="Role"
+                      value={
+                        documentData
+                          .jobTitle
+                      }
+                    />
+
+
+                    <DetailItem
+                      label="Client"
+                      value={
+                        documentData
+                          .clientName
+                      }
+                    />
+
+
+                    <DetailItem
+                      label="Location"
+                      value={
+                        documentData
+                          .clientLocation
+                      }
+                    />
+
+
+                    <DetailItem
+                      label="Start Date"
+                      value={
+                        formatDate(
                           documentData
-                            .contractNumber
-                        }
-                      />
+                            .tentativeStartDate
+                        )
+                      }
+                    />
 
 
-                      <DetailItem
-                        label="Status"
-                        value={
-                          documentData
-                            .status
-                        }
-                      />
+                    <DetailItem
+                      label="Service"
+                      value={
+                        documentData
+                          .typeOfServices
+                      }
+                    />
 
 
-                      <DetailItem
-                        label="Vendor"
-                        value={
-                          documentData
-                            .vendorName
-                        }
-                      />
+                    <DetailItem
+                      label="Subcontract"
+                      value={
+                        documentData
+                          .typeOfSubcontract
+                      }
+                    />
 
 
-                      <DetailItem
-                        label="Authorized Signer"
-                        value={
-                          documentData
-                            .authorizedSignatureName
-                        }
-                      />
+                    <DetailItem
+                      label="Rate"
+                      value={
+                        rateDisplay
+                      }
+                    />
 
 
-                      <DetailItem
-                        label="Candidate"
-                        value={
-                          documentData
-                            .candidateName
-                        }
-                      />
-
-
-                      <DetailItem
-                        label="Role"
-                        value={
-                          documentData
-                            .jobTitle
-                        }
-                      />
-
-
-                      <DetailItem
-                        label="Client"
-                        value={
-                          documentData
-                            .clientName
-                        }
-                      />
-
-
-                      <DetailItem
-                        label="Location"
-                        value={
-                          documentData
-                            .clientLocation
-                        }
-                      />
-
-
-                      <DetailItem
-                        label="Start Date"
-                        value={
-                          formatDate(
-                            documentData
-                              .tentativeStartDate
-                          )
-                        }
-                      />
-
-
-                      <DetailItem
-                        label="Service"
-                        value={
-                          documentData
-                            .typeOfServices
-                        }
-                      />
-
-
-                      <DetailItem
-                        label="Subcontract"
-                        value={
-                          documentData
-                            .typeOfSubcontract
-                        }
-                      />
-
-
-                      <DetailItem
-                        label="Rate"
-                        value={
-                          rateDisplay
-                        }
-                      />
-
-
-                      <DetailItem
-                        label="Payment Terms"
-                        value={
-                          documentData
-                            .net
-                            ? `NET ${documentData.net}`
-                            : "N/A"
-                        }
-                      />
-
-                    </div>
+                    <DetailItem
+                      label="Payment Terms"
+                      value={
+                        documentData
+                          .net
+                          ? `NET ${documentData.net}`
+                          : "N/A"
+                      }
+                    />
 
                   </section>
 
                 </div>
 
 
-                {/* ---------------------------------------------
-                    ACTION FOOTER
-                --------------------------------------------- */}
+                {/* =============================================
+                    ACTIONS
+                ============================================= */}
 
-                <div className="p-6 border-t border-gray-200 bg-white shadow-[0_-4px_15px_rgba(0,0,0,0.02)]">
+                <div className="p-6 border-t border-gray-200 bg-white">
 
-
-                  {/* ===========================================
-                      FULLY SIGNED
-                  =========================================== */}
 
                   {isFullySigned ? (
 
-                    <div className="w-full flex items-center justify-center py-3.5 px-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
+                    <div className="w-full py-3.5 px-4 bg-green-50 border border-green-200 text-green-700 rounded-lg text-center">
 
-                      <svg
-                        className="w-5 h-5 mr-2"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-
-                      </svg>
-
-
-                      <span className="font-semibold text-sm">
-                        Fully Executed
-                      </span>
+                      <div className="font-semibold text-sm">
+                        ✓ Fully Executed
+                      </div>
 
                     </div>
 
@@ -2243,10 +2394,6 @@ const MSAandWOSigningPage =
 
                     <>
 
-
-                      {/* =======================================
-                          EXTERNAL VENDOR ACTION
-                      ======================================= */}
 
                       {!isInternalSigner &&
                       !hasVendorSigned && (
@@ -2261,7 +2408,7 @@ const MSAandWOSigningPage =
                               "vendor"
                             )
                           }
-                          className="w-full flex items-center justify-center px-4 py-3.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                          className="w-full flex items-center justify-center px-4 py-3.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 disabled:bg-blue-400"
                         >
 
                           {signing ? (
@@ -2286,22 +2433,19 @@ const MSAandWOSigningPage =
 
                         <div className="w-full py-3.5 px-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-center">
 
-                          <div className="text-sm font-semibold">
+                          <div className="font-semibold text-sm">
                             Your signature is complete
                           </div>
 
+
                           <div className="text-xs mt-1">
-                            Waiting for Taproot to complete the agreement.
+                            Waiting for Taproot.
                           </div>
 
                         </div>
 
                       )}
 
-
-                      {/* =======================================
-                          INTERNAL TAPROOT ACTION
-                      ======================================= */}
 
                       {isInternalSigner &&
                       !hasTaprootSigned && (
@@ -2316,7 +2460,7 @@ const MSAandWOSigningPage =
                               "taproot"
                             )
                           }
-                          className="w-full flex items-center justify-center px-4 py-3.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                          className="w-full flex items-center justify-center px-4 py-3.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 disabled:bg-blue-400"
                         >
 
                           {signing ? (
@@ -2341,12 +2485,13 @@ const MSAandWOSigningPage =
 
                         <div className="w-full py-3.5 px-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-center">
 
-                          <div className="text-sm font-semibold">
+                          <div className="font-semibold text-sm">
                             Taproot signature is complete
                           </div>
 
+
                           <div className="text-xs mt-1">
-                            Waiting for the Vendor to complete the agreement.
+                            Waiting for Vendor.
                           </div>
 
                         </div>
@@ -2358,29 +2503,10 @@ const MSAandWOSigningPage =
                   )}
 
 
-                  {/* ===========================================
-                      SECURITY LABEL
-                  =========================================== */}
-
                   <div className="mt-4 flex items-center justify-center text-gray-400">
 
-                    <svg
-                      className="w-3.5 h-3.5 mr-1.5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-
-                      <path
-                        fillRule="evenodd"
-                        d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                        clipRule="evenodd"
-                      />
-
-                    </svg>
-
-
                     <span className="text-[10px] uppercase tracking-wider font-bold">
-                      Secure Electronic Signature
+                      🔒 Secure Electronic Signature
                     </span>
 
                   </div>
@@ -2399,24 +2525,7 @@ const MSAandWOSigningPage =
 
                 <div className="bg-white border border-gray-200 rounded-xl shadow-sm px-10 py-8 text-center max-w-lg">
 
-                  <svg
-                    className="w-12 h-12 mx-auto text-gray-300"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="1.5"
-                      d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.667 1.73-3L13.73 4c-.77-1.333-2.69-1.333-3.46 0L3.34 16c-.77 1.333.19 3 1.73 3z"
-                    />
-
-                  </svg>
-
-
-                  <h2 className="mt-4 text-lg font-semibold text-gray-800">
+                  <h2 className="text-lg font-semibold text-gray-800">
                     Document unavailable
                   </h2>
 
@@ -2462,14 +2571,7 @@ const MSAandWOSigningPage =
 
 
         {/* ====================================================
-            VENDOR ACCESS MODAL
-
-            REQUIRED CONTRACT:
-
-            onAccessGranted(
-              documentData,
-              verifiedTempPassword
-            )
+            VENDOR ACCESS
         ==================================================== */}
 
         <AccessModal
@@ -2490,21 +2592,16 @@ const MSAandWOSigningPage =
           token={
             token
           }
+
+          vendorEmail={
+            documentData
+              ?.vendorEmail
+          }
         />
 
 
         {/* ====================================================
-            SIGNATURE MODAL
-
-            Vendor:
-              requiresPassword = false
-
-            Taproot:
-              requiresPassword = true
-
-            For Taproot, SignatureModal MUST return:
-
-              signerData.password
+            SIGNATURE
         ==================================================== */}
 
         <SignatureModal
@@ -2526,6 +2623,15 @@ const MSAandWOSigningPage =
             handleSign
           }
 
+          /*
+           * IMPORTANT:
+           *
+           * This MUST be a literal string:
+           *
+           * "vendor"
+           * or
+           * "taproot"
+           */
           signerType={
             signerConfig
               .signerType
