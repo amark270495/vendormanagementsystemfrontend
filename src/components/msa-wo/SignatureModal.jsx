@@ -15,7 +15,7 @@ import Spinner from "../Spinner";
 
 
 /* ============================================================
-   CONSTANTS
+   CONFIGURATION
 ============================================================ */
 
 const MAX_UPLOAD_SIZE =
@@ -32,7 +32,7 @@ const ALLOWED_UPLOAD_TYPES = [
    ICONS
 ============================================================ */
 
-const CloseIcon = ({
+const SignatureIcon = ({
   className = "w-5 h-5",
 }) => (
   <svg
@@ -45,15 +45,24 @@ const CloseIcon = ({
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth="2"
-      d="M6 18L18 6M6 6l12 12"
+      d="M3 17c3-1 4-6 6-6 1.5 0 .5 4 2 4 2 0 3-6 5-6 1.5 0 .5 4 2 4 1 0 2-.5 3-1"
+    />
+
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M3 21h18"
     />
   </svg>
 );
 
 
-const TypeIcon = () => (
+const TypeIcon = ({
+  className = "w-4 h-4",
+}) => (
   <svg
-    className="w-4 h-4"
+    className={className}
     fill="none"
     stroke="currentColor"
     viewBox="0 0 24 24"
@@ -68,9 +77,11 @@ const TypeIcon = () => (
 );
 
 
-const DrawIcon = () => (
+const DrawIcon = ({
+  className = "w-4 h-4",
+}) => (
   <svg
-    className="w-4 h-4"
+    className={className}
     fill="none"
     stroke="currentColor"
     viewBox="0 0 24 24"
@@ -79,7 +90,14 @@ const DrawIcon = () => (
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth="2"
-      d="M15.232 5.232l3.536 3.536M9 15l-4 1 1-4L16.5 1.5a2.121 2.121 0 013 3L9 15z"
+      d="M4 20l4.5-1 10-10a2.12 2.12 0 00-3-3l-10 10L4 20z"
+    />
+
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M13.5 7.5l3 3"
     />
   </svg>
 );
@@ -98,100 +116,14 @@ const UploadIcon = ({
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth="2"
-      d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v11m0-11l-4 4m4-4l4 4"
-    />
-  </svg>
-);
-
-
-const LockIcon = ({
-  className = "w-4 h-4",
-}) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <rect
-      x="5"
-      y="11"
-      width="14"
-      height="10"
-      rx="2"
-      ry="2"
-      strokeWidth="2"
+      d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"
     />
 
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth="2"
-      d="M8 11V7a4 4 0 018 0v4"
-    />
-  </svg>
-);
-
-
-const EyeIcon = ({
-  className = "w-4 h-4",
-}) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7C7.523 19 3.732 16.057 2.458 12z"
-    />
-
-    <circle
-      cx="12"
-      cy="12"
-      r="3"
-      strokeWidth="2"
-    />
-  </svg>
-);
-
-
-const EyeOffIcon = ({
-  className = "w-4 h-4",
-}) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M3 3l18 18M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58M9.88 4.24A9.8 9.8 0 0112 4c5 0 9 8 9 8a17.8 17.8 0 01-2.15 3.18M6.61 6.61C4.3 8.2 3 12 3 12s4 8 9 8a9.8 9.8 0 004.39-1.03"
-    />
-  </svg>
-);
-
-
-const CheckIcon = ({
-  className = "w-4 h-4",
-}) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2.5"
-      d="M5 13l4 4L19 7"
+      d="M5 15v4a1 1 0 001 1h12a1 1 0 001-1v-4"
     />
   </svg>
 );
@@ -223,8 +155,140 @@ const ShieldIcon = ({
 );
 
 
-const DocumentIcon = ({
+const LockIcon = ({
   className = "w-4 h-4",
+}) => (
+  <svg
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <rect
+      x="5"
+      y="10"
+      width="14"
+      height="11"
+      rx="2"
+      strokeWidth="2"
+    />
+
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M8 10V7a4 4 0 018 0v3"
+    />
+  </svg>
+);
+
+
+const EyeIcon = ({
+  className = "w-4 h-4",
+}) => (
+  <svg
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"
+    />
+
+    <circle
+      cx="12"
+      cy="12"
+      r="3"
+      strokeWidth="2"
+    />
+  </svg>
+);
+
+
+const EyeOffIcon = ({
+  className = "w-4 h-4",
+}) => (
+  <svg
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M3 3l18 18"
+    />
+
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M10.6 10.6A2 2 0 0013.4 13.4"
+    />
+
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M9.9 4.4A10.4 10.4 0 0112 4.2c6 0 9.5 7.8 9.5 7.8a17 17 0 01-2.6 3.8M6.4 6.4C3.9 8.4 2.5 12 2.5 12s3.5 7.8 9.5 7.8a10 10 0 004.4-1"
+    />
+  </svg>
+);
+
+
+const UserIcon = ({
+  className = "w-5 h-5",
+}) => (
+  <svg
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <circle
+      cx="12"
+      cy="8"
+      r="4"
+      strokeWidth="2"
+    />
+
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M4 21a8 8 0 0116 0"
+    />
+  </svg>
+);
+
+
+const CheckIcon = ({
+  className = "w-4 h-4",
+}) => (
+  <svg
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2.5"
+      d="M5 13l4 4L19 7"
+    />
+  </svg>
+);
+
+
+const DocumentIcon = ({
+  className = "w-5 h-5",
 }) => (
   <svg
     className={className}
@@ -249,7 +313,7 @@ const DocumentIcon = ({
 );
 
 
-const UserIcon = ({
+const TrashIcon = ({
   className = "w-4 h-4",
 }) => (
   <svg
@@ -262,14 +326,7 @@ const UserIcon = ({
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth="2"
-      d="M20 21a8 8 0 10-16 0"
-    />
-
-    <circle
-      cx="12"
-      cy="7"
-      r="4"
-      strokeWidth="2"
+      d="M4 7h16M9 7V4h6v3m-8 0l1 13h8l1-13"
     />
   </svg>
 );
@@ -300,7 +357,8 @@ const normalizeSignerType = (
       typeof value.signerType ===
       "string"
     ) {
-      return value.signerType
+      return value
+        .signerType
         .trim()
         .toLowerCase();
     }
@@ -309,7 +367,8 @@ const normalizeSignerType = (
       typeof value.type ===
       "string"
     ) {
-      return value.type
+      return value
+        .type
         .trim()
         .toLowerCase();
     }
@@ -334,7 +393,7 @@ const SignatureModal = ({
 }) => {
 
   /* ==========================================================
-     NORMALIZED TYPE
+     SIGNER TYPE
   ========================================================== */
 
   const normalizedSignerType =
@@ -443,6 +502,15 @@ const SignatureModal = ({
     );
 
 
+  const [
+    dragActive,
+    setDragActive,
+  ] =
+    useState(
+      false
+    );
+
+
   /* ==========================================================
      REFS
   ========================================================== */
@@ -466,76 +534,80 @@ const SignatureModal = ({
 
 
   /* ==========================================================
-     FONT OPTIONS
+     SIGNATURE FONTS
   ========================================================== */
 
-  const fonts = [
-    {
-      id:
-        "font-dancing-script",
+  const fonts =
+    useMemo(
+      () => [
+        {
+          id:
+            "font-dancing-script",
 
-      className:
-        "font-dancing-script",
+          className:
+            "font-dancing-script",
 
-      label:
-        "Dancing",
-    },
+          label:
+            "Natural",
+        },
 
-    {
-      id:
-        "font-great-vibes",
+        {
+          id:
+            "font-great-vibes",
 
-      className:
-        "font-great-vibes",
+          className:
+            "font-great-vibes",
 
-      label:
-        "Elegant",
-    },
+          label:
+            "Elegant",
+        },
 
-    {
-      id:
-        "font-pacifico",
+        {
+          id:
+            "font-pacifico",
 
-      className:
-        "font-pacifico",
+          className:
+            "font-pacifico",
 
-      label:
-        "Modern",
-    },
+          label:
+            "Modern",
+        },
 
-    {
-      id:
-        "font-sacramento",
+        {
+          id:
+            "font-sacramento",
 
-      className:
-        "font-sacramento",
+          className:
+            "font-sacramento",
 
-      label:
-        "Classic",
-    },
-  ];
+          label:
+            "Classic",
+        },
+      ],
+      []
+    );
 
 
   /* ==========================================================
-     SIGNER LABELS
+     DISPLAY LABELS
   ========================================================== */
 
-  const signerRoleLabel =
+  const signerLabel =
     normalizedSignerType ===
     "taproot"
       ? "Taproot Authorized Signer"
       : "Vendor Authorized Signer";
 
 
-  const signerBadgeLabel =
+  const securityLabel =
     normalizedSignerType ===
     "taproot"
-      ? "Internal Signature"
-      : "Vendor Signature";
+      ? "Internal Authorized Signature"
+      : "External Authorized Signature";
 
 
   /* ==========================================================
-     RESET
+     RESET MODAL
   ========================================================== */
 
   useEffect(
@@ -545,6 +617,11 @@ const SignatureModal = ({
       ) {
         return;
       }
+
+
+      setActiveTab(
+        "type"
+      );
 
 
       setTypedSignature(
@@ -593,8 +670,8 @@ const SignatureModal = ({
       );
 
 
-      setActiveTab(
-        "type"
+      setDragActive(
+        false
       );
 
 
@@ -608,10 +685,13 @@ const SignatureModal = ({
 
       window.setTimeout(
         () => {
-          signaturePad.current?.clear();
+          signaturePad
+            .current
+            ?.clear();
         },
         0
       );
+
     },
     [
       isOpen,
@@ -621,7 +701,7 @@ const SignatureModal = ({
 
 
   /* ==========================================================
-     TYPED SIGNATURE CANVAS
+     TYPED SIGNATURE RENDERING
   ========================================================== */
 
   const drawSignatureOnCanvas =
@@ -631,36 +711,32 @@ const SignatureModal = ({
           typeCanvasRef.current;
 
 
-        if (
-          !canvas
-        ) {
+        if (!canvas) {
           return;
         }
 
 
-        const ctx =
+        const context =
           canvas.getContext(
             "2d"
           );
 
 
-        if (
-          !ctx
-        ) {
+        if (!context) {
           return;
         }
 
 
-        let fontStyle =
-          'italic 46px "Dancing Script", cursive';
+        let font =
+          'italic 48px "Dancing Script", cursive';
 
 
         if (
           selectedFont ===
           "font-great-vibes"
         ) {
-          fontStyle =
-            '48px "Great Vibes", cursive';
+          font =
+            '50px "Great Vibes", cursive';
         }
 
 
@@ -668,8 +744,8 @@ const SignatureModal = ({
           selectedFont ===
           "font-pacifico"
         ) {
-          fontStyle =
-            '38px "Pacifico", cursive';
+          font =
+            '40px "Pacifico", cursive';
         }
 
 
@@ -677,39 +753,38 @@ const SignatureModal = ({
           selectedFont ===
           "font-sacramento"
         ) {
-          fontStyle =
-            '48px "Sacramento", cursive';
+          font =
+            '50px "Sacramento", cursive';
         }
 
 
         const text =
-          typedSignature
-            .trim();
+          typedSignature.trim();
 
 
-        ctx.font =
-          fontStyle;
+        context.font =
+          font;
 
 
-        const textWidth =
-          ctx.measureText(
+        const measuredWidth =
+          context.measureText(
             text
           ).width;
 
 
         const width =
           Math.max(
-            520,
+            600,
 
             Math.ceil(
-              textWidth +
-              120
+              measuredWidth +
+              160
             )
           );
 
 
         const height =
-          120;
+          140;
 
 
         if (
@@ -726,7 +801,7 @@ const SignatureModal = ({
         }
 
 
-        ctx.clearRect(
+        context.clearRect(
           0,
           0,
           canvas.width,
@@ -734,25 +809,25 @@ const SignatureModal = ({
         );
 
 
-        ctx.font =
-          fontStyle;
+        context.font =
+          font;
 
 
-        ctx.fillStyle =
+        context.fillStyle =
           "#0f172a";
 
 
-        ctx.textBaseline =
-          "middle";
-
-
-        ctx.textAlign =
+        context.textAlign =
           "left";
 
 
-        ctx.fillText(
+        context.textBaseline =
+          "middle";
+
+
+        context.fillText(
           text,
-          50,
+          60,
           canvas.height /
             2
         );
@@ -779,7 +854,7 @@ const SignatureModal = ({
         false;
 
 
-      const render =
+      const paint =
         async () => {
           try {
             if (
@@ -791,7 +866,7 @@ const SignatureModal = ({
                 .ready;
             }
           } catch {
-            // ignore font readiness error
+            // Font readiness is non-fatal.
           }
 
 
@@ -803,9 +878,9 @@ const SignatureModal = ({
         };
 
 
-      const timeout =
+      const timer =
         window.setTimeout(
-          render,
+          paint,
           60
         );
 
@@ -815,9 +890,10 @@ const SignatureModal = ({
           true;
 
         window.clearTimeout(
-          timeout
+          timer
         );
       };
+
     },
     [
       isOpen,
@@ -830,38 +906,14 @@ const SignatureModal = ({
 
 
   /* ==========================================================
-     DRAW
+     FILE PROCESSING
   ========================================================== */
 
-  const clearCanvas =
-    () => {
-      signaturePad
-        .current
-        ?.clear();
-
-
-      setError(
-        ""
-      );
-    };
-
-
-  /* ==========================================================
-     UPLOAD
-  ========================================================== */
-
-  const handleFileChange =
+  const processSignatureFile =
     (
-      event
+      file
     ) => {
-      const file =
-        event.target
-          .files?.[0];
-
-
-      if (
-        !file
-      ) {
+      if (!file) {
         return;
       }
 
@@ -872,11 +924,8 @@ const SignatureModal = ({
         )
       ) {
         setError(
-          "Please upload a PNG or JPG signature image."
+          "Please choose a PNG or JPG signature image."
         );
-
-        event.target.value =
-          "";
 
         return;
       }
@@ -887,11 +936,8 @@ const SignatureModal = ({
         MAX_UPLOAD_SIZE
       ) {
         setError(
-          "The signature image must be 5 MB or smaller."
+          "Signature image must be smaller than 5 MB."
         );
-
-        event.target.value =
-          "";
 
         return;
       }
@@ -903,19 +949,18 @@ const SignatureModal = ({
 
       reader.onload =
         (
-          loadEvent
+          event
         ) => {
-          const value =
-            loadEvent.target
-              ?.result;
+          const result =
+            event.target?.result;
 
 
           if (
-            typeof value !==
+            typeof result !==
             "string"
           ) {
             setError(
-              "Unable to read the selected signature image."
+              "Unable to read the selected image."
             );
 
             return;
@@ -923,7 +968,7 @@ const SignatureModal = ({
 
 
           setUploadedSignature(
-            value
+            result
           );
 
 
@@ -941,12 +986,72 @@ const SignatureModal = ({
       reader.onerror =
         () => {
           setError(
-            "Unable to read the selected signature image."
+            "Unable to read the selected image."
           );
         };
 
 
       reader.readAsDataURL(
+        file
+      );
+    };
+
+
+  const handleFileChange =
+    (
+      event
+    ) => {
+      const file =
+        event.target.files?.[0];
+
+
+      processSignatureFile(
+        file
+      );
+    };
+
+
+  const handleDragOver =
+    (
+      event
+    ) => {
+      event.preventDefault();
+
+      setDragActive(
+        true
+      );
+    };
+
+
+  const handleDragLeave =
+    (
+      event
+    ) => {
+      event.preventDefault();
+
+      setDragActive(
+        false
+      );
+    };
+
+
+  const handleDrop =
+    (
+      event
+    ) => {
+      event.preventDefault();
+
+      setDragActive(
+        false
+      );
+
+
+      const file =
+        event.dataTransfer
+          ?.files?.[0];
+
+
+      processSignatureFile(
         file
       );
     };
@@ -959,20 +1064,17 @@ const SignatureModal = ({
   const getSignatureImage =
     () => {
 
-      /* ------------------------------------------------------
-         TYPE
-      ------------------------------------------------------ */
+      /* TYPE */
 
       if (
         activeTab ===
         "type"
       ) {
         if (
-          !typedSignature
-            .trim()
+          !typedSignature.trim()
         ) {
           throw new Error(
-            "Enter your name to create a signature."
+            "Enter your name before signing."
           );
         }
 
@@ -980,13 +1082,8 @@ const SignatureModal = ({
         drawSignatureOnCanvas();
 
 
-        const canvas =
-          typeCanvasRef
-            .current;
-
-
         if (
-          !canvas
+          !typeCanvasRef.current
         ) {
           throw new Error(
             "Unable to generate the typed signature."
@@ -994,23 +1091,22 @@ const SignatureModal = ({
         }
 
 
-        return canvas.toDataURL(
-          "image/png"
-        );
+        return typeCanvasRef
+          .current
+          .toDataURL(
+            "image/png"
+          );
       }
 
 
-      /* ------------------------------------------------------
-         DRAW
-      ------------------------------------------------------ */
+      /* DRAW */
 
       if (
         activeTab ===
         "draw"
       ) {
         if (
-          !signaturePad
-            .current
+          !signaturePad.current
         ) {
           throw new Error(
             "Signature canvas is unavailable."
@@ -1038,9 +1134,7 @@ const SignatureModal = ({
       }
 
 
-      /* ------------------------------------------------------
-         UPLOAD
-      ------------------------------------------------------ */
+      /* UPLOAD */
 
       if (
         activeTab ===
@@ -1050,7 +1144,7 @@ const SignatureModal = ({
           !uploadedSignature
         ) {
           throw new Error(
-            "Upload a signature image before continuing."
+            "Upload your signature image before continuing."
           );
         }
 
@@ -1060,13 +1154,13 @@ const SignatureModal = ({
 
 
       throw new Error(
-        "Select a signature method."
+        "Choose a signature method."
       );
     };
 
 
   /* ==========================================================
-     SUBMIT
+     SUBMIT SIGNATURE
   ========================================================== */
 
   const handleSave =
@@ -1084,10 +1178,6 @@ const SignatureModal = ({
       );
 
 
-      /* ------------------------------------------------------
-         VALIDATE SIGNER TYPE
-      ------------------------------------------------------ */
-
       if (
         ![
           "vendor",
@@ -1097,38 +1187,30 @@ const SignatureModal = ({
         )
       ) {
         setError(
-          "The signing role is invalid. Please reopen the signing window."
+          "Signing role is invalid. Close the window and reopen the signing process."
         );
 
         return;
       }
 
-
-      /* ------------------------------------------------------
-         INTERNAL PASSWORD
-      ------------------------------------------------------ */
 
       if (
         requiresPassword &&
         !password.trim()
       ) {
         setError(
-          "Enter your VMS password to authorize this signature."
+          "Enter your VMS password to verify your identity."
         );
 
         return;
       }
 
 
-      /* ------------------------------------------------------
-         CONSENT
-      ------------------------------------------------------ */
-
       if (
         !consentAccepted
       ) {
         setError(
-          "Please confirm that you agree to use this electronic signature."
+          "Please confirm your electronic signature consent before continuing."
         );
 
         return;
@@ -1149,20 +1231,18 @@ const SignatureModal = ({
           signatureImage,
 
           name:
-            signerInfo
-              ?.name ||
-            typedSignature
-              .trim() ||
+            signerInfo?.name ||
+            typedSignature.trim() ||
             "",
 
           title:
-            signerInfo
-              ?.title ||
+            signerInfo?.title ||
             "",
 
           ...(requiresPassword
             ? {
-                password,
+                password:
+                  password,
               }
             : {}),
         };
@@ -1178,43 +1258,56 @@ const SignatureModal = ({
               activeTab,
 
             signerName:
-              finalSignerData
-                .name,
+              finalSignerData.name,
 
             signerTitle:
-              finalSignerData
-                .title,
+              finalSignerData.title,
 
             hasSignature:
               Boolean(
-                signatureImage
+                finalSignerData
+                  .signatureImage
               ),
-
-            requiresPassword,
 
             hasPassword:
               Boolean(
                 finalSignerData
                   .password
               ),
+
+            consentAccepted,
           }
         );
 
 
         /*
-         * Critical:
+         * =====================================================
+         * NEW SAFE CONTRACT
          *
-         * Second argument is ALWAYS a string:
+         * ONE ARGUMENT.
          *
-         * "vendor"
-         * or
-         * "taproot"
+         * No positional signerType arguments anymore.
+         *
+         * This permanently eliminates:
+         *
+         * [object Object]
+         *
+         * argument-order bugs.
+         * =====================================================
          */
-        await onSign(
-          finalSignerData,
-          normalizedSignerType
-        );
+        await onSign({
+          signerType:
+            normalizedSignerType,
 
+          signerData:
+            finalSignerData,
+        });
+
+
+        /*
+         * Parent closes after successful API response.
+         * Do NOT close early here.
+         */
 
       } catch (
         err
@@ -1226,13 +1319,10 @@ const SignatureModal = ({
 
 
         setError(
-          err.response
-            ?.data
-            ?.message ||
+          err.response?.data?.message ||
           err.message ||
           "Unable to complete the signature."
         );
-
 
       } finally {
         setLoading(
@@ -1243,13 +1333,13 @@ const SignatureModal = ({
 
 
   /* ==========================================================
-     TAB COMPONENT
+     TAB BUTTON
   ========================================================== */
 
-  const TabButton = ({
+  const MethodTab = ({
     id,
     icon,
-    label,
+    title,
   }) => {
     const selected =
       activeTab ===
@@ -1257,6 +1347,7 @@ const SignatureModal = ({
 
 
     return (
+
       <button
         type="button"
 
@@ -1275,7 +1366,7 @@ const SignatureModal = ({
         }}
 
         className={
-          `group relative flex flex-1 items-center justify-center gap-2 px-3 py-3 text-sm font-semibold transition-all ${
+          `relative flex flex-1 items-center justify-center gap-2 px-4 py-3.5 text-sm font-semibold transition-all ${
             selected
               ? "text-blue-600"
               : "text-slate-500 hover:text-slate-800"
@@ -1285,10 +1376,10 @@ const SignatureModal = ({
 
         <span
           className={
-            `transition-colors ${
+            `flex h-7 w-7 items-center justify-center rounded-lg transition ${
               selected
-                ? "text-blue-600"
-                : "text-slate-400 group-hover:text-slate-600"
+                ? "bg-blue-50 text-blue-600"
+                : "text-slate-400"
             }`
           }
         >
@@ -1297,21 +1388,22 @@ const SignatureModal = ({
 
 
         <span>
-          {label}
+          {title}
         </span>
 
 
         <span
           className={
-            `absolute bottom-0 left-3 right-3 h-0.5 rounded-full transition-all ${
+            `absolute bottom-0 left-4 right-4 h-[2px] rounded-full transition ${
               selected
-                ? "bg-blue-600 opacity-100"
-                : "bg-transparent opacity-0"
+                ? "bg-blue-600"
+                : "bg-transparent"
             }`
           }
         />
 
       </button>
+
     );
   };
 
@@ -1346,32 +1438,32 @@ const SignatureModal = ({
         }
       }}
 
-      title=""
+      title="Complete Your Signature"
 
       size="6xl"
     >
 
-      <div className="-m-6 flex h-[82vh] min-h-[650px] overflow-hidden rounded-xl bg-white">
+      <div className="-m-6 flex h-[82vh] min-h-[680px] overflow-hidden rounded-b-xl bg-white">
 
 
         {/* ====================================================
-            LEFT SIDE - DOCUMENT
+            DOCUMENT WORKSPACE
         ==================================================== */}
 
-        <section className="relative hidden w-[54%] flex-col overflow-hidden bg-[#202326] lg:flex">
+        <section className="relative hidden w-[55%] flex-col overflow-hidden bg-[#24272a] lg:flex">
 
 
           {/* ==================================================
-              VIEWER HEADER
+              DOCUMENT TOPBAR
           ================================================== */}
 
-          <div className="flex h-[58px] flex-shrink-0 items-center justify-between border-b border-white/10 bg-[#272a2e] px-5">
+          <div className="flex h-[58px] flex-shrink-0 items-center justify-between border-b border-white/10 bg-[#292d30] px-5">
 
             <div className="flex items-center gap-3">
 
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-slate-300 ring-1 ring-white/10">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.06] text-slate-300 ring-1 ring-white/10">
 
-                <DocumentIcon className="w-4 h-4" />
+                <DocumentIcon />
 
               </div>
 
@@ -1379,12 +1471,12 @@ const SignatureModal = ({
               <div>
 
                 <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-300">
-                  Document Preview
+                  Agreement Preview
                 </div>
 
 
-                <div className="mt-0.5 text-[11px] text-slate-500">
-                  Review before signing
+                <div className="mt-0.5 text-[10px] text-slate-500">
+                  Review the complete document before signing
                 </div>
 
               </div>
@@ -1392,13 +1484,13 @@ const SignatureModal = ({
             </div>
 
 
-            <div className="flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 ring-1 ring-white/10">
+            <div className="flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-emerald-300 ring-1 ring-emerald-400/20">
 
-              <ShieldIcon className="w-3.5 h-3.5 text-emerald-400" />
+              <ShieldIcon className="w-3.5 h-3.5" />
 
 
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">
-                Secure
+              <span className="text-[9px] font-bold uppercase tracking-widest">
+                Protected
               </span>
 
             </div>
@@ -1407,21 +1499,33 @@ const SignatureModal = ({
 
 
           {/* ==================================================
-              PDF
+              DOCUMENT AREA
           ================================================== */}
 
-          <div className="min-h-0 flex-1 bg-[#303336] p-6">
+          <div className="relative min-h-0 flex-1 bg-[#303336] p-6">
+
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.04]"
+              style={{
+                backgroundImage:
+                  "radial-gradient(#ffffff 1px, transparent 1px)",
+
+                backgroundSize:
+                  "22px 22px",
+              }}
+            />
+
 
             {documentUrl ? (
 
-              <div className="h-full w-full overflow-hidden rounded-md bg-white shadow-[0_20px_60px_rgba(0,0,0,0.45)] ring-1 ring-black/10">
+              <div className="relative h-full overflow-hidden rounded-lg bg-white shadow-[0_30px_80px_rgba(0,0,0,0.45)] ring-1 ring-black/30">
 
                 <iframe
                   src={
                     documentUrl
                   }
 
-                  title="Contract Preview"
+                  title="Document Preview"
 
                   className="h-full w-full border-0 bg-white"
                 />
@@ -1430,24 +1534,24 @@ const SignatureModal = ({
 
             ) : (
 
-              <div className="flex h-full items-center justify-center">
+              <div className="relative flex h-full items-center justify-center">
 
                 <div className="max-w-sm text-center">
 
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-slate-400 ring-1 ring-white/10">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.06] text-slate-400 ring-1 ring-white/10">
 
-                    <DocumentIcon className="w-7 h-7" />
+                    <DocumentIcon className="w-8 h-8" />
 
                   </div>
 
 
-                  <h3 className="mt-5 font-semibold text-slate-200">
-                    Preview unavailable
+                  <h3 className="mt-5 font-semibold text-white">
+                    Document preview unavailable
                   </h3>
 
 
                   <p className="mt-2 text-sm leading-6 text-slate-500">
-                    The agreement loaded, but the secure PDF preview is unavailable.
+                    The agreement is available for signing, but its visual preview could not be loaded.
                   </p>
 
                 </div>
@@ -1460,14 +1564,20 @@ const SignatureModal = ({
 
 
           {/* ==================================================
-              VIEWER FOOTER
+              SECURE BAR
           ================================================== */}
 
-          <div className="flex h-11 flex-shrink-0 items-center justify-center gap-2 border-t border-white/10 bg-[#272a2e] text-[10px] uppercase tracking-wider text-slate-500">
+          <div className="flex h-11 flex-shrink-0 items-center justify-center gap-2 border-t border-white/10 bg-[#292d30] text-[9px] font-bold uppercase tracking-[0.14em] text-slate-500">
 
             <LockIcon className="w-3.5 h-3.5" />
 
-            Protected document session
+            Encrypted signing session
+
+            <span className="mx-1 text-slate-700">
+              •
+            </span>
+
+            Secure document preview
 
           </div>
 
@@ -1475,120 +1585,92 @@ const SignatureModal = ({
 
 
         {/* ====================================================
-            RIGHT SIDE
+            SIGNATURE WORKSPACE
         ==================================================== */}
 
         <section className="flex min-w-0 flex-1 flex-col bg-white">
 
 
           {/* ==================================================
-              HEADER
+              SIGNER HEADER
           ================================================== */}
 
-          <div className="flex-shrink-0 border-b border-slate-200 bg-white px-7 py-5 lg:px-8">
+          <div className="flex-shrink-0 border-b border-slate-200 bg-white px-7 pb-5 pt-6 lg:px-8">
 
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
 
-              <div>
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 shadow-sm ring-1 ring-blue-100">
 
-                <div className="flex items-center gap-2">
+                <SignatureIcon className="w-6 h-6" />
 
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-blue-700 ring-1 ring-blue-100">
+              </div>
 
-                    <ShieldIcon className="w-3 h-3" />
 
-                    {signerBadgeLabel}
+              <div className="min-w-0 flex-1">
 
+                <div className="flex flex-wrap items-center gap-2">
+
+                  <h2 className="text-[25px] font-bold tracking-tight text-slate-950">
+                    Create your signature
+                  </h2>
+
+
+                  <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-blue-700 ring-1 ring-blue-100">
+                    {securityLabel}
                   </span>
 
                 </div>
 
 
-                <h2 className="mt-3 text-[26px] font-bold tracking-tight text-slate-950">
-                  Adopt Your Signature
-                </h2>
-
-
-                <p className="mt-1 text-sm leading-6 text-slate-500">
-                  Choose how your signature should appear on the agreement.
+                <p className="mt-1.5 text-sm leading-6 text-slate-500">
+                  Review your identity, choose your signature style, and securely authorize the document.
                 </p>
 
               </div>
-
-
-              <button
-                type="button"
-
-                disabled={
-                  loading
-                }
-
-                onClick={() =>
-                  onClose?.()
-                }
-
-                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-
-                aria-label="Close signature window"
-              >
-
-                <CloseIcon />
-
-              </button>
 
             </div>
 
 
             {/* =================================================
-                SIGNER IDENTITY
+                IDENTITY CARD
             ================================================= */}
 
-            <div className="mt-5 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="mt-5 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
 
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm ring-1 ring-slate-200">
 
-                <UserIcon className="w-5 h-5" />
+                <UserIcon />
 
               </div>
 
 
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
 
                 <div className="truncate text-sm font-bold text-slate-900">
-
                   {
-                    signerInfo
-                      ?.name ||
+                    signerInfo?.name ||
                     "Authorized Signer"
                   }
-
                 </div>
 
 
                 <div className="mt-0.5 truncate text-xs text-slate-500">
-
                   {
-                    signerInfo
-                      ?.title ||
-                    signerRoleLabel
+                    signerInfo?.title ||
+                    signerLabel
                   }
-
                 </div>
 
               </div>
 
 
-              <div className="ml-auto flex-shrink-0">
+              <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1.5 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-100">
 
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
+                <CheckIcon className="w-3 h-3" />
 
-                  <CheckIcon className="w-3 h-3" />
+                Verified identity
 
-                  Identity loaded
-
-                </span>
-
-              </div>
+              </span>
 
             </div>
 
@@ -1601,27 +1683,23 @@ const SignatureModal = ({
 
           {error && (
 
-            <div className="mx-7 mt-4 flex flex-shrink-0 items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 lg:mx-8">
+            <div className="mx-7 mt-4 flex flex-shrink-0 items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 lg:mx-8">
 
-              <div className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
-
-                <span className="text-xs font-bold">
-                  !
-                </span>
-
+              <div className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-red-100 text-xs font-black text-red-600">
+                !
               </div>
 
 
-              <div>
+              <div className="min-w-0">
 
-                <div className="text-sm font-semibold text-red-800">
-                  Unable to continue
+                <div className="text-sm font-bold text-red-800">
+                  Signature could not be completed
                 </div>
 
 
-                <div className="mt-0.5 text-xs leading-5 text-red-700">
+                <p className="mt-0.5 text-xs leading-5 text-red-700">
                   {error}
-                </div>
+                </p>
 
               </div>
 
@@ -1631,34 +1709,34 @@ const SignatureModal = ({
 
 
           {/* ==================================================
-              SIGNATURE METHODS
+              METHOD TABS
           ================================================== */}
 
-          <div className="flex-shrink-0 border-b border-slate-200 px-7 pt-3 lg:px-8">
+          <div className="flex-shrink-0 border-b border-slate-200 px-7 pt-2 lg:px-8">
 
             <div className="flex">
 
-              <TabButton
+              <MethodTab
                 id="type"
-                label="Type"
+                title="Type"
                 icon={
                   <TypeIcon />
                 }
               />
 
 
-              <TabButton
+              <MethodTab
                 id="draw"
-                label="Draw"
+                title="Draw"
                 icon={
                   <DrawIcon />
                 }
               />
 
 
-              <TabButton
+              <MethodTab
                 id="upload"
-                label="Upload"
+                title="Upload"
                 icon={
                   <UploadIcon className="w-4 h-4" />
                 }
@@ -1670,14 +1748,14 @@ const SignatureModal = ({
 
 
           {/* ==================================================
-              CONTENT
+              SCROLLABLE CONTENT
           ================================================== */}
 
           <div className="min-h-0 flex-1 overflow-y-auto px-7 py-6 lg:px-8">
 
 
             {/* =================================================
-                TYPE
+                TYPE SIGNATURE
             ================================================= */}
 
             {activeTab ===
@@ -1686,9 +1764,9 @@ const SignatureModal = ({
               <div>
 
 
-                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white px-5 py-8 shadow-sm">
+                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-b from-[#fbfcfe] to-white p-7 shadow-[inset_0_1px_2px_rgba(15,23,42,0.03)]">
 
-                  <div className="absolute left-8 right-8 top-[68%] border-b border-blue-200" />
+                  <div className="pointer-events-none absolute bottom-[41px] left-9 right-9 border-b border-blue-200" />
 
 
                   <input
@@ -1717,34 +1795,34 @@ const SignatureModal = ({
                     placeholder="Your full name"
 
                     className={
-                      `relative z-10 w-full bg-transparent text-center text-[44px] leading-tight text-slate-900 outline-none placeholder:text-slate-300 ${selectedFont}`
+                      `relative z-10 w-full bg-transparent py-3 text-center text-[46px] leading-none text-slate-900 outline-none placeholder:text-slate-300 ${selectedFont}`
                     }
                   />
 
 
-                  <div className="mt-5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Signature Preview
+                  <div className="mt-6 text-center text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                    Signature preview
                   </div>
 
                 </div>
 
 
+                {/* =============================================
+                    STYLE SELECTOR
+                ============================================= */}
+
                 <div className="mt-7">
 
-                  <div className="mb-3 flex items-center justify-between">
+                  <div className="mb-3">
 
-                    <div>
-
-                      <div className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-                        Signature Style
-                      </div>
+                    <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-600">
+                      Choose a signature style
+                    </h3>
 
 
-                      <div className="mt-1 text-xs text-slate-400">
-                        Select the style you want to adopt.
-                      </div>
-
-                    </div>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Select the representation that will appear on the signed agreement.
+                    </p>
 
                   </div>
 
@@ -1785,17 +1863,17 @@ const SignatureModal = ({
                             }}
 
                             className={
-                              `relative min-h-[82px] overflow-hidden rounded-xl border px-3 py-3 text-center transition-all ${
+                              `group relative min-h-[92px] overflow-hidden rounded-xl border px-4 py-4 transition-all ${
                                 selected
-                                  ? "border-blue-500 bg-blue-50/50 shadow-sm ring-1 ring-blue-500"
-                                  : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                                  ? "border-blue-500 bg-blue-50/60 shadow-[0_4px_14px_rgba(37,99,235,0.08)] ring-1 ring-blue-500"
+                                  : "border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50"
                               }`
                             }
                           >
 
                             {selected && (
 
-                              <div className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white">
+                              <div className="absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
 
                                 <CheckIcon className="w-3 h-3" />
 
@@ -1806,20 +1884,26 @@ const SignatureModal = ({
 
                             <div
                               className={
-                                `truncate text-[24px] text-slate-800 ${font.className}`
+                                `truncate pr-4 text-center text-[24px] text-slate-800 ${font.className}`
                               }
                             >
-
                               {
                                 typedSignature ||
                                 signerInfo?.name ||
                                 "Signature"
                               }
-
                             </div>
 
 
-                            <div className="mt-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                            <div
+                              className={
+                                `mt-3 text-center text-[9px] font-bold uppercase tracking-[0.15em] ${
+                                  selected
+                                    ? "text-blue-500"
+                                    : "text-slate-400"
+                                }`
+                              }
+                            >
                               {font.label}
                             </div>
 
@@ -1839,7 +1923,7 @@ const SignatureModal = ({
 
 
             {/* =================================================
-                DRAW
+                DRAW SIGNATURE
             ================================================= */}
 
             {activeTab ===
@@ -1847,17 +1931,18 @@ const SignatureModal = ({
 
               <div>
 
-                <div className="mb-3 flex items-start justify-between">
+
+                <div className="mb-3 flex items-center justify-between gap-4">
 
                   <div>
 
-                    <div className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-                      Draw Signature
-                    </div>
+                    <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-600">
+                      Draw your signature
+                    </h3>
 
 
                     <p className="mt-1 text-xs text-slate-400">
-                      Use your mouse, trackpad, or touchscreen.
+                      Use your mouse, trackpad, stylus, or touchscreen.
                     </p>
 
                   </div>
@@ -1870,19 +1955,29 @@ const SignatureModal = ({
                       loading
                     }
 
-                    onClick={
-                      clearCanvas
-                    }
+                    onClick={() => {
+                      signaturePad
+                        .current
+                        ?.clear();
 
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                      setError(
+                        ""
+                      );
+                    }}
+
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                   >
+
+                    <TrashIcon />
+
                     Clear
+
                   </button>
 
                 </div>
 
 
-                <div className="relative h-[270px] overflow-hidden rounded-2xl border border-slate-200 bg-[#fbfcfd] shadow-inner">
+                <div className="relative h-[300px] overflow-hidden rounded-2xl border border-slate-200 bg-[#fbfcfd] shadow-inner">
 
                   <div
                     className="pointer-events-none absolute inset-0 opacity-40"
@@ -1891,15 +1986,15 @@ const SignatureModal = ({
                         "radial-gradient(#cbd5e1 1px, transparent 1px)",
 
                       backgroundSize:
-                        "20px 20px",
+                        "22px 22px",
                     }}
                   />
 
 
-                  <div className="pointer-events-none absolute bottom-14 left-8 right-8 border-b border-blue-200" />
+                  <div className="pointer-events-none absolute bottom-16 left-10 right-10 border-b border-blue-200" />
 
 
-                  <div className="pointer-events-none absolute bottom-8 left-8 text-[9px] font-bold uppercase tracking-wider text-slate-300">
+                  <div className="pointer-events-none absolute bottom-9 left-10 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-300">
                     Sign above the line
                   </div>
 
@@ -1910,6 +2005,14 @@ const SignatureModal = ({
                     }
 
                     penColor="#0f172a"
+
+                    minWidth={
+                      1.2
+                    }
+
+                    maxWidth={
+                      2.4
+                    }
 
                     canvasProps={{
                       className:
@@ -1925,7 +2028,7 @@ const SignatureModal = ({
 
 
             {/* =================================================
-                UPLOAD
+                UPLOAD SIGNATURE
             ================================================= */}
 
             {activeTab ===
@@ -1933,15 +2036,16 @@ const SignatureModal = ({
 
               <div>
 
+
                 <div className="mb-3">
 
-                  <div className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-                    Upload Signature
-                  </div>
+                  <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-600">
+                    Upload your signature
+                  </h3>
 
 
                   <p className="mt-1 text-xs text-slate-400">
-                    Upload a clean PNG or JPG of your signature.
+                    Use a clean signature image with a white or transparent background.
                   </p>
 
                 </div>
@@ -1954,9 +2058,9 @@ const SignatureModal = ({
 
                   type="file"
 
-                  className="hidden"
-
                   accept="image/png,image/jpeg"
+
+                  className="hidden"
 
                   onChange={
                     handleFileChange
@@ -1966,11 +2070,23 @@ const SignatureModal = ({
 
                 {!uploadedSignature ? (
 
-                  <button
-                    type="button"
+                  <div
+                    role="button"
 
-                    disabled={
-                      loading
+                    tabIndex={
+                      0
+                    }
+
+                    onDragOver={
+                      handleDragOver
+                    }
+
+                    onDragLeave={
+                      handleDragLeave
+                    }
+
+                    onDrop={
+                      handleDrop
                     }
 
                     onClick={() =>
@@ -1979,52 +2095,85 @@ const SignatureModal = ({
                         ?.click()
                     }
 
-                    className="group flex h-[270px] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/70 px-6 text-center transition hover:border-blue-400 hover:bg-blue-50/50"
+                    onKeyDown={(
+                      event
+                    ) => {
+                      if (
+                        event.key ===
+                          "Enter" ||
+                        event.key ===
+                          " "
+                      ) {
+                        fileInputRef
+                          .current
+                          ?.click();
+                      }
+                    }}
+
+                    className={
+                      `group flex h-[300px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-8 text-center transition-all ${
+                        dragActive
+                          ? "border-blue-500 bg-blue-50 ring-4 ring-blue-50"
+                          : "border-slate-300 bg-slate-50/70 hover:border-blue-400 hover:bg-blue-50/50"
+                      }`
+                    }
                   >
 
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-blue-600 shadow-sm ring-1 ring-slate-200 transition group-hover:scale-105">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-blue-600 shadow-sm ring-1 ring-slate-200 transition-transform group-hover:-translate-y-0.5">
 
-                      <UploadIcon className="w-6 h-6" />
+                      <UploadIcon className="w-7 h-7" />
 
                     </div>
 
 
-                    <div className="mt-4 text-sm font-bold text-slate-800">
-                      Upload your signature
+                    <div className="mt-5 text-sm font-bold text-slate-800">
+                      Drag & drop your signature here
                     </div>
 
 
-                    <div className="mt-1 text-xs text-slate-500">
-                      PNG or JPG • Maximum 5 MB
+                    <div className="mt-1.5 text-xs text-slate-500">
+                      or click to browse your computer
                     </div>
 
 
-                    <div className="mt-4 rounded-lg bg-white px-4 py-2 text-xs font-semibold text-blue-600 shadow-sm ring-1 ring-slate-200">
-                      Browse files
+                    <div className="mt-4 rounded-full bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 ring-1 ring-slate-200">
+                      PNG / JPG • Max 5 MB
                     </div>
 
-                  </button>
+                  </div>
 
                 ) : (
 
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
 
-                    <div className="flex min-h-[190px] items-center justify-center rounded-xl border border-slate-200 bg-white p-6 shadow-inner">
+                    <div className="relative flex min-h-[210px] items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white p-8 shadow-inner">
+
+                      <div
+                        className="absolute inset-0 opacity-[0.025]"
+                        style={{
+                          backgroundImage:
+                            "linear-gradient(45deg,#000 25%,transparent 25%),linear-gradient(-45deg,#000 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#000 75%),linear-gradient(-45deg,transparent 75%,#000 75%)",
+
+                          backgroundSize:
+                            "20px 20px",
+                        }}
+                      />
+
 
                       <img
                         src={
                           uploadedSignature
                         }
 
-                        alt="Uploaded signature preview"
+                        alt="Uploaded signature"
 
-                        className="max-h-[140px] max-w-full object-contain"
+                        className="relative max-h-[150px] max-w-full object-contain"
                       />
 
                     </div>
 
 
-                    <div className="mt-4 flex items-center justify-between gap-3">
+                    <div className="mt-4 flex items-center justify-between gap-4">
 
                       <div className="min-w-0">
 
@@ -2035,8 +2184,12 @@ const SignatureModal = ({
                         </div>
 
 
-                        <div className="mt-0.5 text-xs text-slate-400">
+                        <div className="mt-0.5 flex items-center gap-1 text-xs font-medium text-emerald-600">
+
+                          <CheckIcon className="w-3 h-3" />
+
                           Ready to use
+
                         </div>
 
                       </div>
@@ -2045,17 +2198,17 @@ const SignatureModal = ({
                       <button
                         type="button"
 
-                        disabled={
-                          loading
-                        }
-
                         onClick={() =>
                           fileInputRef
                             .current
                             ?.click()
                         }
 
-                        className="flex-shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-blue-600 shadow-sm hover:bg-blue-50"
+                        disabled={
+                          loading
+                        }
+
+                        className="flex-shrink-0 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-blue-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50"
                       >
                         Replace
                       </button>
@@ -2072,101 +2225,106 @@ const SignatureModal = ({
 
 
             {/* =================================================
-                INTERNAL VERIFICATION
+                INTERNAL PASSWORD
             ================================================= */}
 
             {requiresPassword && (
 
-              <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mt-7 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white">
 
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 border-b border-slate-200 px-4 py-3.5">
 
                   <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm ring-1 ring-slate-200">
 
-                    <LockIcon className="w-4 h-4" />
+                    <LockIcon />
 
                   </div>
 
 
-                  <div className="min-w-0 flex-1">
+                  <div>
 
-                    <label className="block text-xs font-bold uppercase tracking-[0.12em] text-slate-600">
-                      Internal Verification
-                    </label>
+                    <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-600">
+                      Identity verification
+                    </h3>
 
 
                     <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Confirm your identity using your VMS account password.
+                      Re-enter your VMS account password to authorize your signature.
                     </p>
 
+                  </div>
 
-                    <div className="relative mt-3">
-
-                      <input
-                        type={
-                          showPassword
-                            ? "text"
-                            : "password"
-                        }
-
-                        value={
-                          password
-                        }
-
-                        disabled={
-                          loading
-                        }
-
-                        onChange={(
-                          event
-                        ) => {
-                          setPassword(
-                            event.target.value
-                          );
-
-                          setError(
-                            ""
-                          );
-                        }}
-
-                        autoComplete="current-password"
-
-                        placeholder="Enter your VMS password"
-
-                        className="block w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-3 pr-11 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      />
+                </div>
 
 
-                      <button
-                        type="button"
+                <div className="p-4">
 
-                        onClick={() =>
-                          setShowPassword(
-                            (
-                              value
-                            ) =>
-                              !value
-                          )
-                        }
+                  <div className="relative">
 
-                        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 hover:text-slate-700"
+                    <input
+                      type={
+                        showPassword
+                          ? "text"
+                          : "password"
+                      }
 
-                        aria-label={
-                          showPassword
-                            ? "Hide password"
-                            : "Show password"
-                        }
-                      >
+                      value={
+                        password
+                      }
 
-                        {showPassword ? (
-                          <EyeOffIcon />
-                        ) : (
-                          <EyeIcon />
-                        )}
+                      disabled={
+                        loading
+                      }
 
-                      </button>
+                      onChange={(
+                        event
+                      ) => {
+                        setPassword(
+                          event.target
+                            .value
+                        );
 
-                    </div>
+                        setError(
+                          ""
+                        );
+                      }}
+
+                      autoComplete="current-password"
+
+                      placeholder="Enter your VMS password"
+
+                      className="block w-full rounded-xl border border-slate-300 bg-white px-4 py-3 pr-12 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
+                    />
+
+
+                    <button
+                      type="button"
+
+                      onClick={() =>
+                        setShowPassword(
+                          (
+                            current
+                          ) =>
+                            !current
+                        )
+                      }
+
+                      className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-400 transition hover:text-slate-700"
+
+                      aria-label={
+                        showPassword
+                          ? "Hide password"
+                          : "Show password"
+                      }
+                    >
+
+                      {showPassword ? (
+                        <EyeOffIcon />
+                      ) : (
+                        <EyeIcon />
+                      )}
+
+                    </button>
 
                   </div>
 
@@ -2178,63 +2336,71 @@ const SignatureModal = ({
 
 
             {/* =================================================
-                CONSENT
+                LEGAL CONSENT
             ================================================= */}
 
-            <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:bg-slate-50">
+            <label className="mt-6 flex cursor-pointer items-start gap-3.5 rounded-2xl border border-slate-200 bg-white p-4.5 transition hover:border-slate-300 hover:bg-slate-50">
 
-              <input
-                type="checkbox"
+              <div className="pt-0.5">
 
-                checked={
-                  consentAccepted
-                }
+                <input
+                  type="checkbox"
 
-                disabled={
-                  loading
-                }
+                  checked={
+                    consentAccepted
+                  }
 
-                onChange={(
-                  event
-                ) => {
-                  setConsentAccepted(
-                    event.target.checked
-                  );
+                  disabled={
+                    loading
+                  }
 
-                  setError(
-                    ""
-                  );
-                }}
+                  onChange={(
+                    event
+                  ) => {
+                    setConsentAccepted(
+                      event.target
+                        .checked
+                    );
 
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
+                    setError(
+                      ""
+                    );
+                  }}
+
+                  className="h-4.5 w-4.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+
+              </div>
 
 
               <div>
 
-                <div className="text-sm font-semibold text-slate-700">
-                  I agree to use this electronic signature
+                <div className="text-sm font-bold text-slate-700">
+                  Electronic signature consent
                 </div>
 
 
-                <div className="mt-1 text-xs leading-5 text-slate-500">
-                  By selecting Confirm & Sign, I intend to electronically sign this document using the signature shown above.
-                </div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  I confirm that I am the person identified above and intend my selected signature to serve as my electronic signature on this agreement.
+                </p>
 
               </div>
 
             </label>
 
 
-            {/* Hidden typed signature renderer */}
+            {/* =================================================
+                HIDDEN TYPE CANVAS
+            ================================================= */}
+
             <canvas
               ref={
                 typeCanvasRef
               }
 
-              width="520"
+              width="600"
 
-              height="120"
+              height="140"
 
               className="hidden"
             />
@@ -2243,16 +2409,28 @@ const SignatureModal = ({
 
 
           {/* ==================================================
-              ACTION FOOTER
+              FIXED FOOTER
           ================================================== */}
 
-          <div className="flex-shrink-0 border-t border-slate-200 bg-white px-7 py-5 shadow-[0_-8px_24px_rgba(15,23,42,0.03)] lg:px-8">
+          <div className="flex-shrink-0 border-t border-slate-200 bg-white px-7 py-5 shadow-[0_-12px_28px_rgba(15,23,42,0.035)] lg:px-8">
 
-            <div className="mb-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            <div className="mb-4 flex items-center justify-between">
 
-              <ShieldIcon className="w-3.5 h-3.5 text-emerald-500" />
+              <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">
 
-              Secure electronic signing session
+                <ShieldIcon className="w-3.5 h-3.5 text-emerald-500" />
+
+                Secure electronic signature
+
+              </div>
+
+
+              <div className="text-[10px] text-slate-400">
+                {
+                  signerInfo?.name ||
+                  "Authorized Signer"
+                }
+              </div>
 
             </div>
 
@@ -2270,7 +2448,7 @@ const SignatureModal = ({
                   onClose?.()
                 }
 
-                className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -2287,7 +2465,7 @@ const SignatureModal = ({
                   handleSave
                 }
 
-                className="flex min-w-[170px] items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-400"
+                className="group flex min-w-[190px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 text-sm font-bold text-white shadow-[0_6px_18px_rgba(37,99,235,0.24)] transition hover:-translate-y-[1px] hover:from-blue-700 hover:to-blue-800 hover:shadow-[0_8px_22px_rgba(37,99,235,0.3)] focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:translate-y-0 disabled:cursor-not-allowed disabled:from-blue-400 disabled:to-blue-400 disabled:shadow-none"
               >
 
                 {loading ? (
@@ -2296,7 +2474,7 @@ const SignatureModal = ({
                     <Spinner size="4" />
 
                     <span>
-                      Signing...
+                      Applying signature...
                     </span>
                   </>
 
