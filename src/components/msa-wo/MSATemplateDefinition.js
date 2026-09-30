@@ -3,8 +3,100 @@
 export const TEMPLATE_STORAGE_KEY =
   "vms2_msa_wo_wysiwyg_templates_v1";
 
+
+/* ============================================================
+   LOGO
+
+   Vite copies everything inside /public directly to the root
+   of the deployed Static Web App.
+
+   Physical source:
+       public/logo.png
+
+   Browser URL:
+       /logo.png
+============================================================ */
+
 export const DEFAULT_LOGO_URL =
-  "https://vmsdashboardea.blob.core.windows.net/images/Company_logo.png?sp=r&st=2026-03-17T13:15:01Z&se=2027-12-30T21:30:01Z&sv=2024-11-04&sr=b&sig=dAq1%2Bxrcn0KMYfrH%2F9OtOfQUZNqrxdZvGwoNFZfcyFY%3D";
+  "/logo.png";
+
+
+const LEGACY_TAPROOT_LOGO_PREFIX =
+  "https://vmsdashboardea.blob.core.windows.net/images/Company_logo.png";
+
+
+const LOCAL_LOGO_ALIASES =
+  new Set([
+    "/logo.png",
+    "logo.png",
+    "./logo.png",
+    "public/logo.png",
+    "/public/logo.png",
+    "./public/logo.png",
+  ]);
+
+
+/**
+ * Normalizes logo URLs saved by old template versions.
+ *
+ * This is important because ACTIVE templates stored in
+ * localStorage can still contain the previous Azure Blob SAS
+ * URL even after DEFAULT_LOGO_URL changes.
+ *
+ * Behavior:
+ *
+ * old Taproot Azure Blob logo
+ *         ↓
+ * /logo.png
+ *
+ * incorrectly stored public/logo.png
+ *         ↓
+ * /logo.png
+ *
+ * future intentional custom URL
+ *         ↓
+ * preserved
+ */
+export const normalizeTemplateLogoUrl =
+  (
+    value
+  ) => {
+    const normalized =
+      String(
+        value ||
+        ""
+      )
+        .trim();
+
+
+    if (
+      !normalized
+    ) {
+      return DEFAULT_LOGO_URL;
+    }
+
+
+    if (
+      LOCAL_LOGO_ALIASES.has(
+        normalized
+      )
+    ) {
+      return DEFAULT_LOGO_URL;
+    }
+
+
+    if (
+      normalized.startsWith(
+        LEGACY_TAPROOT_LOGO_PREFIX
+      )
+    ) {
+      return DEFAULT_LOGO_URL;
+    }
+
+
+    return normalized;
+  };
+
 
 export const DEFAULT_FOOTER_TEXT =
   "317 Ranch Road 620 South, Suite 302F | Austin, TX 78734 | (408) 216-7968 |info@taproot-solutions.com";
@@ -15,18 +107,32 @@ export const DEFAULT_STYLE_CONFIG = {
   marginLeft: 25.4,
   marginRight: 25.4,
 
-  fontFamily: '"Times New Roman", Times, serif',
-  fontSize: 10.5,
-  lineHeight: 1.06,
+  fontFamily:
+    '"Times New Roman", Times, serif',
 
-  titleSize: 14.5,
-  sectionTitleSize: 10.5,
+  fontSize:
+    10.5,
 
-  footerFontSize: 8.25,
-  footerRuleColor: "#6f2a2a",
-  footerRuleWidth: 1.2,
+  lineHeight:
+    1.06,
 
-  logoWidth: 86,
+  titleSize:
+    14.5,
+
+  sectionTitleSize:
+    10.5,
+
+  footerFontSize:
+    8.25,
+
+  footerRuleColor:
+    "#6f2a2a",
+
+  footerRuleWidth:
+    1.2,
+
+  logoWidth:
+    86,
 };
 
 export const DEFAULT_DOCUMENT_DATA = {
@@ -1248,13 +1354,18 @@ export const createDefaultTemplate =
     templateName:
       "Taproot MSA + WO",
 
-    version: 1,
+    version:
+      1,
 
-    status: "DRAFT",
+    status:
+      "DRAFT",
 
     packageMode:
       "MSA_WO",
 
+    /*
+     * Always starts with the local public asset.
+     */
     logoUrl:
       DEFAULT_LOGO_URL,
 
@@ -1275,9 +1386,14 @@ export const createDefaultTemplate =
         new Date().toLocaleDateString(
           "en-US",
           {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
+            year:
+              "numeric",
+
+            month:
+              "long",
+
+            day:
+              "numeric",
           }
         ),
     },
@@ -1286,10 +1402,12 @@ export const createDefaultTemplate =
       createInitialPages(),
 
     createdAt:
-      new Date().toISOString(),
+      new Date()
+        .toISOString(),
 
     updatedAt:
-      new Date().toISOString(),
+      new Date()
+        .toISOString(),
   });
 
 export const deepCloneTemplate = (
