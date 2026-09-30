@@ -26,6 +26,15 @@ import {
   TEMPLATE_STORAGE_KEY,
 } from "../components/msa-wo/MSATemplateDefinition";
 
+import {
+  prepareSignaturePlacementFields,
+} from "../components/msa-wo/signatureFieldDecorator";
+
+import {
+  buildSignaturePlacementManifest,
+  validateSignaturePlacementManifest,
+} from "../components/msa-wo/signaturePlacement";
+
 
 /* ============================================================
    CONSTANTS
@@ -1017,7 +1026,7 @@ const CreateMSAandWOPage = ({
 
 
   /* ==========================================================
-     GENERATE EXACT 7-PAGE PDF
+     GENERATE EXACT 7-PAGE PDF + SIGNATURE FIELD MANIFEST
   ========================================================== */
 
   const generatePDFBase64 =
@@ -1070,7 +1079,7 @@ const CreateMSAandWOPage = ({
 
 
       /* ------------------------------------------------------
-         LET REACT/CSS FINISH LAYOUT
+         LET REACT/CSS FINISH INITIAL LAYOUT
       ------------------------------------------------------ */
 
       await new Promise(
@@ -1111,6 +1120,121 @@ const CreateMSAandWOPage = ({
           `The MSA + WO template currently contains ${pageElements.length} physical pages. Expected exactly ${EXPECTED_MSA_WO_PAGE_COUNT}.`
         );
       }
+
+
+      /* ------------------------------------------------------
+         INJECT ADAPTIVE E-SIGNATURE FIELDS
+
+         IMPORTANT:
+
+         This modifies ONLY the off-screen export DOM.
+
+         It does NOT modify:
+         - the saved ACTIVE template
+         - localStorage template versions
+         - the WYSIWYG editor
+         - legal wording
+         - the user's visible form
+      ------------------------------------------------------ */
+
+      prepareSignaturePlacementFields(
+        rootElement
+      );
+
+
+      /*
+       * The decorator adds internal grid zones to the existing
+       * Page 6 / Page 7 reserved signature areas.
+       *
+       * Give CSS two rendering frames before measuring them.
+       */
+      await new Promise(
+        (resolve) => {
+          requestAnimationFrame(
+            () => {
+              requestAnimationFrame(
+                resolve
+              );
+            }
+          );
+        }
+      );
+
+
+      /* ------------------------------------------------------
+         BUILD IMMUTABLE SIGNATURE MANIFEST
+
+         Coordinates are normalized against the actual rendered
+         A4 page:
+
+         0.0 -> left/top
+         1.0 -> right/bottom
+
+         The same manifest is stored with the initial PDF and
+         later used by Python when final signatures are placed.
+      ------------------------------------------------------ */
+
+      const signaturePlacementManifest =
+        buildSignaturePlacementManifest(
+          rootElement,
+          {
+            expectedPageCount:
+              EXPECTED_MSA_WO_PAGE_COUNT,
+
+            templateId:
+              renderedTemplate
+                ?.templateId ||
+              "TPL-MSA-WO-TAPROOT",
+
+            templateVersion:
+              Number(
+                renderedTemplate
+                  ?.version ||
+                1
+              ),
+
+            documentType:
+              "MSA_WO",
+          }
+        );
+
+
+      validateSignaturePlacementManifest(
+        signaturePlacementManifest,
+        EXPECTED_MSA_WO_PAGE_COUNT
+      );
+
+
+      console.log(
+        "[MSA/WO] Signature field manifest prepared:",
+        {
+          pageCount:
+            signaturePlacementManifest
+              .pageCount,
+
+          fieldCount:
+            Object.keys(
+              signaturePlacementManifest
+                .fields ||
+              {}
+            ).length,
+
+          guardCount:
+            Object.keys(
+              signaturePlacementManifest
+                .guards ||
+              {}
+            ).length,
+
+          templateId:
+            signaturePlacementManifest
+              .templateId,
+
+          templateVersion:
+            signaturePlacementManifest
+              .templateVersion,
+        }
+      );
 
 
       /* ------------------------------------------------------
@@ -1324,6 +1448,48 @@ const CreateMSAandWOPage = ({
                       "none";
                   }
                 );
+
+
+                /*
+                 * Signature fields are measurement anchors,
+                 * not visible PDF annotations.
+                 */
+                const signatureFields =
+                  clonedDocument
+                    .querySelectorAll(
+                      "[data-signature-field]"
+                    );
+
+                signatureFields.forEach(
+                  (
+                    field
+                  ) => {
+                    field.style.outline =
+                      "none";
+
+                    field.style.background =
+                      "transparent";
+
+                    field.style.boxShadow =
+                      "none";
+                  }
+                );
+
+
+                const signatureGuards =
+                  clonedDocument
+                    .querySelectorAll(
+                      "[data-signature-guard]"
+                    );
+
+                signatureGuards.forEach(
+                  (
+                    guard
+                  ) => {
+                    guard.style.outline =
+                      "none";
+                  }
+                );
               },
             }
           );
@@ -1455,11 +1621,22 @@ const CreateMSAandWOPage = ({
 
           characters:
             pdfBase64.length,
+
+          signatureFields:
+            Object.keys(
+              signaturePlacementManifest
+                .fields ||
+              {}
+            ).length,
         }
       );
 
 
-      return pdfBase64;
+      return {
+        pdfBase64,
+
+        signaturePlacementManifest,
+      };
     };
 
 
@@ -1549,7 +1726,8 @@ const CreateMSAandWOPage = ({
       try {
         /* ----------------------------------------------------
            STEP 1
-           Generate exact seven-page document.
+           Generate exact seven-page document and immutable
+           signature placement manifest.
         ---------------------------------------------------- */
 
         setGenerationStage(
@@ -1557,7 +1735,10 @@ const CreateMSAandWOPage = ({
         );
 
 
-        const pdfBase64 =
+        const {
+          pdfBase64,
+          signaturePlacementManifest,
+        } =
           await generatePDFBase64();
 
 
@@ -1607,6 +1788,13 @@ const CreateMSAandWOPage = ({
 
 
           /*
+           * Immutable normalized geometry of the exact
+           * signature fields used by this PDF.
+           */
+          signaturePlacementManifest,
+
+
+          /*
            * Browser generated PDF.
            */
           pdfBase64,
@@ -1647,6 +1835,13 @@ const CreateMSAandWOPage = ({
             documentType:
               payload
                 .documentType,
+
+            signatureFieldCount:
+              Object.keys(
+                signaturePlacementManifest
+                  ?.fields ||
+                {}
+              ).length,
 
             pdfCharacters:
               pdfBase64

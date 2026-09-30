@@ -2021,3 +2021,269 @@
   background-clip:
     padding-box;
 }
+
+/* ============================================================
+   VMS 2.0 — ADAPTIVE E-SIGNATURE ENGINE
+   ============================================================
+
+   Export-only electronic-signature geometry.
+
+   Existing editor, document, print and page-layout rules above
+   remain untouched.
+============================================================ */
+
+
+/* ============================================================
+   MSA SIGNATURE AREA
+============================================================ */
+
+.signature-space.signature-capture-space {
+  height: 16mm;
+
+  min-height: 16mm;
+
+  max-height: 16mm;
+
+  display: grid;
+
+  grid-template-rows:
+    minmax(0, 11.4mm)
+    minmax(0, 4.6mm);
+
+  align-items: stretch;
+
+  position: relative;
+
+  overflow: hidden;
+
+  margin-bottom: 1.5mm;
+}
+
+
+.signature-image-zone {
+  width:
+    calc(
+      100% - 4mm
+    );
+
+  height: 100%;
+
+  min-width: 0;
+
+  min-height: 0;
+
+  margin:
+    0
+    2mm;
+
+  position: relative;
+
+  overflow: hidden;
+
+  pointer-events: none;
+
+  background: transparent;
+}
+
+
+.signature-audit-zone {
+  width:
+    calc(
+      100% - 4mm
+    );
+
+  height: 100%;
+
+  min-width: 0;
+
+  min-height: 0;
+
+  margin:
+    0
+    2mm;
+
+  position: relative;
+
+  overflow: hidden;
+
+  pointer-events: none;
+
+  background: transparent;
+}
+
+
+/* ============================================================
+   WORK ORDER SIGNATURE AREA
+============================================================ */
+
+.wo-signature-cell.wo-signature-capture-space {
+  height: 28mm;
+
+  min-height: 28mm;
+
+  max-height: 28mm;
+
+  display: grid;
+
+  grid-template-rows:
+    4mm
+    minmax(0, 17mm)
+    minmax(0, 7mm);
+
+  position: relative;
+
+  overflow: hidden;
+}
+
+
+.wo-signature-label {
+  min-height: 0;
+
+  display: flex;
+
+  align-items: flex-start;
+
+  overflow: hidden;
+
+  font: inherit;
+
+  color: inherit;
+}
+
+
+.wo-signature-image-zone {
+  width:
+    calc(
+      100% - 4mm
+    );
+
+  height: 100%;
+
+  min-width: 0;
+
+  min-height: 0;
+
+  margin:
+    0
+    2mm;
+
+  position: relative;
+
+  overflow: hidden;
+
+  pointer-events: none;
+
+  background: transparent;
+}
+
+
+.wo-signature-audit-zone {
+  width:
+    calc(
+      100% - 3mm
+    );
+
+  height: 100%;
+
+  min-width: 0;
+
+  min-height: 0;
+
+  margin:
+    0
+    1.5mm;
+
+  position: relative;
+
+  overflow: hidden;
+
+  pointer-events: none;
+
+  background: transparent;
+}
+
+
+/* ============================================================
+   NEVER DISPLAY TECHNICAL FIELD BORDERS IN FINAL PDF
+============================================================ */
+
+.pdf-export-root
+[data-signature-field],
+.document-preview-mode
+[data-signature-field] {
+  outline:
+    none !important;
+
+  border-color:
+    transparent;
+
+  box-shadow:
+    none !important;
+
+  background:
+    transparent !important;
+}
+
+
+/* ============================================================
+   OPTIONAL DEBUG MODE
+
+   Add class:
+   signature-placement-debug
+
+   to .pdf-export-root temporarily when debugging.
+============================================================ */
+
+.signature-placement-debug
+[data-signature-field] {
+  outline:
+    1px dashed
+    rgba(
+      37,
+      99,
+      235,
+      0.65
+    )
+    !important;
+
+  background:
+    rgba(
+      37,
+      99,
+      235,
+      0.04
+    )
+    !important;
+}
+
+
+.signature-placement-debug
+[data-signature-guard] {
+  outline:
+    1px dashed
+    rgba(
+      220,
+      38,
+      38,
+      0.45
+    )
+    !important;
+}
+
+
+/* ============================================================
+   PRINT
+============================================================ */
+
+@media print {
+
+  [data-signature-field],
+  [data-signature-guard] {
+    outline:
+      none !important;
+
+    box-shadow:
+      none !important;
+  }
+
+}
