@@ -3,36 +3,64 @@
 import axios from "axios";
 
 
-const API_BASE_URL =
-  "/api";
+/* ============================================================
+   CONFIGURATION
+============================================================ */
+
+const API_BASE_URL = "/api";
+
+const DEFAULT_API_TIMEOUT = 120000;
 
 
 /* ============================================================
    AXIOS CLIENT
 ============================================================ */
 
-const apiClient =
-  axios.create({
-    baseURL:
-      API_BASE_URL,
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
 
-    /*
-     * Prevent requests such as SMTP/Blob-backed document
-     * creation from remaining pending forever in the UI.
-     */
-    timeout:
-      120000,
+  timeout: DEFAULT_API_TIMEOUT,
 
-    headers: {
-      "Content-Type":
-        "application/json",
-    },
-  });
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+
+/* ============================================================
+   HELPERS
+============================================================ */
+
+const normalizeContinuationToken = (
+  continuationToken
+) => {
+  if (!continuationToken) {
+    return null;
+  }
+
+  if (
+    typeof continuationToken ===
+    "object"
+  ) {
+    return JSON.stringify(
+      continuationToken
+    );
+  }
+
+  return continuationToken;
+};
 
 
 /* ============================================================
    REQUEST INTERCEPTOR
-   Inject authenticated VMS context into every request.
+
+   Inject authenticated VMS security context into every request.
+
+   Backend verify_access() expects:
+
+   x-user-email
+   x-user-role
+   x-user-permissions
 ============================================================ */
 
 apiClient.interceptors.request.use(
@@ -49,12 +77,13 @@ apiClient.interceptors.request.use(
             savedUser
           );
 
-        /*
-         * Headers expected by backend verifyAccess().
-         */
+
+        /* ----------------------------------------------------
+           USER EMAIL
+        ---------------------------------------------------- */
+
         if (
-          userData
-            ?.userIdentifier
+          userData?.userIdentifier
         ) {
           config.headers[
             "x-user-email"
@@ -62,9 +91,13 @@ apiClient.interceptors.request.use(
             userData.userIdentifier;
         }
 
+
+        /* ----------------------------------------------------
+           USER ROLE
+        ---------------------------------------------------- */
+
         if (
-          userData
-            ?.userRole
+          userData?.userRole
         ) {
           config.headers[
             "x-user-role"
@@ -72,9 +105,11 @@ apiClient.interceptors.request.use(
             userData.userRole;
         }
 
-        /*
-         * Only send permissions that are TRUE.
-         */
+
+        /* ----------------------------------------------------
+           ACTIVE PERMISSIONS ONLY
+        ---------------------------------------------------- */
+
         const activePermissions =
           Object.keys(
             userData.permissions ||
@@ -94,10 +129,11 @@ apiClient.interceptors.request.use(
             activePermissions
           );
       }
-    } catch (err) {
+
+    } catch (error) {
       console.error(
-        "Critical: Failed to attach security headers to API request",
-        err
+        "[API] Failed to attach VMS security headers:",
+        error
       );
     }
 
@@ -113,9 +149,6 @@ apiClient.interceptors.request.use(
 
 /* ============================================================
    RESPONSE INTERCEPTOR
-
-   Helpful specifically for document requests where a network,
-   Function, or SMTP timeout can otherwise be difficult to see.
 ============================================================ */
 
 apiClient.interceptors.response.use(
@@ -133,6 +166,43 @@ apiClient.interceptors.response.use(
       );
     }
 
+
+    if (
+      error.response
+        ?.status === 401
+    ) {
+      console.warn(
+        "[API] Unauthorized request:",
+        error.config?.url,
+        error.response?.data
+      );
+    }
+
+
+    if (
+      error.response
+        ?.status === 403
+    ) {
+      console.warn(
+        "[API] Forbidden request:",
+        error.config?.url,
+        error.response?.data
+      );
+    }
+
+
+    if (
+      error.response
+        ?.status >= 500
+    ) {
+      console.error(
+        "[API] Server error:",
+        error.config?.url,
+        error.response?.data
+      );
+    }
+
+
     return Promise.reject(
       error
     );
@@ -146,8 +216,9 @@ apiClient.interceptors.response.use(
 
 export const apiService = {
 
+
   /* ==========================================================
-     USER & AUTH
+     USER & AUTHENTICATION
   ========================================================== */
 
   authenticateUser: (
@@ -207,24 +278,24 @@ export const apiService = {
       );
     }
 
+
     const safeParams = {
       ...(args || {}),
     };
 
-    /*
-     * Azure continuation tokens can be structured objects.
-     * Never allow Axios to serialize them as [object Object].
-     */
+
     if (
-      safeParams.continuationToken &&
-      typeof safeParams.continuationToken ===
-        "object"
+      safeParams
+        .continuationToken
     ) {
-      safeParams.continuationToken =
-        JSON.stringify(
-          safeParams.continuationToken
+      safeParams
+        .continuationToken =
+        normalizeContinuationToken(
+          safeParams
+            .continuationToken
         );
     }
+
 
     return apiClient.get(
       "/getUsers",
@@ -317,8 +388,7 @@ export const apiService = {
     const updates =
       postingIds.map(
         (id) => ({
-          rowKey:
-            id,
+          rowKey: id,
 
           changes: {
             status:
@@ -326,6 +396,7 @@ export const apiService = {
           },
         })
       );
+
 
     return apiClient.post(
       "/updateJobPosting",
@@ -499,7 +570,7 @@ export const apiService = {
 
 
   /* ==========================================================
-     REPORTS / NOTIFICATIONS / COMMUNICATION
+     REPORTS
   ========================================================== */
 
   getHomePageData: (
@@ -567,6 +638,10 @@ export const apiService = {
     ),
 
 
+  /* ==========================================================
+     NOTIFICATIONS
+  ========================================================== */
+
   getNotifications: (
     authenticatedUsername
   ) =>
@@ -592,6 +667,10 @@ export const apiService = {
       }
     ),
 
+
+  /* ==========================================================
+     MESSAGING
+  ========================================================== */
 
   getMessages: (
     user1,
@@ -673,7 +752,7 @@ export const apiService = {
 
 
   /* ==========================================================
-     PERMISSIONS
+     USER PERMISSIONS
   ========================================================== */
 
   getUserPermissionsList: (
@@ -705,7 +784,7 @@ export const apiService = {
 
 
   /* ==========================================================
-     TIMESHEETS / COMPANY
+     TIMESHEET COMPANIES
   ========================================================== */
 
   createCompany: (
@@ -748,6 +827,10 @@ export const apiService = {
       }
     ),
 
+
+  /* ==========================================================
+     TIMESHEET LOG HOURS
+  ========================================================== */
 
   saveEmployeeLogHours: (
     timesheetData,
@@ -816,6 +899,10 @@ export const apiService = {
     ),
 
 
+  /* ==========================================================
+     TIMESHEET EMPLOYEES
+  ========================================================== */
+
   createTimesheetEmployee: (
     employeeData,
     authenticatedUsername
@@ -870,6 +957,10 @@ export const apiService = {
     ),
 
 
+  /* ==========================================================
+     TIMESHEET APPROVAL REQUESTS
+  ========================================================== */
+
   sendTimesheetApprovalRequest: (
     employeeMail,
     employeeName,
@@ -915,7 +1006,7 @@ export const apiService = {
 
 
   /* ==========================================================
-     MSA / WORK ORDER
+     MSA / WORK ORDER - VENDOR COMPANY
   ========================================================== */
 
   createMSAWOVendorCompany: (
@@ -935,28 +1026,31 @@ export const apiService = {
     authenticatedUsername,
     pageSize = 100,
     continuationToken = null
-  ) =>
-    apiClient.get(
+  ) => {
+    const safeToken =
+      normalizeContinuationToken(
+        continuationToken
+      );
+
+
+    return apiClient.get(
       "/getMSAWOVendorCompanies",
       {
         params: {
           authenticatedUsername,
+
           pageSize,
 
-          ...(continuationToken
+          ...(safeToken
             ? {
                 continuationToken:
-                  typeof continuationToken ===
-                  "object"
-                    ? JSON.stringify(
-                        continuationToken
-                      )
-                    : continuationToken,
+                  safeToken,
               }
             : {}),
         },
       }
-    ),
+    );
+  },
 
 
   updateMSAWOVendorCompany: (
@@ -993,20 +1087,10 @@ export const apiService = {
     ),
 
 
-  /*
-   * IMPORTANT:
-   *
-   * Frontend performs seven-page html2pdf generation BEFORE
-   * this call.
-   *
-   * Once here, this request covers:
-   *
-   * PDF validation
-   * Blob upload
-   * Azure Table creation
-   * signing-token creation
-   * initial email
-   */
+  /* ==========================================================
+     MSA / WORK ORDER - CREATE
+  ========================================================== */
+
   createMSAandWO: (
     formData,
     authenticatedUsername
@@ -1020,39 +1104,54 @@ export const apiService = {
       },
 
       {
+        /*
+         * PDF decoding + Blob upload + Table creation +
+         * email can take longer than normal API calls.
+         */
         timeout:
           120000,
       }
     ),
 
 
+  /* ==========================================================
+     MSA / WORK ORDER - DASHBOARD
+  ========================================================== */
+
   getMSAandWODashboardData: (
     authenticatedUsername,
     pageSize = 50,
     continuationToken = null
-  ) =>
-    apiClient.get(
+  ) => {
+    const safeToken =
+      normalizeContinuationToken(
+        continuationToken
+      );
+
+
+    return apiClient.get(
       "/getMSAandWODashboardData",
       {
         params: {
           authenticatedUsername,
+
           pageSize,
 
-          ...(continuationToken
+          ...(safeToken
             ? {
                 continuationToken:
-                  typeof continuationToken ===
-                  "object"
-                    ? JSON.stringify(
-                        continuationToken
-                      )
-                    : continuationToken,
+                  safeToken,
               }
             : {}),
         },
       }
-    ),
+    );
+  },
 
+
+  /* ==========================================================
+     MSA / WORK ORDER - DOCUMENT URL
+  ========================================================== */
 
   getMSADocumentUrl: (
     partitionKey,
@@ -1071,6 +1170,10 @@ export const apiService = {
     ),
 
 
+  /* ==========================================================
+     MSA / WORK ORDER - VENDOR ACCESS
+  ========================================================== */
+
   accessMSAandWO: (
     token,
     tempPassword
@@ -1083,6 +1186,10 @@ export const apiService = {
       }
     ),
 
+
+  /* ==========================================================
+     MSA / WORK ORDER - INTERNAL SIGNING DETAIL
+  ========================================================== */
 
   getMSAandWODetailForSigning: (
     token,
@@ -1099,18 +1206,167 @@ export const apiService = {
     ),
 
 
-  /*
-   * Existing argument order preserved:
-   *
-   * token
-   * signerData
-   * signerType
-   * authenticatedUsername
-   * jobInfo
-   * tempPassword
-   *
-   * Vendor signing MUST now provide tempPassword.
-   */
+  /* ==========================================================
+     MSA / WORK ORDER - VENDOR SIGNING
+
+     Vendor authentication model:
+
+       signing token
+       +
+       temporary password
+       +
+       signature
+
+     Temporary password is verified by backend again during
+     the signing operation.
+  ========================================================== */
+
+  updateVendorSigningStatus: (
+    token,
+    tempPassword,
+    signerData
+  ) => {
+    if (!token) {
+      return Promise.reject(
+        new Error(
+          "Signing token is required."
+        )
+      );
+    }
+
+
+    if (!tempPassword) {
+      return Promise.reject(
+        new Error(
+          "Temporary signing password is required."
+        )
+      );
+    }
+
+
+    if (
+      !signerData ||
+      typeof signerData !==
+        "object"
+    ) {
+      return Promise.reject(
+        new Error(
+          "Vendor signer information is required."
+        )
+      );
+    }
+
+
+    return apiClient.post(
+      "/updateSigningStatus",
+      {
+        token,
+
+        tempPassword,
+
+        signerData,
+
+        signerType:
+          "vendor",
+
+        /*
+         * Vendor is external.
+         * Backend must NOT use this value for authorization.
+         */
+        authenticatedUsername:
+          null,
+
+        jobInfo:
+          null,
+      }
+    );
+  },
+
+
+  /* ==========================================================
+     MSA / WORK ORDER - TAPROOT SIGNING
+
+     Internal signer authentication model:
+
+       authenticated VMS session
+       +
+       canManageMSAWO
+       +
+       VMS password inside signerData.password
+       +
+       signature
+
+     Backend verify_access() gets the authenticated user from
+     request headers.
+
+     Backend service then verifies signerData.password.
+  ========================================================== */
+
+  updateTaprootSigningStatus: (
+    token,
+    signerData,
+    authenticatedUsername = null,
+    jobInfo = null
+  ) => {
+    if (!token) {
+      return Promise.reject(
+        new Error(
+          "Signing token is required."
+        )
+      );
+    }
+
+
+    if (
+      !signerData ||
+      typeof signerData !==
+        "object"
+    ) {
+      return Promise.reject(
+        new Error(
+          "Taproot signer information is required."
+        )
+      );
+    }
+
+
+    return apiClient.post(
+      "/updateSigningStatus",
+      {
+        token,
+
+        tempPassword:
+          null,
+
+        signerData,
+
+        signerType:
+          "taproot",
+
+        authenticatedUsername,
+
+        jobInfo,
+      }
+    );
+  },
+
+
+  /* ==========================================================
+     MSA / WORK ORDER - GENERIC SIGNING
+
+     BACKWARD COMPATIBILITY ONLY.
+
+     New pages should use:
+
+       updateVendorSigningStatus()
+
+     or
+
+       updateTaprootSigningStatus()
+
+     This method remains so older components do not break.
+  ========================================================== */
+
   updateSigningStatus: (
     token,
     signerData,
@@ -1119,49 +1375,55 @@ export const apiService = {
     jobInfo = null,
     tempPassword = null
   ) => {
-    /*
-     * Backward-friendly vendor handling:
-     *
-     * If an older caller supplied the temp password as the
-     * old fifth argument and it is a string, use it.
-     */
-    let resolvedJobInfo =
-      jobInfo;
+    const normalizedSignerType =
+      String(
+        signerType ||
+          ""
+      )
+        .trim()
+        .toLowerCase();
 
-    let resolvedTempPassword =
-      tempPassword;
 
     if (
-      signerType ===
-        "vendor" &&
-      !resolvedTempPassword &&
-      typeof jobInfo ===
-        "string"
+      normalizedSignerType ===
+      "vendor"
     ) {
-      resolvedTempPassword =
-        jobInfo;
-
-      resolvedJobInfo =
-        null;
+      return apiService
+        .updateVendorSigningStatus(
+          token,
+          tempPassword,
+          signerData
+        );
     }
 
-    return apiClient.post(
-      "/updateSigningStatus",
-      {
-        token,
-        signerData,
-        signerType,
-        authenticatedUsername,
 
-        jobInfo:
-          resolvedJobInfo,
+    if (
+      normalizedSignerType ===
+      "taproot"
+    ) {
+      return apiService
+        .updateTaprootSigningStatus(
+          token,
+          signerData,
+          authenticatedUsername,
+          jobInfo
+        );
+    }
 
-        tempPassword:
-          resolvedTempPassword,
-      }
+
+    return Promise.reject(
+      new Error(
+        `Unsupported signer type: ${String(
+          signerType
+        )}`
+      )
     );
   },
 
+
+  /* ==========================================================
+     MSA / WORK ORDER - DETAIL
+  ========================================================== */
 
   getMSAandWODetail: (
     partitionKey,
@@ -1180,6 +1442,10 @@ export const apiService = {
     ),
 
 
+  /* ==========================================================
+     MSA / WORK ORDER - UPDATE
+  ========================================================== */
+
   updateMSAandWO: (
     documentData,
     authenticatedUsername
@@ -1192,6 +1458,10 @@ export const apiService = {
       }
     ),
 
+
+  /* ==========================================================
+     MSA / WORK ORDER - DELETE
+  ========================================================== */
 
   deleteMSAandWO: (
     partitionKey,
@@ -1207,6 +1477,10 @@ export const apiService = {
       }
     ),
 
+
+  /* ==========================================================
+     MSA / WORK ORDER - RESEND
+  ========================================================== */
 
   resendMSAWOEmail: (
     partitionKey,
@@ -1317,7 +1591,7 @@ export const apiService = {
 
 
   /* ==========================================================
-     PUBLIC KEYS
+     PUBLIC KEY MANAGEMENT
   ========================================================== */
 
   savePublicKey: (
@@ -1349,7 +1623,7 @@ export const apiService = {
 
 
   /* ==========================================================
-     ATTENDANCE / LEAVE
+     ATTENDANCE
   ========================================================== */
 
   markAttendance: (
@@ -1377,16 +1651,19 @@ export const apiService = {
       ...(params || {}),
     };
 
+
     if (
-      safeParams.continuationToken &&
-      typeof safeParams.continuationToken ===
-        "object"
+      safeParams
+        .continuationToken
     ) {
-      safeParams.continuationToken =
-        JSON.stringify(
-          safeParams.continuationToken
+      safeParams
+        .continuationToken =
+        normalizeContinuationToken(
+          safeParams
+            .continuationToken
         );
     }
+
 
     return apiClient.get(
       "/getAttendance",
@@ -1397,6 +1674,10 @@ export const apiService = {
     );
   },
 
+
+  /* ==========================================================
+     WEEKEND WORK
+  ========================================================== */
 
   requestWeekendWork: (
     requestData
@@ -1423,16 +1704,19 @@ export const apiService = {
       ...(params || {}),
     };
 
+
     if (
-      safeParams.continuationToken &&
-      typeof safeParams.continuationToken ===
-        "object"
+      safeParams
+        .continuationToken
     ) {
-      safeParams.continuationToken =
-        JSON.stringify(
-          safeParams.continuationToken
+      safeParams
+        .continuationToken =
+        normalizeContinuationToken(
+          safeParams
+            .continuationToken
         );
     }
+
 
     return apiClient.get(
       "/getWeekendWorkRequests",
@@ -1443,6 +1727,10 @@ export const apiService = {
     );
   },
 
+
+  /* ==========================================================
+     HOLIDAYS
+  ========================================================== */
 
   getHolidays: (
     params
@@ -1475,6 +1763,7 @@ export const apiService = {
       );
     }
 
+
     return apiClient.post(
       "/manageHoliday",
       {
@@ -1484,6 +1773,10 @@ export const apiService = {
     );
   },
 
+
+  /* ==========================================================
+     MONTHLY ATTENDANCE REPORT
+  ========================================================== */
 
   calculateMonthlyAttendance: (
     params
@@ -1504,6 +1797,10 @@ export const apiService = {
       payload
     ),
 
+
+  /* ==========================================================
+     LEAVE MANAGEMENT
+  ========================================================== */
 
   requestLeave: (
     leaveData,
@@ -1729,9 +2026,15 @@ export const apiService = {
   ) =>
     apiClient.post(
       "/bulkImportAssets",
+
       formData,
+
       {
         headers: {
+          /*
+           * Do not manually specify multipart/form-data.
+           * Axios/browser must generate the boundary.
+           */
           "x-authenticated-username":
             authenticatedUsername,
         },
@@ -1767,5 +2070,9 @@ export const apiService = {
     ),
 };
 
+
+/* ============================================================
+   EXPORT
+============================================================ */
 
 export default apiService;
