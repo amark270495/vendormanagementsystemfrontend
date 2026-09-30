@@ -1208,76 +1208,44 @@ export const apiService = {
 
   /* ==========================================================
      MSA / WORK ORDER - VENDOR SIGNING
-
-     Vendor authentication model:
-
-       signing token
-       +
-       temporary password
-       +
-       signature
-
-     Temporary password is verified by backend again during
-     the signing operation.
   ========================================================== */
 
   updateVendorSigningStatus: (
     token,
     tempPassword,
-    signerData
+    signerData,
+    ...rest
   ) => {
+    let actualTempPassword = tempPassword;
+    let actualSignerData = signerData;
+
+    // Shifted args fix if caller passes 'vendor' manually
+    if (typeof tempPassword === "string" && tempPassword.toLowerCase() === "vendor") {
+      actualTempPassword = signerData;
+      actualSignerData = rest[0];
+    }
+
     if (!token) {
-      return Promise.reject(
-        new Error(
-          "Signing token is required."
-        )
-      );
+      return Promise.reject(new Error("Signing token is required."));
     }
 
-
-    if (!tempPassword) {
-      return Promise.reject(
-        new Error(
-          "Temporary signing password is required."
-        )
-      );
+    if (!actualTempPassword) {
+      return Promise.reject(new Error("Temporary signing password is required."));
     }
 
-
-    if (
-      !signerData ||
-      typeof signerData !==
-        "object"
-    ) {
-      return Promise.reject(
-        new Error(
-          "Vendor signer information is required."
-        )
-      );
+    if (!actualSignerData || typeof actualSignerData !== "object") {
+      return Promise.reject(new Error("Vendor signer information is required."));
     }
-
 
     return apiClient.post(
       "/updateSigningStatus",
       {
         token,
-
-        tempPassword,
-
-        signerData,
-
-        signerType:
-          "vendor",
-
-        /*
-         * Vendor is external.
-         * Backend must NOT use this value for authorization.
-         */
-        authenticatedUsername:
-          null,
-
-        jobInfo:
-          null,
+        tempPassword: actualTempPassword,
+        signerData: actualSignerData,
+        signerType: "vendor",
+        authenticatedUsername: null,
+        jobInfo: null,
       }
     );
   },
@@ -1285,86 +1253,50 @@ export const apiService = {
 
   /* ==========================================================
      MSA / WORK ORDER - TAPROOT SIGNING
-
-     Internal signer authentication model:
-
-       authenticated VMS session
-       +
-       canManageMSAWO
-       +
-       VMS password inside signerData.password
-       +
-       signature
-
-     Backend verify_access() gets the authenticated user from
-     request headers.
-
-     Backend service then verifies signerData.password.
   ========================================================== */
 
   updateTaprootSigningStatus: (
     token,
     signerData,
     authenticatedUsername = null,
-    jobInfo = null
+    jobInfo = null,
+    ...rest
   ) => {
+    let actualSignerData = signerData;
+    let actualAuthUser = authenticatedUsername;
+    let actualJobInfo = jobInfo;
+
+    // Shifted args fix if caller passes 'taproot' manually
+    if (typeof signerData === "string" && signerData.toLowerCase() === "taproot") {
+      actualSignerData = authenticatedUsername;
+      actualAuthUser = jobInfo;
+      actualJobInfo = rest[0];
+    }
+
     if (!token) {
-      return Promise.reject(
-        new Error(
-          "Signing token is required."
-        )
-      );
+      return Promise.reject(new Error("Signing token is required."));
     }
 
-
-    if (
-      !signerData ||
-      typeof signerData !==
-        "object"
-    ) {
-      return Promise.reject(
-        new Error(
-          "Taproot signer information is required."
-        )
-      );
+    if (!actualSignerData || typeof actualSignerData !== "object") {
+      return Promise.reject(new Error("Taproot signer information is required."));
     }
-
 
     return apiClient.post(
       "/updateSigningStatus",
       {
         token,
-
-        tempPassword:
-          null,
-
-        signerData,
-
-        signerType:
-          "taproot",
-
-        authenticatedUsername,
-
-        jobInfo,
+        tempPassword: null,
+        signerData: actualSignerData,
+        signerType: "taproot",
+        authenticatedUsername: actualAuthUser,
+        jobInfo: actualJobInfo,
       }
     );
   },
 
 
   /* ==========================================================
-     MSA / WORK ORDER - GENERIC SIGNING
-
-     BACKWARD COMPATIBILITY ONLY.
-
-     New pages should use:
-
-       updateVendorSigningStatus()
-
-     or
-
-       updateTaprootSigningStatus()
-
-     This method remains so older components do not break.
+     MSA / WORK ORDER - GENERIC SIGNING (BULLETPROOF ROUTER)
   ========================================================== */
 
   updateSigningStatus: (
@@ -1375,48 +1307,60 @@ export const apiService = {
     jobInfo = null,
     tempPassword = null
   ) => {
-    const normalizedSignerType =
-      String(
-        signerType ||
-          ""
-      )
-        .trim()
-        .toLowerCase();
+    let actualToken = token;
+    let actualSignerData = signerData;
+    let actualSignerType = signerType;
+    let actualAuthUser = authenticatedUsername;
+    let actualJobInfo = jobInfo;
+    let actualTempPassword = tempPassword;
 
-
-    if (
-      normalizedSignerType ===
-      "vendor"
-    ) {
-      return apiService
-        .updateVendorSigningStatus(
-          token,
-          tempPassword,
-          signerData
-        );
+    // 1. If payload was passed as 1st argument: updateSigningStatus({ signerType, signerData, ... })
+    if (actualToken && typeof actualToken === "object" && actualToken.signerType) {
+      actualSignerType = actualToken.signerType;
+      actualSignerData = actualToken.signerData || actualToken;
+      actualToken = actualToken.token || null;
+    }
+    
+    // 2. If payload was passed as 2nd argument: updateSigningStatus(token, { signerType, signerData })
+    if (actualSignerData && typeof actualSignerData === "object" && actualSignerData.signerType) {
+      actualSignerType = actualSignerData.signerType;
+      actualSignerData = actualSignerData.signerData || actualSignerData;
     }
 
-
-    if (
-      normalizedSignerType ===
-      "taproot"
-    ) {
-      return apiService
-        .updateTaprootSigningStatus(
-          token,
-          signerData,
-          authenticatedUsername,
-          jobInfo
-        );
+    // 3. If payload was passed as 3rd argument: updateSigningStatus(token, someData, { signerType, signerData })
+    if (actualSignerType && typeof actualSignerType === "object" && actualSignerType.signerType) {
+      actualSignerData = actualSignerType.signerData || actualSignerData;
+      actualSignerType = actualSignerType.signerType;
     }
 
+    // 4. Shifted positional arguments: updateSigningStatus(token, "taproot", signerData, ...)
+    if (typeof actualSignerData === "string" && typeof actualSignerType === "object") {
+      const temp = actualSignerData;
+      actualSignerData = actualSignerType;
+      actualSignerType = temp;
+    }
+
+    const normalizedSignerType = String(actualSignerType || "").trim().toLowerCase();
+
+    if (normalizedSignerType === "vendor") {
+      return apiService.updateVendorSigningStatus(
+        actualToken,
+        actualTempPassword || actualAuthUser, // Fallback if temp password shifted into authUser
+        actualSignerData
+      );
+    }
+
+    if (normalizedSignerType === "taproot") {
+      return apiService.updateTaprootSigningStatus(
+        actualToken,
+        actualSignerData,
+        actualAuthUser,
+        actualJobInfo
+      );
+    }
 
     return Promise.reject(
-      new Error(
-        `Unsupported signer type: ${String(
-          signerType
-        )}`
-      )
+      new Error(`Unsupported signer type: ${String(actualSignerType || "unknown")}`)
     );
   },
 
