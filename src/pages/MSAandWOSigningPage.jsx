@@ -1167,7 +1167,7 @@ const MSAandWOSigningPage =
         ) => {
 
           /* --------------------------------------------------
-             VALIDATE WRAPPER
+              VALIDATE WRAPPER
           -------------------------------------------------- */
 
           if (
@@ -1235,7 +1235,7 @@ const MSAandWOSigningPage =
 
 
           /* --------------------------------------------------
-             BASIC VALIDATION
+              BASIC VALIDATION
           -------------------------------------------------- */
 
           if (
@@ -1433,22 +1433,15 @@ const MSAandWOSigningPage =
 
               /*
                * =================================================
-               * IMPORTANT
-               *
-               * DO NOT CALL:
-               *
-               * apiService.updateSigningStatus(...)
-               *
-               * We use only the dedicated Vendor method.
+               * FIX: Matches apiService exactly:
+               * updateVendorSigningStatus: (token, tempPassword, signerData)
                * =================================================
                */
               response =
                 await apiService
                   .updateVendorSigningStatus(
                     token,
-
                     vendorTempPassword,
-
                     vendorSignerData
                   );
             }
@@ -1518,6 +1511,10 @@ const MSAandWOSigningPage =
                 title:
                   signerData
                     .title ||
+                  user
+                    ?.jobTitle ||
+                  user
+                    ?.title ||
                   user
                     ?.userRole ||
                   "Director",
@@ -1599,28 +1596,17 @@ const MSAandWOSigningPage =
 
               /*
                * =================================================
-               * IMPORTANT
-               *
-               * Dedicated method only.
-               *
-               * apiService.updateTaprootSigningStatus()
-               * hard-codes:
-               *
-               * signerType: "taproot"
-               *
-               * so [object Object] cannot reach the backend.
+               * FIX: Matches apiService exactly:
+               * updateTaprootSigningStatus: (token, signerData, authenticatedUsername, jobInfo)
                * =================================================
                */
               response =
                 await apiService
                   .updateTaprootSigningStatus(
                     token,
-
                     taprootSignerData,
-
                     user
                       .userIdentifier,
-
                     jobInfo
                   );
             }
@@ -3252,13 +3238,6 @@ const MSAandWOSigningPage =
 
         {/* ====================================================
             SIGNATURE MODAL
-
-            New contract:
-
-            onSign({
-              signerType,
-              signerData
-            })
         ==================================================== */}
 
         <SignatureModal
@@ -3308,6 +3287,5 @@ const MSAandWOSigningPage =
       </div>
     );
   };
-
 
 export default MSAandWOSigningPage;
