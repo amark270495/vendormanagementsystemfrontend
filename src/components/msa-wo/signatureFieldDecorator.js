@@ -2,31 +2,54 @@
 
 import {
   SIGNATURE_FIELD_IDS,
+  SIGNATURE_GUARD_IDS,
 } from "./signaturePlacement";
 
 
 /* ============================================================
-   INTERNAL CONSTANTS
+   GENERATED ELEMENT MARKER
 ============================================================ */
 
 const GENERATED_ATTRIBUTE =
-  "data-vms-generated-signature-field";
+  "data-vms-generated-signature-layout";
 
 
-const generatedSelector =
-  `[${GENERATED_ATTRIBUTE}="true"]`;
+const GENERATED_VALUE =
+  "true";
 
 
 /* ============================================================
    HELPERS
 ============================================================ */
 
+const markGenerated =
+  (
+    element
+  ) => {
+    element.setAttribute(
+      GENERATED_ATTRIBUTE,
+      GENERATED_VALUE
+    );
+
+    element.setAttribute(
+      "contenteditable",
+      "false"
+    );
+
+    return element;
+  };
+
+
+const getGeneratedSelector =
+  () =>
+    `[${GENERATED_ATTRIBUTE}="${GENERATED_VALUE}"]`;
+
+
 const requireElement =
   (
     element,
     message
   ) => {
-
     if (
       !element
     ) {
@@ -35,109 +58,392 @@ const requireElement =
       );
     }
 
-
     return element;
   };
 
 
-const createGeneratedElement =
+const createField =
   (
     className,
     fieldName
   ) => {
-
     const element =
-      document.createElement(
-        "div"
+      markGenerated(
+        document.createElement(
+          "div"
+        )
       );
-
 
     element.className =
       className;
 
-
-    element.setAttribute(
-      GENERATED_ATTRIBUTE,
-      "true"
-    );
-
-
-    element.setAttribute(
-      "data-signature-field",
-      fieldName
-    );
-
-
-    element.setAttribute(
-      "contenteditable",
-      "false"
-    );
-
+    element.dataset
+      .signatureField =
+      fieldName;
 
     element.setAttribute(
       "aria-hidden",
       "true"
     );
 
+    return element;
+  };
+
+
+const createLabel =
+  (
+    value =
+      "Signature:"
+  ) => {
+    const element =
+      markGenerated(
+        document.createElement(
+          "div"
+        )
+      );
+
+    element.className =
+      "wo-signature-label";
+
+    element.textContent =
+      value;
 
     return element;
   };
 
 
-const clearGeneratedChildren =
+const removeGeneratedChildren =
   (
     element
   ) => {
+    if (
+      !element
+    ) {
+      return;
+    }
 
     Array.from(
       element.querySelectorAll(
-        generatedSelector
+        getGeneratedSelector()
       )
     ).forEach(
       (
-        child
+        generated
       ) => {
-        child.remove();
+        generated.remove();
       }
     );
   };
 
 
 /* ============================================================
-   MSA PAGE 6
+   LOCATE PHYSICAL PAGES
+
+   Prefer stable page IDs.
+
+   Fall back to physical indexes so older published template
+   versions can still be exported.
 ============================================================ */
 
-const decorateMSASignatures =
+const getMsaSignaturePage =
   (
     root
   ) => {
+    const pages =
+      Array.from(
+        root.querySelectorAll(
+          ".a4-page"
+        )
+      );
 
-    const msaPage =
+    return (
+      root.querySelector(
+        '.a4-page[data-page-id="msa-page-6"]'
+      ) ||
+      pages[
+        5
+      ] ||
+      null
+    );
+  };
+
+
+const getWoSignaturePage =
+  (
+    root
+  ) => {
+    const pages =
+      Array.from(
+        root.querySelectorAll(
+          ".a4-page"
+        )
+      );
+
+    return (
+      root.querySelector(
+        '.a4-page[data-page-id="wo-page-1"]'
+      ) ||
+      pages[
+        6
+      ] ||
+      null
+    );
+  };
+
+
+/* ============================================================
+   MSA SIGNATURE SPACE
+============================================================ */
+
+const ensureMsaSignatureSpace =
+  (
+    section,
+    signatureField,
+    auditField
+  ) => {
+    let signatureLabel =
+      section.querySelector(
+        ".signature-label"
+      );
+
+
+    /*
+     * If a user edited the template and removed the dedicated
+     * Signature label class, recreate the label automatically.
+     */
+    if (
+      !signatureLabel
+    ) {
+      signatureLabel =
+        markGenerated(
+          document.createElement(
+            "div"
+          )
+        );
+
+      signatureLabel.className =
+        "signature-label";
+
+      signatureLabel.textContent =
+        "Signature:";
+
+
+      const partyTitle =
+        section.querySelector(
+          ".signature-party-title"
+        );
+
+
+      if (
+        partyTitle
+      ) {
+        partyTitle.insertAdjacentElement(
+          "afterend",
+          signatureLabel
+        );
+      } else {
+        section.prepend(
+          signatureLabel
+        );
+      }
+    }
+
+
+    /*
+     * Reuse an existing signature-space if the original
+     * contract template already contains one.
+     */
+    let signatureSpace =
+      section.querySelector(
+        ".signature-space"
+      );
+
+
+    /*
+     * Otherwise create the signing space automatically.
+     *
+     * This is the key behavior requested:
+     * Template Editor users do NOT need to manually create
+     * or size a signature image box.
+     */
+    if (
+      !signatureSpace
+    ) {
+      signatureSpace =
+        markGenerated(
+          document.createElement(
+            "div"
+          )
+        );
+
+      signatureSpace.className =
+        [
+          "signature-space",
+          "signature-capture-space",
+          "vms-generated-signature-space",
+        ].join(
+          " "
+        );
+
+
+      signatureLabel
+        .insertAdjacentElement(
+          "afterend",
+          signatureSpace
+        );
+    } else {
+      signatureSpace.classList.add(
+        "signature-capture-space"
+      );
+    }
+
+
+    /*
+     * Do not silently overwrite actual template content if
+     * somebody intentionally inserted text into the physical
+     * signature area.
+     */
+    const nonGeneratedNodes =
+      Array.from(
+        signatureSpace
+          .childNodes
+      )
+        .filter(
+          (
+            node
+          ) => {
+            if (
+              node.nodeType ===
+              Node.TEXT_NODE
+            ) {
+              return Boolean(
+                node.textContent
+                  ?.trim()
+              );
+            }
+
+
+            if (
+              node.nodeType ===
+              Node.ELEMENT_NODE
+            ) {
+              return (
+                node.getAttribute(
+                  GENERATED_ATTRIBUTE
+                ) !==
+                GENERATED_VALUE
+              );
+            }
+
+
+            return false;
+          }
+        );
+
+
+    const existingVisibleText =
+      nonGeneratedNodes
+        .map(
+          (
+            node
+          ) =>
+            node.textContent ||
+            ""
+        )
+        .join(
+          ""
+        )
+        .trim();
+
+
+    if (
+      existingVisibleText
+    ) {
+      throw new Error(
+        `The MSA reserved signing area for ${signatureField} contains template text. Remove that text or provide additional signing room in the template.`
+      );
+    }
+
+
+    removeGeneratedChildren(
+      signatureSpace
+    );
+
+
+    const imageZone =
+      createField(
+        "signature-image-zone",
+        signatureField
+      );
+
+
+    const auditZone =
+      createField(
+        "signature-audit-zone",
+        auditField
+      );
+
+
+    signatureSpace.append(
+      imageZone,
+      auditZone
+    );
+
+
+    return signatureSpace;
+  };
+
+
+/* ============================================================
+   DECORATE MSA PAGE 6
+============================================================ */
+
+const decorateMsaPage =
+  (
+    root
+  ) => {
+    const page =
       requireElement(
-        root.querySelector(
-          '.a4-page[data-page-id="msa-page-6"]'
+        getMsaSignaturePage(
+          root
         ),
-
-        "MSA signature page could not be located."
+        "MSA signature page 6 could not be located."
       );
 
 
     const signatureBlock =
-      requireElement(
-        msaPage.querySelector(
-          '[data-block-id="p6-signatures"]'
-        ),
+      page.querySelector(
+        '[data-block-id="p6-signatures"]'
+      ) ||
+      page.querySelector(
+        ".signature-columns"
+      )
+        ?.closest(
+          ".editable-block"
+        ) ||
+      page;
 
-        "MSA signature block p6-signatures could not be located."
+
+    const columns =
+      signatureBlock.querySelector(
+        ".signature-columns"
       );
+
+
+    if (
+      !columns
+    ) {
+      throw new Error(
+        "Page 6 does not contain the MSA signing section. The document must contain Vendor and Taproot signing columns before it can be sent for signature."
+      );
+    }
 
 
     const sections =
       Array.from(
-        signatureBlock
-          .querySelectorAll(
-            ".signature-columns > section"
-          )
+        columns.querySelectorAll(
+          ":scope > section"
+        )
       );
 
 
@@ -146,208 +452,219 @@ const decorateMSASignatures =
       2
     ) {
       throw new Error(
-        "MSA signature block must contain Vendor and Taproot signature columns."
+        "The MSA signing section must contain both Vendor and Taproot columns."
       );
     }
 
 
-    const configs = [
-      {
-        section:
-          sections[
-            0
-          ],
-
-        signatureField:
-          SIGNATURE_FIELD_IDS
-            .MSA_VENDOR_SIGNATURE,
-
-        auditField:
-          SIGNATURE_FIELD_IDS
-            .MSA_VENDOR_AUDIT,
-
-        guardName:
-          "msa.vendor.meta",
-      },
-
-      {
-        section:
-          sections[
-            1
-          ],
-
-        signatureField:
-          SIGNATURE_FIELD_IDS
-            .MSA_TAPROOT_SIGNATURE,
-
-        auditField:
-          SIGNATURE_FIELD_IDS
-            .MSA_TAPROOT_AUDIT,
-
-        guardName:
-          "msa.taproot.meta",
-      },
-    ];
+    const vendorSection =
+      sections[
+        0
+      ];
 
 
-    configs.forEach(
-      (
-        config
-      ) => {
-
-        const signatureSpace =
-          requireElement(
-            config.section
-              .querySelector(
-                ".signature-space"
-              ),
-
-            `Signature space could not be located for ${config.signatureField}.`
-          );
+    const taprootSection =
+      sections[
+        1
+      ];
 
 
-        const signatureMeta =
-          requireElement(
-            config.section
-              .querySelector(
-                ".signature-meta"
-              ),
+    ensureMsaSignatureSpace(
+      vendorSection,
 
-            `Signature metadata could not be located for ${config.signatureField}.`
-          );
+      SIGNATURE_FIELD_IDS
+        .MSA_VENDOR_SIGNATURE,
+
+      SIGNATURE_FIELD_IDS
+        .MSA_VENDOR_AUDIT
+    );
 
 
-        /*
-         * The source template intentionally contains an empty
-         * signature-space.
-         *
-         * If an editor has inserted visible text inside it,
-         * refuse to silently stamp a signature over that text.
-         */
-        const visibleExistingText =
-          Array.from(
-            signatureSpace
-              .childNodes
+    ensureMsaSignatureSpace(
+      taprootSection,
+
+      SIGNATURE_FIELD_IDS
+        .MSA_TAPROOT_SIGNATURE,
+
+      SIGNATURE_FIELD_IDS
+        .MSA_TAPROOT_AUDIT
+    );
+
+
+    const vendorMeta =
+      requireElement(
+        vendorSection.querySelector(
+          ".signature-meta"
+        ),
+        "Vendor Name / Title / Date section is missing from MSA page 6."
+      );
+
+
+    const taprootMeta =
+      requireElement(
+        taprootSection.querySelector(
+          ".signature-meta"
+        ),
+        "Taproot Name / Title / Date section is missing from MSA page 6."
+      );
+
+
+    vendorMeta.dataset
+      .signatureGuard =
+      SIGNATURE_GUARD_IDS
+        .MSA_VENDOR_META;
+
+
+    taprootMeta.dataset
+      .signatureGuard =
+      SIGNATURE_GUARD_IDS
+        .MSA_TAPROOT_META;
+  };
+
+
+/* ============================================================
+   BUILD WORK ORDER SIGNING CELL
+============================================================ */
+
+const decorateWoSignatureCell =
+  (
+    cell,
+    signatureField,
+    auditField
+  ) => {
+    const existingContainer =
+      cell.querySelector(
+        ".wo-signature-cell"
+      );
+
+
+    const existingLabel =
+      existingContainer
+        ?.textContent
+        ?.trim() ||
+      cell.textContent
+        ?.trim() ||
+      "Signature:";
+
+
+    let container =
+      existingContainer;
+
+
+    if (
+      !container
+    ) {
+      container =
+        markGenerated(
+          document.createElement(
+            "div"
           )
-            .filter(
-              (
-                node
-              ) =>
-                !(
-                  node.nodeType ===
-                    Node.ELEMENT_NODE &&
-                  node.getAttribute?.(
-                    GENERATED_ATTRIBUTE
-                  ) ===
-                    "true"
-                )
-            )
-            .map(
-              (
-                node
-              ) =>
-                node.textContent ||
-                ""
-            )
-            .join("")
-            .trim();
-
-
-        if (
-          visibleExistingText
-        ) {
-          throw new Error(
-            `The reserved signature space for ${config.signatureField} contains editable content. Remove that content before generating the agreement.`
-          );
-        }
-
-
-        clearGeneratedChildren(
-          signatureSpace
         );
 
+      cell.innerHTML =
+        "";
 
-        signatureSpace
-          .classList
-          .add(
-            "signature-capture-space"
-          );
-
-
-        signatureMeta
-          .setAttribute(
-            "data-signature-guard",
-            config.guardName
-          );
+      cell.appendChild(
+        container
+      );
+    } else {
+      container.innerHTML =
+        "";
+    }
 
 
-        const signatureZone =
-          createGeneratedElement(
-            "signature-image-zone",
-            config.signatureField
-          );
+    container.className =
+      [
+        "wo-signature-cell",
+        "wo-signature-capture-space",
+      ].join(
+        " "
+      );
 
 
-        const auditZone =
-          createGeneratedElement(
-            "signature-audit-zone",
-            config.auditField
-          );
+    container.setAttribute(
+      GENERATED_ATTRIBUTE,
+      GENERATED_VALUE
+    );
 
 
-        signatureSpace
-          .appendChild(
-            signatureZone
-          );
+    container.setAttribute(
+      "contenteditable",
+      "false"
+    );
 
 
-        signatureSpace
-          .appendChild(
-            auditZone
-          );
-      }
+    const label =
+      createLabel(
+        existingLabel
+          .toLowerCase()
+          .includes(
+            "signature"
+          )
+          ? "Signature:"
+          : "Signature:"
+      );
+
+
+    const imageZone =
+      createField(
+        "wo-signature-image-zone",
+        signatureField
+      );
+
+
+    const auditZone =
+      createField(
+        "wo-signature-audit-zone",
+        auditField
+      );
+
+
+    container.append(
+      label,
+      imageZone,
+      auditZone
     );
   };
 
 
 /* ============================================================
-   WORK ORDER PAGE 7
+   DECORATE WORK ORDER PAGE 7
 ============================================================ */
 
-const decorateWOSignatures =
+const decorateWoPage =
   (
     root
   ) => {
-
-    const woPage =
+    const page =
       requireElement(
-        root.querySelector(
-          '.a4-page[data-page-id="wo-page-1"]'
+        getWoSignaturePage(
+          root
         ),
-
-        "Work Order signature page could not be located."
+        "Work Order signature page 7 could not be located."
       );
 
 
-    const signatureBlock =
-      requireElement(
-        woPage.querySelector(
-          '[data-block-id="p7-signature-table"]'
-        ),
-
-        "Work Order signature block p7-signature-table could not be located."
-      );
+    const block =
+      page.querySelector(
+        '[data-block-id="p7-signature-table"]'
+      ) ||
+      page;
 
 
     const table =
-      requireElement(
-        signatureBlock
-          .querySelector(
-            "table.wo-signature-table"
-          ),
-
-        "Work Order signature table could not be located."
+      block.querySelector(
+        "table.wo-signature-table"
       );
+
+
+    if (
+      !table
+    ) {
+      throw new Error(
+        "Page 7 does not contain the Work Order signing table. The document must contain Signature, Name, Title and Date rows."
+      );
+    }
 
 
     const rows =
@@ -362,205 +679,19 @@ const decorateWOSignatures =
       4
     ) {
       throw new Error(
-        "Work Order signature table must contain Signature, Name, Title and Date rows."
+        "The Work Order signing table must contain Signature, Name, Title and Date rows."
       );
     }
 
 
-    const firstRowCells =
-      Array.from(
-        rows[
-          0
-        ].cells ||
-        []
-      );
-
-
-    if (
-      firstRowCells.length <
-      3
-    ) {
-      throw new Error(
-        "Work Order signature table layout is invalid."
-      );
-    }
-
-
-    const vendorCell =
-      firstRowCells[
-        0
-      ];
-
-
-    const taprootCell =
-      firstRowCells[
-        2
-      ];
-
-
-    const decorateCell =
+    const getSignerCells =
       (
-        cell,
-        signatureField,
-        auditField
+        rowIndex
       ) => {
-
-        const signatureContainer =
-          requireElement(
-            cell.querySelector(
-              ".wo-signature-cell"
-            ),
-
-            `Work Order signature container is missing for ${signatureField}.`
-          );
-
-
-        /*
-         * This is the OFF-SCREEN export DOM only.
-         * It does not modify the saved WYSIWYG template.
-         */
-        signatureContainer
-          .innerHTML =
-          "";
-
-
-        signatureContainer
-          .classList
-          .add(
-            "wo-signature-capture-space"
-          );
-
-
-        const label =
-          document.createElement(
-            "div"
-          );
-
-
-        label.className =
-          "wo-signature-label";
-
-
-        label.textContent =
-          "Signature:";
-
-
-        label.setAttribute(
-          GENERATED_ATTRIBUTE,
-          "true"
-        );
-
-
-        label.setAttribute(
-          "contenteditable",
-          "false"
-        );
-
-
-        const signatureZone =
-          createGeneratedElement(
-            "wo-signature-image-zone",
-            signatureField
-          );
-
-
-        const auditZone =
-          createGeneratedElement(
-            "wo-signature-audit-zone",
-            auditField
-          );
-
-
-        signatureContainer
-          .appendChild(
-            label
-          );
-
-
-        signatureContainer
-          .appendChild(
-            signatureZone
-          );
-
-
-        signatureContainer
-          .appendChild(
-            auditZone
-          );
-      };
-
-
-    decorateCell(
-      vendorCell,
-
-      SIGNATURE_FIELD_IDS
-        .WO_VENDOR_SIGNATURE,
-
-      SIGNATURE_FIELD_IDS
-        .WO_VENDOR_AUDIT
-    );
-
-
-    decorateCell(
-      taprootCell,
-
-      SIGNATURE_FIELD_IDS
-        .WO_TAPROOT_SIGNATURE,
-
-      SIGNATURE_FIELD_IDS
-        .WO_TAPROOT_AUDIT
-    );
-
-
-    /* --------------------------------------------------------
-       PROTECT NAME / TITLE / DATE ROWS
-    -------------------------------------------------------- */
-
-    const guardRows = [
-      {
-        rowIndex:
-          1,
-
-        vendor:
-          "wo.vendor.name",
-
-        taproot:
-          "wo.taproot.name",
-      },
-
-      {
-        rowIndex:
-          2,
-
-        vendor:
-          "wo.vendor.title",
-
-        taproot:
-          "wo.taproot.title",
-      },
-
-      {
-        rowIndex:
-          3,
-
-        vendor:
-          "wo.vendor.date",
-
-        taproot:
-          "wo.taproot.date",
-      },
-    ];
-
-
-    guardRows.forEach(
-      (
-        config
-      ) => {
-
         const cells =
           Array.from(
             rows[
-              config.rowIndex
+              rowIndex
             ]?.cells ||
             []
           );
@@ -571,27 +702,121 @@ const decorateWOSignatures =
           3
         ) {
           throw new Error(
-            "Work Order Name/Title/Date signature layout is invalid."
+            "Work Order signing table must contain Vendor, divider and Taproot columns."
           );
         }
 
 
-        cells[
-          0
-        ].setAttribute(
-          "data-signature-guard",
-          config.vendor
-        );
+        return {
+          vendor:
+            cells[
+              0
+            ],
+
+          taproot:
+            cells[
+              2
+            ],
+        };
+      };
 
 
-        cells[
-          2
-        ].setAttribute(
-          "data-signature-guard",
-          config.taproot
-        );
-      }
+    /* --------------------------------------------------------
+       SIGNATURE ROW
+    -------------------------------------------------------- */
+
+    const signatureCells =
+      getSignerCells(
+        0
+      );
+
+
+    decorateWoSignatureCell(
+      signatureCells.vendor,
+
+      SIGNATURE_FIELD_IDS
+        .WO_VENDOR_SIGNATURE,
+
+      SIGNATURE_FIELD_IDS
+        .WO_VENDOR_AUDIT
     );
+
+
+    decorateWoSignatureCell(
+      signatureCells.taproot,
+
+      SIGNATURE_FIELD_IDS
+        .WO_TAPROOT_SIGNATURE,
+
+      SIGNATURE_FIELD_IDS
+        .WO_TAPROOT_AUDIT
+    );
+
+
+    /* --------------------------------------------------------
+       NAME ROW
+    -------------------------------------------------------- */
+
+    const nameCells =
+      getSignerCells(
+        1
+      );
+
+
+    nameCells.vendor.dataset
+      .signatureGuard =
+      SIGNATURE_GUARD_IDS
+        .WO_VENDOR_NAME;
+
+
+    nameCells.taproot.dataset
+      .signatureGuard =
+      SIGNATURE_GUARD_IDS
+        .WO_TAPROOT_NAME;
+
+
+    /* --------------------------------------------------------
+       TITLE ROW
+    -------------------------------------------------------- */
+
+    const titleCells =
+      getSignerCells(
+        2
+      );
+
+
+    titleCells.vendor.dataset
+      .signatureGuard =
+      SIGNATURE_GUARD_IDS
+        .WO_VENDOR_TITLE;
+
+
+    titleCells.taproot.dataset
+      .signatureGuard =
+      SIGNATURE_GUARD_IDS
+        .WO_TAPROOT_TITLE;
+
+
+    /* --------------------------------------------------------
+       DATE ROW
+    -------------------------------------------------------- */
+
+    const dateCells =
+      getSignerCells(
+        3
+      );
+
+
+    dateCells.vendor.dataset
+      .signatureGuard =
+      SIGNATURE_GUARD_IDS
+        .WO_VENDOR_DATE;
+
+
+    dateCells.taproot.dataset
+      .signatureGuard =
+      SIGNATURE_GUARD_IDS
+        .WO_TAPROOT_DATE;
   };
 
 
@@ -603,22 +828,20 @@ export const prepareSignaturePlacementFields =
   (
     documentRoot
   ) => {
-
     if (
       !documentRoot
     ) {
       throw new Error(
-        "MSA / WO export renderer is unavailable."
+        "MSA / WO export document is unavailable."
       );
     }
 
 
     const pages =
       Array.from(
-        documentRoot
-          .querySelectorAll(
-            ".a4-page"
-          )
+        documentRoot.querySelectorAll(
+          ".a4-page"
+        )
       );
 
 
@@ -627,22 +850,28 @@ export const prepareSignaturePlacementFields =
       7
     ) {
       throw new Error(
-        `Expected exactly 7 MSA/WO pages before preparing signature fields. Found ${pages.length}.`
+        `Expected exactly 7 MSA/WO physical pages before preparing signatures. Found ${pages.length}.`
       );
     }
 
 
-    decorateMSASignatures(
+    decorateMsaPage(
       documentRoot
     );
 
 
-    decorateWOSignatures(
+    decorateWoPage(
       documentRoot
     );
 
 
-    return true;
+    return {
+      success:
+        true,
+
+      pageCount:
+        pages.length,
+    };
   };
 
 

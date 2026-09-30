@@ -3,32 +3,49 @@
 
 /* ============================================================
    VMS 2.0
-   ADAPTIVE ELECTRONIC SIGNATURE PLACEMENT MANIFEST
+   ADAPTIVE ELECTRONIC SIGNATURE PLACEMENT
 
-   Coordinate system:
-   normalized-page
+   IMPORTANT
 
-   x / y / width / height are always between 0 and 1.
+   The Template Editor does NOT need to manually create
+   electronic-signature rectangles.
 
-   This means the Python backend does NOT depend on hard-coded
-   A4 point coordinates and can convert the exact browser
-   geometry into the actual PDF page geometry.
+   signatureFieldDecorator.js creates those fields in the
+   export DOM.
+
+   This module:
+
+   1. Measures those generated fields.
+   2. Converts them to normalized 0..1 page coordinates.
+   3. Verifies they are on the correct physical PDF pages.
+   4. Verifies signatures do not collide with audit text.
+   5. Verifies signatures do not collide with Name/Title/Date.
+   6. Protects against browser sub-pixel rounding errors.
 ============================================================ */
+
+
+/* ============================================================
+   MANIFEST VERSION
+============================================================ */
+
+export const SIGNATURE_MANIFEST_SCHEMA_VERSION =
+  1;
+
+
+export const SIGNATURE_COORDINATE_SYSTEM =
+  "normalized-page";
 
 
 /* ============================================================
    FIELD IDS
 
-   IMPORTANT:
-   These IDs become part of the stored document evidence.
+   These names become persisted document evidence.
 
-   Once production documents use these names, do not rename
-   them without introducing a new manifest schema version.
+   Do not casually rename them after production deployment.
 ============================================================ */
 
 export const SIGNATURE_FIELD_IDS =
   Object.freeze({
-
     MSA_VENDOR_SIGNATURE:
       "msa.vendor.signature",
 
@@ -52,6 +69,38 @@ export const SIGNATURE_FIELD_IDS =
 
     WO_TAPROOT_AUDIT:
       "wo.taproot.audit",
+  });
+
+
+/* ============================================================
+   PROTECTED AREAS
+============================================================ */
+
+export const SIGNATURE_GUARD_IDS =
+  Object.freeze({
+    MSA_VENDOR_META:
+      "msa.vendor.meta",
+
+    MSA_TAPROOT_META:
+      "msa.taproot.meta",
+
+    WO_VENDOR_NAME:
+      "wo.vendor.name",
+
+    WO_VENDOR_TITLE:
+      "wo.vendor.title",
+
+    WO_VENDOR_DATE:
+      "wo.vendor.date",
+
+    WO_TAPROOT_NAME:
+      "wo.taproot.name",
+
+    WO_TAPROOT_TITLE:
+      "wo.taproot.title",
+
+    WO_TAPROOT_DATE:
+      "wo.taproot.date",
   });
 
 
@@ -88,19 +137,148 @@ export const REQUIRED_MSA_WO_SIGNATURE_FIELDS =
 
 
 /* ============================================================
-   CONSTANTS
+   REQUIRED GUARDS
 ============================================================ */
 
-export const SIGNATURE_MANIFEST_SCHEMA_VERSION =
-  1;
+export const REQUIRED_MSA_WO_SIGNATURE_GUARDS =
+  Object.freeze([
+    SIGNATURE_GUARD_IDS
+      .MSA_VENDOR_META,
+
+    SIGNATURE_GUARD_IDS
+      .MSA_TAPROOT_META,
+
+    SIGNATURE_GUARD_IDS
+      .WO_VENDOR_NAME,
+
+    SIGNATURE_GUARD_IDS
+      .WO_VENDOR_TITLE,
+
+    SIGNATURE_GUARD_IDS
+      .WO_VENDOR_DATE,
+
+    SIGNATURE_GUARD_IDS
+      .WO_TAPROOT_NAME,
+
+    SIGNATURE_GUARD_IDS
+      .WO_TAPROOT_TITLE,
+
+    SIGNATURE_GUARD_IDS
+      .WO_TAPROOT_DATE,
+  ]);
 
 
-export const SIGNATURE_COORDINATE_SYSTEM =
-  "normalized-page";
+/* ============================================================
+   EXPECTED PAGE POSITIONS
+
+   Page indexes are zero based.
+
+   Page 6 => 5
+   Page 7 => 6
+============================================================ */
+
+const EXPECTED_FIELD_PAGES =
+  Object.freeze({
+    [SIGNATURE_FIELD_IDS
+      .MSA_VENDOR_SIGNATURE]:
+        5,
+
+    [SIGNATURE_FIELD_IDS
+      .MSA_VENDOR_AUDIT]:
+        5,
+
+    [SIGNATURE_FIELD_IDS
+      .MSA_TAPROOT_SIGNATURE]:
+        5,
+
+    [SIGNATURE_FIELD_IDS
+      .MSA_TAPROOT_AUDIT]:
+        5,
+
+    [SIGNATURE_FIELD_IDS
+      .WO_VENDOR_SIGNATURE]:
+        6,
+
+    [SIGNATURE_FIELD_IDS
+      .WO_VENDOR_AUDIT]:
+        6,
+
+    [SIGNATURE_FIELD_IDS
+      .WO_TAPROOT_SIGNATURE]:
+        6,
+
+    [SIGNATURE_FIELD_IDS
+      .WO_TAPROOT_AUDIT]:
+        6,
+  });
 
 
-const DEFAULT_TEMPLATE_ID =
-  "TPL-MSA-WO-TAPROOT";
+const EXPECTED_GUARD_PAGES =
+  Object.freeze({
+    [SIGNATURE_GUARD_IDS
+      .MSA_VENDOR_META]:
+        5,
+
+    [SIGNATURE_GUARD_IDS
+      .MSA_TAPROOT_META]:
+        5,
+
+    [SIGNATURE_GUARD_IDS
+      .WO_VENDOR_NAME]:
+        6,
+
+    [SIGNATURE_GUARD_IDS
+      .WO_VENDOR_TITLE]:
+        6,
+
+    [SIGNATURE_GUARD_IDS
+      .WO_VENDOR_DATE]:
+        6,
+
+    [SIGNATURE_GUARD_IDS
+      .WO_TAPROOT_NAME]:
+        6,
+
+    [SIGNATURE_GUARD_IDS
+      .WO_TAPROOT_TITLE]:
+        6,
+
+    [SIGNATURE_GUARD_IDS
+      .WO_TAPROOT_DATE]:
+        6,
+  });
+
+
+/* ============================================================
+   COLLISION TOLERANCE
+
+   Browser rendering works with fractional CSS pixels.
+
+   Two boxes whose borders are physically adjacent can differ
+   by a tiny floating point amount.
+
+   0.0005 on an A4 page is approximately:
+   0.105mm horizontally
+   0.149mm vertically
+
+   That is small enough to ignore rendering noise without
+   hiding a meaningful layout collision.
+============================================================ */
+
+const RECTANGLE_EPSILON =
+  0.0005;
+
+
+/* ============================================================
+   MINIMUM DIMENSIONS
+============================================================ */
+
+const MIN_FIELD_WIDTH =
+  0.01;
+
+
+const MIN_FIELD_HEIGHT =
+  0.005;
 
 
 /* ============================================================
@@ -110,21 +288,22 @@ const DEFAULT_TEMPLATE_ID =
 const roundCoordinate =
   (
     value
-  ) =>
-    Number(
+  ) => {
+    return Number(
       Number(
         value
       ).toFixed(
         8
       )
     );
+  };
 
 
 const clamp01 =
   (
     value
-  ) =>
-    Math.min(
+  ) => {
+    return Math.min(
       1,
 
       Math.max(
@@ -132,6 +311,7 @@ const clamp01 =
         value
       )
     );
+  };
 
 
 /* ============================================================
@@ -143,7 +323,6 @@ const normalizedRectFromDom =
     elementRect,
     pageRect
   ) => {
-
     if (
       !pageRect ||
       !pageRect.width ||
@@ -155,7 +334,7 @@ const normalizedRectFromDom =
     }
 
 
-    const rawX =
+    const x =
       (
         elementRect.left -
         pageRect.left
@@ -163,7 +342,7 @@ const normalizedRectFromDom =
       pageRect.width;
 
 
-    const rawY =
+    const y =
       (
         elementRect.top -
         pageRect.top
@@ -171,12 +350,12 @@ const normalizedRectFromDom =
       pageRect.height;
 
 
-    const rawWidth =
+    const width =
       elementRect.width /
       pageRect.width;
 
 
-    const rawHeight =
+    const height =
       elementRect.height /
       pageRect.height;
 
@@ -185,28 +364,28 @@ const normalizedRectFromDom =
       x:
         roundCoordinate(
           clamp01(
-            rawX
+            x
           )
         ),
 
       y:
         roundCoordinate(
           clamp01(
-            rawY
+            y
           )
         ),
 
       width:
         roundCoordinate(
           clamp01(
-            rawWidth
+            width
           )
         ),
 
       height:
         roundCoordinate(
           clamp01(
-            rawHeight
+            height
           )
         ),
     };
@@ -214,7 +393,7 @@ const normalizedRectFromDom =
 
 
 /* ============================================================
-   RECTANGLE OVERLAP
+   COLLISION DETECTION
 ============================================================ */
 
 const rectanglesOverlap =
@@ -222,7 +401,6 @@ const rectanglesOverlap =
     first,
     second
   ) => {
-
     const firstRight =
       first.x +
       first.width;
@@ -245,16 +423,20 @@ const rectanglesOverlap =
 
     return !(
       firstRight <=
-        second.x ||
+        second.x +
+          RECTANGLE_EPSILON ||
 
       secondRight <=
-        first.x ||
+        first.x +
+          RECTANGLE_EPSILON ||
 
       firstBottom <=
-        second.y ||
+        second.y +
+          RECTANGLE_EPSILON ||
 
       secondBottom <=
-        first.y
+        first.y +
+          RECTANGLE_EPSILON
     );
   };
 
@@ -268,7 +450,6 @@ const validateNormalizedRect =
     rect,
     fieldName
   ) => {
-
     if (
       !rect ||
       typeof rect !==
@@ -288,7 +469,6 @@ const validateNormalizedRect =
         "height",
       ]
     ) {
-
       const value =
         rect[
           key
@@ -321,9 +501,9 @@ const validateNormalizedRect =
 
     if (
       rect.width <=
-        0.01 ||
+        MIN_FIELD_WIDTH ||
       rect.height <=
-        0.005
+        MIN_FIELD_HEIGHT
     ) {
       throw new Error(
         `Electronic-signature field ${fieldName} is too small.`
@@ -355,6 +535,93 @@ const validateNormalizedRect =
 
 
 /* ============================================================
+   PAGE OVERFLOW VALIDATION
+
+   If the Template Editor has filled an entire physical page
+   with content and there is no space left for the signing
+   section, we MUST NOT silently stamp over legal text.
+
+   Instead generation stops and the template must be adjusted.
+============================================================ */
+
+const validatePageOverflow =
+  (
+    page,
+    pageIndex
+  ) => {
+    const pageBody =
+      page.querySelector(
+        ".page-body"
+      );
+
+
+    if (
+      !pageBody
+    ) {
+      return;
+    }
+
+
+    const excessPixels =
+      pageBody.scrollHeight -
+      pageBody.clientHeight;
+
+
+    /*
+     * 2px tolerance allows browser rounding.
+     */
+    if (
+      excessPixels >
+      2
+    ) {
+      throw new Error(
+        `Physical document page ${pageIndex + 1} does not have enough room for its content and signing fields. Reduce page content, font size, line height, or margins in the MSA/WO Template Editor.`
+      );
+    }
+  };
+
+
+/* ============================================================
+   FIELD / AUDIT PAIRS
+============================================================ */
+
+const SIGNATURE_AUDIT_PAIRS =
+  Object.freeze([
+    [
+      SIGNATURE_FIELD_IDS
+        .MSA_VENDOR_SIGNATURE,
+
+      SIGNATURE_FIELD_IDS
+        .MSA_VENDOR_AUDIT,
+    ],
+
+    [
+      SIGNATURE_FIELD_IDS
+        .MSA_TAPROOT_SIGNATURE,
+
+      SIGNATURE_FIELD_IDS
+        .MSA_TAPROOT_AUDIT,
+    ],
+
+    [
+      SIGNATURE_FIELD_IDS
+        .WO_VENDOR_SIGNATURE,
+
+      SIGNATURE_FIELD_IDS
+        .WO_VENDOR_AUDIT,
+    ],
+
+    [
+      SIGNATURE_FIELD_IDS
+        .WO_TAPROOT_SIGNATURE,
+
+      SIGNATURE_FIELD_IDS
+        .WO_TAPROOT_AUDIT,
+    ],
+  ]);
+
+
+/* ============================================================
    BUILD MANIFEST
 ============================================================ */
 
@@ -367,7 +634,7 @@ export const buildSignaturePlacementManifest =
         7,
 
       templateId =
-        DEFAULT_TEMPLATE_ID,
+        "TPL-MSA-WO-TAPROOT",
 
       templateVersion =
         1,
@@ -376,7 +643,6 @@ export const buildSignaturePlacementManifest =
         "MSA_WO",
     } = {}
   ) => {
-
     if (
       !documentRoot
     ) {
@@ -388,9 +654,10 @@ export const buildSignaturePlacementManifest =
 
     const pages =
       Array.from(
-        documentRoot.querySelectorAll(
-          ".a4-page"
-        )
+        documentRoot
+          .querySelectorAll(
+            ".a4-page"
+          )
       );
 
 
@@ -400,6 +667,22 @@ export const buildSignaturePlacementManifest =
     ) {
       throw new Error(
         `Document contains ${pages.length} rendered pages. Expected exactly ${expectedPageCount}.`
+      );
+    }
+
+
+    /*
+     * Current frontend generation is the seven-page
+     * MSA + Work Order package.
+     */
+    if (
+      documentType ===
+        "MSA_WO" &&
+      expectedPageCount !==
+        7
+    ) {
+      throw new Error(
+        "MSA + Work Order documents must contain exactly 7 physical pages."
       );
     }
 
@@ -417,7 +700,6 @@ export const buildSignaturePlacementManifest =
         page,
         pageIndex
       ) => {
-
         const pageRect =
           page.getBoundingClientRect();
 
@@ -434,8 +716,18 @@ export const buildSignaturePlacementManifest =
         }
 
 
+        /*
+         * Do this after the automatic signing fields have been
+         * inserted by signatureFieldDecorator.js.
+         */
+        validatePageOverflow(
+          page,
+          pageIndex
+        );
+
+
         /* ----------------------------------------------------
-           SIGNATURE FIELDS
+           SIGNATURE / AUDIT FIELDS
         ---------------------------------------------------- */
 
         const signatureElements =
@@ -450,7 +742,6 @@ export const buildSignaturePlacementManifest =
           (
             element
           ) => {
-
             const fieldName =
               element.dataset
                 .signatureField;
@@ -474,11 +765,25 @@ export const buildSignaturePlacementManifest =
             }
 
 
+            const elementRect =
+              element.getBoundingClientRect();
+
+
+            if (
+              elementRect.width <=
+                0 ||
+              elementRect.height <=
+                0
+            ) {
+              throw new Error(
+                `Electronic-signature field ${fieldName} is not visible in the rendered document.`
+              );
+            }
+
+
             const rect =
               normalizedRectFromDom(
-                element
-                  .getBoundingClientRect(),
-
+                elementRect,
                 pageRect
               );
 
@@ -502,13 +807,6 @@ export const buildSignaturePlacementManifest =
 
         /* ----------------------------------------------------
            PROTECTED AREAS
-
-           Examples:
-           - Name
-           - Title
-           - Date
-           - other template content that signatures must never
-             overlap.
         ---------------------------------------------------- */
 
         const guardElements =
@@ -523,7 +821,6 @@ export const buildSignaturePlacementManifest =
           (
             element
           ) => {
-
             const guardName =
               element.dataset
                 .signatureGuard;
@@ -542,16 +839,30 @@ export const buildSignaturePlacementManifest =
               ]
             ) {
               throw new Error(
-                `Duplicate protected signature area detected: ${guardName}.`
+                `Duplicate protected signing area detected: ${guardName}.`
+              );
+            }
+
+
+            const elementRect =
+              element.getBoundingClientRect();
+
+
+            if (
+              elementRect.width <=
+                0 ||
+              elementRect.height <=
+                0
+            ) {
+              throw new Error(
+                `Protected signing area ${guardName} is not visible in the rendered document.`
               );
             }
 
 
             const rect =
               normalizedRectFromDom(
-                element
-                  .getBoundingClientRect(),
-
+                elementRect,
                 pageRect
               );
 
@@ -576,7 +887,7 @@ export const buildSignaturePlacementManifest =
 
 
     /* --------------------------------------------------------
-       ALL REQUIRED FIELDS MUST EXIST
+       REQUIRED FIELDS
     -------------------------------------------------------- */
 
     REQUIRED_MSA_WO_SIGNATURE_FIELDS
@@ -584,14 +895,36 @@ export const buildSignaturePlacementManifest =
         (
           fieldName
         ) => {
+          const field =
+            fields[
+              fieldName
+            ];
+
 
           if (
-            !fields[
-              fieldName
-            ]
+            !field
           ) {
             throw new Error(
               `Required electronic-signature field is missing: ${fieldName}.`
+            );
+          }
+
+
+          const expectedPage =
+            EXPECTED_FIELD_PAGES[
+              fieldName
+            ];
+
+
+          if (
+            Number.isInteger(
+              expectedPage
+            ) &&
+            field.pageIndex !==
+              expectedPage
+          ) {
+            throw new Error(
+              `${fieldName} is on physical page ${field.pageIndex + 1}; expected page ${expectedPage + 1}.`
             );
           }
         }
@@ -599,7 +932,100 @@ export const buildSignaturePlacementManifest =
 
 
     /* --------------------------------------------------------
-       FIELD / GUARD COLLISION VALIDATION
+       REQUIRED PROTECTED AREAS
+    -------------------------------------------------------- */
+
+    REQUIRED_MSA_WO_SIGNATURE_GUARDS
+      .forEach(
+        (
+          guardName
+        ) => {
+          const guard =
+            guards[
+              guardName
+            ];
+
+
+          if (
+            !guard
+          ) {
+            throw new Error(
+              `Required protected signing area is missing: ${guardName}.`
+            );
+          }
+
+
+          const expectedPage =
+            EXPECTED_GUARD_PAGES[
+              guardName
+            ];
+
+
+          if (
+            Number.isInteger(
+              expectedPage
+            ) &&
+            guard.pageIndex !==
+              expectedPage
+          ) {
+            throw new Error(
+              `${guardName} is on physical page ${guard.pageIndex + 1}; expected page ${expectedPage + 1}.`
+            );
+          }
+        }
+      );
+
+
+    /* --------------------------------------------------------
+       SIGNATURE VS AUDIT COLLISION
+    -------------------------------------------------------- */
+
+    SIGNATURE_AUDIT_PAIRS
+      .forEach(
+        (
+          [
+            signatureField,
+            auditField,
+          ]
+        ) => {
+          const signatureRect =
+            fields[
+              signatureField
+            ];
+
+
+          const auditRect =
+            fields[
+              auditField
+            ];
+
+
+          if (
+            signatureRect.pageIndex !==
+            auditRect.pageIndex
+          ) {
+            throw new Error(
+              `${signatureField} and ${auditField} must be on the same physical page.`
+            );
+          }
+
+
+          if (
+            rectanglesOverlap(
+              signatureRect,
+              auditRect
+            )
+          ) {
+            throw new Error(
+              `${signatureField} overlaps ${auditField}.`
+            );
+          }
+        }
+      );
+
+
+    /* --------------------------------------------------------
+       FIELD VS PROTECTED AREA COLLISION
     -------------------------------------------------------- */
 
     Object.entries(
@@ -611,7 +1037,6 @@ export const buildSignaturePlacementManifest =
           fieldRect,
         ]
       ) => {
-
         Object.entries(
           guards
         ).forEach(
@@ -621,7 +1046,6 @@ export const buildSignaturePlacementManifest =
               guardRect,
             ]
           ) => {
-
             if (
               fieldRect.pageIndex !==
               guardRect.pageIndex
@@ -637,94 +1061,11 @@ export const buildSignaturePlacementManifest =
               )
             ) {
               throw new Error(
-                `${fieldName} overlaps protected document area ${guardName}. Adjust the document template before generating the agreement.`
+                `${fieldName} overlaps protected document area ${guardName}. Adjust the MSA/WO template before generating the agreement.`
               );
             }
           }
         );
-      }
-    );
-
-
-    /* --------------------------------------------------------
-       SIGNATURE AND AUDIT AREAS MAY NOT OVERLAP
-    -------------------------------------------------------- */
-
-    const pairs = [
-      [
-        SIGNATURE_FIELD_IDS
-          .MSA_VENDOR_SIGNATURE,
-
-        SIGNATURE_FIELD_IDS
-          .MSA_VENDOR_AUDIT,
-      ],
-
-      [
-        SIGNATURE_FIELD_IDS
-          .MSA_TAPROOT_SIGNATURE,
-
-        SIGNATURE_FIELD_IDS
-          .MSA_TAPROOT_AUDIT,
-      ],
-
-      [
-        SIGNATURE_FIELD_IDS
-          .WO_VENDOR_SIGNATURE,
-
-        SIGNATURE_FIELD_IDS
-          .WO_VENDOR_AUDIT,
-      ],
-
-      [
-        SIGNATURE_FIELD_IDS
-          .WO_TAPROOT_SIGNATURE,
-
-        SIGNATURE_FIELD_IDS
-          .WO_TAPROOT_AUDIT,
-      ],
-    ];
-
-
-    pairs.forEach(
-      (
-        [
-          signatureFieldName,
-          auditFieldName,
-        ]
-      ) => {
-
-        const signatureRect =
-          fields[
-            signatureFieldName
-          ];
-
-
-        const auditRect =
-          fields[
-            auditFieldName
-          ];
-
-
-        if (
-          signatureRect.pageIndex !==
-          auditRect.pageIndex
-        ) {
-          throw new Error(
-            `${signatureFieldName} and ${auditFieldName} must be on the same page.`
-          );
-        }
-
-
-        if (
-          rectanglesOverlap(
-            signatureRect,
-            auditRect
-          )
-        ) {
-          throw new Error(
-            `${signatureFieldName} overlaps ${auditFieldName}.`
-          );
-        }
       }
     );
 
@@ -764,9 +1105,10 @@ export const validateSignaturePlacementManifest =
   (
     manifest,
     expectedPageCount =
-      7
+      7,
+    expectedDocumentType =
+      "MSA_WO"
   ) => {
-
     if (
       !manifest ||
       typeof manifest !==
@@ -812,12 +1154,41 @@ export const validateSignaturePlacementManifest =
 
 
     if (
+      manifest.documentType &&
+      expectedDocumentType &&
+      manifest.documentType !==
+        expectedDocumentType
+    ) {
+      throw new Error(
+        `Electronic-signature manifest document type ${manifest.documentType} does not match ${expectedDocumentType}.`
+      );
+    }
+
+
+    if (
       !manifest.fields ||
       typeof manifest.fields !==
-        "object"
+        "object" ||
+      Array.isArray(
+        manifest.fields
+      )
     ) {
       throw new Error(
         "Electronic-signature placement fields are missing."
+      );
+    }
+
+
+    if (
+      !manifest.guards ||
+      typeof manifest.guards !==
+        "object" ||
+      Array.isArray(
+        manifest.guards
+      )
+    ) {
+      throw new Error(
+        "Electronic-signature protected areas are missing."
       );
     }
 
@@ -827,7 +1198,6 @@ export const validateSignaturePlacementManifest =
         (
           fieldName
         ) => {
-
           const field =
             manifest
               .fields?.[
@@ -863,9 +1233,156 @@ export const validateSignaturePlacementManifest =
               `Invalid physical page index for ${fieldName}.`
             );
           }
+
+
+          const expectedPage =
+            EXPECTED_FIELD_PAGES[
+              fieldName
+            ];
+
+
+          if (
+            Number.isInteger(
+              expectedPage
+            ) &&
+            field.pageIndex !==
+              expectedPage
+          ) {
+            throw new Error(
+              `${fieldName} is assigned to the wrong physical page.`
+            );
+          }
         }
       );
 
 
+    REQUIRED_MSA_WO_SIGNATURE_GUARDS
+      .forEach(
+        (
+          guardName
+        ) => {
+          const guard =
+            manifest
+              .guards?.[
+                guardName
+              ];
+
+
+          if (
+            !guard
+          ) {
+            throw new Error(
+              `Missing protected electronic-signature area: ${guardName}.`
+            );
+          }
+
+
+          validateNormalizedRect(
+            guard,
+            guardName
+          );
+
+
+          if (
+            !Number.isInteger(
+              guard.pageIndex
+            ) ||
+            guard.pageIndex <
+              0 ||
+            guard.pageIndex >=
+              expectedPageCount
+          ) {
+            throw new Error(
+              `Invalid physical page index for ${guardName}.`
+            );
+          }
+        }
+      );
+
+
+    SIGNATURE_AUDIT_PAIRS
+      .forEach(
+        (
+          [
+            signatureField,
+            auditField,
+          ]
+        ) => {
+          const signatureRect =
+            manifest.fields[
+              signatureField
+            ];
+
+
+          const auditRect =
+            manifest.fields[
+              auditField
+            ];
+
+
+          if (
+            rectanglesOverlap(
+              signatureRect,
+              auditRect
+            )
+          ) {
+            throw new Error(
+              `${signatureField} overlaps ${auditField}.`
+            );
+          }
+        }
+      );
+
+
+    Object.entries(
+      manifest.fields
+    ).forEach(
+      (
+        [
+          fieldName,
+          fieldRect,
+        ]
+      ) => {
+        Object.entries(
+          manifest.guards
+        ).forEach(
+          (
+            [
+              guardName,
+              guardRect,
+            ]
+          ) => {
+            if (
+              fieldRect.pageIndex !==
+              guardRect.pageIndex
+            ) {
+              return;
+            }
+
+
+            if (
+              rectanglesOverlap(
+                fieldRect,
+                guardRect
+              )
+            ) {
+              throw new Error(
+                `${fieldName} overlaps protected document area ${guardName}.`
+              );
+            }
+          }
+        );
+      }
+    );
+
+
     return true;
   };
+
+
+export default {
+  SIGNATURE_FIELD_IDS,
+  SIGNATURE_GUARD_IDS,
+  buildSignaturePlacementManifest,
+  validateSignaturePlacementManifest,
+};
