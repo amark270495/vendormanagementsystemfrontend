@@ -1,1930 +1,985 @@
 // src/components/msa-wo/MSATemplatePages.jsx
 
-import React from "react";
+import React, {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 
 import "./MSADocumentStyles.css";
 
 import {
-  FIELD_MAP,
-  SIGNATURE_FIELD_IDS,
-  SIGNATURE_GUARD_IDS,
+  createDefaultTemplate,
+  DEFAULT_LOGO_URL,
+  resolveDynamicFields,
 } from "./MSATemplateDefinition";
 
 
-/* ============================================================
-   DOCUMENT CONSTANTS
-============================================================ */
-
-const FOOTER_TEXT =
-  "317 Ranch Road 620 South, Suite 302F | Austin, TX 78734 | (408) 216-7968 |info@taproot-solutions.com";
-
-
-const DEFAULT_LOGO_URL =
-  "https://vmsdashboardea.blob.core.windows.net/images/Company_logo.png?sp=r&st=2026-03-17T13:15:01Z&se=2027-12-30T21:30:01Z&sv=2024-11-04&sr=b&sig=dAq1%2Bxrcn0KMYfrH%2F9OtOfQUZNqrxdZvGwoNFZfcyFY%3D";
-
-
-const tokenRegex =
-  /(\{\{[^}]+\}\})/g;
-
-
-/* ============================================================
-   FIELD
-============================================================ */
-
-const Field = ({
-  token,
+/**
+ * ============================================================
+ * NORMALIZE TEMPLATE
+ * ============================================================
+ *
+ * New API:
+ *
+ * <MSATemplatePages
+ *   template={template}
+ *   editMode={false}
+ * />
+ *
+ * Legacy compatibility:
+ *
+ * <MSATemplatePages
+ *   data={data}
+ *   margins={{
+ *      top: 25.4,
+ *      bottom: 25.4,
+ *      left: 25.4,
+ *      right: 25.4
+ *   }}
+ * />
+ *
+ * This compatibility layer prevents older VMS pages from
+ * crashing while we migrate everything to the new template API.
+ */
+const normalizeTemplate = ({
+  template,
   data,
+  margins,
 }) => {
-  const cleanToken =
-    token.replace(
-      /^\{\{|\}\}$/g,
-      ""
+  const defaults =
+    createDefaultTemplate();
+
+  /**
+   * If a full template was supplied,
+   * merge it safely with defaults.
+   */
+  if (template) {
+    return {
+      ...defaults,
+      ...template,
+
+      styleConfig: {
+        ...defaults.styleConfig,
+        ...(template.styleConfig || {}),
+      },
+
+      documentData: {
+        ...defaults.documentData,
+        ...(template.documentData || {}),
+      },
+
+      pages:
+        Array.isArray(template.pages) &&
+        template.pages.length > 0
+          ? template.pages
+          : defaults.pages,
+
+      logoUrl:
+        template.logoUrl ||
+        defaults.logoUrl,
+
+      footerText:
+        template.footerText ??
+        defaults.footerText,
+
+      packageMode:
+        template.packageMode ||
+        defaults.packageMode,
+
+      showPageNumbers:
+        Boolean(
+          template.showPageNumbers
+        ),
+    };
+  }
+
+  /**
+   * Legacy API compatibility.
+   */
+  return {
+    ...defaults,
+
+    documentData: {
+      ...defaults.documentData,
+      ...(data || {}),
+    },
+
+    styleConfig: {
+      ...defaults.styleConfig,
+
+      marginTop:
+        margins?.top ??
+        defaults.styleConfig
+          .marginTop,
+
+      marginBottom:
+        margins?.bottom ??
+        defaults.styleConfig
+          .marginBottom,
+
+      marginLeft:
+        margins?.left ??
+        defaults.styleConfig
+          .marginLeft,
+
+      marginRight:
+        margins?.right ??
+        defaults.styleConfig
+          .marginRight,
+    },
+  };
+};
+
+
+/**
+ * ============================================================
+ * EDITABLE HTML BLOCK
+ * ============================================================
+ */
+const EditableHtml = ({
+  html,
+  editMode,
+  data,
+
+  blockId,
+  selected,
+
+  registerEditable,
+
+  onSelect,
+  onChange,
+}) => {
+  const elementRef =
+    useRef(null);
+
+  /**
+   * In Edit mode:
+   * keep protected VMS field chips.
+   *
+   * In Preview/PDF mode:
+   * resolve fields to real values.
+   */
+  const renderedHtml =
+    useMemo(
+      () =>
+        resolveDynamicFields(
+          html || "",
+          data || {},
+          editMode
+        ),
+      [
+        html,
+        data,
+        editMode,
+      ]
     );
 
+  const activateEditor =
+    () => {
+      if (
+        !editMode ||
+        !elementRef.current
+      ) {
+        return;
+      }
 
-  const fieldMeta =
-    FIELD_MAP[
-      cleanToken
-    ];
+      onSelect?.(
+        blockId,
+        elementRef.current
+      );
 
-
-  const key =
-    fieldMeta?.key;
-
-
-  const placeholder =
-    fieldMeta?.placeholder ||
-    cleanToken;
-
-
-  const value =
-    key
-      ? data?.[
-          key
-        ]
-      : "";
-
+      registerEditable?.(
+        elementRef.current
+      );
+    };
 
   return (
-    <span
-      className={
-        `doc-field ${
-          value
-            ? ""
-            : "is-placeholder"
-        }`
+    <div
+      ref={elementRef}
+      data-block-id={
+        blockId
       }
+      className={[
+        "editable-block",
+
+        editMode
+          ? "is-editable"
+          : "",
+
+        selected
+          ? "is-selected"
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      contentEditable={
+        editMode
+      }
+      suppressContentEditableWarning
+      spellCheck={
+        editMode
+      }
+      dangerouslySetInnerHTML={{
+        __html:
+          renderedHtml,
+      }}
+      onFocus={
+        activateEditor
+      }
+      onClick={
+        activateEditor
+      }
+      onMouseUp={
+        activateEditor
+      }
+      onKeyUp={
+        activateEditor
+      }
+      onInput={(
+        event
+      ) => {
+        if (!editMode) {
+          return;
+        }
+
+        registerEditable?.(
+          event.currentTarget
+        );
+      }}
+      onBlur={(
+        event
+      ) => {
+        if (!editMode) {
+          return;
+        }
+
+        onChange?.(
+          blockId,
+          event.currentTarget
+            .innerHTML
+        );
+      }}
+    />
+  );
+};
+
+
+/**
+ * ============================================================
+ * EDITABLE TABLE BLOCK
+ * ============================================================
+ */
+const EditableTable = ({
+  block,
+  editMode,
+  data,
+
+  selectedBlockId,
+
+  registerEditable,
+
+  onSelect,
+  onCellChange,
+}) => {
+  const rows =
+    Array.isArray(block.rows)
+      ? block.rows
+      : [];
+
+  return (
+    <div
+      data-block-id={
+        block.id
+      }
+      className={[
+        "editable-block",
+        "table-block",
+
+        selectedBlockId ===
+        block.id
+          ? "is-selected"
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      onClick={() => {
+        if (!editMode) {
+          return;
+        }
+
+        onSelect?.(
+          block.id,
+          null
+        );
+      }}
     >
-      {
-        value ||
-        `{${placeholder}}`
-      }
-    </span>
+      <table
+        className={[
+          "doc-table",
+          block.className || "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <tbody>
+          {rows.map(
+            (
+              row,
+              rowIndex
+            ) => (
+              <tr
+                key={`${block.id}-row-${rowIndex}`}
+              >
+                {row.map(
+                  (
+                    tableCell,
+                    cellIndex
+                  ) => {
+                    const isDivider =
+                      Boolean(
+                        tableCell.divider
+                      );
+
+                    const renderedHtml =
+                      resolveDynamicFields(
+                        tableCell.html ||
+                          "",
+                        data || {},
+                        editMode
+                      );
+
+                    const activateCell =
+                      (
+                        event
+                      ) => {
+                        if (
+                          !editMode ||
+                          isDivider
+                        ) {
+                          return;
+                        }
+
+                        event.stopPropagation();
+
+                        onSelect?.(
+                          block.id,
+                          event.currentTarget
+                        );
+
+                        registerEditable?.(
+                          event.currentTarget
+                        );
+                      };
+
+                    return (
+                      <td
+                        key={`${block.id}-${rowIndex}-${cellIndex}`}
+                        className={
+                          isDivider
+                            ? "divider-cell"
+                            : ""
+                        }
+                      >
+                        <div
+                          data-table-block-id={
+                            block.id
+                          }
+                          data-row-index={
+                            rowIndex
+                          }
+                          data-cell-index={
+                            cellIndex
+                          }
+                          className={[
+                            "editable-table-cell",
+
+                            editMode &&
+                            !isDivider
+                              ? "is-editable"
+                              : "",
+                          ]
+                            .filter(
+                              Boolean
+                            )
+                            .join(
+                              " "
+                            )}
+                          contentEditable={
+                            editMode &&
+                            !isDivider
+                          }
+                          suppressContentEditableWarning
+                          spellCheck={
+                            editMode
+                          }
+                          dangerouslySetInnerHTML={{
+                            __html:
+                              renderedHtml,
+                          }}
+                          onFocus={
+                            activateCell
+                          }
+                          onClick={
+                            activateCell
+                          }
+                          onMouseUp={
+                            activateCell
+                          }
+                          onKeyUp={(
+                            event
+                          ) => {
+                            if (
+                              !editMode ||
+                              isDivider
+                            ) {
+                              return;
+                            }
+
+                            registerEditable?.(
+                              event.currentTarget
+                            );
+                          }}
+                          onInput={(
+                            event
+                          ) => {
+                            if (
+                              !editMode ||
+                              isDivider
+                            ) {
+                              return;
+                            }
+
+                            registerEditable?.(
+                              event.currentTarget
+                            );
+                          }}
+                          onBlur={(
+                            event
+                          ) => {
+                            if (
+                              !editMode ||
+                              isDivider
+                            ) {
+                              return;
+                            }
+
+                            onCellChange?.(
+                              block.id,
+                              rowIndex,
+                              cellIndex,
+                              event
+                                .currentTarget
+                                .innerHTML
+                            );
+                          }}
+                        />
+                      </td>
+                    );
+                  }
+                )}
+              </tr>
+            )
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 };
 
 
-/* ============================================================
-   TEMPLATE TEXT
-============================================================ */
-
-const RenderTemplateText = ({
-  text = "",
-  data,
-}) => {
-  const parts =
-    String(
-      text
-    ).split(
-      tokenRegex
-    );
-
-
-  return (
-    <>
-      {parts.map(
-        (
-          part,
-          index
-        ) =>
-          part.startsWith(
-            "{{"
-          ) &&
-          part.endsWith(
-            "}}"
-          ) ? (
-
-            <Field
-              key={
-                `${part}-${index}`
-              }
-              token={
-                part
-              }
-              data={
-                data
-              }
-            />
-
-          ) : (
-
-            <React.Fragment
-              key={
-                index
-              }
-            >
-              {part}
-            </React.Fragment>
-
-          )
-      )}
-    </>
-  );
-};
-
-
-/* ============================================================
-   HEADER / FOOTER
-============================================================ */
-
+/**
+ * ============================================================
+ * PAGE HEADER
+ * ============================================================
+ */
 const PageHeader = ({
   logoUrl,
 }) => (
   <div className="page-header">
-
     <img
       src={
         logoUrl ||
         DEFAULT_LOGO_URL
       }
+      crossOrigin="anonymous"
       alt="Taproot Solutions Inc."
+      draggable={false}
     />
-
   </div>
 );
 
 
-const PageFooter = () => (
+/**
+ * ============================================================
+ * PAGE FOOTER
+ * ============================================================
+ */
+const PageFooter = ({
+  footerText,
+}) => (
   <div className="page-footer">
-    {FOOTER_TEXT}
+    {footerText}
   </div>
 );
 
 
-/* ============================================================
-   PAGE
-============================================================ */
+/**
+ * ============================================================
+ * ONE PHYSICAL A4 PAGE
+ * ============================================================
+ */
+const DocumentPage = ({
+  page,
+  displayPageNumber,
 
-const Page = ({
-  children,
-  styleVars,
+  editMode,
+
+  data,
+
   logoUrl,
-  pageNumber,
-  showPageGuides,
-}) => (
+  footerText,
 
-  <section
-    className={
-      `a4-page ${
-        showPageGuides
-          ? "show-page-guides"
-          : ""
-      }`
-    }
+  selectedBlockId,
 
-    style={
-      styleVars
-    }
+  registerEditable,
 
-    data-page-number={
-      pageNumber
-    }
-  >
+  onSelectBlock,
 
-    <PageHeader
-      logoUrl={
-        logoUrl
-      }
-    />
+  onHtmlChange,
 
+  onTableCellChange,
 
-    <div className="page-debug-badge">
-      Page {pageNumber}
-    </div>
-
-
-    <div className="page-body">
-      {children}
-    </div>
-
-
-    <PageFooter />
-
-  </section>
-);
-
-
-/* ============================================================
-   CLAUSE
-============================================================ */
-
-const Clause = ({
-  number,
-  title,
-  children,
-}) => (
-
-  <div className="numbered-clause">
-
-    <div className="numbered-clause-number">
-      {number}.
-    </div>
-
-
-    <div className="numbered-clause-body">
-
-      {title ? (
-
-        <span className="numbered-clause-title">
-          {title}
-        </span>
-
-      ) : null}
-
-
-      {children}
-
-    </div>
-
-  </div>
-);
-
-
-/* ============================================================
-   ALPHA LIST
-============================================================ */
-
-const AlphaList = ({
-  items,
-  data,
-  className = "",
-}) => (
-
-  <ol
-    className={
-      `alpha-list ${className}`
-    }
-  >
-
-    {items.map(
-      (
-        item,
-        index
-      ) => (
-
-        <li key={index}>
-
-          <RenderTemplateText
-            text={
-              item
-            }
-            data={
-              data
-            }
-          />
-
-        </li>
-
-      )
-    )}
-
-  </ol>
-);
-
-
-/* ============================================================
-   SIGNATURE BLOCK
-
-   No final signature is rendered here.
-
-   This component creates fixed document zones that the backend
-   later uses when flattening the signed PDF.
-============================================================ */
-
-const SignatureBlock = ({
-  partyTitle,
-  signerName,
-  signerTitle,
-  date,
-  signatureText,
-  data,
-
-  signatureFieldId,
-  auditFieldId,
-  guardId,
-
-  variant =
-    "msa",
-}) => (
-
-  <div
-    className={
-      `signature-block signature-block-${variant}`
-    }
-  >
-
-    <div className="signature-party-title">
-
-      <RenderTemplateText
-        text={
-          partyTitle
-        }
-        data={
-          data
-        }
-      />
-
-    </div>
-
-
-    <div className="signature-capture-frame">
-
-      <div className="signature-label">
-        Signature:
-      </div>
-
-
-      <div
-        className="signature-placement-zone"
-        data-signature-field={
-          signatureFieldId
-        }
-      >
-
-        {signatureText ? (
-
-          <span className="signature-text">
-            {signatureText}
-          </span>
-
-        ) : null}
-
-      </div>
-
-
-      <div
-        className="signature-audit-zone"
-        data-signature-field={
-          auditFieldId
-        }
-      />
-
-    </div>
-
-
-    <div
-      className="signature-meta"
-      data-signature-guard={
-        guardId
-      }
-    >
-
-      <div className="signature-meta-row">
-
-        <span className="signature-meta-label">
-          Name:
-        </span>
-
-        <span>
-          <RenderTemplateText
-            text={
-              signerName
-            }
-            data={
-              data
-            }
-          />
-        </span>
-
-      </div>
-
-
-      <div className="signature-meta-row">
-
-        <span className="signature-meta-label">
-          Title:
-        </span>
-
-        <span>
-          <RenderTemplateText
-            text={
-              signerTitle
-            }
-            data={
-              data
-            }
-          />
-        </span>
-
-      </div>
-
-
-      <div className="signature-date-row">
-
-        <span className="signature-meta-label">
-          Date:
-        </span>
-
-        <span>
-          <RenderTemplateText
-            text={
-              date
-            }
-            data={
-              data
-            }
-          />
-        </span>
-
-      </div>
-
-    </div>
-
-  </div>
-);
-
-
-/* ============================================================
-   MAIN TEMPLATE
-============================================================ */
-
-export const MSATemplatePages = ({
-  data,
-  styles,
-  templateText,
-  documentMode =
-    "MSA_WO",
-  logoUrl,
-  showPageGuides =
-    false,
+  onOverflow,
 }) => {
+  const bodyRef =
+    useRef(null);
 
-  const styleVars = {
-    "--doc-margin-top":
-      `${styles.marginTop}mm`,
+  /**
+   * Detect page overflow.
+   *
+   * This is important because we intentionally use
+   * fixed physical A4 pages.
+   */
+  useLayoutEffect(() => {
+    const body =
+      bodyRef.current;
 
-    "--doc-margin-bottom":
-      `${styles.marginBottom}mm`,
+    if (!body) {
+      return undefined;
+    }
 
-    "--doc-margin-left":
-      `${styles.marginLeft}mm`,
+    let animationFrame;
 
-    "--doc-margin-right":
-      `${styles.marginRight}mm`,
+    const checkOverflow =
+      () => {
+        cancelAnimationFrame(
+          animationFrame
+        );
 
-    "--doc-font-family":
-      styles.fontFamily ||
-      '"Times New Roman", Times, serif',
+        animationFrame =
+          requestAnimationFrame(
+            () => {
+              if (!body) {
+                return;
+              }
 
-    "--doc-font-size":
-      `${styles.fontSize}pt`,
+              const overflowing =
+                body.scrollHeight >
+                body.clientHeight +
+                  2;
 
-    "--doc-line-height":
-      styles.lineHeight,
+              onOverflow?.(
+                page.id,
+                overflowing
+              );
+            }
+          );
+      };
 
-    "--doc-title-size":
-      `${styles.titleSize}pt`,
+    checkOverflow();
 
-    "--doc-section-title-size":
-      `${styles.sectionTitleSize}pt`,
+    const resizeObserver =
+      typeof ResizeObserver !==
+      "undefined"
+        ? new ResizeObserver(
+            checkOverflow
+          )
+        : null;
 
-    "--doc-footer-font-size":
-      `${styles.footerFontSize}pt`,
+    resizeObserver?.observe(
+      body
+    );
 
-    "--doc-logo-width":
-      `${styles.logoWidth}mm`,
+    window.addEventListener(
+      "resize",
+      checkOverflow
+    );
 
-    "--doc-footer-rule-width":
-      `${styles.footerRuleWidth || 1.2}mm`,
+    return () => {
+      cancelAnimationFrame(
+        animationFrame
+      );
 
-    "--doc-footer-rule-color":
-      styles.footerRuleColor,
+      resizeObserver?.disconnect();
 
-    "--doc-signature-box-height":
-      `${styles.signatureBoxHeight || 27}mm`,
+      window.removeEventListener(
+        "resize",
+        checkOverflow
+      );
+    };
+  }, [
+    page,
+    editMode,
+    data,
+    onOverflow,
+  ]);
 
-    "--doc-signature-image-zone-height":
-      `${styles.signatureImageZoneHeight || 15}mm`,
-
-    "--doc-signature-audit-zone-height":
-      `${styles.signatureAuditZoneHeight || 7}mm`,
-  };
-
-
-  const showMSA =
-    documentMode ===
-      "MSA" ||
-    documentMode ===
-      "MSA_WO";
-
-
-  const showWO =
-    documentMode ===
-      "WO" ||
-    documentMode ===
-      "MSA_WO";
-
-
-  const requirementItems = [
-    "Completed W9 form;",
-
-    "Valid Employer Identification Number;",
-
-    "Employment eligibility through I9 and E-Verify for each Sub-Contractor Personnel engaged to provide Services under this Agreement;",
-
-    "Direct Deposit Form;",
-
-    "Copy of a voided business check;",
-
-    "Executed Sub-Contractor Agreement;",
-
-    "Executed Purchase Order for the engagement demanding payment;",
-
-    "Valid ACORD Certificate of Insurance detailing the appropriate coverages and endorsements as listed in Section 6 plus any required Flow-Down insurance limits and endorsements as listed in Exhibit 1; and",
-
-    "Any other Requirements as listed in an applicable Purchase Order.",
-  ];
-
-
-  const clause7Items = [
-    templateText.clause7a,
-    templateText.clause7b,
-    templateText.clause7c,
-    templateText.clause7d,
-    templateText.clause7e,
-  ];
-
+  const blocks =
+    Array.isArray(page.blocks)
+      ? page.blocks
+      : [];
 
   return (
-    <>
-
-      {showMSA && (
-
-        <>
-
-          {/* ==================================================
-              PAGE 1
-          ================================================== */}
-
-          <Page
-            styleVars={
-              styleVars
-            }
-
-            logoUrl={
-              logoUrl
-            }
-
-            pageNumber={
-              1
-            }
-
-            showPageGuides={
-              showPageGuides
-            }
-          >
-
-            <h1 className="doc-main-title">
-              MASTER SERVICES AGREEMENT
-            </h1>
-
-
-            <p className="doc-text">
-              <RenderTemplateText
-                text={
-                  templateText.intro
-                }
-                data={
-                  data
-                }
-              />
-            </p>
-
-
-            <p className="doc-text">
-              <RenderTemplateText
-                text={
-                  templateText.clientDefinition
-                }
-                data={
-                  data
-                }
-              />
-            </p>
-
-
-            <div className="doc-section-title">
-              RECITALS
-            </div>
-
-
-            <p className="doc-text">
-              <RenderTemplateText
-                text={
-                  templateText.recital1
-                }
-                data={
-                  data
-                }
-              />
-            </p>
-
-
-            <p className="doc-text">
-              <RenderTemplateText
-                text={
-                  templateText.recital2
-                }
-                data={
-                  data
-                }
-              />
-            </p>
-
-
-            <p className="doc-text">
-              <RenderTemplateText
-                text={
-                  templateText.recital3
-                }
-                data={
-                  data
-                }
-              />
-            </p>
-
-
-            <p className="doc-text">
-              <RenderTemplateText
-                text={
-                  templateText.recital4
-                }
-                data={
-                  data
-                }
-              />
-            </p>
-
-
-            <div className="doc-section-title centered">
-              AGREEMENT
-            </div>
-
-
-            <Clause
-              number="1"
-              title="Scope of Service."
-            >
-
-              <p className="doc-text no-bottom">
-                <RenderTemplateText
-                  text={
-                    templateText.clause1
-                  }
-                  data={
-                    data
-                  }
-                />
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="2"
-              title="Termination."
-            >
-
-              <p className="doc-text no-bottom">
-                <RenderTemplateText
-                  text={
-                    templateText.clause2
-                  }
-                  data={
-                    data
-                  }
-                />
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="3"
-              title="Independent Contractor."
-            >
-
-              <p className="doc-text no-bottom">
-                <RenderTemplateText
-                  text={
-                    templateText.clause3a
-                  }
-                  data={
-                    data
-                  }
-                />
-              </p>
-
-            </Clause>
-
-          </Page>
-
-
-          {/* ==================================================
-              PAGE 2
-          ================================================== */}
-
-          <Page
-            styleVars={
-              styleVars
-            }
-
-            logoUrl={
-              logoUrl
-            }
-
-            pageNumber={
-              2
-            }
-
-            showPageGuides={
-              showPageGuides
-            }
-          >
-
-            <p className="doc-text">
-
-              <RenderTemplateText
-                text={
-                  templateText.clause3b
-                }
-                data={
-                  data
-                }
-              />
-
-            </p>
-
-
-            <Clause
-              number="4"
-              title="Confidentiality."
-            >
-
-              <p className="doc-text">
-
-                <RenderTemplateText
-                  text={
-                    templateText.clause4a
-                  }
-                  data={
-                    data
-                  }
-                />
-
-              </p>
-
-
-              <p className="doc-text no-bottom">
-
-                <RenderTemplateText
-                  text={
-                    templateText.clause4b
-                  }
-                  data={
-                    data
-                  }
-                />
-
-              </p>
-
-            </Clause>
-
-
-            <Clause number="5">
-
-              <p className="doc-text">
-
-                <RenderTemplateText
-                  text={
-                    templateText.clause5Intro
-                  }
-                  data={
-                    data
-                  }
-                />
-
-              </p>
-
-
-              <AlphaList
-                items={
-                  requirementItems
-                }
-
-                data={
-                  data
-                }
-
-                className="requirement-list"
-              />
-
-            </Clause>
-
-
-            <Clause
-              number="6"
-              title="Insurance"
-            />
-
-          </Page>
-
-
-          {/* ==================================================
-              PAGE 3
-          ================================================== */}
-
-          <Page
-            styleVars={
-              styleVars
-            }
-
-            logoUrl={
-              logoUrl
-            }
-
-            pageNumber={
-              3
-            }
-
-            showPageGuides={
-              showPageGuides
-            }
-          >
-
-            <p className="doc-text">
-
-              <RenderTemplateText
-                text={
-                  templateText.clause6a
-                }
-                data={
-                  data
-                }
-              />
-
-            </p>
-
-
-            <p className="doc-text">
-
-              <RenderTemplateText
-                text={
-                  templateText.clause6b
-                }
-                data={
-                  data
-                }
-              />
-
-            </p>
-
-
-            <table className="doc-table insurance-table">
-
-              <tbody>
-
-                <tr>
-
-                  <td>
-                    Comprehensive General Liability Insurance covering bodily damage and property
-                  </td>
-
-                  <td>
-                    Not less than $1,000,000 per occurrence
-                  </td>
-
-                </tr>
-
-
-                <tr>
-
-                  <td>
-                    Comprehensive Auto Liability including owned, non-owned and hired car coverage
-                  </td>
-
-                  <td>
-                    Not less than $1,000,000 per occurrence
-                  </td>
-
-                </tr>
-
-
-                <tr>
-
-                  <td>
-                    Errors and Omissions Liability coverage
-                  </td>
-
-                  <td>
-                    Not less than $1,000,000 per occurrence
-                  </td>
-
-                </tr>
-
-
-                <tr>
-
-                  <td>
-                    Worker’s Compensation
-                  </td>
-
-                  <td>
-                    As per the laws of the state
-                  </td>
-
-                </tr>
-
-              </tbody>
-
-            </table>
-
-
-            <Clause
-              number="7"
-              title="Agreement Not to Solicit or Employ."
-            >
-
-              <AlphaList
-                items={
-                  clause7Items
-                }
-
-                data={
-                  data
-                }
-              />
-
-            </Clause>
-
-
-            <Clause
-              number="8"
-              title="Fees"
-            />
-
-          </Page>
-
-
-          {/* ==================================================
-              PAGE 4
-          ================================================== */}
-
-          <Page
-            styleVars={
-              styleVars
-            }
-
-            logoUrl={
-              logoUrl
-            }
-
-            pageNumber={
-              4
-            }
-
-            showPageGuides={
-              showPageGuides
-            }
-          >
-
-            <p className="doc-text">
-
-              <RenderTemplateText
-                text={
-                  templateText.clause8
-                }
-                data={
-                  data
-                }
-              />
-
-            </p>
-
-
-            <Clause
-              number="9"
-              title="Invoicing."
-            >
-
-              <p className="doc-text no-bottom">
-
-                <RenderTemplateText
-                  text={
-                    templateText.clause9
-                  }
-                  data={
-                    data
-                  }
-                />
-
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="10"
-              title="Contractor Warranties."
-            >
-
-              <p className="doc-text">
-
-                <RenderTemplateText
-                  text={
-                    templateText.clause10Intro
-                  }
-                  data={
-                    data
-                  }
-                />
-
-              </p>
-
-
-              <AlphaList
-                items={[
-                  templateText.clause10a,
-                  templateText.clause10b,
-                  templateText.clause10c,
-                ]}
-                data={
-                  data
-                }
-              />
-
-
-              <p className="doc-text no-bottom">
-
-                <RenderTemplateText
-                  text={
-                    templateText.clause10d
-                  }
-                  data={
-                    data
-                  }
-                />
-
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="11"
-              title="Indemnity."
-            >
-
-              <p className="doc-text no-bottom">
-
-                <RenderTemplateText
-                  text={
-                    templateText.clause11
-                  }
-                  data={
-                    data
-                  }
-                />
-
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="12"
-              title="Audit:"
-            >
-
-              <p className="doc-text no-bottom">
-
-                <RenderTemplateText
-                  text={
-                    templateText.clause12a
-                  }
-                  data={
-                    data
-                  }
-                />
-
-              </p>
-
-            </Clause>
-
-          </Page>
-
-
-          {/* ==================================================
-              PAGE 5
-          ================================================== */}
-
-          <Page
-            styleVars={
-              styleVars
-            }
-
-            logoUrl={
-              logoUrl
-            }
-
-            pageNumber={
-              5
-            }
-
-            showPageGuides={
-              showPageGuides
-            }
-          >
-
-            <p className="doc-text">
-
-              <RenderTemplateText
-                text={
-                  templateText.clause12b
-                }
-                data={
-                  data
-                }
-              />
-
-            </p>
-
-
-            <Clause
-              number="13"
-              title="Authority"
-            >
-
-              <p className="doc-text no-bottom">
-                <RenderTemplateText
-                  text={
-                    templateText.clause13
-                  }
-                  data={
-                    data
-                  }
-                />
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="14"
-              title="Assignment."
-            >
-
-              <p className="doc-text no-bottom">
-                <RenderTemplateText
-                  text={
-                    templateText.clause14
-                  }
-                  data={
-                    data
-                  }
-                />
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="15"
-              title="Governing Law."
-            >
-
-              <p className="doc-text no-bottom">
-                <RenderTemplateText
-                  text={
-                    templateText.clause15
-                  }
-                  data={
-                    data
-                  }
-                />
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="16"
-              title="Force Majeure"
-            >
-
-              <p className="doc-text no-bottom">
-                <RenderTemplateText
-                  text={
-                    templateText.clause16
-                  }
-                  data={
-                    data
-                  }
-                />
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="17"
-              title="Partial Invalidity"
-            >
-
-              <p className="doc-text no-bottom">
-                <RenderTemplateText
-                  text={
-                    templateText.clause17
-                  }
-                  data={
-                    data
-                  }
-                />
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="18"
-              title="No waiver."
-            >
-
-              <p className="doc-text no-bottom">
-                <RenderTemplateText
-                  text={
-                    templateText.clause18
-                  }
-                  data={
-                    data
-                  }
-                />
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="19"
-              title="Cooperation."
-            >
-
-              <p className="doc-text no-bottom">
-                <RenderTemplateText
-                  text={
-                    templateText.clause19
-                  }
-                  data={
-                    data
-                  }
-                />
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="20"
-              title="Headings."
-            >
-
-              <p className="doc-text no-bottom">
-                <RenderTemplateText
-                  text={
-                    templateText.clause20
-                  }
-                  data={
-                    data
-                  }
-                />
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="21"
-              title="Good Faith."
-            >
-
-              <p className="doc-text no-bottom">
-                <RenderTemplateText
-                  text={
-                    templateText.clause21
-                  }
-                  data={
-                    data
-                  }
-                />
-              </p>
-
-            </Clause>
-
-          </Page>
-
-
-          {/* ==================================================
-              PAGE 6 - MSA SIGNATURE PAGE
-          ================================================== */}
-
-          <Page
-            styleVars={
-              styleVars
-            }
-
-            logoUrl={
-              logoUrl
-            }
-
-            pageNumber={
-              6
-            }
-
-            showPageGuides={
-              showPageGuides
-            }
-          >
-
-            <Clause
-              number="22"
-              title="Entire Agreement."
-            >
-
-              <p className="doc-text no-bottom">
-
-                <RenderTemplateText
-                  text={
-                    templateText.clause22
-                  }
-                  data={
-                    data
-                  }
-                />
-
-              </p>
-
-            </Clause>
-
-
-            <Clause
-              number="23"
-              title="Notices."
-            >
-
-              <p className="doc-text no-bottom">
-
-                <RenderTemplateText
-                  text={
-                    templateText.clause23
-                  }
-                  data={
-                    data
-                  }
-                />
-
-              </p>
-
-            </Clause>
-
-
-            <div className="notice-grid">
-
-              <p>
-
-                Taproot Solutions Inc.,
-
-                <br />
-
-                317 Ranch Road 620 South,
-
-                <br />
-
-                Suite 302F, Austin, TX 78734
-
-                <br />
-
-                Fax: ____________
-
-                <br />
-
-                Email:{" "}
-
-                <u>
-                  Contracts@taproot-solutions.com
-                </u>
-
-              </p>
-
-
-              <p>
-
-                <Field
-                  token="{{VENDOR_NAME}}"
-                  data={
-                    data
-                  }
-                />.
-
-                <br />
-
-                <Field
-                  token="{{COMPANY_ADDRESS}}"
-                  data={
-                    data
-                  }
-                />
-
-                <br />
-
-                Fax: ____________
-
-                <br />
-
-                Email:{" "}
-
-                <Field
-                  token="{{VENDOR_EMAIL_ID}}"
-                  data={
-                    data
-                  }
-                />
-
-              </p>
-
-            </div>
-
-
-            <p className="doc-text">
-
-              <RenderTemplateText
-                text={
-                  templateText.executionParagraph
-                }
-                data={
-                  data
-                }
-              />
-
-            </p>
-
-
-            <div className="signature-columns">
-
-              <SignatureBlock
-                partyTitle="Contractor: {{VENDOR_NAME}}."
-
-                signerName="{{Authorized_Signature_Name}}"
-
-                signerTitle="{{Authorized_Person_Title}}"
-
-                date="{{CURRENT_DATE}}"
-
-                signatureText={
-                  data?.vendorSignatureText
-                }
-
-                data={
-                  data
-                }
-
-                signatureFieldId={
-                  SIGNATURE_FIELD_IDS
-                    .MSA_VENDOR_SIGNATURE
-                }
-
-                auditFieldId={
-                  SIGNATURE_FIELD_IDS
-                    .MSA_VENDOR_AUDIT
-                }
-
-                guardId={
-                  SIGNATURE_GUARD_IDS
-                    .MSA_VENDOR_META
-                }
-              />
-
-
-              <SignatureBlock
-                partyTitle="Company: Taproot Solutions INC."
-
-                signerName="Purnima Govada"
-
-                signerTitle="Director"
-
-                date="{{CURRENT_DATE}}"
-
-                signatureText={
-                  data?.companySignatureText
-                }
-
-                data={
-                  data
-                }
-
-                signatureFieldId={
-                  SIGNATURE_FIELD_IDS
-                    .MSA_TAPROOT_SIGNATURE
-                }
-
-                auditFieldId={
-                  SIGNATURE_FIELD_IDS
-                    .MSA_TAPROOT_AUDIT
-                }
-
-                guardId={
-                  SIGNATURE_GUARD_IDS
-                    .MSA_TAPROOT_META
-                }
-              />
-
-            </div>
-
-          </Page>
-
-        </>
-
+    <section
+      className="a4-page"
+      data-page-id={
+        page.id
+      }
+      data-document-part={
+        page.part
+      }
+    >
+      <PageHeader
+        logoUrl={
+          logoUrl
+        }
+      />
+
+      {displayPageNumber && (
+        <div className="page-debug-badge no-print">
+          Page{" "}
+          {
+            displayPageNumber
+          }
+        </div>
       )}
 
+      <div
+        ref={bodyRef}
+        className="page-body"
+      >
+        {blocks.map(
+          (block) => {
+            if (
+              block.type ===
+              "table"
+            ) {
+              return (
+                <EditableTable
+                  key={
+                    block.id
+                  }
+                  block={
+                    block
+                  }
+                  editMode={
+                    editMode
+                  }
+                  data={
+                    data
+                  }
+                  selectedBlockId={
+                    selectedBlockId
+                  }
+                  registerEditable={
+                    registerEditable
+                  }
+                  onSelect={
+                    onSelectBlock
+                  }
+                  onCellChange={
+                    onTableCellChange
+                  }
+                />
+              );
+            }
 
-      {/* ======================================================
-          PAGE 7 - WORK ORDER
-      ====================================================== */}
-
-      {showWO && (
-
-        <Page
-          styleVars={
-            styleVars
+            return (
+              <EditableHtml
+                key={
+                  block.id
+                }
+                html={
+                  block.html ||
+                  ""
+                }
+                editMode={
+                  editMode
+                }
+                data={
+                  data
+                }
+                blockId={
+                  block.id
+                }
+                selected={
+                  selectedBlockId ===
+                  block.id
+                }
+                registerEditable={
+                  registerEditable
+                }
+                onSelect={
+                  onSelectBlock
+                }
+                onChange={
+                  onHtmlChange
+                }
+              />
+            );
           }
-
-          logoUrl={
-            logoUrl
-          }
-
-          pageNumber={
-            showMSA
-              ? 7
-              : 1
-          }
-
-          showPageGuides={
-            showPageGuides
-          }
-        >
-
-          <h1 className="doc-wo-title">
-            Consulting Services Purchase Order
-          </h1>
-
-
-          <p className="doc-text">
-
-            <RenderTemplateText
-              text={
-                templateText.woIntro
-              }
-              data={
-                data
-              }
-            />
-
-          </p>
-
-
-          <table className="doc-table wo-table">
-
-            <tbody>
-
-              <tr>
-
-                <td>
-                  Purchase Order #
-                </td>
-
-                <td>
-                  Taproot-Subk-
-                  <Field
-                    token="{{CONTRACT_NUMBER}}"
-                    data={
-                      data
-                    }
-                  />
-                </td>
-
-              </tr>
-
-
-              <tr>
-
-                <td>
-                  Contractor Resources Assigned:
-                </td>
-
-                <td>
-
-                  <Field
-                    token="{{CANDIDATE_NAME}}"
-                    data={
-                      data
-                    }
-                  />
-
-                </td>
-
-              </tr>
-
-
-              <tr>
-
-                <td>
-                  Tentative Start Date
-                </td>
-
-                <td>
-
-                  <Field
-                    token="{{Tentative_Start_Date}}"
-                    data={
-                      data
-                    }
-                  />
-
-                </td>
-
-              </tr>
-
-
-              <tr>
-
-                <td>
-                  Job Title :
-                </td>
-
-                <td>
-
-                  <Field
-                    token="{{Job_Title_Name}}"
-                    data={
-                      data
-                    }
-                  />
-
-                </td>
-
-              </tr>
-
-
-              <tr>
-
-                <td>
-                  Client Name:
-                </td>
-
-                <td>
-
-                  <Field
-                    token="{{Client_Name}}"
-                    data={
-                      data
-                    }
-                  />
-
-                </td>
-
-              </tr>
-
-
-              <tr>
-
-                <td>
-                  Client Location:
-                </td>
-
-                <td>
-
-                  <Field
-                    token="{{Client_Location}}"
-                    data={
-                      data
-                    }
-                  />
-
-                </td>
-
-              </tr>
-
-
-              <tr>
-
-                <td>
-                  Type of work
-                </td>
-
-                <td>
-
-                  <Field
-                    token="{{TYPE_OF_SERVICES}}"
-                    data={
-                      data
-                    }
-                  />
-
-                </td>
-
-              </tr>
-
-
-              <tr>
-
-                <td>
-                  Type of Subcontract
-                </td>
-
-                <td>
-
-                  Time and Materials
-
-                  <br />
-
-                  <Field
-                    token="{{TYPE_OF_SUBCONTRACT}}"
-                    data={
-                      data
-                    }
-                  />
-
-                </td>
-
-              </tr>
-
-
-              <tr>
-
-                <td>
-                  Rate
-                </td>
-
-                <td>
-
-                  ${" "}
-
-                  <Field
-                    token="{{RATE}}"
-                    data={
-                      data
-                    }
-                  />{" "}
-
-                  <Field
-                    token="{{PER_HOUR}}"
-                    data={
-                      data
-                    }
-                  />
-
-                </td>
-
-              </tr>
-
-
-              <tr>
-
-                <td>
-                  Payment Terms
-                </td>
-
-                <td>
-
-                  <Field
-                    token="{{NET}}"
-                    data={
-                      data
-                    }
-                  />{" "}
-
-                  days after receipt of acceptable invoice.
-
-                </td>
-
-              </tr>
-
-
-              <tr>
-
-                <td>
-                  Taproot Subcontract Administrator
-                </td>
-
-                <td>
-                  Purnima Govada, Director
-                </td>
-
-              </tr>
-
-            </tbody>
-
-          </table>
-
-
-          <div className="wo-signature-columns">
-
-            <SignatureBlock
-              variant="wo"
-
-              partyTitle="Accepted:|Contractor: {{VENDOR_NAME}}."
-
-              signerName="{{Authorized_Signature_Name}}"
-
-              signerTitle="{{Authorized_Person_Title}}"
-
-              date="{{CURRENT_DATE}}"
-
-              signatureText={
-                data?.vendorSignatureText
-              }
-
-              data={
-                data
-              }
-
-              signatureFieldId={
-                SIGNATURE_FIELD_IDS
-                  .WO_VENDOR_SIGNATURE
-              }
-
-              auditFieldId={
-                SIGNATURE_FIELD_IDS
-                  .WO_VENDOR_AUDIT
-              }
-
-              guardId={
-                SIGNATURE_GUARD_IDS
-                  .WO_VENDOR_META
-              }
-            />
-
-
-            <SignatureBlock
-              variant="wo"
-
-              partyTitle="Accepted:|Company: Taproot Solutions INC."
-
-              signerName="Purnima Govada"
-
-              signerTitle="Director"
-
-              date="{{CURRENT_DATE}}"
-
-              signatureText={
-                data?.companySignatureText
-              }
-
-              data={
-                data
-              }
-
-              signatureFieldId={
-                SIGNATURE_FIELD_IDS
-                  .WO_TAPROOT_SIGNATURE
-              }
-
-              auditFieldId={
-                SIGNATURE_FIELD_IDS
-                  .WO_TAPROOT_AUDIT
-              }
-
-              guardId={
-                SIGNATURE_GUARD_IDS
-                  .WO_TAPROOT_META
-              }
-            />
-
-          </div>
-
-        </Page>
-
-      )}
-
-    </>
+        )}
+      </div>
+
+      <PageFooter
+        footerText={
+          footerText
+        }
+      />
+    </section>
   );
 };
+
+
+/**
+ * ============================================================
+ * MAIN DOCUMENT COMPONENT
+ * ============================================================
+ */
+export const MSATemplatePages = ({
+  /**
+   * New API
+   */
+  template,
+
+  /**
+   * Legacy API fallback
+   */
+  data,
+  margins,
+
+  /**
+   * WYSIWYG mode
+   */
+  editMode = false,
+
+  selectedBlockId = null,
+
+  registerEditable = () => {},
+
+  onSelectBlock = () => {},
+
+  onHtmlChange = () => {},
+
+  onTableCellChange = () => {},
+
+  onOverflowChange = () => {},
+}) => {
+  /**
+   * Always produce a complete valid template,
+   * even if an old caller provides only data/margins.
+   */
+  const safeTemplate =
+    useMemo(
+      () =>
+        normalizeTemplate({
+          template,
+          data,
+          margins,
+        }),
+      [
+        template,
+        data,
+        margins,
+      ]
+    );
+
+  const {
+    styleConfig,
+    documentData,
+
+    logoUrl,
+    footerText,
+
+    packageMode,
+
+    showPageNumbers,
+
+    pages,
+  } = safeTemplate;
+
+  /**
+   * Apply saved style configuration through CSS variables.
+   */
+  const customStyle =
+    useMemo(
+      () => ({
+        "--doc-margin-top":
+          `${styleConfig.marginTop}mm`,
+
+        "--doc-margin-bottom":
+          `${styleConfig.marginBottom}mm`,
+
+        "--doc-margin-left":
+          `${styleConfig.marginLeft}mm`,
+
+        "--doc-margin-right":
+          `${styleConfig.marginRight}mm`,
+
+        "--doc-font-family":
+          styleConfig.fontFamily,
+
+        "--doc-font-size":
+          `${styleConfig.fontSize}pt`,
+
+        "--doc-line-height":
+          styleConfig.lineHeight,
+
+        "--doc-title-size":
+          `${styleConfig.titleSize}pt`,
+
+        "--doc-section-title-size":
+          `${styleConfig.sectionTitleSize}pt`,
+
+        "--doc-footer-font-size":
+          `${styleConfig.footerFontSize}pt`,
+
+        "--doc-footer-rule-color":
+          styleConfig.footerRuleColor,
+
+        "--doc-footer-rule-width":
+          `${styleConfig.footerRuleWidth}mm`,
+
+        "--doc-logo-width":
+          `${styleConfig.logoWidth}mm`,
+      }),
+      [
+        styleConfig,
+      ]
+    );
+
+  /**
+   * Filter physical pages according to package selection.
+   */
+  const visiblePages =
+    useMemo(() => {
+      const sourcePages =
+        Array.isArray(pages)
+          ? pages
+          : [];
+
+      return sourcePages.filter(
+        (page) => {
+          if (
+            packageMode ===
+            "MSA"
+          ) {
+            return (
+              page.part ===
+              "MSA"
+            );
+          }
+
+          if (
+            packageMode ===
+            "WO"
+          ) {
+            return (
+              page.part ===
+              "WO"
+            );
+          }
+
+          /**
+           * MSA_WO
+           */
+          return true;
+        }
+      );
+    }, [
+      pages,
+      packageMode,
+    ]);
+
+  return (
+    <div
+      className={[
+        "document-pages-shell",
+
+        editMode
+          ? "document-edit-mode"
+          : "document-preview-mode",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={
+        customStyle
+      }
+    >
+      {visiblePages.map(
+        (
+          page,
+          index
+        ) => (
+          <DocumentPage
+            key={
+              page.id
+            }
+            page={
+              page
+            }
+            displayPageNumber={
+              showPageNumbers
+                ? index + 1
+                : null
+            }
+            editMode={
+              editMode
+            }
+            data={
+              documentData
+            }
+            logoUrl={
+              logoUrl
+            }
+            footerText={
+              footerText
+            }
+            selectedBlockId={
+              selectedBlockId
+            }
+            registerEditable={
+              registerEditable
+            }
+            onSelectBlock={
+              onSelectBlock
+            }
+            onHtmlChange={
+              onHtmlChange
+            }
+            onTableCellChange={
+              onTableCellChange
+            }
+            onOverflow={
+              onOverflowChange
+            }
+          />
+        )
+      )}
+    </div>
+  );
+};
+
+
+export default MSATemplatePages;
