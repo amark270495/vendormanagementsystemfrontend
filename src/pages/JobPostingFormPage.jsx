@@ -41,13 +41,13 @@ const MASTER_SKILLS_DICT = {
     ".NET Technologies": [".NET", ".NET Core", ".NET Framework", "C#", "C-Sharp", "ASP.NET", ".NET 8"],
     "Python": ["Python", "Pandas", "NumPy", "Django", "Flask"],
     "C++/System Languages": ["C++", "C", "GoLang", "Go", "Rust", "Scala", "Ruby"],
-    "JavaScript/Node.js": ["JavaScript", "JS", "TypeScript", "TS", "Node.js", "NodeJS", "Express.js"],
-    "Frontend Frameworks": ["Angular", "AngularJS", "React", "ReactJS", "Next.js", "Vue.js", "Vue"],
+    "JavaScript/Node.js": ["JavaScript", "JS", "TypeScript", "TS", "Node.js", "NodeJS", "Express.js", "Express"],
+    "Frontend Frameworks": ["Angular", "AngularJS", "React", "ReactJS", "React UI", "Next.js", "Vue.js", "Vue"],
     "Web Fundamentals": ["HTML", "CSS", "Bootstrap", "Tailwind", "SASS", "Webpack", "NPM"],
-    "API Development": ["API Development", "REST", "RESTful APIs", "SOAP", "GraphQL", "API Gateway", "Web Services"],
+    "API Development": ["API Development", "REST", "REST API", "RESTful APIs", "SOAP", "GraphQL", "API Gateway", "Web Services"],
     "Integration Tools": ["MuleSoft", "Dell Boomi", "Informatica", "SSIS", "Talend", "Postman", "Swagger", "Apigee", "Rhapsody Integration Engine"],
     "Data Formats": ["JSON", "XML", "YAML", "CSV", "EDI", "EDI X12"],
-    "Relational Databases (SQL)": ["SQL", "PL/SQL", "T-SQL", "Oracle Database", "Oracle 19c", "SQL Server", "Microsoft SQL", "PostgreSQL", "MySQL", "MariaDB", "DB2"],
+    "Relational Databases (SQL)": ["SQL", "PL/SQL", "T-SQL", "Oracle Database", "Oracle 19c", "SQL Server", "Microsoft SQL", "PostgreSQL", "Postgres", "MySQL", "MariaDB", "DB2"],
     "NoSQL Databases": ["MongoDB", "Cassandra", "Redis", "DynamoDB", "Cosmos DB"],
     "Data Warehousing/Lakes": ["Snowflake", "Redshift", "BigQuery", "Synapse", "Databricks"],
     "Big Data & Pipelines": ["Hadoop", "Spark", "Apache Spark", "Kafka", "Flink", "Airflow", "NiFi", "ETL", "ETL Pipelines", "Data Engineering", "Data Modeling"],
@@ -81,7 +81,7 @@ const MASTER_CERTIFICATIONS_DICT = {
     "ITIL": ["ITIL Foundation", "ITIL Intermediate", "ITIL", "ITIL v3", "ITIL v4"],
     "Six Sigma": ["Six Sigma Green Belt", "Six Sigma Black Belt", "Lean Practitioner"],
     "Business Analysis": ["CBAP", "Certified Business Analysis Professional"],
-    "AWS Certifications": ["AWS Cloud Practitioner", "AWS Solutions Architect", "AWS Developer", "AWS Certified"],
+    "AWS Certifications": ["AWS Cloud Practitioner", "AWS Solutions Architect", "AWS Developer", "AWS Certified", "AWS Certification"],
     "Azure Certifications": ["Azure Fundamentals", "AZ-900", "Azure Administrator", "Azure Architect", "Azure Database Administrator Associate"],
     "GCP Certifications": ["Google Cloud Associate", "Google Cloud Professional"],
     "CompTIA": ["Security+", "Network+", "A+"],
@@ -198,38 +198,48 @@ const JobPostingFormPage = ({ onFormSubmit }) => {
         
         parsedData['Posting Date'] = new Date().toISOString().split('T')[0];
 
-        // --- 2. DYNAMIC SKILL & CERTIFICATE EXTRACTION ---
+        // --- 2. ADVANCED DYNAMIC SKILL & CERTIFICATE EXTRACTION ---
         const foundSkills = new Set();
         const foundCerts = new Set();
         
-        Object.entries(MASTER_SKILLS_DICT).forEach(([standardName, aliases]) => {
-            const hasMatch = aliases.some(alias => {
-                const regex = new RegExp(`(?:^|\\W)${escapeRegExp(alias)}(?:$|\\W)`, 'i');
-                return regex.test(text);
+        // 1. Parse Specific Skills (Extracting the actual skill directly)
+        Object.values(MASTER_SKILLS_DICT).forEach(aliases => {
+            aliases.forEach(alias => {
+                // Prevent false positives: Make 1-2 letter IT languages case-sensitive
+                const isShortExactMatch = (alias === 'C' || alias === 'Go' || alias === 'R');
+                const flags = isShortExactMatch ? 'g' : 'ig';
+                
+                const regex = new RegExp(`(?:^|\\W)${escapeRegExp(alias)}(?:$|\\W)`, flags);
+
+                if (regex.test(text)) {
+                    foundSkills.add(alias); 
+                }
             });
-            if (hasMatch) foundSkills.add(standardName);
         });
 
+        // 2. Parse Certifications (Maintaining Standardized Category Formatting)
         Object.entries(MASTER_CERTIFICATIONS_DICT).forEach(([standardName, aliases]) => {
             const hasMatch = aliases.some(alias => {
                 const regex = new RegExp(`(?:^|\\W)${escapeRegExp(alias)}(?:$|\\W)`, 'i');
                 return regex.test(text);
             });
+            
             if (hasMatch) foundCerts.add(standardName);
         });
 
+        // Apply sorted skill and certificate output
         if (foundSkills.size > 0) {
-            parsedData['Required Skill Set'] = Array.from(foundSkills).join(', ');
+            parsedData['Required Skill Set'] = Array.from(foundSkills).sort().join(', ');
         } else {
             parsedData['Required Skill Set'] = 'Could not auto-detect skills. Please review manually.';
         }
 
         if (foundCerts.size > 0) {
-            parsedData['Any Required Certificates'] = Array.from(foundCerts).join('; ');
+            parsedData['Any Required Certificates'] = Array.from(foundCerts).sort().join('; ');
         }
 
         setFormData(prev => ({ ...prev, ...parsedData }));
-        setParseSuccess("Data extracted successfully! Skills and Certifications have been mapped to standardized categories.");
+        setParseSuccess("Data extracted successfully! Skills and Certifications have been successfully mapped.");
     };
 
     const handleChange = (e) => {
